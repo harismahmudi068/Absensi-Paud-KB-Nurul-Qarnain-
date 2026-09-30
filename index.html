@@ -342,38 +342,39 @@ async function unduhKartu(btn){if(!setUnduhBusy(btn,true,'Membuat PDF kartu...')
  doc.save('kartu-siswa.pdf');toast(list.length+' kartu berhasil diunduh')}catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 /* ---------- rekap + unduh riwayat ---------- */
 const LB={Hadir:'H',Terlambat:'T',Izin:'I',Sakit:'S',Alpa:'A',Libur:'L',Belum:'-'};
-function matriks(b,k){const ds=hariBulan(b),l=act().filter(s=>!k||s.kelas===k);return{ds,rows:l.map((s,i)=>{const r=ringkas(s,b);return[i+1,s.nama,s.nisn||'-',s.kelas].concat(ds.map(d=>LB[dayStat(s,d)])).concat([r.c.Hadir,r.c.Terlambat,r.c.Izin,r.c.Sakit,r.c.Alpa,r.c.Libur,r.pct+'%'])}),head:['No','Nama','NISN','Kelas'].concat(ds.map(d=>+d.slice(8))).concat(['Hadir','Terlambat','Izin','Sakit','Alpa','Libur','% Hadir'])}}
+function matriks(b,k){const ds=hariBulan(b),l=act().filter(s=>!k||s.kelas===k);return{ds,rows:l.map((s,i)=>{const r=ringkas(s,b);return[i+1,s.nama,s.nisn||'-',s.kelas].concat(ds.map(d=>LB[dayStat(s,d)])).concat([r.c.Hadir,r.c.Terlambat,r.c.Izin,r.c.Sakit,r.c.Alpa,r.c.Libur,r.pct+'%'])}),head:['No','Nama','NISN','Kelas'].concat(ds.map(d=>String(+d.slice(8)))).concat(['Hadir','Terlambat','Izin','Sakit','Alpa','Libur','% Hadir'])}}
 V.rekap=()=>{const l=act().filter(s=>!rk||s.kelas===rk),n=hariBulan(bulan).length;
  const rows=l.map((s,i)=>{const r=ringkas(s,bulan);return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${esc(s.nisn||'-')}</td><td>${esc(s.kelas)}</td><td>${r.c.Hadir}</td><td>${r.c.Terlambat}</td><td>${r.c.Izin}</td><td>${r.c.Sakit}</td><td>${r.c.Alpa}</td><td>${r.c.Libur}</td><td><b>${r.pct}%</b></td></tr>`}).join('');
  return `<div class="panel"><div class="ph">📚 Rekap Absensi <span class="mu">${n} hari dihitung</span></div><div class="pb"><div class="tb">${dt('month',bulan,"setBulan(this.value)")}<select class="select" onchange="rk=this.value;renderV()">${kopt(rk,1)}</select></div>
  <div class="tb"><button class="btn success grow" onclick="unduh('pdf',this)">⬇ Unduh Riwayat Absensi (PDF)</button><button class="btn grow" onclick="unduh('xlsx',this)">⬇ Unduh Riwayat Absensi (XLSX)</button></div>
  <div class="note">Tabel di bawah adalah rekap jumlah bulan yang dipilih. Berkas unduhan berisi riwayat harian sebulan penuh seluruh anak (H hadir, T terlambat, I izin, S sakit, A alpa, L libur). Persentase menghitung hari libur sebagai hadir.</div>
  ${tab(['No','Nama','NISN','Kelas','Hadir','Terlambat','Izin','Sakit','Alpa','Libur','% Hadir'],rows)}</div></div>`};
-function setBulan(v){bulan=v;guard(async()=>{await muatBulan(v);renderV()})}
+function setBulan(v){if(!/^\d{4}-\d{2}$/.test(v||''))return;bulan=v;renderV();guard(async()=>{await muatBulan(v);renderV()})}
 const HRS=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],XC={H:['FFD9F7E8','FF14965C'],T:['FFFFF0C2','FF9A6A00'],I:['FFDCEFFF','FF1673BD'],S:['FFFFE0E4','FFD83D4D'],A:['FFEADFFF','FF6840C6'],L:['FFE5EDF4','FF526B84'],'-':['FFF3F4F3','FF9AA59E']};
 async function tulisXlsx(wb,nama){const buf=await wb.xlsx.writeBuffer(),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=nama;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
 async function xlsxRiwayat(M,nm){
  if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
- const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Riwayat',{views:[{state:'frozen',xSplit:4,ySplit:4}],pageSetup:{orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}}),n=M.ds.length,tot=n+10,F='Arial',
+ const wb=new ExcelJS.Workbook(),n=M.ds.length,tot=4+n+7,F='Arial',
+ ws=wb.addWorksheet('Riwayat',{views:[{state:'frozen',xSplit:4,ySplit:4}],pageSetup:{orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}}),
  fl=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}}),ln={style:'thin',color:{argb:'FFCFD9D3'}},bd={top:ln,left:ln,bottom:ln,right:ln},mid={horizontal:'center',vertical:'middle'},
  SUM=['H','T','I','S','A','L'],SH=['FF20B979','FFD99A27','FF248FE9','FFEF5361','FF7A4BE5','FF526B84','FF176B3A'];
  wb.creator='KB Nurul Qarnain';
  ws.mergeCells(1,1,1,tot);ws.mergeCells(2,1,2,tot);
  const t1=ws.getCell(1,1),t2=ws.getCell(2,1);t1.value='RIWAYAT ABSENSI - KB NURUL QARNAIN';t1.font={name:F,size:15,bold:true,color:{argb:'FFFFFFFF'}};t1.fill=fl('FF7650B8');t1.alignment=mid;
  t2.value='Bulan '+fmtB(bulan)+(rk?' - Kelas '+rk:' - Semua kelas')+'   |   Dicetak '+fmt(TODAY);t2.font={name:F,size:10,color:{argb:'FF4B3A75'}};t2.fill=fl('FFEEE5FB');t2.alignment=mid;ws.getRow(1).height=28;ws.getRow(2).height=20;
- const hd=(c,top,bot,color)=>{[3,4].forEach(r=>{const x=ws.getCell(r,c);x.fill=fl(color);x.font={name:F,size:10,bold:true,color:{argb:'FFFFFFFF'}};x.alignment=mid;x.border=bd});if(top!=null)ws.getCell(3,c).value=top;if(bot!=null)ws.getCell(4,c).value=bot};
- for(let c=1;c<=4;c++){ws.mergeCells(3,c,4,c);hd(c,M.head[c-1],null,'FF176B3A')}
- M.ds.forEach((d,i)=>{const w=wd(d),we=w===0||w===6;hd(4+i,HRS[w],+d.slice(8),we?'FFE0A030':'FF3B9E63')});
- for(let i=0;i<7;i++){const c=n+4+i;ws.mergeCells(3,c,4,c);hd(c,M.head[3+n+i],null,SH[i])}
+ const hd=(c,top,color)=>{const x=ws.getCell(3,c);x.value=top;x.fill=fl(color);x.font={name:F,size:10,bold:true,color:{argb:'FFFFFFFF'}};x.alignment=mid;x.border=bd;ws.getCell(4,c).border=bd;ws.getCell(4,c).fill=fl(color)};
+ ['No','Nama','NISN','Kelas'].forEach((h,i)=>{ws.mergeCells(3,i+1,4,i+1);hd(i+1,h,'FF176B3A')});
+ M.ds.forEach((d,i)=>{const w=wd(d),we=w===0||w===6;ws.getCell(3,5+i).value=String(+d.slice(8));ws.getCell(3,5+i).font={name:F,size:10,bold:true,color:{argb:'FFFFFFFF'}};ws.getCell(3,5+i).fill=fl(we?'FFE0A030':'FF3B9E63');ws.getCell(3,5+i).alignment=mid;ws.getCell(3,5+i).border=bd;ws.getCell(4,5+i).value=HRS[w];ws.getCell(4,5+i).font={name:F,size:9,bold:true,color:{argb:'FFFFFFFF'}};ws.getCell(4,5+i).fill=fl(we?'FFE0A030':'FF3B9E63');ws.getCell(4,5+i).alignment=mid;ws.getCell(4,5+i).border=bd});
+ ['Hadir','Terlambat','Izin','Sakit','Alpa','Libur','% Hadir'].forEach((h,i)=>{const c=5+n+i;ws.mergeCells(3,c,4,c);hd(c,h,SH[i])});
  ws.getRow(3).height=18;ws.getRow(4).height=20;
  M.rows.forEach((r,j)=>{const row=ws.getRow(5+j),z=j%2?'FFF4F9F5':'FFFFFFFF';row.height=19;
-  r.forEach((v,k)=>{const c=row.getCell(k+1);c.border=bd;c.alignment=k===1?{vertical:'middle',horizontal:'left',indent:1}:mid;
-   if(k<4){c.value=v;c.fill=fl(z);c.font={name:F,size:10,bold:k===1};c.alignment=k===1?{vertical:'middle',horizontal:'left',indent:1}:{vertical:'middle',horizontal:k===2?'center':'left'}}
-   else if(k<4+n){const x=XC[v]||XC['-'];c.value=v;c.fill=fl(x[0]);c.font={name:F,size:10,bold:true,color:{argb:x[1]}}}
-   else if(k<10+n){const x=XC[SUM[k-4-n]];c.value=v;c.fill=fl(x[0]);c.font={name:F,size:10,bold:true,color:{argb:x[1]}}}
-   else{const pc=parseInt(v,10)||0;c.value=pc/100;c.numFmt='0%';c.fill=fl(z);c.font={name:F,size:10,bold:true,color:{argb:pc>=90?'FF14965C':pc>=70?'FF9A6A00':'FFD83D4D'}}}})});
+  r.forEach((v,k)=>{const c=row.getCell(k+1);c.border=bd;
+   if(k<4){c.value=String(v??'');c.fill=fl(z);c.font={name:F,size:10,bold:k===1};c.alignment={vertical:'middle',horizontal:k===1?'left':k===2?'center':'left',indent:k===1?1:0};}
+   else if(k<4+n){const x=XC[v]||XC['-'];c.value=String(v??'-');c.fill=fl(x[0]);c.font={name:F,size:10,bold:true,color:{argb:x[1]}};c.alignment=mid}
+   else if(k<10+n){const x=XC[SUM[k-4-n]];c.value=Number(v)||0;c.fill=fl(x[0]);c.font={name:F,size:10,bold:true,color:{argb:x[1]}};c.alignment=mid}
+   else{const pc=parseInt(v,10)||0;c.value=pc/100;c.numFmt='0%';c.fill=fl(z);c.font={name:F,size:10,bold:true,color:{argb:pc>=90?'FF14965C':pc>=70?'FF9A6A00':'FFD83D4D'}};c.alignment=mid}});});
  ws.getColumn(1).width=5;ws.getColumn(2).width=Math.min(40,Math.max(22,...M.rows.map(r=>String(r[1]).length+3)));ws.getColumn(3).width=14;ws.getColumn(4).width=Math.max(12,...M.rows.map(r=>String(r[3]).length+3));
- for(let c=5;c<=4+n;c++)ws.getColumn(c).width=4.6;for(let c=n+5;c<=n+10;c++)ws.getColumn(c).width=10;ws.getColumn(n+11).width=10;
+ for(let c=5;c<=4+n;c++)ws.getColumn(c).width=6;for(let c=n+5;c<=n+10;c++)ws.getColumn(c).width=10;ws.getColumn(n+11).width=10;
  const lr=5+M.rows.length+1;ws.mergeCells(lr,1,lr,tot);const lg=ws.getCell(lr,1);lg.value='Keterangan: H = Hadir, T = Terlambat, I = Izin, S = Sakit, A = Alpa, L = Libur, - = belum tercatat. Persentase menghitung hari libur sebagai hadir. Tanggal berwarna oranye = Sabtu/Minggu.';lg.font={name:F,size:9,italic:true,color:{argb:'FF6D7D73'}};lg.alignment={vertical:'middle',horizontal:'left'};
  await tulisXlsx(wb,nm+'.xlsx')}
 async function unduh(t,btn){if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat file XLSX...':'Membuat file PDF...'))return;try{await jedaUnduh();await muatBulan(bulan);const M=matriks(bulan,rk);if(!M.ds.length||!M.rows.length)throw new Error('Belum ada data pada bulan ini');const nm='riwayat-absensi-'+bulan;
