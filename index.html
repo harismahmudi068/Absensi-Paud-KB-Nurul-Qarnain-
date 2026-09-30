@@ -354,7 +354,7 @@ const HRS=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],XC={H:['FFD9F7E8','FF14965
 async function tulisXlsx(wb,nama){const buf=await wb.xlsx.writeBuffer(),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=nama;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
 async function xlsxRiwayat(M,nm){
  if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
- const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Riwayat',{views:[{state:'frozen',xSplit:4,ySplit:4}],pageSetup:{orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}}),n=M.ds.length,tot=n+11,F='Arial',
+ const wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Riwayat',{views:[{state:'frozen',xSplit:4,ySplit:4}],pageSetup:{orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}}),n=M.ds.length,tot=n+10,F='Arial',
  fl=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}}),ln={style:'thin',color:{argb:'FFCFD9D3'}},bd={top:ln,left:ln,bottom:ln,right:ln},mid={horizontal:'center',vertical:'middle'},
  SUM=['H','T','I','S','A','L'],SH=['FF20B979','FFD99A27','FF248FE9','FFEF5361','FF7A4BE5','FF526B84','FF176B3A'];
  wb.creator='KB Nurul Qarnain';
@@ -364,11 +364,11 @@ async function xlsxRiwayat(M,nm){
  const hd=(c,top,bot,color)=>{[3,4].forEach(r=>{const x=ws.getCell(r,c);x.fill=fl(color);x.font={name:F,size:10,bold:true,color:{argb:'FFFFFFFF'}};x.alignment=mid;x.border=bd});if(top!=null)ws.getCell(3,c).value=top;if(bot!=null)ws.getCell(4,c).value=bot};
  for(let c=1;c<=4;c++){ws.mergeCells(3,c,4,c);hd(c,M.head[c-1],null,'FF176B3A')}
  M.ds.forEach((d,i)=>{const w=wd(d),we=w===0||w===6;hd(4+i,HRS[w],+d.slice(8),we?'FFE0A030':'FF3B9E63')});
- for(let i=0;i<7;i++){const c=n+5+i;ws.mergeCells(3,c,4,c);hd(c,M.head[4+n+i],null,SH[i])}
+ for(let i=0;i<7;i++){const c=n+4+i;ws.mergeCells(3,c,4,c);hd(c,M.head[3+n+i],null,SH[i])}
  ws.getRow(3).height=18;ws.getRow(4).height=20;
  M.rows.forEach((r,j)=>{const row=ws.getRow(5+j),z=j%2?'FFF4F9F5':'FFFFFFFF';row.height=19;
   r.forEach((v,k)=>{const c=row.getCell(k+1);c.border=bd;c.alignment=k===1?{vertical:'middle',horizontal:'left',indent:1}:mid;
-   if(k<4){c.value=v;c.fill=fl(z);c.font={name:F,size:10,bold:k===1}}
+   if(k<4){c.value=v;c.fill=fl(z);c.font={name:F,size:10,bold:k===1};c.alignment=k===1?{vertical:'middle',horizontal:'left',indent:1}:{vertical:'middle',horizontal:k===2?'center':'left'}}
    else if(k<4+n){const x=XC[v]||XC['-'];c.value=v;c.fill=fl(x[0]);c.font={name:F,size:10,bold:true,color:{argb:x[1]}}}
    else if(k<10+n){const x=XC[SUM[k-4-n]];c.value=v;c.fill=fl(x[0]);c.font={name:F,size:10,bold:true,color:{argb:x[1]}}}
    else{const pc=parseInt(v,10)||0;c.value=pc/100;c.numFmt='0%';c.fill=fl(z);c.font={name:F,size:10,bold:true,color:{argb:pc>=90?'FF14965C':pc>=70?'FF9A6A00':'FFD83D4D'}}}})});
