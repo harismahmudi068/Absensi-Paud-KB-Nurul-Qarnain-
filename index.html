@@ -358,13 +358,68 @@ async function templat(k){try{if(typeof ExcelJS==='undefined')throw new Error('P
  if(sis){if(cn.length){const ls=wb.addWorksheet('Pilihan',{state:'hidden'});ls.getCell('A1').value='Kelas';cn.forEach((n,i)=>{ls.getCell(i+2,1).value=n});dv(3,['Pilihan!$A$2:$A$'+(cn.length+1)],'Kelas','Pilih nama kelas dari daftar yang tersedia di sistem.')}}
  else dv(4,['"Guru,Kepala Sekolah,Developer"'],'Role','Role harus Guru, Kepala Sekolah, atau Developer.');
  await tulisXlsx(wb,'template-'+(sis?'data-anak':'data-guru')+'.xlsx')}catch(e){toast('Gagal membuat template: '+(e.message||e),false)}}
-function impor(inp){const f=inp.files[0];if(!f)return;const k=impK;guard(async()=>{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}).slice(1).filter(r=>r.some(c=>String(c).trim()));if(!rows.length)throw new Error('File kosong atau formatnya tidak sesuai template');let ok=0,gagal=[];
- for(let i=0;i<rows.length;i++){const r=rows[i].map(c=>String(c).trim());$('#ldt').textContent='Mengimpor '+(i+1)+' dari '+rows.length+'...';
-  try{if(k==='siswa'){const [nama,pan,kl,wa]=r,kid_=kid(kl);if(!nama)throw new Error('nama kosong');if(!kid_)throw new Error('kelas "'+kl+'" tidak ada');if(S.siswa.some(x=>x.nama.toLowerCase()===nama.toLowerCase()&&x.kelas_id===kid_))throw new Error('sudah ada');
-    const n=await dbq(db.from('siswa').insert({nama,nama_panggilan:pan||nama.split(' ')[0],kelas_id:kid_}).select().single());await setWali(n.id,normWA(wa));S.siswa.push({nama,kelas_id:kid_})}
-   else{const [nama,user,sandi,rl]=r,role_=KEYR[Object.keys(KEYR).find(x=>x.toLowerCase()===(rl||'Guru').toLowerCase())];if(!nama||!user)throw new Error('nama/username kosong');if(!role_)throw new Error('role harus Guru, Kepala Sekolah, atau Developer');await apiGuru({aksi:'tambah',nama,username:user,sandi,role:role_})}ok++}
-  catch(e){gagal.push('Baris '+(i+2)+' ('+(r[0]||'-')+'): '+(e.message||e))}}
- if(k==='siswa')await muatDasar();else await muatProfil();renderV();info('Hasil impor','<div class="note">✅ Berhasil: <b>'+ok+'</b> data<br>❌ Gagal: <b>'+gagal.length+'</b> data</div>'+(gagal.length?'<div class="mu">'+gagal.map(esc).join('<br>')+'</div>':''))})}
+function impor(inp){const f=inp.files[0];if(!f)return;const k=impK;guard(async()=>{
+ const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}).slice(1).filter(r=>r.some(c=>String(c).trim()));
+ if(!rows.length)throw new Error('File kosong atau formatnya tidak sesuai template');
+ const BATCH=50;let ok=0,gagal=[];
+ const fail=(i,r,e)=>gagal.push('Baris '+(i+2)+' ('+(r[0]||'-')+'): '+(e.message||e));
+ if(k==='guru'){
+   const valid=[];
+   for(let i=0;i<rows.length;i++){
+     const r=rows[i].map(c=>String(c).trim());$('#ldt').textContent='Memvalidasi '+(i+1)+' dari '+rows.length+'...';
+     const [nama,user,sandi,rl]=r,role_=KEYR[Object.keys(KEYR).find(x=>x.toLowerCase()===(rl||'Guru').toLowerCase())];
+     if(!nama||!user){fail(i,r,new Error('nama/username kosong'));continue}
+     if(!sandi||sandi.length<6){fail(i,r,new Error('Kata sandi minimal 6 karakter'));continue}
+     if(!/^[a-z0-9._-]{3,20}$/.test(user.toLowerCase())){fail(i,r,new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah'));continue}
+     if(!role_){fail(i,r,new Error('role harus Guru, Kepala Sekolah, atau Developer'));continue}
+     valid.push({row:i,r,data:{nama,username:user,sandi,role:role_}});
+   }
+   for(let b=0;b<valid.length;b+=BATCH){
+     const chunk=valid.slice(b,b+BATCH),data=chunk.map(x=>x.data);$('#ldt').textContent='Mengimpor guru '+Math.min(b+BATCH,valid.length)+' dari '+valid.length+'...';
+     try{
+       const j=await apiGuru({aksi:'tambah_batch',data});
+       (j.results||[]).forEach(x=>{const z=chunk[x.index];if(x.ok)ok++;else fail(z.row,rows[z.row].map(c=>String(c).trim()),new Error(x.error||'Gagal membuat akun'))});
+     }catch(e){chunk.forEach(z=>fail(z.row,rows[z.row].map(c=>String(c).trim()),e))}
+   }
+   await muatProfil();
+ }else{
+   const valid=[];
+   const existing=new Set(S.siswa.map(x=>String(x.nama||'').toLowerCase()+'|'+x.kelas_id));
+   const incoming=new Set();
+   for(let i=0;i<rows.length;i++){
+     const r=rows[i].map(c=>String(c).trim());$('#ldt').textContent='Memvalidasi '+(i+1)+' dari '+rows.length+'...';
+     const [nama,pan,kl,wa]=r,kid_=kid(kl),key=String(nama||'').toLowerCase()+'|'+kid_;
+     if(!nama){fail(i,r,new Error('nama kosong'));continue}
+     if(!kid_){fail(i,r,new Error('kelas "'+kl+'" tidak ada'));continue}
+     if(existing.has(key)||incoming.has(key)){fail(i,r,new Error('sudah ada'));continue}
+     incoming.add(key);valid.push({row:i,r,data:{nama,nama_panggilan:pan||nama.split(' ')[0],kelas_id:kid_,wa:normWA(wa)}});
+   }
+   for(let b=0;b<valid.length;b+=BATCH){
+     const chunk=valid.slice(b,b+BATCH);$('#ldt').textContent='Mengimpor siswa '+Math.min(b+BATCH,valid.length)+' dari '+valid.length+'...';
+     let inserted=[];
+     try{inserted=await dbq(db.from('siswa').insert(chunk.map(x=>({nama:x.data.nama,nama_panggilan:x.data.nama_panggilan,kelas_id:x.data.kelas_id}))).select())}
+     catch(e){
+       for(const z of chunk){try{const n=await dbq(db.from('siswa').insert({nama:z.data.nama,nama_panggilan:z.data.nama_panggilan,kelas_id:z.data.kelas_id}).select().single());inserted.push(n);await setWali(n.id,z.data.wa);ok++}catch(err){fail(z.row,z.r,err)}}
+       continue;
+     }
+     const byKey=new Map(inserted.map(n=>[String(n.nama).toLowerCase()+'|'+n.kelas_id,n]));
+     const waliRows=chunk.filter(z=>z.data.wa).map(z=>({no_wa:z.data.wa}));
+     try{
+       if(waliRows.length)await dbq(db.from('wali').upsert(waliRows,{onConflict:'no_wa'}));
+       const was=waliRows.length?await dbq(db.from('wali').select('id,no_wa').in('no_wa',[...new Set(waliRows.map(x=>x.no_wa))])):[];
+       const wid=new Map(was.map(w=>[w.no_wa,w.id]));
+       const rel=[];for(const z of chunk){const n=byKey.get(String(z.data.nama).toLowerCase()+'|'+z.data.kelas_id);if(!n)throw new Error('Data siswa hasil insert tidak ditemukan');if(z.data.wa)rel.push({siswa_id:n.id,wali_id:wid.get(z.data.wa)});}
+       if(rel.length)await dbq(db.from('siswa_wali').insert(rel));
+       ok+=chunk.length;
+     }catch(e){
+       for(const z of chunk){const n=byKey.get(String(z.data.nama).toLowerCase()+'|'+z.data.kelas_id);if(!n){fail(z.row,z.r,e);continue}try{if(z.data.wa)await setWali(n.id,z.data.wa);ok++}catch(err){fail(z.row,z.r,err)}}
+     }
+   }
+   await muatDasar();
+ }
+ renderV();info('Hasil impor','<div class="note">✅ Berhasil: <b>'+ok+'</b> data<br>❌ Gagal: <b>'+gagal.length+'</b> data</div>'+(gagal.length?'<div class="mu">'+gagal.map(esc).join('<br>')+'</div>':''))
+})}
+
 /* ---------- jadwal libur ---------- */
 V.libur=()=>`<div class="panel"><div class="ph">🔁 Libur Mingguan Tetap</div><div class="pb"><div class="note">Hari yang dipilih libur setiap minggu. Server mengisi status Libur otomatis sesuai jadwal ini walau website tidak dibuka.</div><div class="chips">${[1,2,3,4,5,6,0].map(d=>`<button class="chip ${S.mingguan.includes(d)?'on':''}" onclick="togHari(${d})">${HR[d]}</button>`).join('')}</div></div></div>
 <div class="panel"><div class="ph">📅 Libur Tanggal Tertentu <button class="btn success" onclick="addLibur()">+ Tambah Libur</button></div><div class="pb">${tab(['No','Tanggal','Kelas','Keterangan','Aksi'],S.libur.map((l,i)=>`<tr><td>${i+1}</td><td>${fmt(l.tgl)}${l.sampai&&l.sampai!==l.tgl?' - '+fmt(l.sampai):''}</td><td>${esc(l.kelas||'Semua')}</td><td>${esc(l.ket)}</td><td><button class="btn sm danger" onclick="delLibur(${l.id})">Hapus</button></td></tr>`).join(''))}</div></div>`;
