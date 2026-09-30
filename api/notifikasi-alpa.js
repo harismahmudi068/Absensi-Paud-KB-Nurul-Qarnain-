@@ -8,7 +8,7 @@
 // CUKUP UBAH BAGIAN INI JIKA NOMOR ADMIN BERUBAH
 // Format: 628xxxxxxxxxx
 // ============================================================
-const NOMOR_ADMIN_ALPA = '628xxxxxxxxxx';
+const NOMOR_ADMIN_ALPA = '6285117441486';
 
 // ============================================================
 // ENVIRONMENT VARIABLES
