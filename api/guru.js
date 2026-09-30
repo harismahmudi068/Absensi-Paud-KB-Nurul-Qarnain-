@@ -20,6 +20,12 @@ async function panggil(path, method, body, extra) {
 }
 
 module.exports = async (req, res) => {
+  // Cek kesehatan untuk menu Periksa Sistem (Developer). Tanpa login, tanpa data apa pun:
+  // hanya menjawab apakah fungsi hidup dan Environment Variables sudah terisi.
+  if (req.method === 'GET') {
+    if (!SB || !KEY) return res.status(200).send('API guru belum dikonfigurasi (Environment Variables kosong)');
+    return res.status(200).send('API guru aktif');
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Metode tidak diizinkan' });
   try {
     // 1. Pastikan pemanggil sudah login dan berperan Kepala Sekolah atau Developer
@@ -49,7 +55,7 @@ module.exports = async (req, res) => {
         email: username + '@absensi.local', password: sandi, email_confirm: true, user_metadata: { nama }
       });
       try {
-        await panggil('/rest/v1/profil', 'POST', { id: baru.id, nama, username, role }, { Prefer: 'return=minimal' });
+        await panggil('/rest/v1/profil', 'POST', { id: baru.id, nama, username, role, aktif: true }, { Prefer: 'return=minimal' });
       } catch (e) {
         await panggil('/auth/v1/admin/users/' + baru.id, 'DELETE');
         throw new Error(/duplicate|unique/i.test(e.message) ? 'Username sudah dipakai' : e.message);
