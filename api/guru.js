@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
 
     const b = req.body || {};
     const sandi = String(b.sandi || '');
-    if (sandi.length < 6) return res.status(400).json({ error: 'Kata sandi minimal 6 karakter' });
+    if ((b.aksi === 'tambah' || b.aksi === 'reset') && sandi.length < 6) return res.status(400).json({ error: 'Kata sandi minimal 6 karakter' });
 
     if (b.aksi === 'tambah') {
       const username = String(b.username || '').trim().toLowerCase();
@@ -67,6 +67,24 @@ module.exports = async (req, res) => {
       const id = String(b.id || '');
       if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: 'ID tidak valid' });
       await panggil('/auth/v1/admin/users/' + id, 'PUT', { password: sandi });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (b.aksi === 'aktif' || b.aksi === 'hapus') {
+      const id = String(b.id || '');
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: 'ID tidak valid' });
+      if (id === user.id) return res.status(400).json({ error: 'Tidak bisa mengubah akun sendiri' });
+      const t = ((await panggil(`/rest/v1/profil?id=eq.${id}&select=role`, 'GET')) || [])[0];
+      if (!t) return res.status(404).json({ error: 'Akun tidak ditemukan' });
+      if (t.role === 'developer' && pemanggil.role !== 'developer') return res.status(403).json({ error: 'Hanya Developer yang boleh mengubah akun Developer' });
+      if (b.aksi === 'aktif') {
+        const aktif = !!b.aktif;
+        await panggil(`/rest/v1/profil?id=eq.${id}`, 'PATCH', { aktif }, { Prefer: 'return=minimal' });
+        await panggil('/auth/v1/admin/users/' + id, 'PUT', { ban_duration: aktif ? 'none' : '876000h' });
+      } else {
+        await panggil(`/rest/v1/profil?id=eq.${id}`, 'DELETE');
+        await panggil('/auth/v1/admin/users/' + id, 'DELETE');
+      }
       return res.status(200).json({ ok: true });
     }
 
