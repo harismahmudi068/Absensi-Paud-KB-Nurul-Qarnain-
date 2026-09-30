@@ -40,6 +40,9 @@ label{font-size:14px;color:var(--mute)}
 <div class="wrap" id="app"></div>
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -101,10 +104,12 @@ async function muatAbsen(){
 }
 
 function render(){
+  stopScan();
   view(`<header><h1>Absensi PAUD</h1><button class="link" onclick="keluar()">Keluar</button></header>
   <div class="tabs"><button class="${tab=='absen'?'on':''}" onclick="tab='absen';render()">Absen</button>
+  <button class="${tab=='scan'?'on':''}" onclick="tab='scan';render()">Scan</button>
   <button class="${tab=='siswa'?'on':''}" onclick="tab='siswa';render()">Siswa</button></div>
-  ${tab=='absen' ? absenHTML() : siswaHTML()}`);
+  ${tab=='absen' ? absenHTML() : tab=='scan' ? scanHTML() : siswaHTML()}`);
 }
 
 function absenHTML(){
@@ -143,7 +148,10 @@ function siswaHTML(){
     return `<div class="row"><div><div class="nm">${esc(s.nama_panggilan)}</div><div class="sub">${esc(s.nama)} - ${esc(k?k.nama:'tanpa kelas')}<br>${esc(wa||'nomor WA belum diisi')}</div></div>
     <button class="x" onclick="hapusSiswa(${s.id})">Nonaktifkan</button></div>`;
   }).join('') || '<p class="sub">Belum ada siswa.</p>';
-  return `<div class="box"><h2>Tambah siswa</h2>
+  return `<div class="box"><h2>Kartu siswa</h2><label>Kelas yang dicetak</label>
+  <select id="kk"><option value="">Semua kelas</option>${kelas.map(k=>`<option value="${k.id}">${esc(k.nama)}</option>`).join('')}</select>
+  <button class="btn" onclick="unduhKartu()">Unduh kartu (PDF)</button></div>
+  <div class="box"><h2>Tambah siswa</h2>
   <label>Nama lengkap</label><input id="sn"><label>Nama panggilan</label><input id="sp">
   <label>Kelas</label><select id="sk">${kelas.map(k=>`<option value="${k.id}">${esc(k.nama)}</option>`).join('')}</select>
   <label>Nomor WhatsApp orang tua (contoh 08123456789)</label><input id="sw" type="tel">
@@ -175,6 +183,92 @@ async function hapusSiswa(id){
   if(!confirm('Nonaktifkan siswa ini? Riwayat absen tetap tersimpan.')) return;
   const {error} = await db.from('siswa').update({aktif:false}).eq('id', id);
   error ? toast('Gagal: '+error.message) : main();
+}
+
+/* ---------- Scanner ---------- */
+let scanner = null, busy = false, lastKode = '', lastAt = 0, logScan = [];
+const jam = iso => iso ? new Date(iso).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}) : '';
+
+function scanHTML(){
+  return `<div class="box"><h2>Scan kartu</h2>
+  <p class="sub">Arahkan kamera ke QR di kartu anak. Tercatat hadir untuk hari ini (${hariIni()}).</p>
+  <div id="reader" style="width:100%"></div>
+  <button class="btn" id="bs" onclick="toggleScan()">Nyalakan kamera</button>
+  <div id="hasil" style="margin-top:10px;font-weight:600"></div></div>
+  <div class="box"><h2>Tercatat lewat scan</h2><div id="log"><p class="sub">Belum ada.</p></div></div>`;
+}
+async function toggleScan(){
+  if(scanner) return stopScan();
+  scanner = new Html5Qrcode('reader');
+  try{
+    await scanner.start({facingMode:'environment'}, {fps:10, qrbox:{width:220,height:220}}, onScan, ()=>{});
+    $('bs').textContent = 'Matikan kamera';
+  }catch(e){ scanner = null; toast('Kamera tidak bisa dibuka. Izinkan akses kamera untuk situs ini.'); }
+}
+async function stopScan(){
+  if(!scanner) return;
+  const s = scanner; scanner = null;
+  try{ await s.stop(); s.clear(); }catch(e){}
+  const b = $('bs'); if(b) b.textContent = 'Nyalakan kamera';
+}
+function hasil(msg, ok){
+  const h = $('hasil'); if(!h) return;
+  h.textContent = msg; h.style.color = ok ? 'var(--h)' : 'var(--a)';
+  if(navigator.vibrate) navigator.vibrate(ok ? 120 : [80,60,80]);
+}
+async function onScan(kode){
+  const now = Date.now();
+  if(busy || (kode === lastKode && now - lastAt < 4000)) return;
+  busy = true; lastKode = kode; lastAt = now;
+  try{
+    const s = siswa.find(x => x.kode_qr === kode);
+    if(!s) return hasil('QR tidak dikenal atau siswa tidak aktif.', false);
+    const t = hariIni();
+    const {data:ada, error:e1} = await db.from('absensi').select('*').eq('siswa_id', s.id).eq('tanggal', t).maybeSingle();
+    if(e1) return hasil('Gagal cek data: '+e1.message, false);
+    if(ada && ada.status === 'hadir') return hasil(`${s.nama_panggilan} sudah tercatat hadir jam ${jam(ada.jam_datang)}.`, false);
+    if(ada && !confirm(`${s.nama_panggilan} tercatat ${ada.status} hari ini. Ubah menjadi hadir?`)) return;
+    const row = {siswa_id:s.id, tanggal:t, status:'hadir', cara:'scan', jam_datang:new Date().toISOString(),
+      catatan: ada ? ada.catatan : null, diubah:new Date().toISOString()};
+    const {error} = await db.from('absensi').upsert(row, {onConflict:'siswa_id,tanggal'});
+    if(error) return hasil('Gagal menyimpan: '+error.message, false);
+    if(t === tgl) absen[s.id] = row;
+    hasil(`${s.nama_panggilan} hadir, jam ${jam(row.jam_datang)}.`, true);
+    logScan.unshift(`${jam(row.jam_datang)} - ${s.nama_panggilan}`);
+    const l = $('log'); if(l) l.innerHTML = logScan.map(x => `<div class="row">${esc(x)}</div>`).join('');
+  } finally { busy = false; }
+}
+
+/* ---------- Kartu PDF ---------- */
+function gambarQR(doc, kode, x, y, size){
+  const q = qrcode(0, 'M'); q.addData(kode); q.make();
+  const n = q.getModuleCount(), qz = 2, cell = size / (n + qz*2);
+  doc.setFillColor(255,255,255); doc.rect(x, y, size, size, 'F');
+  doc.setFillColor(0,0,0);
+  for(let r=0; r<n; r++) for(let c=0; c<n; c++)
+    if(q.isDark(r,c)) doc.rect(x+(c+qz)*cell, y+(r+qz)*cell, cell+0.03, cell+0.03, 'F');
+}
+function unduhKartu(){
+  const kid = $('kk').value;
+  const list = siswa.filter(s => !kid || s.kelas_id == kid);
+  if(!list.length) return toast('Tidak ada siswa untuk dicetak');
+  const doc = new window.jspdf.jsPDF({unit:'mm', format:'a4'});
+  const W=90, H=50, mx=15, my=23;
+  list.forEach((s,i) => {
+    if(i>0 && i%10===0) doc.addPage();
+    const p = i%10, x = mx+(p%2)*W, y = my+Math.floor(p/2)*H;
+    doc.setDrawColor(15,92,99); doc.setLineWidth(0.4); doc.rect(x+1, y+1, W-2, H-2);
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(15,92,99);
+    doc.text('KB NURUL QARNAIN', x+5, y+8);
+    doc.setFontSize(15); doc.setTextColor(0,0,0);
+    doc.text(doc.splitTextToSize(s.nama_panggilan, 40), x+5, y+20);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+    doc.text(doc.splitTextToSize(s.nama, 40), x+5, y+30);
+    const k = kelas.find(z => z.id == s.kelas_id);
+    doc.text('Kelas: '+(k ? k.nama : '-'), x+5, y+44);
+    gambarQR(doc, s.kode_qr, x+48, y+7, 36);
+  });
+  doc.save('kartu-siswa.pdf');
 }
 
 init();
