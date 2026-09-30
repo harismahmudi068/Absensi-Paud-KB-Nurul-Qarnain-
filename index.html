@@ -43,6 +43,8 @@ label{font-size:14px;color:var(--mute)}
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -90,10 +92,10 @@ async function main(){
   view('<p class="sub">Memuat data...</p>');
   const [k, s] = await Promise.all([
     db.from('kelas').select('*').eq('aktif',true).order('id'),
-    db.from('siswa').select('*, siswa_wali(wali(no_wa))').eq('aktif',true).order('nama')
+    db.from('siswa').select('*, siswa_wali(wali(no_wa))').order('nama')
   ]);
   if(k.error || s.error) return toast('Gagal memuat: '+(k.error||s.error).message);
-  kelas = k.data; siswa = s.data;
+  kelas = k.data; siswa = s.data.filter(x => x.aktif); siswaOff = s.data.filter(x => !x.aktif);
   await muatAbsen();
   render();
 }
@@ -108,8 +110,9 @@ function render(){
   view(`<header><h1>Absensi PAUD</h1><button class="link" onclick="keluar()">Keluar</button></header>
   <div class="tabs"><button class="${tab=='absen'?'on':''}" onclick="tab='absen';render()">Absen</button>
   <button class="${tab=='scan'?'on':''}" onclick="tab='scan';render()">Scan</button>
-  <button class="${tab=='siswa'?'on':''}" onclick="tab='siswa';render()">Siswa</button></div>
-  ${tab=='absen' ? absenHTML() : tab=='scan' ? scanHTML() : siswaHTML()}`);
+  <button class="${tab=='siswa'?'on':''}" onclick="tab='siswa';render()">Siswa</button>
+  <button class="${tab=='laporan'?'on':''}" onclick="tab='laporan';render()">Laporan</button></div>
+  ${tab=='absen' ? absenHTML() : tab=='scan' ? scanHTML() : tab=='laporan' ? laporanHTML() : siswaHTML()}`);
 }
 
 function absenHTML(){
@@ -156,7 +159,8 @@ function siswaHTML(){
   <label>Kelas</label><select id="sk">${kelas.map(k=>`<option value="${k.id}">${esc(k.nama)}</option>`).join('')}</select>
   <label>Nomor WhatsApp orang tua (contoh 08123456789)</label><input id="sw" type="tel">
   <button class="btn" onclick="tambahSiswa()">Simpan siswa</button></div>
-  <div class="box"><h2>Daftar siswa (${siswa.length})</h2>${rows}</div>`;
+  <div class="box"><h2>Daftar siswa (${siswa.length})</h2>${rows}</div>
+  ${siswaOff.length ? `<div class="box"><h2>Siswa nonaktif (${siswaOff.length})</h2>${siswaOff.map(s => `<div class="row"><div><div class="nm">${esc(s.nama_panggilan)}</div><div class="sub">${esc(s.nama)}</div></div><button class="x" style="color:var(--h)" onclick="aktifkanSiswa(${s.id})">Aktifkan kembali</button></div>`).join('')}</div>` : ''}`;
 }
 
 function normWA(n){
@@ -179,6 +183,11 @@ async function tambahSiswa(){
   toast('Siswa tersimpan'); main();
 }
 
+async function aktifkanSiswa(id){
+  const {error} = await db.from('siswa').update({aktif:true}).eq('id', id);
+  error ? toast('Gagal: '+error.message) : main();
+}
+
 async function hapusSiswa(id){
   if(!confirm('Nonaktifkan siswa ini? Riwayat absen tetap tersimpan.')) return;
   const {error} = await db.from('siswa').update({aktif:false}).eq('id', id);
@@ -186,7 +195,7 @@ async function hapusSiswa(id){
 }
 
 /* ---------- Scanner ---------- */
-let scanner = null, busy = false, lastKode = '', lastAt = 0, logScan = [];
+let siswaOff = [], scanner = null, busy = false, lastKode = '', lastAt = 0, logScan = [];
 const jam = iso => iso ? new Date(iso).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Jakarta'}) : '';
 
 function scanHTML(){
@@ -269,6 +278,91 @@ function unduhKartu(){
     gambarQR(doc, s.kode_qr, x+48, y+7, 36);
   });
   doc.save('kartu-siswa.pdf');
+}
+
+/* ---------- Laporan ---------- */
+function laporanHTML(){
+  return `<div class="box"><h2>Laporan bulanan</h2>
+  <label>Bulan</label><input type="month" id="lb" value="${hariIni().slice(0,7)}">
+  <label>Kelas</label><select id="lk"><option value="">Semua kelas</option>${kelas.map(k=>`<option value="${k.id}">${esc(k.nama)}</option>`).join('')}</select>
+  <button class="btn" onclick="unduhXLSX()">Unduh Excel (XLSX)</button>
+  <div style="height:8px"></div>
+  <button class="btn" onclick="unduhPDF()">Unduh PDF</button>
+  <p class="sub">Hari efektif dihitung dari tanggal yang punya catatan absensi pada bulan itu. Laporan memuat siswa aktif.</p></div>`;
+}
+
+async function ambilLaporan(){
+  const bln = $('lb').value, kid = $('lk').value;
+  if(!bln) throw new Error('Pilih bulan dulu');
+  const [y,m] = bln.split('-').map(Number);
+  const awal = bln+'-01', akhir = bln+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+  let rows = [], dari = 0;
+  while(true){
+    const {data,error} = await db.from('absensi').select('*').gte('tanggal',awal).lte('tanggal',akhir).order('tanggal').range(dari, dari+999);
+    if(error) throw error;
+    rows = rows.concat(data);
+    if(data.length < 1000) break;
+    dari += 1000;
+  }
+  const daftar = siswa.filter(s => !kid || s.kelas_id == kid);
+  const ids = new Set(daftar.map(s => s.id));
+  rows = rows.filter(r => ids.has(r.siswa_id));
+  const hari = new Set(rows.map(r => r.tanggal)).size;
+  const nk = id => (kelas.find(k => k.id == id) || {}).nama || '-';
+  const rekap = daftar.map((s,i) => {
+    const r = rows.filter(x => x.siswa_id === s.id);
+    const c = st => r.filter(x => x.status === st).length;
+    const h = c('hadir'), iz = c('izin'), sk = c('sakit'), al = c('alpa');
+    return {No:i+1, Nama:s.nama, Panggilan:s.nama_panggilan, Kelas:nk(s.kelas_id), Hadir:h, Izin:iz, Sakit:sk, Alpa:al,
+      'Belum tercatat':Math.max(hari-(h+iz+sk+al),0), '% Hadir':hari ? Math.round(h*100/hari) : 0};
+  });
+  const nama = Object.fromEntries(daftar.map(s => [s.id, s]));
+  const detail = rows.map(r => ({Tanggal:r.tanggal, Nama:nama[r.siswa_id].nama, Kelas:nk(nama[r.siswa_id].kelas_id),
+    Status:r.status, 'Jam datang':jam(r.jam_datang), Cara:r.cara, Catatan:r.catatan||''}));
+  const label = new Date(y,m-1,1).toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  const kls = kid ? nk(kid) : 'Semua kelas';
+  return {bln, label, kls, hari, rekap, detail};
+}
+
+async function unduhXLSX(){
+  try{
+    const L = await ambilLaporan();
+    if(!L.detail.length) return toast('Belum ada data absensi di bulan ini');
+    const wb = XLSX.utils.book_new();
+    const w1 = XLSX.utils.json_to_sheet(L.rekap);
+    w1['!cols'] = [{wch:4},{wch:26},{wch:14},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:14},{wch:9}];
+    const w2 = XLSX.utils.json_to_sheet(L.detail);
+    w2['!cols'] = [{wch:12},{wch:26},{wch:10},{wch:9},{wch:11},{wch:10},{wch:40}];
+    XLSX.utils.book_append_sheet(wb, w1, 'Rekap');
+    XLSX.utils.book_append_sheet(wb, w2, 'Detail');
+    XLSX.writeFile(wb, `laporan-absensi-${L.bln}.xlsx`);
+  }catch(e){ toast('Gagal membuat laporan: '+(e.message||e)); }
+}
+
+async function unduhPDF(){
+  try{
+    const L = await ambilLaporan();
+    if(!L.detail.length) return toast('Belum ada data absensi di bulan ini');
+    const doc = new window.jspdf.jsPDF({unit:'mm', format:'a4'});
+    doc.setFont('helvetica','bold'); doc.setFontSize(14);
+    doc.text('Laporan Kehadiran - KB Nurul Qarnain', 14, 16);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10);
+    doc.text(`Bulan: ${L.label}   |   Kelas: ${L.kls}   |   Hari efektif: ${L.hari}`, 14, 23);
+    doc.autoTable({startY:28, styles:{fontSize:8.5}, headStyles:{fillColor:[15,92,99]},
+      head:[['No','Nama','Kelas','Hadir','Izin','Sakit','Alpa','Belum','% Hadir']],
+      body:L.rekap.map(r => [r.No, r.Nama, r.Kelas, r.Hadir, r.Izin, r.Sakit, r.Alpa, r['Belum tercatat'], r['% Hadir']+'%'])});
+    const ket = L.detail.filter(d => d.Status !== 'hadir');
+    if(ket.length){
+      let y = doc.lastAutoTable.finalY + 10;
+      if(y > 275){ doc.addPage(); y = 20; }
+      doc.setFont('helvetica','bold'); doc.setFontSize(11);
+      doc.text('Keterangan izin, sakit, dan alpa', 14, y);
+      doc.autoTable({startY:y+3, styles:{fontSize:8.5}, headStyles:{fillColor:[15,92,99]},
+        head:[['Tanggal','Nama','Status','Catatan']],
+        body:ket.map(d => [d.Tanggal, d.Nama, d.Status, d.Catatan])});
+    }
+    doc.save(`laporan-absensi-${L.bln}.pdf`);
+  }catch(e){ toast('Gagal membuat laporan: '+(e.message||e)); }
 }
 
 init();
