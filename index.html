@@ -151,7 +151,21 @@ function renderAll(){
  $('#sn').innerHTML=h;$('#dn').innerHTML=h;const pref=['dashboard','absensi','scan','rekap'].filter(allowed).slice(0,4);
  $('#bn').innerHTML=pref.map(id=>{const m=MENUS.find(x=>x[0]===id);return `<button class="${view===id?'on':''}" onclick="go('${id}')"><span>${m[2]}</span>${m[1]}</button>`}).join('')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`;
  $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role;renderV()}
-function renderV(){$('#v').innerHTML=V[view]()}
+async function muatGambarKartu(){
+ const imgs=[...document.querySelectorAll('#v img[data-kartu-id]')];
+ for(let i=0;i<imgs.length;i++){
+  const id=Number(imgs[i].dataset.kartuId),s=S.siswa.find(x=>x.id===id);
+  if(s){
+   imgs[i].src=kartuUrl(s);
+   imgs[i].alt='Kartu '+(s.pan||'');
+  }
+  if(i%2===1)await new Promise(r=>setTimeout(r,0));
+ }
+}
+function renderV(){
+ $('#v').innerHTML=V[view]();
+ if(view==='kartu')muatGambarKartu().catch(e=>toast('Gagal menyiapkan kartu: '+(e.message||e),false));
+}
 function form(t,f,cb){$('#ms').textContent='Simpan';$('#ms').style.display='';$('#mt').textContent=t;$('#mbd').innerHTML='<div class="fg">'+f.map(x=>`<div class="fd"><label class="l">${x.l}</label>${x.o?`<select id="f_${x.k}" class="select">${x.o.map(o=>`<option ${o===x.v?'selected':''}>${esc(o)}</option>`).join('')}</select>`:x.t==='date'?`<label class="input dt"><span>${x.v?fmt(x.v):'Pilih tanggal'}</span><input type="date" id="f_${x.k}" value="${x.v||''}" onchange="this.previousElementSibling.textContent=fmt(this.value)"></label>`:`<input id="f_${x.k}" class="input" type="${x.t||'text'}" value="${esc(x.v||'')}">`}</div>`).join('')+'</div>';
  $('#ms').onclick=()=>{const v={};f.forEach(x=>v[x.k]=$('#f_'+x.k).value.trim());Promise.resolve().then(()=>cb(v)).then(()=>closeM()).catch(e=>toast(e.message||String(e),false))};$('#md').classList.add('show')}
 function closeM(){$('#md').classList.remove('show')}
@@ -310,9 +324,9 @@ function kartuUrl(s){const key=[s.id,s.kode_qr,s.nama,s.kelas,s.wa,S.set.tahun_a
  const o=qrObj(s.kode_qr),n=o.getModuleCount(),sz=150,cl=sz/(n+4),qx=471,qy=176;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+(q+2)*cl,qy+(r+2)*cl,cl+.4,cl+.4);
  g=c.createLinearGradient(0,0,660,0);g.addColorStop(0,'#0a6a4a');g.addColorStop(1,'#c9d02a');c.fillStyle=g;c.fillRect(0,388,660,32);c.fillStyle='#fff';c.font='italic bold 13px '+F;c.fillText('"Awal yang tepat, adalah 1 langkah menuju HEBAT !"',330,405);
  c.restore();rr(c,3,3,654,414,40);c.lineWidth=6;c.strokeStyle='#12a072';c.stroke();const u=cv.toDataURL('image/png');KC.set(key,u);return u}
-V.kartu=()=>`<div class="panel"><div class="ph">🪪 Kartu Siswa</div><div class="pb"><div class="tb"><select class="select" onchange="kk=this.value;renderV()">${kopt(kk,1)}</select><button class="btn success" onclick="unduhKartu(this)">⬇ Unduh semua (PDF)</button></div><div class="cards">${act().filter(s=>!kk||s.kelas===kk).map(s=>`<div class="card" style="padding:10px"><img class="kimg" src="${kartuUrl(s)}" alt="Kartu ${esc(s.pan)}"><button class="btn sm success" style="width:100%;margin-top:8px" onclick="unduhSatu(${s.id},this)">⬇ Unduh kartu ${esc(s.pan)}</button></div>`).join('')}</div></div></div>`;
+V.kartu=()=>`<div class="panel"><div class="ph">🪪 Kartu Siswa</div><div class="pb"><div class="tb"><select class="select" onchange="kk=this.value;renderV()">${kopt(kk,1)}</select><button class="btn success" onclick="unduhKartu(this)">⬇ Unduh semua (PDF)</button></div><div class="cards">${act().filter(s=>!kk||s.kelas===kk).map(s=>`<div class="card" style="padding:10px"><img class="kimg" data-kartu-id="${s.id}" alt="Menyiapkan kartu..."><button class="btn sm success" style="width:100%;margin-top:8px" onclick="unduhSatu(${s.id},this)">⬇ Unduh kartu ${esc(s.pan)}</button></div>`).join('')}</div></div></div>`;
 function setUnduhBusy(btn,on,text){if(!btn)return true;if(on){if(btn.dataset.downloading==='1')return false;btn.dataset.downloading='1';btn.disabled=true;btn.classList.add('download-busy');btn._downloadHtml=btn.innerHTML;btn.innerHTML='<span class="dl-spin" aria-hidden="true"></span>'+(text||'Sedang memproses...');return true}btn.dataset.downloading='0';btn.disabled=false;btn.classList.remove('download-busy');if(btn._downloadHtml)btn.innerHTML=btn._downloadHtml;return true}
-function jedaUnduh(){return new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))}
+function jedaUnduh(){return new Promise(r=>setTimeout(()=>requestAnimationFrame(()=>requestAnimationFrame(r)),80))}
 async function unduhSatu(id,btn){if(!setUnduhBusy(btn,true,'Menyiapkan kartu...'))return;try{await jedaUnduh();const s=S.siswa.find(x=>x.id===id);if(!s)throw new Error('Data anak tidak ditemukan');const a=document.createElement('a');a.href=kartuUrl(s);a.download='kartu-'+s.nama.replace(/[^\w]+/g,'-')+'.png';document.body.appendChild(a);a.click();a.remove();toast('Kartu '+s.pan+' berhasil diunduh')}catch(e){toast('Gagal mengunduh kartu: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
 function gambarQR(doc,kode,x,y,size){const o=qrObj(kode),n=o.getModuleCount(),qz=2,cell=size/(n+qz*2);doc.setFillColor(255,255,255);doc.rect(x,y,size,size,'F');doc.setFillColor(0,0,0);for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(o.isDark(r,c))doc.rect(x+(c+qz)*cell,y+(r+qz)*cell,cell+0.03,cell+0.03,'F')}
