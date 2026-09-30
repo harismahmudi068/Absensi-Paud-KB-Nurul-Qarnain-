@@ -121,8 +121,16 @@ async function proses(b) {
 }
 
 module.exports = async (req, res) => {
-  if (req.method !== 'POST') return res.status(200).send('Webhook aktif');
-  if (!process.env.WEBHOOK_SECRET || req.query.key !== process.env.WEBHOOK_SECRET) {
+  const rahasia = (process.env.WEBHOOK_SECRET || '').trim();
+  const kunci = String((req.query && req.query.key) || '').trim();
+  if (req.method !== 'POST') {
+    // Tes lewat browser: tambahkan ?key=KATA_SANDI untuk memeriksa kecocokan
+    if (!kunci) return res.status(200).send('Webhook aktif');
+    if (!rahasia) return res.status(200).send('WEBHOOK_SECRET belum terbaca di Vercel');
+    return res.status(200).send(kunci === rahasia ? 'Kunci cocok' : 'Kunci salah');
+  }
+  if (!rahasia || kunci !== rahasia) {
+    console.log('Ditolak. Kunci di alamat:', kunci ? 'ada' : 'tidak ada', '| WEBHOOK_SECRET di Vercel:', rahasia ? 'ada' : 'tidak ada');
     return res.status(401).send('Tidak diizinkan');
   }
   try { await proses(req.body || {}); } catch (e) { console.error('Webhook error:', e); }
