@@ -1,12 +1,23 @@
-// Fungsi server: tambah akun guru dan reset kata sandi.
-// Memakai Environment Variables yang sama dengan webhook: SUPABASE_URL dan SUPABASE_SERVICE_ROLE_KEY.
+// Fungsi server: tambah akun guru, reset kata sandi,
+// aktif/nonaktif, dan hapus akun guru.
+// Memakai Environment Variables:
+// SUPABASE_URL
+// SUPABASE_SERVICE_ROLE_KEY
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function kepala(extra) {
-  const h = { apikey: KEY, 'Content-Type': 'application/json', ...extra };
-  if (KEY.startsWith('eyJ')) h.Authorization = 'Bearer ' + KEY;
+  const h = {
+    apikey: KEY,
+    'Content-Type': 'application/json',
+    ...extra
+  };
+
+  if (KEY && KEY.startsWith('eyJ')) {
+    h.Authorization = 'Bearer ' + KEY;
+  }
+
   return h;
 }
 
@@ -28,7 +39,12 @@ async function panggil(path, method, body, extra) {
 
   if (!r.ok) {
     throw new Error(
-      (j && (j.msg || j.message || j.error_description || j.pesan)) ||
+      (j && (
+        j.msg ||
+        j.message ||
+        j.error_description ||
+        j.pesan
+      )) ||
       ('Kesalahan ' + r.status)
     );
   }
@@ -37,17 +53,24 @@ async function panggil(path, method, body, extra) {
 }
 
 module.exports = async (req, res) => {
-  // Cek kesehatan untuk menu Periksa Sistem (Developer).
-  // Tanpa login, tanpa data apa pun:
-  // hanya menjawab apakah fungsi hidup dan Environment Variables sudah terisi.
+
+  // =========================================================
+  // CEK API
+  // =========================================================
   if (req.method === 'GET') {
+
     if (!SB || !KEY) {
-      return res.status(200).send('API guru belum dikonfigurasi (Environment Variables kosong)');
+      return res.status(200).send(
+        'API guru belum dikonfigurasi (Environment Variables kosong)'
+      );
     }
 
     return res.status(200).send('API guru aktif');
   }
 
+  // =========================================================
+  // HANYA POST
+  // =========================================================
   if (req.method !== 'POST') {
     return res.status(405).json({
       error: 'Metode tidak diizinkan'
@@ -55,9 +78,13 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // 1. Pastikan pemanggil sudah login
-    // dan berperan Kepala Sekolah atau Developer
-    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+
+    // =======================================================
+    // 1. CEK LOGIN
+    // =======================================================
+    const token = String(
+      req.headers.authorization || ''
+    ).replace(/^Bearer\s+/i, '');
 
     if (!token) {
       return res.status(401).json({
@@ -65,34 +92,69 @@ module.exports = async (req, res) => {
       });
     }
 
-    const user = await panggil('/auth/v1/user', 'GET', null, {
-      Authorization: 'Bearer ' + token
-    });
+    // =======================================================
+    // 2. CEK USER SUPABASE
+    // =======================================================
+    const user = await panggil(
+      '/auth/v1/user',
+      'GET',
+      null,
+      {
+        Authorization: 'Bearer ' + token
+      }
+    );
 
-    const p = await panggil(`/rest/v1/profil?id=eq.${user.id}&select=role,aktif`, 'GET');
+    // =======================================================
+    // 3. AMBIL ROLE PEMANGGIL
+    // =======================================================
+    const p = await panggil(
+      `/rest/v1/profil?id=eq.${user.id}&select=role,aktif`,
+      'GET'
+    );
+
     const pemanggil = p && p[0];
 
-    if (!pemanggil || !pemanggil.aktif || !['kepala_sekolah', 'developer'].includes(pemanggil.role)) {
+    // HANYA KEPALA SEKOLAH ATAU DEVELOPER
+    if (
+      !pemanggil ||
+      !pemanggil.aktif ||
+      ![
+        'kepala_sekolah',
+        'developer'
+      ].includes(pemanggil.role)
+    ) {
       return res.status(403).json({
         error: 'Hanya Kepala Sekolah atau Developer yang boleh'
       });
     }
 
     const b = req.body || {};
-    const sandi = String(b.sandi || '');
 
-    if ((b.aksi === 'tambah' || b.aksi === 'reset') && sandi.length < 6) {
+    const sandi = String(
+      b.sandi || ''
+    );
+
+    // =======================================================
+    // VALIDASI PASSWORD
+    // =======================================================
+    if (
+      (b.aksi === 'tambah' ||
+       b.aksi === 'reset') &&
+      sandi.length < 6
+    ) {
       return res.status(400).json({
         error: 'Kata sandi minimal 6 karakter'
       });
     }
 
     // =========================================================
-    // TAMBAH GURU SECARA BATCH
-    // Maksimal 50 guru dalam satu request
+    // TAMBAH GURU BATCH
     // =========================================================
     if (b.aksi === 'tambah_batch') {
-      const data = Array.isArray(b.data) ? b.data : [];
+
+      const data = Array.isArray(b.data)
+        ? b.data
+        : [];
 
       if (!data.length) {
         return res.status(400).json({
@@ -109,56 +171,113 @@ module.exports = async (req, res) => {
       const hasil = [];
 
       for (let i = 0; i < data.length; i++) {
+
         const x = data[i] || {};
-        const username = String(x.username || '').trim().toLowerCase();
-        const nama = String(x.nama || '').trim();
-        const pass = String(x.sandi || '');
-        const role = String(x.role || 'guru');
+
+        const username = String(
+          x.username || ''
+        ).trim().toLowerCase();
+
+        const nama = String(
+          x.nama || ''
+        ).trim();
+
+        const pass = String(
+          x.sandi || ''
+        );
+
+        const role = String(
+          x.role || 'guru'
+        );
 
         try {
+
           if (pass.length < 6) {
-            throw new Error('Kata sandi minimal 6 karakter');
+            throw new Error(
+              'Kata sandi minimal 6 karakter'
+            );
           }
 
-          if (!/^[a-z0-9._-]{3,20}$/.test(username)) {
-            throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah');
+          if (
+            !/^[a-z0-9._-]{3,20}$/.test(username)
+          ) {
+            throw new Error(
+              'Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah'
+            );
           }
 
           if (!nama) {
-            throw new Error('Nama wajib diisi');
+            throw new Error(
+              'Nama wajib diisi'
+            );
           }
 
-          if (!['guru', 'kepala_sekolah', 'developer'].includes(role)) {
-            throw new Error('Role tidak valid');
+          if (
+            ![
+              'guru',
+              'kepala_sekolah',
+              'developer'
+            ].includes(role)
+          ) {
+            throw new Error(
+              'Role tidak valid'
+            );
           }
 
-          if (role === 'developer' && pemanggil.role !== 'developer') {
-            throw new Error('Hanya Developer yang boleh membuat akun Developer');
+          if (
+            role === 'developer' &&
+            pemanggil.role !== 'developer'
+          ) {
+            throw new Error(
+              'Hanya Developer yang boleh membuat akun Developer'
+            );
           }
 
           // Buat user Auth
-          const baru = await panggil('/auth/v1/admin/users', 'POST', {
-            email: username + '@absensi.local',
-            password: pass,
-            email_confirm: true,
-            user_metadata: { nama }
-          });
+          const baru = await panggil(
+            '/auth/v1/admin/users',
+            'POST',
+            {
+              email:
+                username + '@absensi.local',
+
+              password: pass,
+
+              email_confirm: true,
+
+              user_metadata: {
+                nama
+              }
+            }
+          );
 
           try {
+
             // Buat profil
-            await panggil('/rest/v1/profil', 'POST', {
-              id: baru.id,
-              nama,
-              username,
-              role,
-              aktif: true
-            }, {
-              Prefer: 'return=minimal'
-            });
+            await panggil(
+              '/rest/v1/profil',
+              'POST',
+              {
+                id: baru.id,
+                nama,
+                username,
+                role,
+                aktif: true
+              },
+              {
+                Prefer: 'return=minimal'
+              }
+            );
+
           } catch (e) {
-            // Rollback user Auth jika profil gagal
+
+            // Rollback Auth
             try {
-              await panggil('/auth/v1/admin/users/' + baru.id, 'DELETE');
+              await panggil(
+                '/auth/v1/admin/users/' +
+                baru.id,
+                'DELETE'
+              );
             } catch (_) {}
 
             throw new Error(
@@ -174,9 +293,13 @@ module.exports = async (req, res) => {
           });
 
         } catch (e) {
-          const m = /already|registered|exists/i.test(e.message)
-            ? 'Username sudah dipakai'
-            : (e.message || String(e));
+
+          const m =
+            /already|registered|exists/i.test(
+              e.message
+            )
+              ? 'Username sudah dipakai'
+              : (e.message || String(e));
 
           hasil.push({
             index: i,
@@ -188,8 +311,17 @@ module.exports = async (req, res) => {
 
       return res.status(200).json({
         ok: true,
-        success: hasil.filter(x => x.ok).length,
-        failed: hasil.filter(x => !x.ok).length,
+
+        success:
+          hasil.filter(
+            x => x.ok
+          ).length,
+
+        failed:
+          hasil.filter(
+            x => !x.ok
+          ).length,
+
         results: hasil
       });
     }
@@ -198,13 +330,25 @@ module.exports = async (req, res) => {
     // TAMBAH GURU SATUAN
     // =========================================================
     if (b.aksi === 'tambah') {
-      const username = String(b.username || '').trim().toLowerCase();
-      const nama = String(b.nama || '').trim();
-      const role = String(b.role || 'guru');
 
-      if (!/^[a-z0-9._-]{3,20}$/.test(username)) {
+      const username = String(
+        b.username || ''
+      ).trim().toLowerCase();
+
+      const nama = String(
+        b.nama || ''
+      ).trim();
+
+      const role = String(
+        b.role || 'guru'
+      );
+
+      if (
+        !/^[a-z0-9._-]{3,20}$/.test(username)
+      ) {
         return res.status(400).json({
-          error: 'Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah'
+          error:
+            'Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah'
         });
       }
 
@@ -214,37 +358,69 @@ module.exports = async (req, res) => {
         });
       }
 
-      if (!['guru', 'kepala_sekolah', 'developer'].includes(role)) {
+      if (
+        ![
+          'guru',
+          'kepala_sekolah',
+          'developer'
+        ].includes(role)
+      ) {
         return res.status(400).json({
           error: 'Role tidak valid'
         });
       }
 
-      if (role === 'developer' && pemanggil.role !== 'developer') {
+      if (
+        role === 'developer' &&
+        pemanggil.role !== 'developer'
+      ) {
         return res.status(403).json({
-          error: 'Hanya Developer yang boleh membuat akun Developer'
+          error:
+            'Hanya Developer yang boleh membuat akun Developer'
         });
       }
 
-      const baru = await panggil('/auth/v1/admin/users', 'POST', {
-        email: username + '@absensi.local',
-        password: sandi,
-        email_confirm: true,
-        user_metadata: { nama }
-      });
+      const baru = await panggil(
+        '/auth/v1/admin/users',
+        'POST',
+        {
+          email:
+            username + '@absensi.local',
+
+          password: sandi,
+
+          email_confirm: true,
+
+          user_metadata: {
+            nama
+          }
+        }
+      );
 
       try {
-        await panggil('/rest/v1/profil', 'POST', {
-          id: baru.id,
-          nama,
-          username,
-          role,
-          aktif: true
-        }, {
-          Prefer: 'return=minimal'
-        });
+
+        await panggil(
+          '/rest/v1/profil',
+          'POST',
+          {
+            id: baru.id,
+            nama,
+            username,
+            role,
+            aktif: true
+          },
+          {
+            Prefer: 'return=minimal'
+          }
+        );
+
       } catch (e) {
-        await panggil('/auth/v1/admin/users/' + baru.id, 'DELETE');
+
+        await panggil(
+          '/auth/v1/admin/users/' +
+          baru.id,
+          'DELETE'
+        );
 
         throw new Error(
           /duplicate|unique/i.test(e.message)
@@ -262,17 +438,26 @@ module.exports = async (req, res) => {
     // RESET PASSWORD
     // =========================================================
     if (b.aksi === 'reset') {
-      const id = String(b.id || '');
 
-      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      const id = String(
+        b.id || ''
+      );
+
+      if (
+        !/^[0-9a-f-]{36}$/i.test(id)
+      ) {
         return res.status(400).json({
           error: 'ID tidak valid'
         });
       }
 
-      await panggil('/auth/v1/admin/users/' + id, 'PUT', {
-        password: sandi
-      });
+      await panggil(
+        '/auth/v1/admin/users/' + id,
+        'PUT',
+        {
+          password: sandi
+        }
+      );
 
       return res.status(200).json({
         ok: true
@@ -282,51 +467,128 @@ module.exports = async (req, res) => {
     // =========================================================
     // AKTIFKAN / NONAKTIFKAN / HAPUS GURU
     // =========================================================
-    if (b.aksi === 'aktif' || b.aksi === 'hapus') {
-      const id = String(b.id || '');
+    if (
+      b.aksi === 'aktif' ||
+      b.aksi === 'hapus'
+    ) {
 
-      if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      const id = String(
+        b.id || ''
+      );
+
+      if (
+        !/^[0-9a-f-]{36}$/i.test(id)
+      ) {
         return res.status(400).json({
           error: 'ID tidak valid'
         });
       }
 
+      // Tidak boleh mengubah akun sendiri
       if (id === user.id) {
         return res.status(400).json({
-          error: 'Tidak bisa mengubah akun sendiri'
+          error:
+            'Tidak bisa mengubah akun sendiri'
         });
       }
 
-      const t = ((await panggil(`/rest/v1/profil?id=eq.${id}&select=role`, 'GET')) || [])[0];
+      // Cari role akun target
+      const t =
+        (
+          await panggil(
+            `/rest/v1/profil?id=eq.${id}&select=role`,
+            'GET'
+          )
+        ) || [];
 
-      if (!t) {
+      const target = t[0];
+
+      if (!target) {
         return res.status(404).json({
           error: 'Akun tidak ditemukan'
         });
       }
 
-      if (t.role === 'developer' && pemanggil.role !== 'developer') {
+      // =====================================================
+      // HAK HAPUS
+      //
+      // Kepala Sekolah  -> BOLEH
+      // Developer       -> BOLEH
+      // Guru            -> TIDAK BOLEH
+      // =====================================================
+      if (
+        b.aksi === 'hapus' &&
+        ![
+          'kepala_sekolah',
+          'developer'
+        ].includes(pemanggil.role)
+      ) {
         return res.status(403).json({
-          error: 'Hanya Developer yang boleh mengubah akun Developer'
+          error:
+            'Hanya Kepala Sekolah atau Developer yang dapat menghapus akun guru'
         });
       }
 
+      // =====================================================
+      // AKUN DEVELOPER HANYA BOLEH DIUBAH OLEH DEVELOPER
+      // =====================================================
+      if (
+        target.role === 'developer' &&
+        pemanggil.role !== 'developer'
+      ) {
+        return res.status(403).json({
+          error:
+            'Hanya Developer yang boleh mengubah akun Developer'
+        });
+      }
+
+      // =====================================================
+      // AKTIF / NONAKTIF
+      // =====================================================
       if (b.aksi === 'aktif') {
+
         const aktif = !!b.aktif;
 
-        await panggil(`/rest/v1/profil?id=eq.${id}`, 'PATCH', {
-          aktif
-        }, {
-          Prefer: 'return=minimal'
-        });
+        await panggil(
+          `/rest/v1/profil?id=eq.${id}`,
+          'PATCH',
+          {
+            aktif
+          },
+          {
+            Prefer: 'return=minimal'
+          }
+        );
 
-        await panggil('/auth/v1/admin/users/' + id, 'PUT', {
-          ban_duration: aktif ? 'none' : '876000h'
-        });
+        await panggil(
+          '/auth/v1/admin/users/' + id,
+          'PUT',
+          {
+            ban_duration:
+              aktif
+                ? 'none'
+                : '876000h'
+          }
+        );
 
-      } else {
-        await panggil(`/rest/v1/profil?id=eq.${id}`, 'DELETE');
-        await panggil('/auth/v1/admin/users/' + id, 'DELETE');
+      }
+
+      // =====================================================
+      // HAPUS
+      // =====================================================
+      else {
+
+        // Hapus profil
+        await panggil(
+          `/rest/v1/profil?id=eq.${id}`,
+          'DELETE'
+        );
+
+        // Hapus akun Auth
+        await panggil(
+          '/auth/v1/admin/users/' + id,
+          'DELETE'
+        );
       }
 
       return res.status(200).json({
@@ -334,16 +596,26 @@ module.exports = async (req, res) => {
       });
     }
 
+    // =========================================================
+    // AKSI TIDAK DIKENAL
+    // =========================================================
     return res.status(400).json({
       error: 'Aksi tidak dikenal'
     });
 
   } catch (e) {
-    console.error('guru.js', e);
 
-    const m = /already|registered|exists/i.test(e.message)
-      ? 'Username sudah dipakai'
-      : e.message;
+    console.error(
+      'guru.js',
+      e
+    );
+
+    const m =
+      /already|registered|exists/i.test(
+        e.message
+      )
+        ? 'Username sudah dipakai'
+        : e.message;
 
     return res.status(400).json({
       error: m
