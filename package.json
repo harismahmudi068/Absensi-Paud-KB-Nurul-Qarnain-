@@ -1,0 +1,11 @@
+{
+  "name": "absensi-paud-kb-nurul-qarnain",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google/genai": "2.25.0"
+  }
+}
