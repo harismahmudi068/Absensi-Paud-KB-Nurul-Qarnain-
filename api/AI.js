@@ -1,9 +1,6 @@
 // AI.js
-// Modul khusus untuk memahami pesan WhatsApp orang tua menggunakan Gemini.
+// Klasifikasi pesan WhatsApp orang tua menggunakan Gemini.
 // Menggunakan SDK resmi Google GenAI (@google/genai).
-//
-// Dependency yang diperlukan:
-// npm install @google/genai
 
 const { GoogleGenAI, Type } = require('@google/genai');
 
@@ -13,32 +10,45 @@ const { GoogleGenAI, Type } = require('@google/genai');
 const AI_API_KEY = 'AQ.Ab8RN6IcFt9X_ubj8Flj6vUYnBoWHMpWB1AZf5EMn6RkYlJJOQ';
 const AI_MODEL = 'gemini-3.5-flash-lite';
 
+// Prompt ringkas yang sudah diuji langsung di Gemini.
 const SYSTEM_PROMPT = `
-Anda adalah mesin klasifikasi pesan WhatsApp orang tua untuk sistem absensi PAUD di Indonesia.
+Anda adalah AI klasifikasi absensi PAUD.
 
-TUGAS UTAMA:
-Tentukan apakah pesan adalah laporan izin/sakit untuk HARI INI, percakapan biasa, atau pesan yang masih meragukan.
+Tugas: tentukan apakah pesan orang tua merupakan laporan anak SAKIT, IZIN, bukan absensi, atau masih RAGU.
 
-HANYA ADA 3 KATEGORI:
-1. izin_sakit = benar-benar yakin pesan adalah laporan izin/sakit untuk hari ini.
-2. bukan_izin_sakit = yakin pesan adalah percakapan/pesan sehari-hari dan bukan laporan izin/sakit.
-3. ragu = ada indikasi kuat berkaitan dengan izin/sakit atau ketidakhadiran, tetapi belum cukup jelas untuk dicatat otomatis.
+ATURAN:
+1. Hanya gunakan 3 kategori: izin_sakit, bukan_izin_sakit, ragu.
 
-ATURAN PALING PENTING:
-- SAKIT SELALU PRIORITAS DI ATAS IZIN.
-- "izin karena sakit", "izin karena demam", "izin karena batuk", "mohon izin karena anak kurang sehat" dan kalimat sejenis harus menjadi izin_sakit dengan status sakit.
-- Kondisi kesehatan seperti sakit, demam, flu, batuk, pilek, panas, diare, muntah, pusing, cacar, tipes, DBD, opname, kurang sehat, kurang enak badan, tidak enak badan, tidak fit, atau makna kesehatan sejenis = status sakit walaupun ada kata izin.
-- Kata "izin" TIDAK otomatis berarti status izin. Pahami alasan dan konteksnya.
-- Status izin digunakan untuk ketidakhadiran bukan karena sakit, misalnya acara keluarga, keperluan keluarga, bepergian, keluar kota, atau urusan lain.
-- Jangan mengarang nama anak dan jangan memilih anak yang tidak ada dalam daftar anak wali.
-- Jika nama anak yang disebut dalam pesan tidak cocok dengan nama atau nama panggilan yang ada di daftar anak wali, jangan memaksakan pencocokan. Jika identitas anak tidak dapat dipastikan, pilih ragu.
-- Jika wali memiliki satu anak dan pesan jelas merujuk pada anaknya, gunakan anak tunggal tersebut. Namun jangan gunakan aturan ini jika pesan secara jelas menyebut nama anak lain yang tidak ada dalam daftar.
-- Jika wali memiliki beberapa anak dan pesan tidak cukup jelas untuk menentukan anak mana, pilih ragu.
-- Jika pesan membicarakan kemarin, sebelumnya, besok, lusa, minggu depan, atau waktu selain hari ini, jangan mencatatnya sebagai absensi hari ini. Jika berkaitan dengan izin/sakit, pilih ragu.
-- Jika pesan menyangkal kondisi sakit (misalnya "tidak sakit" atau "bukan karena sakit") jangan memilih sakit hanya karena ada kata sakit; pahami konteks keseluruhan.
-- Salam, ucapan terima kasih, pertanyaan sekolah, pengumuman, dan percakapan umum = bukan_izin_sakit.
-- Untuk izin_sakit harus benar-benar yakin. Jika ada keraguan, pilih ragu.
-- Jangan membuat balasan kepada orang tua. Hanya keluarkan hasil klasifikasi terstruktur.
+2. Jika anak tidak masuk karena alasan kesehatan (sakit, demam, batuk, flu, kurang sehat, dll), pilih:
+   kategori = izin_sakit
+   status = sakit
+   SAKIT lebih utama daripada IZIN, walaupun pesan menggunakan kata "izin".
+
+3. Jika anak tidak masuk karena alasan selain sakit (acara keluarga, keperluan keluarga, bepergian, dll), pilih:
+   kategori = izin_sakit
+   status = izin.
+
+4. Jika bukan laporan ketidakhadiran, pilih:
+   kategori = bukan_izin_sakit
+   status = tidak_ada.
+
+5. Jika berkaitan dengan absensi tetapi maksud, anak, atau waktunya tidak jelas, pilih:
+   kategori = ragu
+   status = tidak_ada.
+
+6. Pesan panjang atau berbentuk surat formal tetap diproses jika isinya jelas.
+
+7. Jangan mengarang nama anak. Gunakan hanya nama yang ada di daftar anak wali.
+
+8. "Tidak sakit" atau "bukan karena sakit" berarti jangan pilih sakit.
+
+9. "Kemarin", "besok", atau tanggal selain hari ini tidak boleh otomatis dicatat sebagai absensi hari ini. Jika masih berkaitan dengan absensi, pilih ragu.
+
+10. Jika informasi tidak cukup jelas, pilih ragu daripada menebak.
+
+11. Jika kategori izin_sakit, isi nama_anak dengan nama anak yang disebutkan atau yang dapat dipastikan dari daftar anak wali. Jika lebih dari satu anak, tuliskan semua nama yang dimaksud dipisahkan dengan " | ". Jangan mengarang nama.
+
+JAWAB HANYA DENGAN JSON sesuai struktur yang diberikan.
 `;
 
 function daftarAnak(anak) {
@@ -49,24 +59,93 @@ function daftarAnak(anak) {
   }));
 }
 
+function normalisasiTeks(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cariSiswaIds(namaAnak, anak) {
+  const daftar = Array.isArray(anak) ? anak : [];
+  const nama = String(namaAnak || '').trim();
+
+  if (!nama) return [];
+
+  const bagian = nama
+    .split('|')
+    .map(x => x.trim())
+    .filter(Boolean);
+
+  const hasil = [];
+
+  for (const target of bagian) {
+    const targetNorm = normalisasiTeks(target);
+
+    if (!targetNorm) continue;
+
+    // 1. Cocokkan nama lengkap atau nama panggilan secara tepat.
+    let cocok = daftar.find(s =>
+      normalisasiTeks(s?.nama) === targetNorm ||
+      normalisasiTeks(s?.nama_panggilan) === targetNorm
+    );
+
+    // 2. Jika Gemini hanya mengembalikan bentuk nama dengan kapitalisasi berbeda,
+    //    coba pencocokan frasa yang aman.
+    if (!cocok) {
+      cocok = daftar.find(s => {
+        const namaNorm = normalisasiTeks(s?.nama);
+        const panggilanNorm = normalisasiTeks(s?.nama_panggilan);
+
+        return (
+          (namaNorm &&
+            (namaNorm.includes(targetNorm) ||
+             targetNorm.includes(namaNorm))) ||
+
+          (panggilanNorm &&
+            (panggilanNorm.includes(targetNorm) ||
+             targetNorm.includes(panggilanNorm)))
+        );
+      });
+    }
+
+    if (cocok?.id != null &&
+        !hasil.includes(String(cocok.id))) {
+      hasil.push(String(cocok.id));
+    }
+  }
+
+  return hasil;
+}
+
 function normalisasi(raw, anak) {
-  let kategori = ['izin_sakit', 'bukan_izin_sakit', 'ragu'].includes(raw?.kategori)
-    ? raw.kategori
-    : 'ragu';
+  let kategori =
+    ['izin_sakit', 'bukan_izin_sakit', 'ragu']
+      .includes(raw?.kategori)
+      ? raw.kategori
+      : 'ragu';
 
-  let status = ['izin', 'sakit', 'tidak_ada'].includes(raw?.status)
-    ? raw.status
-    : 'tidak_ada';
+  let status =
+    ['izin', 'sakit', 'tidak_ada']
+      .includes(raw?.status)
+      ? raw.status
+      : 'tidak_ada';
 
-  const validIds = new Set(
-    (Array.isArray(anak) ? anak : []).map(s => String(s.id))
-  );
+  const namaAnak =
+    typeof raw?.nama_anak === 'string'
+      ? raw.nama_anak.trim()
+      : '';
 
-  const siswa_ids = Array.isArray(raw?.siswa_ids)
-    ? raw.siswa_ids.map(String).filter(id => validIds.has(id))
-    : [];
+  // Gemini tidak perlu menebak ID database.
+  // Sistem mencocokkan nama hasil AI dengan daftar anak
+  // yang sebenarnya dari wali.
+  const siswa_ids =
+    cariSiswaIds(namaAnak, anak);
 
-  // Pengaman inti: sakit selalu menang.
+  // Pengaman: sakit selalu menjadi izin_sakit.
   if (status === 'sakit') {
     kategori = 'izin_sakit';
   }
@@ -75,28 +154,37 @@ function normalisasi(raw, anak) {
     status = 'tidak_ada';
   }
 
-  // Kategori yakin tanpa anak yang valid tidak boleh otomatis diproses.
-  if (kategori === 'izin_sakit' && siswa_ids.length === 0) {
+  // Untuk izin/sakit hari ini, identitas anak harus dapat dipastikan.
+  if (
+    kategori === 'izin_sakit' &&
+    siswa_ids.length === 0
+  ) {
     kategori = 'ragu';
+    status = 'tidak_ada';
   }
 
-  const confidence = Number(raw?.confidence);
+  const confidence =
+    Number(raw?.confidence);
 
   return {
     kategori,
     status,
     siswa_ids,
-    nama_anak:
-      typeof raw?.nama_anak === 'string'
-        ? raw.nama_anak.trim()
-        : '',
+
+    nama_anak: namaAnak,
+
     alasan:
       typeof raw?.alasan === 'string'
         ? raw.alasan.trim()
         : '',
-    confidence: Number.isFinite(confidence)
-      ? Math.max(0, Math.min(1, confidence))
-      : 0
+
+    confidence:
+      Number.isFinite(confidence)
+        ? Math.max(
+            0,
+            Math.min(1, confidence)
+          )
+        : 0
   };
 }
 
@@ -106,9 +194,13 @@ function buatErrorAI(error) {
   }
 
   try {
-    return new Error(JSON.stringify(error));
+    return new Error(
+      JSON.stringify(error)
+    );
   } catch (_) {
-    return new Error('Kesalahan Gemini tidak diketahui');
+    return new Error(
+      'Kesalahan Gemini tidak diketahui'
+    );
   }
 }
 
@@ -119,7 +211,8 @@ async function analisisPesan({
 }) {
   if (
     !AI_API_KEY ||
-    AI_API_KEY === 'ISI_API_KEY_AI_DI_SINI'
+    AI_API_KEY ===
+      'ISI_API_KEY_AI_DI_SINI'
   ) {
     throw new Error(
       'AI_API_KEY di AI.js belum diisi'
@@ -136,6 +229,8 @@ async function analisisPesan({
     throw buatErrorAI(e);
   }
 
+  // Structured output menjaga hasil Gemini
+  // tetap JSON dan mudah diproses sistem.
   const responseSchema = {
     type: Type.OBJECT,
 
@@ -158,13 +253,6 @@ async function analisisPesan({
         ]
       },
 
-      siswa_ids: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.STRING
-        }
-      },
-
       nama_anak: {
         type: Type.STRING
       },
@@ -181,7 +269,6 @@ async function analisisPesan({
     required: [
       'kategori',
       'status',
-      'siswa_ids',
       'nama_anak',
       'alasan',
       'confidence'
@@ -191,15 +278,14 @@ async function analisisPesan({
   };
 
   const input = {
-    tanggal_hari_ini: String(
-      tanggalHariIni || ''
-    ),
+    tanggal_hari_ini:
+      String(tanggalHariIni || ''),
 
-    pesan_asli: String(
-      pesan || ''
-    ),
+    pesan_asli:
+      String(pesan || ''),
 
-    anak_wali: daftarAnak(anak)
+    anak_wali:
+      daftarAnak(anak)
   };
 
   try {
@@ -207,7 +293,8 @@ async function analisisPesan({
       await ai.models.generateContent({
         model: AI_MODEL,
 
-        contents: JSON.stringify(input),
+        contents:
+          JSON.stringify(input),
 
         config: {
           systemInstruction:
@@ -223,7 +310,9 @@ async function analisisPesan({
       });
 
     const content =
-      String(response?.text || '').trim();
+      String(
+        response?.text || ''
+      ).trim();
 
     if (!content) {
       throw new Error(
