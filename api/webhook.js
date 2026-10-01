@@ -63,21 +63,24 @@ function balasanIzin(nama) {
 }
 
 function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
-  const { namaDiPesan = [], namaBeda = false, statusDugaan = '' } = opsi;
+  const { namaDiPesan = [], namaBeda = false, statusDugaan = '', tampilkanPesan = true } = opsi;
   const intro = namaBeda
-    ? 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi nama anak yang tertulis di pesan *berbeda* dengan anak yang terdaftar di nomor pengirim. Absensi tidak diubah secara otomatis.'
+    ? 'Sistem menginformasikan bahwa nama anak yang tertulis di pesan *berbeda* dengan anak yang terdaftar di nomor pengirim.'
     : 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi belum dapat memastikan maksudnya.';
   const baris = [
     salam(), '',
-    '⚠️ *Pemberitahuan: Pesan Perlu Dicek*', '',
+    // Judul hanya untuk notifikasi ke kepala sekolah; versi nama beda (grup/pribadi) tanpa judul.
+    ...(namaBeda ? [] : ['⚠️ *Pemberitahuan: Pesan Perlu Dicek*', '']),
     intro, '',
     `👤 *Pengirim:* ${pengirim || '-'}`,
     `👧 *Nama anak${namaBeda ? ' (terdaftar di nomor ini)' : ''}:* *${namaAnak || 'Belum berhasil diidentifikasi'}*`
   ];
   if (namaBeda && namaDiPesan.length) baris.push(`📝 *Nama di pesan:* *${namaDiPesan.join(' | ')}*`);
-  if (statusDugaan === 'sakit' || statusDugaan === 'izin') baris.push(`🔎 *Dugaan isi pesan:* ${statusDugaan}`);
+  // Dugaan isi pesan ikut disembunyikan jika isi pesan tidak ditampilkan (grup/pribadi).
+  if (tampilkanPesan && (statusDugaan === 'sakit' || statusDugaan === 'izin')) baris.push(`🔎 *Dugaan isi pesan:* ${statusDugaan}`);
+  if (tampilkanPesan) baris.push(`💬 *Pesan:* "${String(pesan || '').slice(0, 1000)}"`);
   baris.push(
-    `💬 *Pesan:* "${String(pesan || '').slice(0, 1000)}"`, '',
+    '',
     namaBeda
       ? `Mohon perbaiki nama anak pada pesan sesuai data yang terdaftar: *${namaAnak || '-'}*. 🙏`
       : 'Mohon dilakukan pengecekan secara manual. 🙏',
@@ -244,7 +247,8 @@ async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = nul
 //   -> dikirim ke kepala sekolah saja.
 async function kirimRagu(target, dari, nama, pesan, opsi = {}) {
   if (opsi.namaBeda) {
-    await kirimFonnte(target, notifikasiRagu(dari, nama, pesan, opsi));
+    // Ke grup/chat pribadi: isi pesan asli TIDAK ditampilkan.
+    await kirimFonnte(target, notifikasiRagu(dari, nama, pesan, { ...opsi, tampilkanPesan: false }));
   } else {
     await notifikasiKeKepala(dari, nama, pesan, 'ragu', null, opsi);
   }
