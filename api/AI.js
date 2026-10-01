@@ -1,6 +1,9 @@
 // AI.js
-// Klasifikasi pesan WhatsApp orang tua menggunakan Gemini.
+// Modul khusus untuk memahami pesan WhatsApp orang tua menggunakan Gemini.
 // Menggunakan SDK resmi Google GenAI (@google/genai).
+//
+// Dependency yang diperlukan:
+// npm install @google/genai
 
 const { GoogleGenAI, Type } = require('@google/genai');
 
@@ -10,7 +13,6 @@ const { GoogleGenAI, Type } = require('@google/genai');
 const AI_API_KEY = 'AQ.Ab8RN6IcFt9X_ubj8Flj6vUYnBoWHMpWB1AZf5EMn6RkYlJJOQ';
 const AI_MODEL = 'gemini-3.5-flash-lite';
 
-// Prompt ringkas yang sudah diuji langsung di Gemini.
 const SYSTEM_PROMPT = `
 Anda adalah AI klasifikasi absensi PAUD.
 
@@ -59,93 +61,24 @@ function daftarAnak(anak) {
   }));
 }
 
-function normalisasiTeks(value) {
-  return String(value || '')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function cariSiswaIds(namaAnak, anak) {
-  const daftar = Array.isArray(anak) ? anak : [];
-  const nama = String(namaAnak || '').trim();
-
-  if (!nama) return [];
-
-  const bagian = nama
-    .split('|')
-    .map(x => x.trim())
-    .filter(Boolean);
-
-  const hasil = [];
-
-  for (const target of bagian) {
-    const targetNorm = normalisasiTeks(target);
-
-    if (!targetNorm) continue;
-
-    // 1. Cocokkan nama lengkap atau nama panggilan secara tepat.
-    let cocok = daftar.find(s =>
-      normalisasiTeks(s?.nama) === targetNorm ||
-      normalisasiTeks(s?.nama_panggilan) === targetNorm
-    );
-
-    // 2. Jika Gemini hanya mengembalikan bentuk nama dengan kapitalisasi berbeda,
-    //    coba pencocokan frasa yang aman.
-    if (!cocok) {
-      cocok = daftar.find(s => {
-        const namaNorm = normalisasiTeks(s?.nama);
-        const panggilanNorm = normalisasiTeks(s?.nama_panggilan);
-
-        return (
-          (namaNorm &&
-            (namaNorm.includes(targetNorm) ||
-             targetNorm.includes(namaNorm))) ||
-
-          (panggilanNorm &&
-            (panggilanNorm.includes(targetNorm) ||
-             targetNorm.includes(panggilanNorm)))
-        );
-      });
-    }
-
-    if (cocok?.id != null &&
-        !hasil.includes(String(cocok.id))) {
-      hasil.push(String(cocok.id));
-    }
-  }
-
-  return hasil;
-}
-
 function normalisasi(raw, anak) {
-  let kategori =
-    ['izin_sakit', 'bukan_izin_sakit', 'ragu']
-      .includes(raw?.kategori)
-      ? raw.kategori
-      : 'ragu';
+  let kategori = ['izin_sakit', 'bukan_izin_sakit', 'ragu'].includes(raw?.kategori)
+    ? raw.kategori
+    : 'ragu';
 
-  let status =
-    ['izin', 'sakit', 'tidak_ada']
-      .includes(raw?.status)
-      ? raw.status
-      : 'tidak_ada';
+  let status = ['izin', 'sakit', 'tidak_ada'].includes(raw?.status)
+    ? raw.status
+    : 'tidak_ada';
 
-  const namaAnak =
-    typeof raw?.nama_anak === 'string'
-      ? raw.nama_anak.trim()
-      : '';
+  const validIds = new Set(
+    (Array.isArray(anak) ? anak : []).map(s => String(s.id))
+  );
 
-  // Gemini tidak perlu menebak ID database.
-  // Sistem mencocokkan nama hasil AI dengan daftar anak
-  // yang sebenarnya dari wali.
-  const siswa_ids =
-    cariSiswaIds(namaAnak, anak);
+  const siswa_ids = Array.isArray(raw?.siswa_ids)
+    ? raw.siswa_ids.map(String).filter(id => validIds.has(id))
+    : [];
 
-  // Pengaman: sakit selalu menjadi izin_sakit.
+  // Pengaman inti: sakit selalu menang.
   if (status === 'sakit') {
     kategori = 'izin_sakit';
   }
@@ -154,37 +87,28 @@ function normalisasi(raw, anak) {
     status = 'tidak_ada';
   }
 
-  // Untuk izin/sakit hari ini, identitas anak harus dapat dipastikan.
-  if (
-    kategori === 'izin_sakit' &&
-    siswa_ids.length === 0
-  ) {
+  // Kategori yakin tanpa anak yang valid tidak boleh otomatis diproses.
+  if (kategori === 'izin_sakit' && siswa_ids.length === 0) {
     kategori = 'ragu';
-    status = 'tidak_ada';
   }
 
-  const confidence =
-    Number(raw?.confidence);
+  const confidence = Number(raw?.confidence);
 
   return {
     kategori,
     status,
     siswa_ids,
-
-    nama_anak: namaAnak,
-
+    nama_anak:
+      typeof raw?.nama_anak === 'string'
+        ? raw.nama_anak.trim()
+        : '',
     alasan:
       typeof raw?.alasan === 'string'
         ? raw.alasan.trim()
         : '',
-
-    confidence:
-      Number.isFinite(confidence)
-        ? Math.max(
-            0,
-            Math.min(1, confidence)
-          )
-        : 0
+    confidence: Number.isFinite(confidence)
+      ? Math.max(0, Math.min(1, confidence))
+      : 0
   };
 }
 
@@ -194,13 +118,9 @@ function buatErrorAI(error) {
   }
 
   try {
-    return new Error(
-      JSON.stringify(error)
-    );
+    return new Error(JSON.stringify(error));
   } catch (_) {
-    return new Error(
-      'Kesalahan Gemini tidak diketahui'
-    );
+    return new Error('Kesalahan Gemini tidak diketahui');
   }
 }
 
@@ -211,8 +131,7 @@ async function analisisPesan({
 }) {
   if (
     !AI_API_KEY ||
-    AI_API_KEY ===
-      'ISI_API_KEY_AI_DI_SINI'
+    AI_API_KEY === 'ISI_API_KEY_AI_DI_SINI'
   ) {
     throw new Error(
       'AI_API_KEY di AI.js belum diisi'
@@ -229,8 +148,6 @@ async function analisisPesan({
     throw buatErrorAI(e);
   }
 
-  // Structured output menjaga hasil Gemini
-  // tetap JSON dan mudah diproses sistem.
   const responseSchema = {
     type: Type.OBJECT,
 
@@ -253,6 +170,13 @@ async function analisisPesan({
         ]
       },
 
+      siswa_ids: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.STRING
+        }
+      },
+
       nama_anak: {
         type: Type.STRING
       },
@@ -269,6 +193,7 @@ async function analisisPesan({
     required: [
       'kategori',
       'status',
+      'siswa_ids',
       'nama_anak',
       'alasan',
       'confidence'
@@ -278,14 +203,15 @@ async function analisisPesan({
   };
 
   const input = {
-    tanggal_hari_ini:
-      String(tanggalHariIni || ''),
+    tanggal_hari_ini: String(
+      tanggalHariIni || ''
+    ),
 
-    pesan_asli:
-      String(pesan || ''),
+    pesan_asli: String(
+      pesan || ''
+    ),
 
-    anak_wali:
-      daftarAnak(anak)
+    anak_wali: daftarAnak(anak)
   };
 
   try {
@@ -293,8 +219,7 @@ async function analisisPesan({
       await ai.models.generateContent({
         model: AI_MODEL,
 
-        contents:
-          JSON.stringify(input),
+        contents: JSON.stringify(input),
 
         config: {
           systemInstruction:
@@ -310,9 +235,7 @@ async function analisisPesan({
       });
 
     const content =
-      String(
-        response?.text || ''
-      ).trim();
+      String(response?.text || '').trim();
 
     if (!content) {
       throw new Error(
