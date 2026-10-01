@@ -5,7 +5,7 @@
 // ============================================================
 // KONFIGURASI AI — MUDAH DIUBAH
 // ============================================================
-const AI_API_KEY = 'AQ.Ab8RN6IC1ZfTHYIwJTEBmOlwMr1IJ2-BLvRucrSZ52FGMuQK2A';
+const AI_API_KEY = 'AQ.Ab8RN6KaouhYcUGCf7VhzBmXM7sNHjUjxG3f_516S8HMhQ1aOw';
 const AI_MODEL = 'gemini-3.5-flash-lite';
 const AI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`;
 
