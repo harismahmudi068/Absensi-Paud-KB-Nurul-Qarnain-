@@ -10,7 +10,7 @@ const { GoogleGenAI, Type } = require('@google/genai');
 // ============================================================
 // KONFIGURASI AI — MUDAH DIUBAH
 // ============================================================
-const AI_API_KEY = 'AQ.Ab8RN6IcFt9X_ubj8Flj6vUYnBoWHMpWB1AZf5EMn6RkYlJJOQ';
+const AI_API_KEY = 'AQ.Ab8RN6L-g2X4kAvnFOVtKOO8RJLKPPC89O4mpKT8vE82ZMXe3A';
 const AI_MODEL = 'gemini-3.5-flash-lite';
 
 const SYSTEM_PROMPT = `
