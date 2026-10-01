@@ -62,8 +62,29 @@ function balasanIzin(nama) {
   return [salam(), '', `Baik, Bunda. Laporan izin untuk *${nama}* hari ini sudah kami terima dan telah dicatat. 📝`, '', `Semoga segala keperluan Bunda dan *${nama}* diberikan kelancaran, kemudahan, dan keberkahan. 🤲`, '', penutup()].join('\n');
 }
 
-function notifikasiRagu(pengirim, namaAnak, pesan) {
-  return [salam(), '', '⚠️ *Pemberitahuan: Pesan Perlu Dicek*', '', 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi belum dapat memastikan maksudnya.', '', `👤 *Pengirim:* ${pengirim || '-'}`, `👧 *Nama anak:* *${namaAnak || 'Belum berhasil diidentifikasi'}*`, `💬 *Pesan:* "${String(pesan || '').slice(0, 1000)}"`, '', 'Mohon dilakukan pengecekan secara manual. 🙏', '', penutup()].join('\n');
+function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
+  const { namaDiPesan = [], namaBeda = false, statusDugaan = '' } = opsi;
+  const intro = namaBeda
+    ? 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi nama anak yang tertulis di pesan *berbeda* dengan anak yang terdaftar di nomor pengirim. Absensi tidak diubah secara otomatis.'
+    : 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi belum dapat memastikan maksudnya.';
+  const baris = [
+    salam(), '',
+    '⚠️ *Pemberitahuan: Pesan Perlu Dicek*', '',
+    intro, '',
+    `👤 *Pengirim:* ${pengirim || '-'}`,
+    `👧 *Nama anak${namaBeda ? ' (terdaftar di nomor ini)' : ''}:* *${namaAnak || 'Belum berhasil diidentifikasi'}*`
+  ];
+  if (namaBeda && namaDiPesan.length) baris.push(`📝 *Nama di pesan:* *${namaDiPesan.join(' | ')}*`);
+  if (statusDugaan === 'sakit' || statusDugaan === 'izin') baris.push(`🔎 *Dugaan isi pesan:* ${statusDugaan}`);
+  baris.push(
+    `💬 *Pesan:* "${String(pesan || '').slice(0, 1000)}"`, '',
+    namaBeda
+      ? `Mohon perbaiki nama anak pada pesan sesuai data yang terdaftar: *${namaAnak || '-'}*. 🙏`
+      : 'Mohon dilakukan pengecekan secara manual. 🙏',
+    '',
+    penutup()
+  );
+  return baris.join('\n');
 }
 
 function notifikasiAIGagal(pengirim, namaAnak, pesan, error) {
@@ -180,7 +201,12 @@ const KONTEKS_TIDAK_HARI_INI = /\b(kemarin|kemaren|tadi malam|tadi pagi|sebelumn
 const PENYANGKALAN = /\b(bukan|tidak|nggak|gak|ga|jangan)\b.{0,30}\b(sakit|demam|flu|batuk|pilek|panas|kurang sehat|kurang enak badan|tidak enak badan)\b|\b(sakit|demam|flu|batuk|pilek|panas|kurang sehat|kurang enak badan|tidak enak badan)\b.{0,30}\b(bukan|tidak|nggak|gak|ga)\b/i;
 const KONTEKS_RUMIT = /\b(kalau|jika|seandainya|tapi|namun|sedangkan|padahal|karena|sebab|soalnya)\b/i;
 
+// Pesan yang memuat label "Nama :" atau berbentuk surat panjang harus dicek AI,
+// karena nama anak di pesan perlu dibandingkan dengan anak yang terdaftar.
+const ADA_LABEL_NAMA = /\bnama\s*(lengkap|anak|ananda|siswa)?\s*[:=]/i;
+
 function deteksiCepat(t) {
+  if (ADA_LABEL_NAMA.test(t) || t.length > 300) return null;
   if (KONTEKS_TIDAK_HARI_INI.test(t)) return null;
   if (PENYANGKALAN.test(t)) return null;
   if (KONTEKS_RUMIT.test(t)) {
@@ -203,12 +229,25 @@ function cariAnakDariNama(pesan, anak) {
   });
 }
 
-async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = null) {
+async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = null, opsi = {}) {
   if (!KEPALA_SEKOLAH_NUMBER || KEPALA_SEKOLAH_NUMBER.includes('ISI_')) return;
   const teks = jenis === 'ai_error'
     ? notifikasiAIGagal(dari, nama, pesan, error)
-    : notifikasiRagu(dari, nama, pesan);
+    : notifikasiRagu(dari, nama, pesan, opsi);
   await kirimFonnte(nomor(KEPALA_SEKOLAH_NUMBER), teks);
+}
+
+// Notifikasi "ragu" (aturan sama untuk grup dan chat pribadi):
+// - Ragu karena NAMA BERBEDA -> dibalas langsung ke tempat pesan masuk
+//   (grup PAUD jika dari grup, chat pribadi pengirim jika dari chat pribadi).
+// - Semua ragu lainnya (maksud/waktu tidak jelas, anak tidak teridentifikasi)
+//   -> dikirim ke kepala sekolah saja.
+async function kirimRagu(target, dari, nama, pesan, opsi = {}) {
+  if (opsi.namaBeda) {
+    await kirimFonnte(target, notifikasiRagu(dari, nama, pesan, opsi));
+  } else {
+    await notifikasiKeKepala(dari, nama, pesan, 'ragu', null, opsi);
+  }
 }
 
 async function proses(b) {
@@ -260,14 +299,20 @@ async function proses(b) {
     return;
   }
 
-  if (hasilAI.kategori === 'ragu') {
-    const nama = (hasilAI.siswa_ids || [])
-      .map(id => anak.find(s => String(s.id) === String(id)))
-      .filter(Boolean)
-      .map(s => s.nama_panggilan || s.nama)
-      .join(', ') || hasilAI.nama_anak || (anak.length === 1 ? (anak[0].nama_panggilan || anak[0].nama) : 'Belum berhasil diidentifikasi');
-    await catatPesan(dari, pesan, 'Ragu: perlu pengecekan guru', true);
-    await notifikasiKeKepala(dari, nama, pesan, 'ragu');
+  if (hasilAI.kategori === 'ragu' || hasilAI.nama_beda) {
+    // Nama anak SELALU dari data terdaftar di nomor pengirim, bukan dari isi pesan.
+    const nama = hasilAI.nama_anak
+      || (anak.length === 1 ? anak[0].nama : '')
+      || 'Belum berhasil diidentifikasi';
+    const catatan = hasilAI.nama_beda
+      ? `Ragu: nama di pesan (${(hasilAI.nama_di_pesan || []).join(' | ')}) berbeda dengan anak terdaftar (${nama})`
+      : 'Ragu: perlu pengecekan guru';
+    await catatPesan(dari, pesan, catatan.slice(0, 300), true);
+    await kirimRagu(target, dari, nama, pesan, {
+      namaDiPesan: hasilAI.nama_di_pesan || [],
+      namaBeda: !!hasilAI.nama_beda,
+      statusDugaan: hasilAI.status_dugaan || ''
+    });
     return;
   }
 
@@ -279,7 +324,7 @@ async function proses(b) {
 
   if (!pilih.length) {
     await catatPesan(dari, pesan, 'Ragu: anak tidak teridentifikasi', true);
-    await notifikasiKeKepala(dari, 'Belum berhasil diidentifikasi', pesan, 'ragu');
+    await kirimRagu(target, dari, 'Belum berhasil diidentifikasi', pesan);
     return;
   }
 
