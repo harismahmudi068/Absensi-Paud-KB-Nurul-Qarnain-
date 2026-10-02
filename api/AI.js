@@ -110,9 +110,16 @@ function tokenSama(a, b, minSingkat) {
 
 function adaKemiripan(namaPesan, siswa) {
   const tp = tokenNama(namaPesan);
-  const kumpulan = [...tokenNama(siswa?.nama), ...tokenNama(siswa?.nama_panggilan)];
+  const namaSiswa = tokenNama(siswa?.nama);
+  const panggilanSiswa = tokenNama(siswa?.nama_panggilan);
+  
   if (!tp.length) return true;
-  return tp.some(t => kumpulan.some(n => tokenSama(t, n, 2)));
+
+  return tp.some(t => 
+    namaSiswa.some(n => tokenSama(t, n, 2)) || 
+    panggilanSiswa.some(p => tokenSama(t, p, 2)) ||
+    namaSiswa.some(n => n.includes(t) || t.includes(n))
+  );
 }
 
 function normalisasi(raw, anak) {
@@ -135,18 +142,28 @@ function normalisasi(raw, anak) {
   if (daftar_nama.length > 0) {
     const idCocok = new Set();
     for (const x of daftar_nama) {
-      const siswa = daftar.find(s => String(s.id) === x.siswa_id);
+      const siswa = daftar.find(s => String(s.id) === x.siswa_id) || 
+                    daftar.find(s => adaKemiripan(x.nama, s));
+      
       if (siswa && adaKemiripan(x.nama, siswa)) {
         idCocok.add(String(siswa.id));
       } else {
-        nama_beda = true;
+        if (daftar.length === 1) {
+          idCocok.add(String(daftar[0].id));
+        } else {
+          nama_beda = true;
+        }
       }
     }
     siswa_ids = [...idCocok];
   } else {
-    siswa_ids = Array.isArray(raw?.siswa_ids)
-      ? raw.siswa_ids.map(String).filter(id => validIds.has(id))
-      : [];
+    if (daftar.length === 1) {
+      siswa_ids = [String(daftar[0].id)];
+    } else {
+      siswa_ids = Array.isArray(raw?.siswa_ids)
+        ? raw.siswa_ids.map(String).filter(id => validIds.has(id))
+        : [];
+    }
   }
 
   const waktu = (Array.isArray(raw?.waktu) ? raw.waktu : [])
