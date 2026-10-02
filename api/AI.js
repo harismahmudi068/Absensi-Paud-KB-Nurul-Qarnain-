@@ -15,93 +15,42 @@ const AI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
 const AI_MODEL = 'gemini-3.5-flash-lite';
 
 const SYSTEM_PROMPT = `
-Anda adalah AI klasifikasi absensi PAUD yang menerima pesan WhatsApp orang tua.
+Anda adalah AI klasifikasi absensi PAUD untuk menganalisis pesan WhatsApp dari orang tua.
 
-Tugas:
-1. Tentukan apakah pesan merupakan laporan anak SAKIT, IZIN, bukan absensi, atau masih RAGU.
-2. Jika merupakan laporan absensi, tentukan ANAK yang dimaksud dan WAKTU/TANGGAL absensinya.
-3. Waktu yang akan datang HARUS diproses dan dikeluarkan sebagai data "waktu". Jangan otomatis menjadikannya ragu hanya karena tanggalnya besok atau tanggal lain di masa depan.
+TUGAS UTAMA:
+1. Tentukan kategori: "izin_sakit", "bukan_izin_sakit", atau "ragu".
+2. Tentukan status: "izin", "sakit", atau "tidak_ada".
+3. Identifikasi nama anak yang disebut di pesan dan waktu/tanggal absensinya.
 
-ATURAN KATEGORI:
-1. Hanya gunakan 3 kategori:
-   - izin_sakit
-   - bukan_izin_sakit
-   - ragu
-
-2. Jika anak tidak masuk karena alasan kesehatan (sakit, demam, batuk, flu, kurang sehat, dll):
-   kategori = izin_sakit
-   status = sakit
-   SAKIT lebih utama daripada IZIN, walaupun pesan menggunakan kata "izin".
-
-3. Jika anak tidak masuk karena alasan selain sakit (acara keluarga, keperluan keluarga, bepergian, dll):
-   kategori = izin_sakit
-   status = izin.
-
-4. Jika bukan laporan ketidakhadiran:
-   kategori = bukan_izin_sakit
-   status = tidak_ada.
-
-5. Jika berkaitan dengan absensi tetapi maksud, anak, atau WAKTUNYA benar-benar tidak dapat ditentukan:
-   kategori = ragu
-   status = tidak_ada.
-
-6. Pesan panjang atau berbentuk surat formal tetap diproses jika isinya jelas.
-
+ATURAN KATEGORI & STATUS:
+1. Kategori hanya 3: "izin_sakit", "bukan_izin_sakit", "ragu".
+2. Alasan kesehatan (sakit, demam, batuk, flu, dll): kategori = "izin_sakit", status = "sakit". Status sakit selalu lebih utama daripada kata "izin".
+3. Alasan selain sakit (acara/keperluan keluarga, bepergian, dll): kategori = "izin_sakit", status = "izin".
+4. Bukan laporan ketidakhadiran: kategori = "bukan_izin_sakit", status = "tidak_ada".
+5. Maksud, anak, atau waktu tidak jelas/tidak dapat ditentukan: kategori = "ragu", status = "tidak_ada".
+6. "Tidak sakit" atau "bukan karena sakit" berarti jangan pilih status sakit.
 7. Jangan mengarang nama anak. Daftar anak_wali adalah anak yang terdaftar di nomor pengirim.
 
-8. "Tidak sakit" atau "bukan karena sakit" berarti jangan pilih sakit.
+ATURAN WAKTU/TANGGAL:
+- Jika tidak disebut, anggap hari ini: waktu = [{ "tipe": "hari_ini", "jumlah_hari": 1 }].
+- "hari ini" -> tipe "hari_ini".
+- "besok" -> tipe "besok".
+- "lusa" -> tipe "lusa".
+- Nama hari ("Senin", "Selasa", dll) -> tipe "nama_hari", nama_hari (huruf kecil: minggu/senin/selasa/rabu/kamis/jumat/sabtu).
+- "Senin depan" -> tipe "nama_hari", nama_hari = "senin", pekan_depan = true.
+- "tanggal 10" / "tgl 10" -> tipe "tanggal", tanggal = 10.
+- "10 Oktober" atau "10/10" -> tipe "tanggal", tanggal = 10, bulan = 10.
+- Jika tahun disebut, isi tahun.
+- Durasi: "selama 3 hari mulai besok" -> tipe "besok", jumlah_hari = 3. "3 hari mulai Senin" -> tipe "nama_hari", nama_hari = "senin", jumlah_hari = 3.
+- "besok dan lusa" -> keluarkan dua entri waktu: besok dan lusa.
+- Waktu masa depan valid dan harus diproses (jangan diubah menjadi ragu hanya karena di masa depan). Waktu lampau (seperti "kemarin") jadikan ragu karena absensi lampau tidak otomatis dicatat.
 
-9. WAKTU/TANGGAL:
-   - Jika pesan tidak menyebut waktu/tanggal, anggap hari ini dan keluarkan:
-     waktu = [{ "tipe": "hari_ini", "jumlah_hari": 1 }].
-   - "hari ini" -> tipe "hari_ini".
-   - "besok" -> tipe "besok".
-   - "lusa" -> tipe "lusa".
-   - Nama hari seperti "Senin", "Selasa", dst -> tipe "nama_hari" dan isi nama_hari dengan huruf kecil:
-     minggu/senin/selasa/rabu/kamis/jumat/sabtu.
-   - "Senin depan", "Selasa pekan depan", dst -> tipe "nama_hari", isi nama_hari, dan pekan_depan = true.
-   - "tanggal 10", "tgl 10" -> tipe "tanggal", tanggal = 10. Jika bulan tidak disebut, gunakan bulan berjalan berdasarkan tanggal_hari_ini; sistem akan menghitung tanggal berikutnya jika tanggal tersebut sudah lewat.
-   - "10 Oktober" -> tipe "tanggal", tanggal = 10, bulan = 10.
-   - "10/10" atau "10-10" -> tipe "tanggal", tanggal = 10, bulan = 10.
-   - Jika tahun disebut, isi tahun.
-   - "selama 3 hari mulai besok" -> satu entri waktu dengan tipe "besok" dan jumlah_hari = 3.
-   - "3 hari mulai Senin" -> tipe "nama_hari", nama_hari = "senin", jumlah_hari = 3.
-   - "tanggal 10 sampai 12" -> boleh diwakili sebagai tanggal 10 dengan jumlah_hari = 3.
-   - "besok dan lusa" -> keluarkan dua entri waktu: besok dan lusa.
-   - "minggu depan" tanpa hari/tanggal yang jelas -> ragu karena waktunya tidak dapat dihitung.
-   - Jika ada beberapa tanggal/periode yang jelas, keluarkan semua entri waktu tersebut.
-   - Jangan mengubah tanggal masa depan menjadi ragu hanya karena tanggal tersebut bukan hari ini.
-   - Jangan membuat tanggal lampau. Jika pesan jelas merujuk ke waktu lampau seperti "kemarin tidak masuk", keluarkan kategori ragu karena absensi lampau tidak boleh otomatis dicatat.
-   - Waktu relatif harus ditafsirkan berdasarkan tanggal_hari_ini yang diberikan sistem, bukan berdasarkan tanggal yang ditebak sendiri.
+ATURAN PENCOCOKAN NAMA (daftar_nama):
+- Untuk SETIAP anak yang disebut di pesan, buat 1 entri: nama (teks persis di pesan) dan siswa_id (id dari anak_wali, atau "" jika tidak ada/tidak cocok).
+- Jika pesan tidak menyebut nama anak sama sekali, daftar_nama = [].
+- Jika daftar_nama kosong dan anak_wali hanya 1 anak, sistem akan memakai anak tersebut. Jika daftar_nama ada, siswa_ids dikosongkan karena akan dicocokkan otomatis oleh kode.
 
-10. BATAS WAKTU:
-   Sistem Webhook hanya menerima tanggal hari ini sampai maksimal 60 hari ke depan. AI cukup mengidentifikasi waktu dari pesan. Jika pesan secara jelas meminta tanggal lampau atau waktu yang tidak bisa dihitung, pilih ragu.
-   Jangan menolak tanggal masa depan hanya karena itu tanggal masa depan.
-
-11. jumlah_hari:
-   - Jika hanya satu hari, isi jumlah_hari = 1.
-   - Jika pesan menyebut durasi, gunakan jumlah_hari yang sesuai.
-   - Jangan membuat jumlah_hari lebih panjang dari yang disebut.
-
-12. Jika informasi tidak cukup jelas, pilih ragu daripada menebak.
-
-PENCOCOKAN NAMA:
-13. daftar_nama: untuk SETIAP anak yang namanya disebut di pesan, isi satu entri:
-   - nama = tulisan nama persis seperti di pesan (jangan diubah).
-   - siswa_id = id anak di anak_wali yang dimaksud, atau "" jika tidak ada anak terdaftar yang dimaksud.
-   Jika pesan tidak menyebut nama anak sama sekali, daftar_nama = [].
-
-14. Cara mencocokkan nama pesan dengan anak_wali:
-   - Anggap SAMA jika hanya beda penulisan: singkatan (mis. "Moh." = Mohammad, "Sy" = Syaputra, "M. Rofiqih"), inisial, variasi ejaan (Muhammad/Mohamad/Muhamad, Achmad/Ahmad), huruf salah ketik, urutan kata, ada kata yang dihilangkan, atau memakai nama_panggilan.
-   - Anggap BEDA (siswa_id = "") jika orangnya tampak berbeda: kata khas nama berbeda (mis. "Rizky" vs "Rofiqih" walau nama belakang sama), atau tidak ada kemiripan sama sekali.
-   - Jangan memaksakan cocok. Jika ragu apakah itu anak yang sama, kosongkan siswa_id.
-
-15. siswa_ids:
-   - Jika daftar_nama kosong dan anak_wali hanya berisi satu anak, pilih anak tersebut.
-   - Jika daftar_nama tidak kosong, siswa_ids dikosongkan; sistem akan mengambil siswa_id dari daftar_nama.
-   - Jika nama tidak jelas atau tidak cocok, jangan menebak.
-
-16. JAWAB HANYA DENGAN JSON sesuai struktur yang diberikan.
+JAWAB HANYA DENGAN JSON sesuai struktur skema.
 `;
 
 function daftarAnak(anak) {
@@ -212,9 +161,7 @@ function normalisasi(raw, anak) {
 
       if (tipe === 'nama_hari') {
         const hari = String(w?.nama_hari || '').trim().toLowerCase();
-        if (!['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'].includes(hari)) {
-          return null;
-        }
+        if (!['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'].includes(hari)) return null;
         hasil.nama_hari = hari;
         hasil.pekan_depan = w?.pekan_depan === true;
       }
@@ -225,14 +172,10 @@ function normalisasi(raw, anak) {
         hasil.tanggal = d;
 
         const bulan = Number(w?.bulan);
-        if (Number.isInteger(bulan) && bulan >= 1 && bulan <= 12) {
-          hasil.bulan = bulan;
-        }
+        if (Number.isInteger(bulan) && bulan >= 1 && bulan <= 12) hasil.bulan = bulan;
 
         const tahun = Number(w?.tahun);
-        if (Number.isInteger(tahun) && tahun >= 2000 && tahun <= 2100) {
-          hasil.tahun = tahun;
-        }
+        if (Number.isInteger(tahun) && tahun >= 2000 && tahun <= 2100) hasil.tahun = tahun;
       }
 
       return hasil;
@@ -242,16 +185,10 @@ function normalisasi(raw, anak) {
   const waktu_final = waktu.length > 0 ? waktu : (kategori === 'izin_sakit' ? [{ tipe: 'hari_ini', jumlah_hari: 1 }] : []);
   const status_dugaan = status;
 
-  if (status === 'sakit') {
-    kategori = 'izin_sakit';
-  }
-
-  if (kategori === 'bukan_izin_sakit') {
-    status = 'tidak_ada';
-  }
+  if (status === 'sakit') kategori = 'izin_sakit';
+  if (kategori === 'bukan_izin_sakit') status = 'tidak_ada';
 
   let alasan_ragu = '';
-
   if (nama_beda && kategori === 'izin_sakit') {
     kategori = 'ragu';
     status = 'tidak_ada';
@@ -285,9 +222,7 @@ function normalisasi(raw, anak) {
 }
 
 function buatErrorAI(error) {
-  if (error?.message) {
-    return new Error(error.message);
-  }
+  if (error?.message) return new Error(error.message);
   try {
     return new Error(JSON.stringify(error));
   } catch (_) {
@@ -310,18 +245,9 @@ async function analisisPesan({ pesan, anak, tanggalHariIni }) {
   const responseSchema = {
     type: Type.OBJECT,
     properties: {
-      kategori: {
-        type: Type.STRING,
-        enum: ['izin_sakit', 'bukan_izin_sakit', 'ragu']
-      },
-      status: {
-        type: Type.STRING,
-        enum: ['izin', 'sakit', 'tidak_ada']
-      },
-      siswa_ids: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING }
-      },
+      kategori: { type: Type.STRING, enum: ['izin_sakit', 'bukan_izin_sakit', 'ragu'] },
+      status: { type: Type.STRING, enum: ['izin', 'sakit', 'tidak_ada'] },
+      siswa_ids: { type: Type.ARRAY, items: { type: Type.STRING } },
       daftar_nama: {
         type: Type.ARRAY,
         items: {
@@ -338,10 +264,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni }) {
         items: {
           type: Type.OBJECT,
           properties: {
-            tipe: {
-              type: Type.STRING,
-              enum: ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal']
-            },
+            tipe: { type: Type.STRING, enum: ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal'] },
             nama_hari: { type: Type.STRING },
             pekan_depan: { type: Type.BOOLEAN },
             tanggal: { type: Type.INTEGER },
@@ -379,9 +302,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni }) {
     });
 
     const content = String(response?.text || '').trim();
-    if (!content) {
-      throw new Error('Respons Gemini kosong');
-    }
+    if (!content) throw new Error('Respons Gemini kosong');
 
     let hasil;
     try {
@@ -396,6 +317,4 @@ async function analisisPesan({ pesan, anak, tanggalHariIni }) {
   }
 }
 
-module.exports = {
-  analisisPesan
-};
+module.exports = { analisisPesan };
