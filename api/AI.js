@@ -93,7 +93,8 @@ function jarakEdit(a, b) {
 
 function tokenSama(a, b, minSingkat) {
   if (a === b) return true;
-  if (a.length >= 5 && b.length >= 5 && jarakEdit(a, b) <= 1) return true;
+  // Perbaiki: Izinkan 1 salah huruf (typo) asalkan panjang kata minimal 4 huruf (misal: "alip" dan "alif")
+  if (a.length >= 4 && b.length >= 4 && jarakEdit(a, b) <= 1) return true;
   return a.length >= minSingkat && b.length > a.length && b.startsWith(a);
 }
 
@@ -102,12 +103,14 @@ function adaKemiripan(namaPesan, siswa) {
   const namaSiswa = tokenNama(siswa?.nama);
   const panggilanSiswa = tokenNama(siswa?.nama_panggilan);
   
+  // Jika teks pesan hanya berisi "ananda sakit" (tanpa menyebut nama), maka array tp kosong.
+  // Ini otomatis cocok dan aman.
   if (!tp.length) return true;
 
+  // Pencocokan diperketat (min 3 huruf). Fungsi includes() dihapus agar "Hanum" tidak nyangkut ke "Alif Putra"
   return tp.some(t => 
-    namaSiswa.some(n => tokenSama(t, n, 2)) || 
-    panggilanSiswa.some(p => tokenSama(t, p, 2)) ||
-    namaSiswa.some(n => n.includes(t) || t.includes(n))
+    namaSiswa.some(n => tokenSama(t, n, 3)) || 
+    panggilanSiswa.some(p => tokenSama(t, p, 3))
   );
 }
 
@@ -134,18 +137,18 @@ function normalisasi(raw, anak) {
       const siswa = daftar.find(s => String(s.id) === x.siswa_id) || 
                     daftar.find(s => adaKemiripan(x.nama, s));
       
-      if (siswa && adaKemiripan(x.nama, siswa)) {
+      if (siswa) {
         idCocok.add(String(siswa.id));
       } else {
-        if (daftar.length === 1) {
-          idCocok.add(String(daftar[0].id));
-        } else {
-          nama_beda = true;
-        }
+        // PERBAIKAN: Jika nama tidak mirip sama sekali (misal diketik "Hanum", tapi yang terdaftar "Alif Putra"),
+        // maka status langsung ditandai beda, meskipun wali murid tersebut hanya punya 1 anak.
+        nama_beda = true;
       }
     }
     siswa_ids = [...idCocok];
   } else {
+    // Jika AI tidak menemukan nama satupun di dalam pesan (misal hanya: "sakit pak"), 
+    // dan anak wali hanya 1, maka sistem akan menggunakan id anak tunggal tersebut.
     if (daftar.length === 1) {
       siswa_ids = [String(daftar[0].id)];
     } else {
