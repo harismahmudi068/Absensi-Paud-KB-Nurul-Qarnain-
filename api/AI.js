@@ -24,28 +24,20 @@ TUGAS UTAMA:
 
 ATURAN KATEGORI & STATUS:
 1. Kategori hanya 3: "izin_sakit", "bukan_izin_sakit", "ragu".
-2. Alasan kesehatan (sakit, demam, batuk, flu, dll): kategori = "izin_sakit", status = "sakit". Status sakit selalu lebih utama daripada kata "izin".
-3. Alasan selain sakit (acara/keperluan keluarga, bepergian, dll): kategori = "izin_sakit", status = "izin".
+2. Alasan kesehatan (sakit, demam, dll): kategori = "izin_sakit", status = "sakit".
+3. Alasan selain sakit (acara, dll): kategori = "izin_sakit", status = "izin".
 4. Bukan laporan ketidakhadiran: kategori = "bukan_izin_sakit", status = "tidak_ada".
-5. Maksud, anak, atau waktu tidak jelas/tidak dapat ditentukan: kategori = "ragu", status = "tidak_ada".
-6. "Tidak sakit" atau "bukan karena sakit" berarti jangan pilih status sakit.
-7. Jangan mengarang nama anak. Daftar anak_wali adalah anak yang terdaftar di nomor pengirim.
+5. Jika maksud pesan atau nama anak tidak jelas: kategori = "ragu". NAMUN, jika HANYA penulisan tanggal/waktu yang sulit dipahami, TETAP pilih "izin_sakit" (biarkan waktu kosong, sistem akan mengurusnya).
 
-ATURAN WAKTU/TANGGAL:
-- Jika tidak disebut, anggap hari ini: waktu = [{ "tipe": "hari_ini", "jumlah_hari": 1 }].
-- "hari ini" -> tipe "hari_ini", "besok" -> tipe "besok", "lusa" -> tipe "lusa".
-- Nama hari ("Senin", "Selasa", dll) -> tipe "nama_hari", nama_hari (huruf kecil: minggu/senin/selasa/rabu/kamis/jumat/sabtu).
-- "Senin depan" -> tipe "nama_hari", nama_hari = "senin", pekan_depan = true.
-- Format surat formal/panjang ("*Tanggal : 02 Oktober 2026*", "10 Oktober", "10/10") -> tipe "tanggal". Abaikan semua simbol WhatsApp (*, _, ~). 
-- Ekstrak tanggal, bulan, dan tahun menjadi ANGKA murni (integer). Contoh: "02 Oktober 2026" menjadi tanggal = 2, bulan = 10, tahun = 2026. Jangan gunakan string "02".
-- Durasi: "selama 3 hari mulai besok" -> tipe "besok", jumlah_hari = 3. "3 hari mulai Senin" -> tipe "nama_hari", nama_hari = "senin", jumlah_hari = 3.
-- "besok dan lusa" -> keluarkan dua entri waktu: besok dan lusa.
-- Waktu masa depan valid dan harus diproses (jangan diubah menjadi ragu hanya karena di masa depan). Waktu lampau (seperti "kemarin") jadikan ragu.
+ATURAN WAKTU/TANGGAL (SANGAT PENTING):
+- Bandingkan waktu di pesan dengan input 'tanggal_hari_ini'. Jika hari atau tanggal yang disebut MERUJUK PADA HARI INI, WAJIB gunakan tipe: "hari_ini" dengan jumlah_hari: 1.
+- Jika pesan menuliskan "Hari" dan "Tanggal" secara berurutan untuk absen yang sama (contoh: "Hari: Jumat, Tanggal: 02 Oktober 2026"), BUAT HANYA 1 ENTRI WAKTU. Jangan menduplikasi waktu.
+- Abaikan format simbol WhatsApp (*, _, ~) yang menempel pada tanggal.
+- Jika terpaksa menggunakan tipe "tanggal", pastikan ekstrak menjadi ANGKA murni (integer). Contoh "02" -> 2.
+- Jika waktu sama sekali tidak ditulis, biarkan array waktu KOSONG.
 
 ATURAN PENCOCOKAN NAMA (daftar_nama):
-- Untuk SETIAP anak yang disebut di pesan, buat 1 entri: nama (teks persis di pesan) dan siswa_id (id dari anak_wali, atau "" jika tidak ada/tidak cocok).
-- Jika pesan tidak menyebut nama anak sama sekali, daftar_nama = [].
-- Jika daftar_nama kosong dan anak_wali hanya 1 anak, sistem akan memakai anak tersebut. Jika daftar_nama ada, siswa_ids dikosongkan karena akan dicocokkan otomatis oleh kode.
+- Buat 1 entri untuk setiap anak yang disebut: nama (teks persis di pesan) dan siswa_id (dari anak_wali, atau "").
 
 JAWAB HANYA DENGAN JSON sesuai struktur skema.
 `;
