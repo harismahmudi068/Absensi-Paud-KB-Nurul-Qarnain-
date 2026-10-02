@@ -7,6 +7,7 @@
 
 const crypto = require('crypto');
 const { analisisPesan } = require('./AI');
+const { terjemahkanBalasan } = require('./AITerjemah');
 
 // ============================================================
 // KONFIGURASI WHATSAPP PAUD — MUDAH DIGANTI
@@ -65,6 +66,31 @@ async function kirimFonnte(target, teks) {
     console.error('Gagal mengirim Fonnte:', e);
     return false;
   }
+}
+
+// ============================================================
+// BALASAN KE WALI DALAM BAHASA PENGIRIM
+// Format balasan tetap disusun dalam Bahasa Indonesia, lalu diterjemahkan oleh AITerjemah.js
+// jika bahasa pesan bukan Indonesia. Jika terjemahan gagal, balasan Indonesia tetap dikirim.
+// Jalur cepat (tanpa AI) tidak punya `bahasa`, sehingga dibalas langsung dalam Bahasa Indonesia.
+// Notifikasi ke kepala sekolah TIDAK memakai fungsi ini (tetap Bahasa Indonesia).
+// ============================================================
+function perluTerjemah(bahasa) {
+  const b = String(bahasa || '').trim().toLowerCase();
+  return !!b && !b.startsWith('indonesia');
+}
+
+async function kirimBalasanWali(target, teks, bahasa) {
+  let isi = teks;
+  if (perluTerjemah(bahasa)) {
+    try {
+      isi = await terjemahkanBalasan({ teks, bahasa });
+    } catch (e) {
+      console.error(`Terjemahan ke ${bahasa} gagal, balasan dikirim dalam Bahasa Indonesia:`, e.message);
+      isi = teks;
+    }
+  }
+  return kirimFonnte(target, isi);
 }
 
 function salam() { return 'Assalamu’alaikum warahmatullahi wabarakatuh.'; }
@@ -479,7 +505,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
 }
 
 // Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
-async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu }) {
+async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa }) {
   const rencana = await buatRencana(status, waktu);
   if (!rencana.ok) {
     await catatPesan(dari, pesan, `Ragu: ${rencana.alasan}`.slice(0, 300), true);
@@ -487,7 +513,7 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
     return;
   }
   const hasil = await simpan(dari, pesan, anak, status, catatan, rencana);
-  if (hasil.balasan) await kirimFonnte(target, hasil.balasan);
+  if (hasil.balasan) await kirimBalasanWali(target, hasil.balasan, bahasa);
 }
 
 function getGroupId(b) {
@@ -590,7 +616,7 @@ async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = nul
 async function kirimRagu(target, dari, nama, pesan, opsi = {}) {
   if (opsi.namaBeda) {
     // Ke grup/chat pribadi: isi pesan asli TIDAK ditampilkan.
-    await kirimFonnte(target, notifikasiRagu(dari, nama, pesan, { ...opsi, tampilkanPesan: false }));
+    await kirimBalasanWali(target, notifikasiRagu(dari, nama, pesan, { ...opsi, tampilkanPesan: false }), opsi.bahasa);
   } else {
     await notifikasiKeKepala(dari, nama, pesan, 'ragu', null, opsi);
   }
@@ -715,7 +741,8 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
     await kirimRagu(target, dari, nama, pesan, {
       namaDiPesan: hasilAI.nama_di_pesan || [],
       namaBeda: !!hasilAI.nama_beda,
-      statusDugaan: hasilAI.status_dugaan || ''
+      statusDugaan: hasilAI.status_dugaan || '',
+      bahasa: hasilAI.bahasa
     });
     return;
   }
@@ -736,7 +763,8 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
   await catatDanBalas({
     dari, pesan, target, anak: pilih, status,
     catatan: hasilAI.alasan || pesan,
-    waktu: hasilAI.waktu || []
+    waktu: hasilAI.waktu || [],
+    bahasa: hasilAI.bahasa
   });
 }
 
