@@ -33,17 +33,14 @@ ATURAN KATEGORI & STATUS:
 
 ATURAN WAKTU/TANGGAL:
 - Jika tidak disebut, anggap hari ini: waktu = [{ "tipe": "hari_ini", "jumlah_hari": 1 }].
-- "hari ini" -> tipe "hari_ini".
-- "besok" -> tipe "besok".
-- "lusa" -> tipe "lusa".
+- "hari ini" -> tipe "hari_ini", "besok" -> tipe "besok", "lusa" -> tipe "lusa".
 - Nama hari ("Senin", "Selasa", dll) -> tipe "nama_hari", nama_hari (huruf kecil: minggu/senin/selasa/rabu/kamis/jumat/sabtu).
 - "Senin depan" -> tipe "nama_hari", nama_hari = "senin", pekan_depan = true.
-- "tanggal 10" / "tgl 10" -> tipe "tanggal", tanggal = 10.
-- "10 Oktober" atau "10/10" -> tipe "tanggal", tanggal = 10, bulan = 10.
-- Jika tahun disebut, isi tahun.
+- Format surat formal/panjang ("*Tanggal : 02 Oktober 2026*", "10 Oktober", "10/10") -> tipe "tanggal". Abaikan semua simbol WhatsApp (*, _, ~). 
+- Ekstrak tanggal, bulan, dan tahun menjadi ANGKA murni (integer). Contoh: "02 Oktober 2026" menjadi tanggal = 2, bulan = 10, tahun = 2026. Jangan gunakan string "02".
 - Durasi: "selama 3 hari mulai besok" -> tipe "besok", jumlah_hari = 3. "3 hari mulai Senin" -> tipe "nama_hari", nama_hari = "senin", jumlah_hari = 3.
 - "besok dan lusa" -> keluarkan dua entri waktu: besok dan lusa.
-- Waktu masa depan valid dan harus diproses (jangan diubah menjadi ragu hanya karena di masa depan). Waktu lampau (seperti "kemarin") jadikan ragu karena absensi lampau tidak otomatis dicatat.
+- Waktu masa depan valid dan harus diproses (jangan diubah menjadi ragu hanya karena di masa depan). Waktu lampau (seperti "kemarin") jadikan ragu.
 
 ATURAN PENCOCOKAN NAMA (daftar_nama):
 - Untuk SETIAP anak yang disebut di pesan, buat 1 entri: nama (teks persis di pesan) dan siswa_id (id dari anak_wali, atau "" jika tidak ada/tidak cocok).
