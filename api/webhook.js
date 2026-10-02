@@ -101,7 +101,6 @@ function notifikasiAIGagal(pengirim, namaAnak, pesan, error) {
     '',
     `👤 *Pengirim:* ${pengirim || '-'}`,
     `👧 *Nama anak:* *${namaAnak || 'Belum berhasil diidentifikasi'}*`,
-    `💬 *Pesan:* "${String(pesan || '').slice(0, 1000)}"`,
     '',
     '⚠️ Absensi belum diubah secara otomatis. Mohon dilakukan pengecekan dan pencatatan secara manual jika diperlukan. 🙏',
     '',
@@ -112,7 +111,7 @@ function notifikasiAIGagal(pengirim, namaAnak, pesan, error) {
 }
 
 function daftarNama(list) {
-  const n = list.map(s => s.nama_panggilan || s.nama).filter(Boolean);
+  const n = list.map(s => s.nama || s.nama_panggilan).filter(Boolean);
   return n.length > 1 ? n.slice(0, -1).join(', ') + ' dan ' + n[n.length - 1] : (n[0] || '');
 }
 
@@ -293,7 +292,7 @@ async function proses(b) {
     // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
     console.error('AI error:', e);
     await catatPesan(dari, pesan, 'Gemini error - belum dianalisis, perlu pengecekan manual', true).catch(() => {});
-    const nama = anak.length === 1 ? (anak[0].nama_panggilan || anak[0].nama) : 'Belum berhasil diidentifikasi';
+    const nama = anak.length === 1 ? (anak[0].nama || anak[0].nama_panggilan) : 'Belum berhasil diidentifikasi';
     await notifikasiKeKepala(dari, nama, pesan, 'ai_error', e).catch(err => console.error('Gagal notifikasi AI error:', err));
     return;
   }
