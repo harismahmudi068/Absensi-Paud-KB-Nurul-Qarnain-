@@ -5,6 +5,7 @@
 // Variabel Vercel yang dibutuhkan:
 // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, FONNTE_TOKEN, WEBHOOK_SECRET
 
+const crypto = require('crypto');
 const { analisisPesan } = require('./AI');
 
 // ============================================================
@@ -12,6 +13,21 @@ const { analisisPesan } = require('./AI');
 // ============================================================
 const PAUD_GROUP_ID = '120363410620341838@g.us';
 const KEPALA_SEKOLAH_NUMBER = '6285117441486';
+
+// Libur mingguan dibaca dari tabel Supabase `libur_mingguan`, dan libur tanggal tertentu
+// dari tabel `libur_tanggal`. Daftar di bawah HANYA cadangan jika tabel libur_mingguan
+// tidak terbaca (0 = Minggu, 6 = Sabtu).
+const HARI_LIBUR_MINGGUAN_CADANGAN = [0, 6];
+
+// Sakit otomatis dicatat selama sekian hari sekolah aktif.
+const HARI_SAKIT_OTOMATIS = 3;
+
+// Pesan yang sama dari nomor yang sama dalam rentang ini diabaikan.
+const JENDELA_DUPLIKAT_MENIT = 5;
+
+// Izin ke depan hanya diterima sampai sekian hari dari hari ini, maksimal sekian hari berurutan.
+const BATAS_HARI_KE_DEPAN = 60;
+const BATAS_JUMLAH_HARI_IZIN = 14;
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -54,19 +70,59 @@ async function kirimFonnte(target, teks) {
 function salam() { return 'Assalamu’alaikum warahmatullahi wabarakatuh.'; }
 function penutup() { return 'Wassalamu’alaikum warahmatullahi wabarakatuh.'; }
 
-function balasanSakit(nama) {
-  return [salam(), '', `Baik, Bunda. Laporan bahwa *${nama}* hari ini sakit sudah kami terima dan telah dicatat. 🤒`, '', `Semoga *${nama}* segera diberikan kesembuhan, kesehatan, dan kekuatan, serta dapat kembali beraktivitas bersama teman-teman di sekolah. 🌷`, '', penutup()].join('\n');
+function daftarTanggal(list) {
+  return list.map(d => `• *${formatTanggal(d)}*`).join('\n');
 }
 
-function balasanIzin(nama) {
-  return [salam(), '', `Baik, Bunda. Laporan izin untuk *${nama}* hari ini sudah kami terima dan telah dicatat. 📝`, '', `Semoga segala keperluan Bunda dan *${nama}* diberikan kelancaran, kemudahan, dan keberkahan. 🤲`, '', penutup()].join('\n');
+// Setiap balasan hanya punya SATU salam pembuka dan SATU salam penutup,
+// walaupun terdiri dari beberapa bagian (mis. dua anak dengan hasil berbeda).
+function bungkusBalasan(bagian) {
+  return [salam(), '', bagian.join('\n\n'), '', penutup()].join('\n');
 }
+
+function isiSakit(nama, tgl) {
+  const n = tgl.length;
+  return [
+    `Baik, Bunda. Laporan bahwa *${nama}* hari ini sakit sudah kami terima dan telah dicatat. 🤒`, '',
+    `Semoga *${nama}* segera diberikan kesembuhan, kesehatan, dan kekuatan, serta dapat kembali beraktivitas bersama teman-teman di sekolah. 🌷`, '',
+    `📌 *Catatan:* *${nama}* kini tercatat sakit selama ${n} hari sekolah:`,
+    daftarTanggal(tgl), '',
+    `Jika dalam ${n} hari tersebut *${nama}* belum sembuh, mohon Bunda mengirimkan laporan sakit kembali. Jika *${nama}* sembuh sebelum ${n} hari dan masuk sekolah, status sakit akan otomatis diganti menjadi hadir, jadi Bunda tidak perlu khawatir. 😊`
+  ].join('\n');
+}
+
+function isiIzin(nama, tgl, tidakAktif = []) {
+  const T = tanggal();
+  const kalimat = tgl.length === 1
+    ? `Baik, Bunda. Laporan izin untuk *${nama}* pada hari *${formatTanggal(tgl[0])}*${tgl[0] === T ? ' (hari ini)' : ''} sudah kami terima dan telah dicatat. 📝`
+    : `Baik, Bunda. Laporan izin untuk *${nama}* pada hari berikut sudah kami terima dan telah dicatat: 📝\n${daftarTanggal(tgl)}`;
+  const baris = [kalimat];
+  if (tidakAktif.length) {
+    baris.push('', `ℹ️ *Catatan:* ${tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak dicatat.`);
+  }
+  baris.push('', `Semoga segala keperluan Bunda dan *${nama}* diberikan kelancaran, kemudahan, dan keberkahan. 🤲`);
+  return baris.join('\n');
+}
+
+function isiSudahHadir(nama) {
+  return `⚠️ *${nama}* sudah tercatat hadir di sekolah, jadi data tidak diubah. Guru akan mengecek.`;
+}
+
+function isiBukanHariSekolah(tidakAktif) {
+  return `Baik, Bunda. Pesan sudah kami terima. Namun ${tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak perlu dicatat izin. 🙏`;
+}
+
+function balasanSakit(nama, tgl) { return bungkusBalasan([isiSakit(nama, tgl)]); }
+function balasanIzin(nama, tgl, tidakAktif = []) { return bungkusBalasan([isiIzin(nama, tgl, tidakAktif)]); }
+function balasanBukanHariSekolah(tidakAktif) { return bungkusBalasan([isiBukanHariSekolah(tidakAktif)]); }
 
 function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
-  const { namaDiPesan = [], namaBeda = false, statusDugaan = '', tampilkanPesan = true } = opsi;
+  const { namaDiPesan = [], namaBeda = false, statusDugaan = '', tampilkanPesan = true, alasanRagu = '' } = opsi;
   const intro = namaBeda
     ? 'Sistem menginformasikan bahwa nama anak yang tertulis di pesan *berbeda* dengan anak yang terdaftar di nomor pengirim.'
-    : 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi belum dapat memastikan maksudnya.';
+    : alasanRagu === 'waktu'
+      ? 'Sistem menerima laporan izin/sakit, tetapi tanggal atau waktu yang dimaksud belum jelas atau tidak dapat dihitung secara otomatis.'
+      : 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi belum dapat memastikan maksudnya.';
   const baris = [
     salam(), '',
     // Judul hanya untuk notifikasi ke kepala sekolah; versi nama beda (grup/pribadi) tanpa judul.
@@ -119,52 +175,319 @@ function tanggal() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
 }
 
+// ============================================================
+// HITUNG TANGGAL & HARI SEKOLAH
+// ============================================================
+const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+const INDEKS_HARI = { minggu: 0, senin: 1, selasa: 2, rabu: 3, kamis: 4, jumat: 5, sabtu: 6 };
+
+function isoKeUtc(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+function tambahHari(iso, n) {
+  const dt = isoKeUtc(iso);
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+function indeksHari(iso) { return isoKeUtc(iso).getUTCDay(); }
+function formatTanggal(iso) {
+  const dt = isoKeUtc(iso);
+  return `${NAMA_HARI[dt.getUTCDay()]}, ${dt.getUTCDate()} ${NAMA_BULAN[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`;
+}
+function tanggalValid(y, m, d) {
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
+    ? dt.toISOString().slice(0, 10)
+    : null;
+}
+// kelasId opsional: libur_tanggal dengan kelas_id tertentu hanya berlaku untuk kelas itu;
+// kelas_id kosong (null) berlaku untuk semua kelas.
+function hariSekolah(iso, libur, kelasId = null) {
+  if (libur.mingguan.has(indeksHari(iso))) return false;
+  if (libur.tanggalUmum.has(iso)) return false;
+  if (kelasId !== null && kelasId !== undefined) {
+    const khusus = libur.tanggalKelas.get(String(kelasId));
+    if (khusus && khusus.has(iso)) return false;
+  }
+  return true;
+}
+
+// ---- Pembacaan tabel libur (toleran terhadap nama kolom) ----
+const HARI_DARI_NAMA = {
+  minggu: 0, ahad: 0, sunday: 0, sun: 0,
+  senin: 1, monday: 1, mon: 1,
+  selasa: 2, tuesday: 2, tue: 2,
+  rabu: 3, wednesday: 3, wed: 3,
+  kamis: 4, thursday: 4, thu: 4,
+  jumat: 5, "jum'at": 5, jumaat: 5, friday: 5, fri: 5,
+  sabtu: 6, saturday: 6, sat: 6
+};
+const KOLOM_ABAI = /(^id$|created|updated|dibuat|diubah|keterangan|catatan|nama|deskripsi|alasan|note)/i;
+
+function barisNonaktif(r) {
+  return ['aktif', 'is_active', 'active', 'berlaku'].some(k => r[k] === false || r[k] === 0 || r[k] === 'false');
+}
+
+// Mengubah baris tabel libur_mingguan menjadi himpunan indeks hari JS (0=Minggu ... 6=Sabtu).
+function parseLiburMingguan(rows) {
+  const nilai = [];
+  for (const r of rows) {
+    if (barisNonaktif(r)) continue;
+    for (const [k, v] of Object.entries(r)) {
+      if (KOLOM_ABAI.test(k) || v === null || v === undefined || typeof v === 'boolean') continue;
+      const t = String(v).trim().toLowerCase();
+      if (t in HARI_DARI_NAMA) { nilai.push({ hari: HARI_DARI_NAMA[t], nama: true }); break; }
+      if (/^\d+$/.test(t) && Number(t) <= 7) { nilai.push({ angka: Number(t) }); break; }
+    }
+  }
+  const angka = nilai.filter(n => n.angka !== undefined).map(n => n.angka);
+  // Angka 7 = format ISO (1=Senin..7=Minggu); angka 0 = format JS (0=Minggu..6=Sabtu).
+  const iso = angka.includes(7) && !angka.includes(0);
+  const hasil = new Set();
+  for (const n of nilai) {
+    if (n.nama) hasil.add(n.hari);
+    else hasil.add(iso ? n.angka % 7 : n.angka);
+  }
+  return hasil;
+}
+
+// Mengubah baris tabel libur_tanggal (kolom: mulai, sampai, kelas_id, keterangan) menjadi:
+//   umum  : tanggal libur untuk semua kelas (kelas_id kosong)
+//   kelas : Map kelas_id -> tanggal libur khusus kelas itu
+// `sampai` boleh kosong (libur satu hari).
+function parseLiburTanggal(rows, dari, sampai) {
+  const umum = new Set();
+  const kelas = new Map();
+  for (const r of rows) {
+    if (barisNonaktif(r)) continue;
+    const ambilTgl = v => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null);
+    let awal = ambilTgl(r.mulai);
+    let akhir = ambilTgl(r.sampai) || awal;
+    if (!awal) {
+      // Cadangan jika nama kolom berbeda: pakai semua kolom bertanggal pada baris itu.
+      const tgl = Object.entries(r)
+        .filter(([k]) => !KOLOM_ABAI.test(k))
+        .map(([, v]) => ambilTgl(v)).filter(Boolean).sort();
+      if (!tgl.length) continue;
+      awal = tgl[0]; akhir = tgl[tgl.length - 1];
+    }
+    if (akhir < awal) akhir = awal;
+
+    const tujuan = (r.kelas_id === null || r.kelas_id === undefined || r.kelas_id === '')
+      ? umum
+      : (kelas.get(String(r.kelas_id)) || kelas.set(String(r.kelas_id), new Set()).get(String(r.kelas_id)));
+
+    let d = awal < dari ? dari : awal;
+    for (let i = 0; i < 400 && d <= akhir && d <= sampai; i++, d = tambahHari(d, 1)) tujuan.add(d);
+  }
+  return { umum, kelas };
+}
+
+// Libur sekolah: tabel `libur_mingguan` (kolom hari: 0=Minggu ... 6=Sabtu) dan
+// `libur_tanggal` (mulai, sampai, kelas_id, keterangan).
+async function ambilLibur(dari, sampai) {
+  let mingguan = new Set(HARI_LIBUR_MINGGUAN_CADANGAN);
+  let tanggalLibur = { umum: new Set(), kelas: new Map() };
+
+  try {
+    const rows = await sb('libur_mingguan?select=*');
+    if (Array.isArray(rows) && rows.length === 0) {
+      mingguan = new Set(); // tabel terbaca dan kosong: tidak ada libur mingguan
+    } else {
+      const hasil = parseLiburMingguan(rows || []);
+      if (hasil.size) mingguan = hasil;
+      else console.error('Isi libur_mingguan tidak dikenali, memakai cadangan Sabtu-Minggu');
+    }
+  } catch (e) {
+    console.error('Tabel libur_mingguan tidak terbaca, memakai cadangan Sabtu-Minggu:', e.message);
+  }
+
+  try {
+    const rows = await sb('libur_tanggal?select=*');
+    tanggalLibur = parseLiburTanggal(rows || [], dari, sampai);
+  } catch (e) {
+    console.error('Tabel libur_tanggal tidak terbaca, libur tanggal diabaikan:', e.message);
+  }
+
+  return { mingguan, tanggalUmum: tanggalLibur.umum, tanggalKelas: tanggalLibur.kelas };
+}
+
+// Mengubah penanda waktu dari AI menjadi tanggal ISO. Mengembalikan null jika tidak bisa dihitung.
+function hitungTanggal(w, T) {
+  const tipe = w?.tipe;
+  let hasil = null;
+
+  if (tipe === 'hari_ini') hasil = T;
+  else if (tipe === 'besok') hasil = tambahHari(T, 1);
+  else if (tipe === 'lusa') hasil = tambahHari(T, 2);
+  else if (tipe === 'nama_hari') {
+    const target = INDEKS_HARI[w.nama_hari];
+    if (target === undefined) return null;
+    const sekarang = indeksHari(T);
+    if (w.pekan_depan) {
+      // Senin pekan depan + selisih hari dalam pekan (Senin = 0 ... Minggu = 6)
+      let keSenin = (8 - sekarang) % 7;
+      if (keSenin === 0) keSenin = 7;
+      hasil = tambahHari(T, keSenin + ((target + 6) % 7));
+    } else {
+      let selisih = (target - sekarang + 7) % 7;
+      if (selisih === 0) selisih = 7; // nama hari yang sama dengan hari ini dianggap pekan depan
+      hasil = tambahHari(T, selisih);
+    }
+  } else if (tipe === 'tanggal') {
+    const d = Number(w.tanggal);
+    if (!Number.isInteger(d) || d < 1 || d > 31) return null;
+    const [Y, M, D] = T.split('-').map(Number);
+    if (w.bulan) {
+      let y = w.tahun || Y;
+      hasil = tanggalValid(y, w.bulan, d);
+      if (hasil && hasil < T && !w.tahun) hasil = tanggalValid(y + 1, w.bulan, d);
+    } else {
+      hasil = d >= D ? tanggalValid(Y, M, d) : tanggalValid(M === 12 ? Y + 1 : Y, M === 12 ? 1 : M + 1, d);
+    }
+  } else {
+    return null; // lampau / tidak_jelas
+  }
+
+  if (!hasil || hasil < T || hasil > tambahHari(T, BATAS_HARI_KE_DEPAN)) return null;
+  return hasil;
+}
+
+// Menyusun tanggal yang akan dicatat. Hasilnya `untuk(kelasId)` karena libur_tanggal bisa khusus per kelas.
+// - sakit : HARI_SAKIT_OTOMATIS hari sekolah aktif mulai hari ini (hanya jika pesan bicara hari ini).
+// - izin  : sesuai tanggal/hari yang disebut (tanpa penanda waktu = hari ini).
+async function buatRencana(status, waktu) {
+  const T = tanggal();
+  const entri = Array.isArray(waktu) ? waktu : [];
+  const libur = await ambilLibur(T, tambahHari(T, BATAS_HARI_KE_DEPAN + BATAS_JUMLAH_HARI_IZIN + 15));
+
+  if (status === 'sakit') {
+    if (entri.some(w => w.tipe !== 'hari_ini')) {
+      return { ok: false, alasan: 'sakit untuk waktu selain hari ini' };
+    }
+    return {
+      ok: true,
+      untuk: kelasId => {
+        const tanggalSakit = [];
+        let d = T;
+        for (let i = 0; i < 40 && tanggalSakit.length < HARI_SAKIT_OTOMATIS; i++, d = tambahHari(d, 1)) {
+          if (hariSekolah(d, libur, kelasId)) tanggalSakit.push(d);
+        }
+        return { tanggal: tanggalSakit, tidakAktif: [] };
+      }
+    };
+  }
+
+  const sumber = entri.length ? entri : [{ tipe: 'hari_ini', jumlah_hari: 1 }];
+  const semua = new Set();
+  for (const w of sumber) {
+    const jumlah = Math.max(1, Number(w.jumlah_hari) || 1);
+    if (jumlah > BATAS_JUMLAH_HARI_IZIN) return { ok: false, alasan: 'jumlah hari terlalu panjang' };
+    const mulai = hitungTanggal(w, T);
+    if (!mulai) return { ok: false, alasan: `waktu tidak dapat dihitung (${w.tipe})` };
+    for (let i = 0; i < jumlah; i++) semua.add(tambahHari(mulai, i));
+  }
+
+  const urut = [...semua].sort();
+  return {
+    ok: true,
+    untuk: kelasId => ({
+      tanggal: urut.filter(d => hariSekolah(d, libur, kelasId)),
+      tidakAktif: urut.filter(d => !hariSekolah(d, libur, kelasId))
+    })
+  };
+}
+
 async function catatPesan(dari, isi, hasil, cek) {
   await sb('pesan_masuk', { method: 'POST', body: { dari_nomor: dari, isi, hasil, perlu_dicek: cek }, prefer: 'return=minimal' });
 }
 
-async function simpan(dari, pesan, anak, status, catatan) {
-  const T = tanggal();
-  const ids = anak.map(s => s.id).join(',');
-  const ada = await sb(`absensi?tanggal=eq.${T}&siswa_id=in.(${ids})&select=siswa_id,status,jam_datang`);
-  const sudahHadir = anak.filter(s => ada.some(a => a.siswa_id === s.id && a.status === 'hadir'));
-  const ubah = anak.filter(s => !sudahHadir.includes(s));
+async function simpan(dari, pesan, anak, status, catatan, rencana) {
+  // Tanggal dihitung per anak, karena libur_tanggal bisa khusus kelas tertentu.
+  const per = anak.map(s => ({ s, ...rencana.untuk(s.kelas_id) }));
+  const aktif = per.filter(p => p.tanggal.length);
+  const liburSaja = per.filter(p => !p.tanggal.length);
 
-  if (ubah.length) {
-    const rows = ubah.map(s => ({
-      siswa_id: s.id, tanggal: T, status, cara: 'whatsapp', jam_datang: null,
-      catatan: (catatan || '').slice(0, 200), diubah: new Date().toISOString()
-    }));
-    await sb('absensi?on_conflict=siswa_id,tanggal', { method: 'POST', body: rows, prefer: 'resolution=merge-duplicates,return=minimal' });
+  const bagian = [];
+  const sudahHadir = [];
+  const rows = [];
+  const kelompok = new Map();
+  const diubah = new Date().toISOString();
+  const catatanDb = status === 'sakit'
+    ? `${(catatan || '').slice(0, 150)} | sakit otomatis ${HARI_SAKIT_OTOMATIS} hari sekolah`
+    : (catatan || '').slice(0, 200);
+
+  if (aktif.length) {
+    const semuaTgl = [...new Set(aktif.flatMap(p => p.tanggal))];
+    const ids = aktif.map(p => p.s.id).join(',');
+    const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&select=siswa_id,tanggal,status`);
+
+    for (const p of aktif) {
+      const hadirDi = new Set(ada.filter(a => a.siswa_id === p.s.id && a.status === 'hadir').map(a => a.tanggal));
+      let tulis = p.tanggal.filter(d => !hadirDi.has(d));
+      if (status === 'sakit' && hadirDi.size) tulis = []; // sudah hadir: sakit tidak dicatat
+      if (!tulis.length) { sudahHadir.push(p.s); continue; }
+
+      tulis.forEach(d => rows.push({
+        siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
+        catatan: catatanDb, diubah
+      }));
+      const k = `${tulis.join(',')}|${p.tidakAktif.join(',')}`;
+      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif: p.tidakAktif });
+      kelompok.get(k).anak.push(p.s);
+    }
+
+    if (rows.length) {
+      await sb('absensi?on_conflict=siswa_id,tanggal', { method: 'POST', body: rows, prefer: 'resolution=merge-duplicates,return=minimal' });
+    }
   }
 
+  const ubah = [...kelompok.values()].flatMap(g => g.anak);
+  const semuaDicatat = [...new Set(rows.map(r => r.tanggal))].sort();
   await catatPesan(
     dari,
     pesan,
-    `${status}: ${daftarNama(ubah.length ? ubah : sudahHadir)}${sudahHadir.length ? ' (sebagian sudah hadir)' : ''}`,
+    (ubah.length || sudahHadir.length
+      ? `${status}: ${daftarNama(ubah.length ? ubah : sudahHadir)} [${semuaDicatat.join(', ')}]${sudahHadir.length ? ' (sebagian sudah hadir)' : ''}`
+      : `${status}: ${daftarNama(anak)} - tanggal bukan hari sekolah`).slice(0, 300),
     sudahHadir.length > 0
   );
 
-  const namaBerubah = daftarNama(ubah);
+  for (const g of kelompok.values()) {
+    const nm = daftarNama(g.anak);
+    bagian.push(status === 'sakit' ? isiSakit(nm, g.tanggal) : isiIzin(nm, g.tanggal, g.tidakAktif));
+  }
+
+  // Anak yang tanggal izinnya jatuh seluruhnya pada hari libur.
+  const liburKelompok = new Map();
+  for (const p of liburSaja) {
+    const k = p.tidakAktif.join(',');
+    if (!liburKelompok.has(k)) liburKelompok.set(k, { anak: [], tidakAktif: p.tidakAktif });
+    liburKelompok.get(k).anak.push(p.s);
+  }
+  for (const g of liburKelompok.values()) {
+    bagian.push(`Baik, Bunda. Pesan untuk *${daftarNama(g.anak)}* sudah kami terima. Namun ${g.tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak perlu dicatat izin. 🙏`);
+  }
+
   const namaHadir = daftarNama(sudahHadir);
-  let balasan = '';
+  if (namaHadir) bagian.push(isiSudahHadir(namaHadir));
 
-  if (namaBerubah) {
-    balasan = status === 'sakit' ? balasanSakit(namaBerubah) : balasanIzin(namaBerubah);
+  // Satu salam pembuka dan satu salam penutup untuk seluruh balasan.
+  return { balasan: bungkusBalasan(bagian) };
+}
+
+// Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
+async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu }) {
+  const rencana = await buatRencana(status, waktu);
+  if (!rencana.ok) {
+    await catatPesan(dari, pesan, `Ragu: ${rencana.alasan}`.slice(0, 300), true);
+    await kirimRagu(target, dari, daftarNama(anak), pesan, { alasanRagu: 'waktu' });
+    return;
   }
-
-  if (namaHadir) {
-    const tambahan = [
-      salam(),
-      '',
-      `⚠️ *${namaHadir}* sudah tercatat hadir di sekolah, jadi data tidak diubah. Guru akan mengecek.`,
-      '',
-      penutup()
-    ].join('\n');
-    balasan = balasan ? `${balasan}\n\n${tambahan}` : tambahan;
-  }
-
-  return { balasan };
+  const hasil = await simpan(dari, pesan, anak, status, catatan, rencana);
+  if (hasil.balasan) await kirimFonnte(target, hasil.balasan);
 }
 
 function getGroupId(b) {
@@ -186,8 +509,23 @@ function getTargetBalasan(b) {
   return groupId || getPengirim(b);
 }
 
+// kelas_id anak dibutuhkan agar libur_tanggal khusus kelas bisa diterapkan.
+// Jika kolom kelas_id tidak ada di tabel siswa, sistem tetap jalan (libur khusus kelas diabaikan).
+let SISWA_PUNYA_KELAS_ID = null;
+
 async function cariAnak(dari) {
-  const wali = await sb(`wali?no_wa=eq.${encodeURIComponent(dari)}&select=id,no_wa,siswa_wali(siswa(id,nama,nama_panggilan,aktif))`);
+  const ambil = async kolom => sb(`wali?no_wa=eq.${encodeURIComponent(dari)}&select=id,no_wa,siswa_wali(siswa(${kolom}))`);
+  let wali;
+  if (SISWA_PUNYA_KELAS_ID !== false) {
+    try {
+      wali = await ambil('id,nama,nama_panggilan,aktif,kelas_id');
+      SISWA_PUNYA_KELAS_ID = true;
+    } catch (e) {
+      console.error('Kolom siswa.kelas_id tidak terbaca, libur khusus kelas diabaikan:', e.message);
+      SISWA_PUNYA_KELAS_ID = false;
+    }
+  }
+  if (!wali) wali = await ambil('id,nama,nama_panggilan,aktif');
   return ((wali[0] && wali[0].siswa_wali) || [])
     .map(x => x.siswa)
     .filter(s => s && s.aktif)
@@ -207,8 +545,13 @@ const KONTEKS_RUMIT = /\b(kalau|jika|seandainya|tapi|namun|sedangkan|padahal|kar
 // karena nama anak di pesan perlu dibandingkan dengan anak yang terdaftar.
 const ADA_LABEL_NAMA = /\bnama\s*(lengkap|anak|ananda|siswa)?\s*[:=]/i;
 
+// Tanggal, nama hari, atau durasi ("tanggal 10", "hari Rabu", "3 hari", "sampai Jumat")
+// harus dihitung lewat AI + hitung tanggal, bukan dicatat sebagai hari ini.
+const ADA_PENANDA_WAKTU = /\b(tanggal|tgl)\b|\b(senin|selasa|rabu|kamis|jumat|jum'at|sabtu|minggu|pekan)\b|\b\d{1,2}\s*(jan|feb|mar|apr|mei|jun|jul|agu|sep|okt|nov|des)[a-z]*\b|\b\d{1,2}\s*[\/-]\s*\d{1,2}\b|\b\d+\s*(hari|hr)\b|\b(sampai|s\/d|selama|mulai)\b/i;
+
 function deteksiCepat(t) {
   if (ADA_LABEL_NAMA.test(t) || t.length > 300) return null;
+  if (ADA_PENANDA_WAKTU.test(t)) return null;
   if (KONTEKS_TIDAK_HARI_INI.test(t)) return null;
   if (PENYANGKALAN.test(t)) return null;
   if (KONTEKS_RUMIT.test(t)) {
@@ -253,6 +596,48 @@ async function kirimRagu(target, dari, nama, pesan, opsi = {}) {
   }
 }
 
+// ============================================================
+// ANTI-DUPLIKAT
+// Pesan yang sama (nomor pengirim + isi) dalam JENDELA_DUPLIKAT_MENIT menit diabaikan.
+// Membutuhkan tabel Supabase: pesan_dedup(kunci text primary key, dibuat timestamptz default now()).
+// Jika tabel belum ada, sistem tetap berjalan tanpa anti-duplikat (dan mencatat peringatan di log).
+// ============================================================
+function kunciDuplikat(dari, pesan) {
+  const isi = String(pesan || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return crypto.createHash('sha256').update(`${dari}|${isi}`).digest('hex');
+}
+
+// true = pesan baru (boleh diproses), false = duplikat (abaikan)
+async function klaimPesan(kunci) {
+  try {
+    try {
+      await sb('pesan_dedup', { method: 'POST', body: { kunci }, prefer: 'return=minimal' });
+    } catch (e) {
+      if (!String(e.message).startsWith('409')) throw e;
+      // Kunci sudah ada: boleh diambil alih hanya jika sudah lewat dari jendela waktu.
+      const batas = new Date(Date.now() - JENDELA_DUPLIKAT_MENIT * 60000).toISOString();
+      const diambil = await sb(`pesan_dedup?kunci=eq.${kunci}&dibuat=lt.${encodeURIComponent(batas)}`, {
+        method: 'PATCH', body: { dibuat: new Date().toISOString() }, prefer: 'return=representation'
+      });
+      return Array.isArray(diambil) && diambil.length > 0;
+    }
+    // Bersihkan data lama sesekali agar tabel tidak membesar.
+    if (Math.random() < 0.05) {
+      const lama = new Date(Date.now() - 24 * 3600000).toISOString();
+      await sb(`pesan_dedup?dibuat=lt.${encodeURIComponent(lama)}`, { method: 'DELETE' }).catch(() => {});
+    }
+    return true;
+  } catch (e) {
+    console.error('Anti-duplikat tidak aktif (cek tabel pesan_dedup):', e.message);
+    return true;
+  }
+}
+
+// Dipakai saat pemrosesan gagal, agar kiriman ulang dari Fonnte/wali tidak ikut terblokir.
+async function lepasKlaim(kunci) {
+  try { await sb(`pesan_dedup?kunci=eq.${kunci}`, { method: 'DELETE' }); } catch (_) {}
+}
+
 async function proses(b) {
   const pesan = String(b.message || b.text || '').trim();
   if (!pesan) return;
@@ -269,7 +654,23 @@ async function proses(b) {
   const anak = await cariAnak(dari);
   if (!anak.length) return;
 
-  // 3. Deteksi cepat hanya untuk kalimat yang cukup aman. SAKIT tetap menang atas IZIN.
+  // 3. Anti-duplikat: nomor + isi pesan sama dalam 5 menit -> diabaikan total.
+  const kunci = kunciDuplikat(dari, pesan);
+  if (!(await klaimPesan(kunci))) {
+    console.log('Pesan duplikat diabaikan');
+    return;
+  }
+
+  try {
+    await prosesPesan({ pesan, dari, target, anak, kunci });
+  } catch (e) {
+    await lepasKlaim(kunci);
+    throw e;
+  }
+}
+
+async function prosesPesan({ pesan, dari, target, anak, kunci }) {
+  // 4. Deteksi cepat hanya untuk kalimat yang cukup aman. SAKIT tetap menang atas IZIN.
   const cepat = deteksiCepat(pesan);
   if (cepat) {
     let pilih = [];
@@ -278,19 +679,19 @@ async function proses(b) {
     else pilih = cariAnakDariNama(pesan, anak);
 
     if (pilih.length) {
-      const hasil = await simpan(dari, pesan, pilih, cepat, pesan);
-      if (hasil.balasan) await kirimFonnte(target, hasil.balasan);
+      await catatDanBalas({ dari, pesan, target, anak: pilih, status: cepat, catatan: pesan, waktu: [] });
       return;
     }
   }
 
-  // 4. Bahasa bebas/ambigu masuk ke AI.js.
+  // 5. Bahasa bebas/ambigu masuk ke AI.js.
   let hasilAI;
   try {
     hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal() });
   } catch (e) {
     // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
     console.error('AI error:', e);
+    await lepasKlaim(kunci); // pesan yang dikirim ulang nanti tetap boleh diproses
     await catatPesan(dari, pesan, 'Gemini error - belum dianalisis, perlu pengecekan manual', true).catch(() => {});
     const nama = anak.length === 1 ? (anak[0].nama || anak[0].nama_panggilan) : 'Belum berhasil diidentifikasi';
     await notifikasiKeKepala(dari, nama, pesan, 'ai_error', e).catch(err => console.error('Gagal notifikasi AI error:', err));
@@ -319,7 +720,7 @@ async function proses(b) {
     return;
   }
 
-  // 5. AI yakin. Validasi siswa sekali lagi sebelum menyimpan.
+  // 6. AI yakin. Validasi siswa sekali lagi sebelum menyimpan.
   let pilih = (hasilAI.siswa_ids || [])
     .map(id => anak.find(s => String(s.id) === String(id)))
     .filter(Boolean);
@@ -332,8 +733,11 @@ async function proses(b) {
   }
 
   const status = hasilAI.status === 'sakit' ? 'sakit' : 'izin';
-  const hasil = await simpan(dari, pesan, pilih, status, hasilAI.alasan || pesan);
-  if (hasil.balasan) await kirimFonnte(target, hasil.balasan);
+  await catatDanBalas({
+    dari, pesan, target, anak: pilih, status,
+    catatan: hasilAI.alasan || pesan,
+    waktu: hasilAI.waktu || []
+  });
 }
 
 module.exports = async (req, res) => {
@@ -352,3 +756,6 @@ module.exports = async (req, res) => {
 
   return res.status(200).json({ ok: true });
 };
+
+// Dipakai oleh cek-libur.js untuk menguji pembacaan tabel libur (tidak memengaruhi webhook).
+module.exports._uji = { sb, ambilLibur, hariSekolah, formatTanggal, tanggal, tambahHari, indeksHari, NAMA_HARI };
