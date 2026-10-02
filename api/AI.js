@@ -21,6 +21,7 @@ TUGAS UTAMA:
 1. Tentukan kategori: "izin_sakit", "bukan_izin_sakit", atau "ragu".
 2. Tentukan status: "izin", "sakit", atau "tidak_ada".
 3. Identifikasi nama anak yang disebut di pesan dan waktu/tanggal absensinya.
+4. Tentukan bahasa yang dipakai pengirim pesan (field "bahasa").
 
 ATURAN KATEGORI & STATUS:
 1. Kategori hanya 3: "izin_sakit", "bukan_izin_sakit", "ragu".
@@ -38,6 +39,11 @@ ATURAN WAKTU/TANGGAL (SANGAT PENTING):
 
 ATURAN PENCOCOKAN NAMA (daftar_nama):
 - Buat 1 entri untuk setiap anak yang disebut: nama (teks persis di pesan) dan siswa_id (dari anak_wali, atau "").
+
+ATURAN BAHASA (bahasa):
+- Isi "bahasa" dengan nama bahasa asli yang dipakai pengirim pesan, ditulis dalam bahasa Indonesia (contoh: "Indonesia", "Inggris", "Mandarin", "Arab", "Jepang", "Jawa", "Madura").
+- Tulis nama bahasanya saja, tanpa tingkatan atau keterangan tambahan.
+- Jika pesan campuran, pilih bahasa yang paling dominan. Jika tidak jelas, tulis "Indonesia".
 
 JAWAB HANYA DENGAN JSON sesuai struktur skema.
 `;
@@ -226,7 +232,9 @@ function normalisasi(raw, anak) {
     nama_beda,
     alasan_ragu,
     alasan: typeof raw?.alasan === 'string' ? raw.alasan.trim() : '',
-    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0
+    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0,
+    // Nama bahasa ditulis apa adanya oleh AI (tanpa daftar kode). Kosong = Indonesia.
+    bahasa: String(raw?.bahasa || '').trim().slice(0, 40) || 'Indonesia'
   };
 }
 
@@ -286,9 +294,10 @@ async function analisisPesan({ pesan, anak, tanggalHariIni }) {
         }
       },
       alasan: { type: Type.STRING },
-      confidence: { type: Type.NUMBER }
+      confidence: { type: Type.NUMBER },
+      bahasa: { type: Type.STRING }
     },
-    required: ['kategori', 'status', 'siswa_ids', 'daftar_nama', 'waktu', 'alasan', 'confidence'],
+    required: ['kategori', 'status', 'siswa_ids', 'daftar_nama', 'waktu', 'alasan', 'confidence', 'bahasa'],
     additionalProperties: false
   };
 
