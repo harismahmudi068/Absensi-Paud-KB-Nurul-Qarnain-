@@ -106,14 +106,14 @@ function bungkusBalasan(bagian) {
   return [salam(), '', bagian.join('\n\n'), '', penutup()].join('\n');
 }
 
-function isiSakit(nama, tgl) {
+function isiSakit(nama, tgl, lanjut = null) {
   const n = tgl.length;
   return [
     `Baik, Bunda. Laporan bahwa *${nama}* hari ini sakit sudah kami terima dan telah dicatat. 🤒`, '',
     `Semoga *${nama}* segera diberikan kesembuhan, kesehatan, dan kekuatan, serta dapat kembali beraktivitas bersama teman-teman di sekolah. 🌷`, '',
     `📌 *Catatan:* *${nama}* kini tercatat sakit selama ${n} hari sekolah:`,
     daftarTanggal(tgl), '',
-    `Jika dalam ${n} hari tersebut *${nama}* belum sembuh, mohon Bunda mengirimkan laporan sakit kembali. Jika *${nama}* sembuh sebelum ${n} hari dan masuk sekolah, status sakit akan otomatis diganti menjadi hadir, jadi Bunda tidak perlu khawatir. 😊`
+    `Jika dalam ${n} hari tersebut *${nama}* belum sembuh, mohon Bunda mengirimkan laporan sakit kembali${lanjut ? ` pada (${formatTanggal(lanjut)})` : ''}. Jika *${nama}* sembuh sebelum ${n} hari dan masuk sekolah, status sakit akan otomatis diganti menjadi hadir, jadi Bunda tidak perlu khawatir. 😊`
   ].join('\n');
 }
 
@@ -138,7 +138,7 @@ function isiBukanHariSekolah(tidakAktif) {
   return `Baik, Bunda. Pesan sudah kami terima. Namun ${tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak perlu dicatat izin. 🙏`;
 }
 
-function balasanSakit(nama, tgl) { return bungkusBalasan([isiSakit(nama, tgl)]); }
+function balasanSakit(nama, tgl, lanjut = null) { return bungkusBalasan([isiSakit(nama, tgl, lanjut)]); }
 function balasanIzin(nama, tgl, tidakAktif = []) { return bungkusBalasan([isiIzin(nama, tgl, tidakAktif)]); }
 function balasanBukanHariSekolah(tidakAktif) { return bungkusBalasan([isiBukanHariSekolah(tidakAktif)]); }
 
@@ -385,6 +385,15 @@ function hitungTanggal(w, T, tanpaBatasDepan = false) {
   return hasil;
 }
 
+// Hari masuk sekolah pertama SETELAH tanggal `iso` (+1 hari; jika libur dilewati sampai ketemu hari masuk).
+function hariMasukBerikutnya(iso, libur, kelasId = null) {
+  let d = tambahHari(iso, 1);
+  for (let i = 0; i < 60; i++, d = tambahHari(d, 1)) {
+    if (hariSekolah(d, libur, kelasId)) return d;
+  }
+  return null;
+}
+
 function selisihHari(a, b) {
   return Math.round((isoKeUtc(b) - isoKeUtc(a)) / 86400000);
 }
@@ -421,7 +430,8 @@ async function buatRencana(status, waktu) {
         for (let i = 0; i < 40 && tanggalSakit.length < HARI_SAKIT_OTOMATIS; i++, d = tambahHari(d, 1)) {
           if (hariSekolah(d, libur, kelasId)) tanggalSakit.push(d);
         }
-        return { tanggal: tanggalSakit, tidakAktif: [] };
+        const terakhir = tanggalSakit[tanggalSakit.length - 1];
+        return { tanggal: tanggalSakit, tidakAktif: [], lanjut: terakhir ? hariMasukBerikutnya(terakhir, libur, kelasId) : null };
       }
     };
   }
@@ -488,8 +498,8 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
         siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
         catatan: catatanDb, diubah
       }));
-      const k = `${tulis.join(',')}|${p.tidakAktif.join(',')}`;
-      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif: p.tidakAktif });
+      const k = `${tulis.join(',')}|${p.tidakAktif.join(',')}|${p.lanjut || ''}`;
+      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif: p.tidakAktif, lanjut: p.lanjut || null });
       kelompok.get(k).anak.push(p.s);
     }
 
@@ -511,7 +521,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
 
   for (const g of kelompok.values()) {
     const nm = daftarNama(g.anak);
-    bagian.push(status === 'sakit' ? isiSakit(nm, g.tanggal) : isiIzin(nm, g.tanggal, g.tidakAktif));
+    bagian.push(status === 'sakit' ? isiSakit(nm, g.tanggal, g.lanjut) : isiIzin(nm, g.tanggal, g.tidakAktif));
   }
 
   // Anak yang tanggal izinnya jatuh seluruhnya pada hari libur.
