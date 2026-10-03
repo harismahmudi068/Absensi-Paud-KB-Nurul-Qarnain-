@@ -37,6 +37,17 @@ ATURAN WAKTU/TANGGAL (SANGAT PENTING):
 - Jika terpaksa menggunakan tipe "tanggal", pastikan ekstrak menjadi ANGKA murni (integer). Contoh "02" -> 2.
 - Jika waktu sama sekali tidak ditulis, biarkan array waktu KOSONG.
 
+ATURAN RENTANG & DURASI IZIN (SANGAT PENTING):
+- Jika pesan menyebut izin untuk BEBERAPA HARI BERURUTAN, buat TEPAT 1 entri waktu untuk seluruh rentang itu. Jangan dipecah per hari.
+- Jika hari/tanggal TERAKHIR disebut ("sampai/hingga hari Rabu", "sampai tanggal 8", "dari Senin sampai Kamis", "until Wednesday", "到星期三", "حتى الأربعاء", "nganti Rabu", atau padanannya di bahasa daerah apa pun): isi penanda hari PERTAMA seperti biasa (tipe, dst.), lalu isi field "sampai" dengan penanda hari TERAKHIR (format sama: tipe, nama_hari, pekan_depan, tanggal, bulan, tahun). Hari terakhir ikut dihitung. JANGAN menghitung sendiri jumlah harinya: isi jumlah_hari = 1, sistem yang akan menghitung rentangnya.
+- Jika yang disebut adalah JUMLAH hari ("3 hari", "seminggu" = 7): isi jumlah_hari dengan angka itu dan JANGAN isi "sampai".
+- Jika hari pertama tidak disebut ("izin sampai hari Rabu"), anggap mulai hari ini: tipe "hari_ini" dengan "sampai" = hari terakhir yang disebut.
+- Hari-hari terpisah yang tidak berurutan ("Senin dan Rabu") = beberapa entri terpisah tanpa "sampai".
+- Contoh: "Besok izin sampai hari Rabu" -> waktu: [{"tipe":"besok","jumlah_hari":1,"sampai":{"tipe":"nama_hari","nama_hari":"rabu"}}]
+- Contoh: "Izin tanggal 5 sampai 8 Oktober 2026" -> waktu: [{"tipe":"tanggal","tanggal":5,"bulan":10,"tahun":2026,"jumlah_hari":1,"sampai":{"tipe":"tanggal","tanggal":8,"bulan":10,"tahun":2026}}]
+- Contoh: "Izin dihari 8 dan 10 karena ada acara" -> waktu: [{"tipe":"tanggal","tanggal":8,"jumlah_hari":1},{"tipe":"tanggal","tanggal":10,"jumlah_hari":1}] (2 entri terpisah, tanpa "sampai", karena tidak berurutan)
+- Contoh: "Izin 3 hari mulai besok" -> waktu: [{"tipe":"besok","jumlah_hari":3}]
+
 ATURAN PENCOCOKAN NAMA (daftar_nama):
 - Buat 1 entri untuk setiap anak yang disebut: nama (teks persis di pesan) dan siswa_id (dari anak_wali, atau "").
 
@@ -120,6 +131,35 @@ function adaKemiripan(namaPesan, siswa) {
   );
 }
 
+// Merapikan 1 penanda waktu (hari pertama maupun "sampai"). Mengembalikan null jika tidak valid.
+function rapikanPenanda(w) {
+  const tipe = ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal'].includes(w?.tipe) ? w.tipe : null;
+  if (!tipe) return null;
+
+  const hasil = { tipe };
+
+  if (tipe === 'nama_hari') {
+    const hari = String(w?.nama_hari || '').trim().toLowerCase();
+    if (!['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'].includes(hari)) return null;
+    hasil.nama_hari = hari;
+    hasil.pekan_depan = w?.pekan_depan === true;
+  }
+
+  if (tipe === 'tanggal') {
+    const d = Number(w?.tanggal);
+    if (!Number.isInteger(d) || d < 1 || d > 31) return null;
+    hasil.tanggal = d;
+
+    const bulan = Number(w?.bulan);
+    if (Number.isInteger(bulan) && bulan >= 1 && bulan <= 12) hasil.bulan = bulan;
+
+    const tahun = Number(w?.tahun);
+    if (Number.isInteger(tahun) && tahun >= 2000 && tahun <= 2100) hasil.tahun = tahun;
+  }
+
+  return hasil;
+}
+
 function normalisasi(raw, anak) {
   const daftar = Array.isArray(anak) ? anak : [];
   let kategori = ['izin_sakit', 'bukan_izin_sakit', 'ragu'].includes(raw?.kategori) ? raw.kategori : 'ragu';
@@ -166,31 +206,18 @@ function normalisasi(raw, anak) {
 
   const waktu = (Array.isArray(raw?.waktu) ? raw.waktu : [])
     .map(w => {
-      const tipe = ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal'].includes(w?.tipe) ? w.tipe : null;
-      if (!tipe) return null;
+      const hasil = rapikanPenanda(w);
+      if (!hasil) return null;
 
-      const hasil = {
-        tipe,
-        jumlah_hari: Math.max(1, Number(w?.jumlah_hari) || 1)
-      };
+      hasil.jumlah_hari = Math.max(1, Number(w?.jumlah_hari) || 1);
 
-      if (tipe === 'nama_hari') {
-        const hari = String(w?.nama_hari || '').trim().toLowerCase();
-        if (!['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'].includes(hari)) return null;
-        hasil.nama_hari = hari;
-        hasil.pekan_depan = w?.pekan_depan === true;
-      }
-
-      if (tipe === 'tanggal') {
-        const d = Number(w?.tanggal);
-        if (!Number.isInteger(d) || d < 1 || d > 31) return null;
-        hasil.tanggal = d;
-
-        const bulan = Number(w?.bulan);
-        if (Number.isInteger(bulan) && bulan >= 1 && bulan <= 12) hasil.bulan = bulan;
-
-        const tahun = Number(w?.tahun);
-        if (Number.isInteger(tahun) && tahun >= 2000 && tahun <= 2100) hasil.tahun = tahun;
+      // Rentang "sampai hari X": penanda hari terakhir dirapikan sama seperti hari pertama.
+      // Jika AI mengisi "sampai" tetapi tidak valid, ditandai gagal agar Webhook tidak diam-diam
+      // mencatat 1 hari saja (hasilnya jatuh ke "ragu" dan diteruskan ke kepala sekolah).
+      if (w?.sampai) {
+        const akhir = rapikanPenanda(w.sampai);
+        if (akhir) hasil.sampai = akhir;
+        else hasil.sampai_gagal = true;
       }
 
       return hasil;
@@ -287,7 +314,20 @@ async function analisisPesan({ pesan, anak, tanggalHariIni }) {
             tanggal: { type: Type.INTEGER },
             bulan: { type: Type.INTEGER },
             tahun: { type: Type.INTEGER },
-            jumlah_hari: { type: Type.INTEGER }
+            jumlah_hari: { type: Type.INTEGER },
+            // Hari TERAKHIR dari rentang ("sampai hari Rabu"). Diisi hanya jika akhir rentang disebut.
+            sampai: {
+              type: Type.OBJECT,
+              properties: {
+                tipe: { type: Type.STRING, enum: ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal'] },
+                nama_hari: { type: Type.STRING },
+                pekan_depan: { type: Type.BOOLEAN },
+                tanggal: { type: Type.INTEGER },
+                bulan: { type: Type.INTEGER },
+                tahun: { type: Type.INTEGER }
+              },
+              required: ['tipe']
+            }
           },
           required: ['tipe', 'jumlah_hari'],
           additionalProperties: false
