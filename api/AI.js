@@ -11,7 +11,7 @@ const { GoogleGenAI, Type } = require('@google/genai');
 // KONFIGURASI AI — MUDAH DIUBAH
 // ============================================================
 // Jangan menulis API key langsung di kode. Isi di Vercel: Settings > Environment Variables > GEMINI_API_KEY
-const AI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
+// Kunci API dibaca per sekolah dan dikirim oleh Webhook lewat parameter kunciAi.
 const AI_MODEL = 'gemini-3.5-flash-lite';
 
 const SYSTEM_PROMPT = `
@@ -252,9 +252,10 @@ function buatErrorAI(error) {
   }
 }
 
-async function analisisPesan({ pesan, anak, tanggalHariIni }) {
+async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
+  const AI_API_KEY = String(kunciAi || '').trim();
   if (!AI_API_KEY) {
-    throw new Error('GEMINI_API_KEY belum diisi di Environment Variables Vercel');
+    throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
   }
 
   let ai;
