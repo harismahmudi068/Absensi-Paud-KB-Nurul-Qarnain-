@@ -12,7 +12,7 @@ const { GoogleGenAI } = require('@google/genai');
 // ============================================================
 // KONFIGURASI PENERJEMAH — MUDAH DIUBAH
 // ============================================================
-const AI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
+// Kunci API dibaca per sekolah dan dikirim oleh Webhook lewat parameter kunciAi.
 // Model dipisah dari AI.js agar bisa diganti ke model yang lebih kuat tanpa mengubah yang lain.
 const AI_MODEL_TERJEMAH = 'gemini-3.5-flash-lite';
 const BATAS_WAKTU_MS = 8000;
@@ -34,12 +34,13 @@ ATURAN:
 `;
 }
 
-async function terjemahkanBalasan({ teks, bahasa }) {
+async function terjemahkanBalasan({ teks, bahasa, kunciAi }) {
+  const AI_API_KEY = String(kunciAi || '').trim();
   const asli = String(teks || '');
   const tujuan = String(bahasa || '').trim();
   if (!asli.trim()) throw new Error('Teks yang akan diterjemahkan kosong');
   if (!tujuan) throw new Error('Bahasa tujuan kosong');
-  if (!AI_API_KEY) throw new Error('GEMINI_API_KEY belum diisi di Environment Variables Vercel');
+  if (!AI_API_KEY) throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
 
   const ai = new GoogleGenAI({ apiKey: AI_API_KEY });
 
