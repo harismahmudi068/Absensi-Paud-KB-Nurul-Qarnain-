@@ -28,7 +28,7 @@ const JENDELA_DUPLIKAT_MENIT = 5;
 
 // Izin ke depan hanya diterima sampai sekian hari dari hari ini, maksimal sekian hari berurutan.
 const BATAS_HARI_KE_DEPAN = 60;
-const BATAS_JUMLAH_HARI_IZIN = 14;
+const BATAS_JUMLAH_HARI_IZIN = 30; // izin lebih dari ini tidak dicatat otomatis; kepala sekolah diberi tahu
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -143,9 +143,11 @@ function balasanIzin(nama, tgl, tidakAktif = []) { return bungkusBalasan([isiIzi
 function balasanBukanHariSekolah(tidakAktif) { return bungkusBalasan([isiBukanHariSekolah(tidakAktif)]); }
 
 function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
-  const { namaDiPesan = [], namaBeda = false, statusDugaan = '', tampilkanPesan = true, alasanRagu = '' } = opsi;
+  const { namaDiPesan = [], namaBeda = false, statusDugaan = '', tampilkanPesan = true, alasanRagu = '', jumlahHari = 0 } = opsi;
   const intro = namaBeda
     ? 'Sistem menginformasikan bahwa nama anak yang tertulis di pesan *berbeda* dengan anak yang terdaftar di nomor pengirim.'
+    : alasanRagu === 'izin_panjang'
+      ? `Sistem menerima laporan izin yang *melebihi ${BATAS_JUMLAH_HARI_IZIN} hari*${jumlahHari ? ` (sekitar ${jumlahHari} hari)` : ''}, sehingga izin ini belum dicatat otomatis.`
     : alasanRagu === 'waktu'
       ? 'Sistem menerima laporan izin/sakit, tetapi tanggal atau waktu yang dimaksud belum jelas atau tidak dapat dihitung secara otomatis.'
       : 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi belum dapat memastikan maksudnya.';
@@ -165,7 +167,9 @@ function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
     '',
     namaBeda
       ? `Mohon perbaiki nama anak pada pesan sesuai data yang terdaftar: *${namaAnak || '-'}*. 🙏`
-      : 'Mohon dilakukan pengecekan secara manual. 🙏',
+      : alasanRagu === 'izin_panjang'
+        ? `📌 *Catatan:* Izin melebihi ${BATAS_JUMLAH_HARI_IZIN} hari. Mohon dikonfirmasi kepada wali murid dan dicatat secara manual. 🙏`
+        : 'Mohon dilakukan pengecekan secara manual. 🙏',
     '',
     penutup()
   );
@@ -341,7 +345,7 @@ async function ambilLibur(dari, sampai) {
 }
 
 // Mengubah penanda waktu dari AI menjadi tanggal ISO. Mengembalikan null jika tidak bisa dihitung.
-function hitungTanggal(w, T) {
+function hitungTanggal(w, T, tanpaBatasDepan = false) {
   const tipe = w?.tipe;
   let hasil = null;
 
@@ -377,8 +381,24 @@ function hitungTanggal(w, T) {
     return null; // lampau / tidak_jelas
   }
 
-  if (!hasil || hasil < T || hasil > tambahHari(T, BATAS_HARI_KE_DEPAN)) return null;
+  if (!hasil || hasil < T || (!tanpaBatasDepan && hasil > tambahHari(T, BATAS_HARI_KE_DEPAN))) return null;
   return hasil;
+}
+
+function selisihHari(a, b) {
+  return Math.round((isoKeUtc(b) - isoKeUtc(a)) / 86400000);
+}
+
+// Hari TERAKHIR sebuah rentang ("sampai hari Rabu"). Nama hari dihitung dari hari PERTAMA rentang
+// (bukan dari hari ini), dan hari yang sama dengan hari pertama dianggap 1 hari saja.
+function hitungAkhir(s, mulai, T) {
+  if (s?.tipe === 'nama_hari' && !s.pekan_depan) {
+    const target = INDEKS_HARI[s.nama_hari];
+    if (target === undefined) return null;
+    return tambahHari(mulai, (target - indeksHari(mulai) + 7) % 7);
+  }
+  // Hari terakhir boleh jauh ke depan: yang dibatasi adalah panjang rentang, bukan jaraknya dari hari ini.
+  return hitungTanggal(s, T, true);
 }
 
 // Menyusun tanggal yang akan dicatat. Hasilnya `untuk(kelasId)` karena libur_tanggal bisa khusus per kelas.
@@ -409,10 +429,18 @@ async function buatRencana(status, waktu) {
   const sumber = entri.length ? entri : [{ tipe: 'hari_ini', jumlah_hari: 1 }];
   const semua = new Set();
   for (const w of sumber) {
-    const jumlah = Math.max(1, Number(w.jumlah_hari) || 1);
-    if (jumlah > BATAS_JUMLAH_HARI_IZIN) return { ok: false, alasan: 'jumlah hari terlalu panjang' };
+    if (w.sampai_gagal) return { ok: false, alasan: 'tanggal akhir rentang tidak dapat dihitung' };
     const mulai = hitungTanggal(w, T);
     if (!mulai) return { ok: false, alasan: `waktu tidak dapat dihitung (${w.tipe})` };
+
+    let jumlah = Math.max(1, Number(w.jumlah_hari) || 1);
+    if (w.sampai) {
+      // Rentang "sampai hari X": jumlah hari dihitung sistem (hari terakhir ikut dihitung).
+      const akhir = hitungAkhir(w.sampai, mulai, T);
+      if (!akhir || akhir < mulai) return { ok: false, alasan: 'tanggal akhir rentang tidak valid' };
+      jumlah = selisihHari(mulai, akhir) + 1;
+    }
+    if (jumlah > BATAS_JUMLAH_HARI_IZIN) return { ok: false, alasan: 'jumlah hari terlalu panjang', izinPanjang: jumlah };
     for (let i = 0; i < jumlah; i++) semua.add(tambahHari(mulai, i));
   }
 
@@ -509,7 +537,9 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
   const rencana = await buatRencana(status, waktu);
   if (!rencana.ok) {
     await catatPesan(dari, pesan, `Ragu: ${rencana.alasan}`.slice(0, 300), true);
-    await kirimRagu(target, dari, daftarNama(anak), pesan, { alasanRagu: 'waktu' });
+    await kirimRagu(target, dari, daftarNama(anak), pesan, rencana.izinPanjang
+      ? { alasanRagu: 'izin_panjang', jumlahHari: rencana.izinPanjang }
+      : { alasanRagu: 'waktu' });
     return;
   }
   const hasil = await simpan(dari, pesan, anak, status, catatan, rencana);
