@@ -94,6 +94,19 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 <script>
 const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j4AB79X1wVZVLgdfcO0sAQ_EMFBq3KN';
 const db=supabase.createClient(URL_SB,KEY_SB);
+/* ---------- multi-sekolah: sekolah aktif + pembungkus tabel ---------- */
+let SEK=null,MEMB=[],PROFIL=null;
+const TENANT=new Set(['absensi','kelas','laporan_ortu','libur_mingguan','libur_tanggal','pengaturan','percakapan_tertunda','pesan_masuk','siswa','wali']);
+const _dbFrom=db.from.bind(db);
+db.from=t=>{const q=_dbFrom(t);if(!TENANT.has(t))return q;
+ const tambah=r=>Array.isArray(r)?r.map(x=>({...x,sekolah_id:SEK})):{...r,sekolah_id:SEK};
+ const sel=q.select.bind(q),ins=q.insert.bind(q),ups=q.upsert.bind(q),upd=q.update.bind(q),del=q.delete.bind(q);
+ q.select=(...a)=>sel(...a).eq('sekolah_id',SEK);
+ q.insert=(r,...a)=>ins(tambah(r),...a);
+ q.upsert=(r,o,...a)=>ups(tambah(r),o&&o.onConflict==='no_wa'?{...o,onConflict:'sekolah_id,no_wa'}:o,...a);
+ q.update=(...a)=>upd(...a).eq('sekolah_id',SEK);
+ q.delete=(...a)=>del(...a).eq('sekolah_id',SEK);
+ return q};
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],HR=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 const hariIni=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}),jamJkt=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jakarta'}):'';
@@ -126,13 +139,14 @@ function terapNama(){let n=ns();try{if(S.set&&S.set.nama_sekolah)localStorage.se
  document.title=n+' - Absensi';const a=$('#lnm'),b=$('#bnm');if(a)a.textContent=n;if(b)b.textContent=n;
  document.querySelectorAll('a.wab').forEach(x=>x.href='https://wa.me/6285117441486?text='+encodeURIComponent('Assalamualaikum, saya butuh bantuan sistem absensi '+n+'.'))}
 async function muatDasar(){
- const [k,s,p,lm,lt,pr]=await Promise.all([dbq(db.from('kelas').select('*').eq('aktif',true).order('id')),dbq(db.from('siswa').select('*, siswa_wali(wali(no_wa))').order('nama')),dbq(db.from('profil').select('*').order('nama')),dbq(db.from('libur_mingguan').select('hari')),dbq(db.from('libur_tanggal').select('*').order('mulai')),dbq(db.from('pengaturan').select('*').eq('id',1).maybeSingle())]);
+ const [k,s,p,lm,lt,pr]=await Promise.all([dbq(db.from('kelas').select('*').eq('aktif',true).order('id')),dbq(db.from('siswa').select('*, siswa_wali(wali(no_wa))').order('nama')),muatGuruData(),dbq(db.from('libur_mingguan').select('hari')),dbq(db.from('libur_tanggal').select('*').order('mulai')),dbq(db.from('pengaturan').select('*').maybeSingle())]);
  S.kelas=k.map(x=>({id:x.id,nama:x.nama,jam:(x.jam_masuk||'07:30').slice(0,5)}));const kn=id=>(S.kelas.find(x=>x.id===id)||{}).nama||'';
  S.siswa=s.map(x=>({id:x.id,nama:x.nama,pan:x.nama_panggilan,nisn:x.nisn||'',kelas:kn(x.kelas_id),kelas_id:x.kelas_id,aktif:x.aktif,kode_qr:x.kode_qr,wa:(x.siswa_wali||[]).map(w=>w.wali&&w.wali.no_wa).filter(Boolean)[0]||''}));
  S.guru=p;S.mingguan=lm.map(x=>x.hari);S.libur=lt.map(x=>({id:x.id,tgl:x.mulai,sampai:x.sampai,ket:x.keterangan||'',kelas:x.kelas_id?kn(x.kelas_id):''}));
  S.set=pr||{};S.set.jam=(S.set.alpa_jam||'10:00').slice(0,5);terapNama()}
 const muatPesan=async()=>{S.pesan=(await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100))).map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek}))};
-const muatProfil=async()=>{S.guru=await dbq(db.from('profil').select('*').order('nama'))};
+const muatGuruData=async()=>{const k=await dbq(db.from('keanggotaan').select('role,aktif,profil(*)').eq('sekolah_id',SEK));return k.filter(x=>x.profil).map(x=>({...x.profil,role:x.role,aktif:x.aktif})).sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'))};
+const muatProfil=async()=>{S.guru=await muatGuruData()};
 const LOAD={dashboard:()=>muatRange(TODAY,TODAY),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan};
 /* ---------- libur ---------- */
 const liburInfo=(d,k)=>{if(S.mingguan.includes(wd(d)))return 'libur mingguan hari '+HR[wd(d)];const l=S.libur.find(x=>x.tgl<=d&&d<=(x.sampai||x.tgl)&&(!x.kelas||x.kelas===k));return l?(l.ket||'libur'):''};
@@ -154,20 +168,36 @@ const segarkan=()=>dbq(db.rpc('segarkan_libur'));
 function loginView(msg){terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=msg||''}
 function masuk(){const b=$('#lb');if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="bs"></span>Memproses...';$('#lerr').textContent='';guard(async()=>{const u=$('#lu').value.trim(),pw=$('#lp').value;if(!u||!pw)throw new Error('Isi username dan kata sandi');let email=u;
  if(!u.includes('@')){const r=await db.rpc('email_dari_username',{u});if(r.error)throw r.error;if(!r.data)throw new Error('Username tidak ditemukan');email=r.data}
- const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
+ const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
 async function mulai(){const {data:{session}}=await db.auth.getSession();if(!session)return loginView();
- try{me=session.user.id;await muatDasar();const p=S.guru.find(g=>g.id===me);if(!p||!p.aktif){await db.auth.signOut();return loginView('Akun ini tidak terdaftar atau sudah dinonaktifkan')}
-  role=LBL[p.role];meNama=p.nama;$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');const bv=sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView');view=(bv&&allowed(bv))?bv:'dashboard';await go(view)}
+ try{me=session.user.id;
+  const pf=await dbq(db.from('profil').select('*').eq('id',me).maybeSingle());
+  if(!pf||!pf.aktif){await db.auth.signOut();return loginView('Akun ini tidak terdaftar atau sudah dinonaktifkan')}
+  PROFIL=pf;
+  if(pf.role==='developer')MEMB=(await dbq(db.from('sekolah').select('id,nama,status').order('nama'))).map(s=>({sekolah_id:s.id,nama:s.nama,role:'developer'}));
+  else MEMB=(await dbq(db.from('keanggotaan').select('sekolah_id,role,sekolah(nama,status)').eq('profil_id',me).eq('aktif',true))).filter(x=>x.sekolah&&x.sekolah.status==='aktif').map(x=>({sekolah_id:x.sekolah_id,nama:x.sekolah.nama,role:x.role}));
+  if(!MEMB.length){await db.auth.signOut();return loginView('Akun ini belum terhubung ke sekolah yang aktif. Hubungi Kepala Sekolah.')}
+  let ingat=null;try{ingat=Number(sessionStorage.getItem('sekolah_aktif'))}catch(e){}
+  const pilih=MEMB.length===1?MEMB[0]:MEMB.find(m=>m.sekolah_id===ingat);
+  if(pilih)await masukSekolah(pilih);else tampilPilihSekolah()}
  catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
-async function keluar(){await stopScan('keluar');await db.auth.signOut();S.absen={};loginView()}
+async function masukSekolah(m){try{SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
+  S.absen={};S.pesan=[];draft=null;attKelas='';kk='';rk='';lo='';q='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
+  await muatDasar();$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');
+  const bv=sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView');view=(bv&&allowed(bv))?bv:'dashboard';await go(view)}
+ catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
+function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''))}
+async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
+async function gantiSekolah(){await stopScan();drw(0);tampilPilihSekolah()}
+async function keluar(){await stopScan('keluar');await db.auth.signOut();S.absen={};SEK=null;MEMB=[];PROFIL=null;try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}loginView()}
 function drw(o){$('#drw').classList.toggle('show',!!o)}
 async function go(id){await stopScan();TODAY=hariIni();view=id;drw(0);if(id!=='absensi')draft=null;$('#v').innerHTML='';ld(1);
  try{if(LOAD[id])await LOAD[id]()}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),h=ms.map(m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`).join('');
- $('#sn').innerHTML=h;$('#dn').innerHTML=h;const pref=['dashboard','absensi','scan','rekap'].filter(allowed).slice(0,4);
+ const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Ganti sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=['dashboard','absensi','scan','rekap'].filter(allowed).slice(0,4);
  $('#bn').innerHTML=pref.map(id=>{const m=MENUS.find(x=>x[0]===id);return `<button class="${view===id?'on':''}" onclick="go('${id}')"><span>${m[2]}</span>${m[1]}</button>`}).join('')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`;
- $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role;renderV()}
+ $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
 async function muatGambarKartu(){
  const imgs=[...document.querySelectorAll('#v img[data-kartu-id]')];
  for(let i=0;i<imgs.length;i++){
@@ -241,11 +271,11 @@ async function hapusGuruTerpilih(){
  const ids=[...gsel].filter(id=>id!==me);
  if(!ids.length)return;
  const nama=ids.map(id=>S.guru.find(g=>g.id===id)?.nama).filter(Boolean);
- if(!await konfirmasi('Hapus '+ids.length+' akun guru terpilih?\n\n'+nama.join('\n')+'\n\nTidak bisa dikembalikan.',{judul:'Hapus guru terpilih',ya:'Hapus',bahaya:1}))return;
+ if(!await konfirmasi('Keluarkan '+ids.length+' guru terpilih dari sekolah ini?\n\n'+nama.join('\n')+'\n\nAkun tetap ada bila guru juga mengajar di sekolah lain.',{judul:'Keluarkan guru terpilih',ya:'Keluarkan',bahaya:1}))return;
  guard(async()=>{
    for(const id of ids)await apiGuru({aksi:'hapus',id});
    gsel.clear();gHapusMode=false;
-   await muatProfil();toast(ids.length+' akun guru dihapus');renderV();
+   await muatProfil();toast(ids.length+' guru dikeluarkan dari sekolah');renderV();
  })
 }
 V.guru=()=>{
@@ -257,35 +287,42 @@ V.guru=()=>{
  const all=selectable.length>0&&selectable.every(g=>gsel.has(g.id));
  const aksi=bh
    ? (gHapusMode
-      ? `<button class="btn danger sm" ${gsel.size?'':'disabled'} onclick="hapusGuruTerpilih()">🗑 Hapus terpilih (${gsel.size})</button><button class="btn soft sm" onclick="batalHapusGuru()">✖ Batal</button>`
-      : `<button class="btn danger sm" onclick="bukaHapusGuru()">🗑 Hapus Guru</button>`)
+      ? `<button class="btn danger sm" ${gsel.size?'':'disabled'} onclick="hapusGuruTerpilih()">🗑 Keluarkan terpilih (${gsel.size})</button><button class="btn soft sm" onclick="batalHapusGuru()">✖ Batal</button>`
+      : `<button class="btn danger sm" onclick="bukaHapusGuru()">🗑 Keluarkan Guru</button>`)
    : '';
  const head=gHapusMode&&bh
    ? ['<input type="checkbox" '+(all?'checked':'')+' onchange="pilihSemuaGuru(this.checked)">','No','Nama','NIP','Username','Role','Aktif','Aksi']
    : ['No','Nama','NIP','Username','Role','Aktif','Aksi'];
- return `<div class="panel"><div class="ph">👨‍🏫 Data Guru ${kel?`<span class="tb" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('guru')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('guru')">⬆ Impor XLSX</button><button class="btn success" onclick="addGuru()">+ Tambah Guru</button></span>`:''}</div><div class="pb"><div class="note">${kel?'Kepala Sekolah atau Developer dapat mengelola akun guru. Keduanya dapat memilih nama guru dengan centang lalu menghapus beberapa akun sekaligus. Akun Anda sendiri tidak dapat dihapus.':'Anda hanya bisa mengubah profil dan kata sandi Anda sendiri. Akun guru lain hanya bisa dilihat.'}</div>${tab(head,shown.map((g,i)=>{const mine=g.id===me;const pilih=gHapusMode&&bh&&!mine?`<td><input type="checkbox" ${gsel.has(g.id)?'checked':''} onchange="pilihGuru('${g.id}',this.checked)"></td>`:'';return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${esc(g.username)}</td><td>${kel?`<select class="select" onchange="setGuruRole('${g.id}',this.value)">${Object.keys(LBL).map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role])}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td>${(kel||mine)?`<button class="btn sm soft" onclick="editGuru('${g.id}')">${mine?'Ubah profil &amp; sandi saya':'Ubah'}</button> `:'<span class="mu">-</span>'}${kel&&!mine?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`}).join(''))}</div></div>`;
+ return `<div class="panel"><div class="ph">👨‍🏫 Data Guru ${kel?`<span class="tb" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('guru')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('guru')">⬆ Impor XLSX</button><button class="btn success" onclick="addGuru()">+ Tambah Guru</button></span>`:''}</div><div class="pb"><div class="note">${kel?'Kepala Sekolah atau Developer dapat menambah guru, mengubah peran, dan mengaktifkan atau menonaktifkan guru di sekolah ini. Tombol Keluarkan hanya mengeluarkan guru dari sekolah ini. Username dan kata sandi hanya bisa diubah oleh pemilik akunnya.':'Anda hanya bisa mengubah profil dan kata sandi Anda sendiri. Guru lain hanya bisa dilihat.'}</div>${tab(head,shown.map((g,i)=>{const mine=g.id===me;const pilih=gHapusMode&&bh&&!mine?`<td><input type="checkbox" ${gsel.has(g.id)?'checked':''} onchange="pilihGuru('${g.id}',this.checked)"></td>`:'';return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${esc(g.username)}</td><td>${kel?`<select class="select" ${mine?'disabled':''} onchange="setGuruRole('${g.id}',this.value)">${['kepala_sekolah','guru'].map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role])}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td>${mine?`<button class="btn sm soft" onclick="editGuru('${g.id}')">${mine?'Ubah profil &amp; sandi saya':'Ubah'}</button> `:'<span class="mu">-</span>'}${kel&&!mine?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`}).join(''))}</div></div>`;
 };
-async function apiGuru(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/guru',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/guru tidak ditemukan (404). Pastikan file api/guru.js sudah di-deploy pada project yang sama dengan Index.');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
-function editGuru(id){const g=S.guru.find(x=>x.id===id),mine=id===me,admin=role==='Kepala Sekolah'||role==='Developer';if(!admin&&!mine)return toast('Anda hanya bisa mengubah akun sendiri',false);
- form(mine?'Ubah profil saya':'Ubah '+g.nama,[{k:'nama',l:'Nama',v:g.nama},{k:'nip',l:'NIP (opsional)',v:g.nip||''},{k:'user',l:'Username',v:g.username},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak diganti)',t:'password'}],async v=>{
-  if(!v.nama||!v.user)throw new Error('Nama dan username wajib diisi');if(v.sandi&&v.sandi.length<6)throw new Error('Kata sandi minimal 6 karakter');
-  if(!/^[a-z0-9._-]{3,30}$/.test(v.user.toLowerCase()))throw new Error('Username: 3-30 karakter huruf kecil, angka, titik, minus');
-  if(mine){
-    await dbq(db.from('profil').update({nama:v.nama,username:v.user.toLowerCase(),nip:(v.nip||'').trim()||null}).eq('id',id));
-    if(v.sandi){const r=await db.auth.updateUser({password:v.sandi});if(r.error)throw r.error}
-  }else{
-    await apiGuru({aksi:'ubah',id,nama:v.nama,username:v.user.toLowerCase(),nip:(v.nip||'').trim()||null});
-    await dbq(db.from('profil').update({nip:(v.nip||'').trim()||null}).eq('id',id));
-    if(v.sandi)await apiGuru({aksi:'reset',id,sandi:v.sandi});
-  }
-  if(mine)meNama=v.nama;await muatProfil();toast(v.sandi?'Profil dan kata sandi diperbarui':'Profil diperbarui');renderAll()})}
-function addGuru(){if(role!=='Kepala Sekolah'&&role!=='Developer')return toast('Hanya Kepala Sekolah atau Developer yang dapat menambah guru',false);form('Tambah Guru',[{k:'nama',l:'Nama guru'},{k:'nip',l:'NIP (opsional)'},{k:'user',l:'Username (huruf kecil, tanpa spasi)'},{k:'sandi',l:'Kata sandi awal (minimal 6 karakter)',t:'password'},{k:'role',l:'Role',o:['Guru','Kepala Sekolah','Developer']}],async v=>{
- await apiGuru({aksi:'tambah',nama:v.nama,username:v.user,sandi:v.sandi,role:KEYR[v.role]});
- if((v.nip||'').trim())await dbq(db.from('profil').update({nip:v.nip.trim()}).eq('username',v.user.toLowerCase()));
- await muatProfil();toast('Guru ditambahkan');renderV()})}
-function setGuruRole(id,r){if(role!=='Kepala Sekolah'&&role!=='Developer')return toast('Hanya Kepala Sekolah atau Developer yang dapat mengubah role guru',false);guard(async()=>{await dbq(db.from('profil').update({role:r}).eq('id',id));await muatProfil();if(id===me){role=LBL[r];if(!allowed(view))view='dashboard'}toast('Role diubah menjadi '+LBL[r]);renderAll()})}
+async function apiGuru(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/guru',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/guru tidak ditemukan (404). Pastikan file api/guru.js sudah di-deploy pada project yang sama dengan Index.');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
+function editGuru(id){const g=S.guru.find(x=>x.id===id);if(!g||id!==me)return toast('Anda hanya bisa mengubah akun sendiri',false);
+ form('Ubah profil saya',[{k:'nama',l:'Nama',v:g.nama},{k:'nip',l:'NIP (opsional)',v:g.nip||''},{k:'user',l:'Username',v:g.username},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak diganti)',t:'password'},{k:'lama',l:'Kata sandi saat ini (wajib bila mengganti username atau kata sandi)',t:'password'}],async v=>{
+  const user=(v.user||'').trim().toLowerCase();
+  if(!v.nama||!user)throw new Error('Nama dan username wajib diisi');
+  if(v.sandi&&v.sandi.length<6)throw new Error('Kata sandi minimal 6 karakter');
+  if(!/^[a-z0-9._-]{3,20}$/.test(user))throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah');
+  const ubahAkun=user!==g.username||!!v.sandi;
+  if(ubahAkun&&!v.lama)throw new Error('Isi kata sandi saat ini untuk mengganti username atau kata sandi');
+  if(ubahAkun)await apiGuru({aksi:'akun_sendiri',username:user,sandi_baru:v.sandi||'',sandi_sekarang:v.lama});
+  await dbq(db.from('profil').update({nama:v.nama,nip:(v.nip||'').trim()||null}).eq('id',id));
+  meNama=v.nama;PROFIL.nama=v.nama;await muatProfil();toast(ubahAkun?'Profil dan akun diperbarui':'Profil diperbarui');renderAll()})}
+function formGuruBaru(wa){const opsi=role==='Developer'?['Guru','Kepala Sekolah']:['Guru'];
+ form('Tambah guru baru',[{k:'nama',l:'Nama guru'},{k:'nip',l:'NIP (opsional)'},{k:'user',l:'Username (huruf kecil, tanpa spasi)'},{k:'sandi',l:'Kata sandi awal (minimal 6 karakter)',t:'password'},{k:'role',l:'Peran',o:opsi}],async v=>{
+  await apiGuru({aksi:'tambah',nama:v.nama,nip:v.nip,username:v.user,sandi:v.sandi,role:KEYR[v.role]||'guru',no_wa:wa});
+  await muatProfil();toast('Guru ditambahkan. Minta guru mengganti kata sandi awalnya');renderV()})}
+function addGuru(){if(role!=='Kepala Sekolah'&&role!=='Developer')return toast('Hanya Kepala Sekolah atau Developer yang dapat menambah guru',false);
+ form('Tambah guru',[{k:'wa',l:'Nomor WhatsApp guru (contoh 08123456789)'}],async v=>{
+  const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp tidak valid');
+  const c=await apiGuru({aksi:'cek_nomor',no_wa:wa});
+  if(c.sudah_di_sekolah)throw new Error('Nomor ini sudah terdaftar sebagai '+c.nama+' di sekolah ini');
+  if(c.ada){if(!await konfirmasi('Nomor ini sudah punya akun atas nama '+c.nama+'. Tautkan ke sekolah ini?',{judul:'Tautkan guru',ya:'Tautkan'}))return;
+   await apiGuru({aksi:'tautkan',no_wa:wa});await muatProfil();toast(c.nama+' ditautkan ke sekolah ini');renderV();return}
+  setTimeout(()=>formGuruBaru(wa),150)})}
+function setGuruRole(id,r){if(role!=='Kepala Sekolah'&&role!=='Developer')return toast('Hanya Kepala Sekolah atau Developer yang dapat mengubah peran guru',false);
+ guard(async()=>{try{await apiGuru({aksi:'ubah_role',id,role:r});await muatProfil();toast('Peran diubah menjadi '+LBL[r]);renderAll()}catch(e){await muatProfil();renderV();throw e}})}
 function togGuru(id){if(role!=='Kepala Sekolah'&&role!=='Developer')return toast('Hanya Kepala Sekolah atau Developer yang dapat mengaktifkan/nonaktifkan guru',false);if(id===me)return toast('Tidak bisa menonaktifkan akun sendiri',false);const g=S.guru.find(x=>x.id===id),n=!g.aktif;guard(async()=>{await apiGuru({aksi:'aktif',id,aktif:n});await muatProfil();toast(g.nama+(n?' diaktifkan':' dinonaktifkan'));renderV()})}
-async function hapusGuru(id){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah atau Developer yang dapat menghapus akun guru',false);const g=S.guru.find(x=>x.id===id);if(!g||g.id===me)return toast('Akun guru tidak dapat dihapus',false);if(!await konfirmasi('Hapus akun '+g.nama+'? Tidak bisa dikembalikan. Bila hanya tidak mengajar lagi, lebih baik Nonaktifkan.',{judul:'Hapus akun guru',ya:'Hapus',bahaya:1}))return;guard(async()=>{await apiGuru({aksi:'hapus',id});await muatProfil();toast('Akun dihapus');renderV()})}
+async function hapusGuru(id){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah atau Developer yang dapat mengeluarkan guru',false);const g=S.guru.find(x=>x.id===id);if(!g||g.id===me)return toast('Akun guru tidak dapat dikeluarkan',false);if(!await konfirmasi('Keluarkan '+g.nama+' dari sekolah ini? Akun tetap ada bila guru juga mengajar di sekolah lain. Bila hanya sementara tidak mengajar, lebih baik Nonaktifkan.',{judul:'Keluarkan guru',ya:'Keluarkan',bahaya:1}))return;guard(async()=>{await apiGuru({aksi:'hapus',id});await muatProfil();toast('Guru dikeluarkan dari sekolah');renderV()})}
 /* ---------- absensi manual ---------- */
 V.absensi=()=>{if(!draft)draft=JSON.parse(JSON.stringify(A(attDate)));const l=act().filter(s=>!attKelas||s.kelas===attKelas),lib=infoLiburTerpilih(attDate,attKelas),isi=l.filter(s=>draft[s.id]).length;const key='manual|'+liburKey(attDate,attKelas);if(lib&&!liburPrompted[key]){liburPrompted[key]=true;setTimeout(async()=>{delete liburPrompted[key];await cekLiburSebelumAbsensi(attKelas,attDate);if(view==='absensi')renderV()},0)}
  return `<div class="panel"><div class="ph">✍️ Absensi Manual</div><div class="pb"><div class="tb"><label class="input dt"><span>${attDate?fmt(attDate):'Pilih tanggal'}</span><input type="date" value="${attDate||''}" min="2000-01-01" max="2099-12-31" onchange="if(this.value){this.previousElementSibling.textContent=fmt(this.value);setAtt(this.value)}"></label><select class="select" onchange="attKelas=this.value;draft=null;renderV()">${kopt(attKelas,1)}</select><button class="btn orange" onclick="markLibur()">🏖 Tandai libur</button></div><div class="note">📅 Guru dapat mengisi dan mengedit absensi untuk tanggal sebelumnya, hari ini, maupun tanggal yang akan datang.</div>
@@ -502,7 +539,7 @@ function impor(inp){const f=inp.files[0];if(!f)return;const k=impK;guard(async()
      try{
        const j=await apiGuru({aksi:'tambah_batch',data});
        (j.results||[]).forEach(x=>{const z=chunk[x.index];if(x.ok)ok++;else fail(z.row,rows[z.row].map(c=>String(c).trim()),new Error(x.error||'Gagal membuat akun'))});
-       for(const z of chunk){if(z.data.nip){try{await dbq(db.from('profil').update({nip:z.data.nip}).eq('username',String(z.data.username).toLowerCase()))}catch(e){fail(z.row,z.r,new Error('Guru dibuat tetapi NIP gagal disimpan: '+(e.message||e)))}}}
+       /* NIP kini disimpan oleh server saat akun dibuat */
      }catch(e){chunk.forEach(z=>fail(z.row,rows[z.row].map(c=>String(c).trim()),e))}
    }
    await muatProfil();
@@ -575,13 +612,13 @@ V.pengaturan=()=>`${taInit()}<div class="panel"><div class="ph">🏫 Nama Sekola
 async function simpanNamaSekolah(btn){const v=String($('#nsInp').value||'').replace(/\s+/g,' ').trim();
  if(!v)return toast('Nama sekolah wajib diisi',false);if(v===ns())return toast('Nama sekolah belum berubah',false);
  if(btn)btn.disabled=true;ld(1,'Menyimpan nama sekolah...');
- try{const r=await dbq(db.from('pengaturan').update({nama_sekolah:v}).eq('id',1).select('id'));if(!r||!r.length)throw new Error('Nama sekolah tidak tersimpan. Pastikan baris pengaturan (id 1) ada dan Anda berhak mengubahnya');
+ try{const r=await dbq(db.from('pengaturan').update({nama_sekolah:v}).select('id'));if(!r||!r.length)throw new Error('Nama sekolah tidak tersimpan. Pastikan baris pengaturan (id 1) ada dan Anda berhak mengubahnya');
   S.set.nama_sekolah=v;try{localStorage.setItem('nama_sekolah',v);sessionStorage.setItem('bukaView','pengaturan')}catch(e){}
   ld(0);const o=document.createElement('div');o.className='nsfx';o.innerHTML='<div class="nsb"><div class="nsi">🏫</div><div class="nsc">✓</div><b></b><small>Nama sekolah disimpan. Memuat ulang...</small></div>';o.querySelector('b').textContent=v;document.body.appendChild(o);
   setTimeout(()=>location.reload(),1700)}
  catch(e){ld(0);if(btn)btn.disabled=false;const m=(e&&e.message)||String(e);toast(/nama_sekolah/.test(m)&&!/tidak tersimpan/.test(m)?'Kolom nama_sekolah belum ada di tabel pengaturan. Jalankan SQL penambahan kolom di Supabase terlebih dahulu':m,false)}}
-const setAlpa=o=>guard(async()=>{await dbq(db.from('pengaturan').update(o).eq('id',1));await muatDasar();toast('Pengaturan disimpan');renderV()});
-function tahunBaru(){form('Mulai tahun ajaran baru',[{k:'label',l:'Tahun ajaran baru (contoh 2027/2028)'},{k:'ok',l:'Ketik HAPUS (dengan huruf kapital semua) untuk menghapus seluruh data siswa, wali, absensi, dan riwayat lama'}],async v=>{if(!v.label||v.ok!=='HAPUS')throw new Error('Isi tahun ajaran dan ketik HAPUS');await dbq(db.rpc('mulai_tahun_ajaran',{label:v.label}));S.absen={};await muatDasar();toast('Tahun ajaran baru dimulai. Data siswa, wali, absensi, dan riwayat lama telah dihapus');renderAll()})}
+const setAlpa=o=>guard(async()=>{await dbq(db.from('pengaturan').update(o));await muatDasar();toast('Pengaturan disimpan');renderV()});
+function tahunBaru(){form('Mulai tahun ajaran baru',[{k:'label',l:'Tahun ajaran baru (contoh 2027/2028)'},{k:'ok',l:'Ketik HAPUS (dengan huruf kapital semua) untuk menghapus seluruh data siswa, wali, absensi, dan riwayat lama'}],async v=>{if(!v.label||v.ok!=='HAPUS')throw new Error('Isi tahun ajaran dan ketik HAPUS');await dbq(db.rpc('mulai_tahun_ajaran',{label:v.label,p_sekolah:SEK}));S.absen={};await muatDasar();toast('Tahun ajaran baru dimulai. Data siswa, wali, absensi, dan riwayat lama telah dihapus');renderAll()})}
 function addKelas(){form('Tambah Kelas',[{k:'nama',l:'Nama kelas'},{k:'jam',l:'Batas jam masuk',t:'time',v:'07:30'}],async v=>{if(!v.nama||S.kelas.some(k=>k.nama===v.nama))throw new Error('Nama kelas kosong atau sudah ada');await dbq(db.from('kelas').insert({nama:v.nama,jam_masuk:v.jam||'07:30'}));await muatDasar();renderV()})}
 function ubahKelas(id){const k=S.kelas.find(x=>x.id===id);form('Ubah nama kelas',[{k:'nama',l:'Nama kelas',v:k.nama}],async v=>{if(!v.nama)throw new Error('Nama kelas wajib diisi');if(S.kelas.some(x=>x.id!==id&&x.nama.toLowerCase()===v.nama.toLowerCase()))throw new Error('Nama kelas sudah dipakai');await dbq(db.from('kelas').update({nama:v.nama}).eq('id',id));await muatDasar();toast('Nama kelas diubah');renderV()})}
 const setJam=(id,j)=>guard(async()=>{await dbq(db.from('kelas').update({jam_masuk:j}).eq('id',id));await muatDasar();toast('Jam masuk disimpan')});
