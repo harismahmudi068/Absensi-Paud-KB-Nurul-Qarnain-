@@ -1,829 +1,517 @@
-// Webhook Fonnte PAUD
-// Memproses laporan izin/sakit dari chat pribadi dan GRUP PAUD.
-// AI dipisahkan ke AI.js agar mudah diperbaiki tanpa mengubah alur utama.
-//
-// Variabel Vercel yang dibutuhkan:
-// SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, FONNTE_TOKEN, WEBHOOK_SECRET
-
 const crypto = require('crypto');
 const { analisisPesan } = require('./AI');
 const { terjemahkanBalasan } = require('./AITerjemah');
 
-// ============================================================
-// KONFIGURASI WHATSAPP PAUD — MUDAH DIGANTI
-// ============================================================
 const PAUD_GROUP_ID = '120363410620341838@g.us';
 const KEPALA_SEKOLAH_NUMBER = '6285117441486';
-
-// Libur mingguan dibaca dari tabel Supabase `libur_mingguan`, dan libur tanggal tertentu
-// dari tabel `libur_tanggal`. Daftar di bawah HANYA cadangan jika tabel libur_mingguan
-// tidak terbaca (0 = Minggu, 6 = Sabtu).
 const HARI_LIBUR_MINGGUAN_CADANGAN = [0, 6];
-
-// Sakit otomatis dicatat selama sekian hari sekolah aktif.
 const HARI_SAKIT_OTOMATIS = 3;
+const DUPLIKAT_WINDOW_MS = 5 * 60 * 1000;
+const MAKS_HARI_IZIN_KEDEPAN = 30;
 
-// Pesan yang sama dari nomor yang sama dalam rentang ini diabaikan.
-const JENDELA_DUPLIKAT_MENIT = 5;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Izin ke depan hanya diterima sampai sekian hari dari hari ini, maksimal sekian hari berurutan.
-const BATAS_HARI_KE_DEPAN = 60;
-const BATAS_JUMLAH_HARI_IZIN = 30; // izin lebih dari ini tidak dicatat otomatis; kepala sekolah diberi tahu
-
-const SB = process.env.SUPABASE_URL;
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const FONNTE_TOKEN = process.env.FONNTE_TOKEN;
-const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || '').trim();
-
-function nomor(value) { return String(value || '').replace(/\D/g, ''); }
-
-async function sb(path, { method = 'GET', body, prefer } = {}) {
-  if (!SB || !KEY) throw new Error('SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum tersedia');
-  const headers = { apikey: KEY, 'Content-Type': 'application/json' };
-  if (KEY.startsWith('eyJ')) headers.Authorization = 'Bearer ' + KEY;
-  if (prefer) headers.Prefer = prefer;
-  const r = await fetch(`${SB}/rest/v1/${path}`, {
-    method, headers, body: body ? JSON.stringify(body) : undefined
-  });
-  const t = await r.text();
-  if (!r.ok) throw new Error(`${r.status} ${t}`);
-  return t ? JSON.parse(t) : null;
-}
-
-async function kirimFonnte(target, teks) {
-  if (!target || !FONNTE_TOKEN) return false;
-  try {
-    const r = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { Authorization: FONNTE_TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ target: String(target), message: teks })
-    });
-    const raw = await r.text();
-    if (!r.ok) { console.error('Fonnte HTTP error:', r.status, raw); return false; }
-    try { if (JSON.parse(raw).status === false) return false; } catch (_) {}
-    return true;
-  } catch (e) {
-    console.error('Gagal mengirim Fonnte:', e);
-    return false;
-  }
-}
-
-// ============================================================
-// BALASAN KE WALI DALAM BAHASA PENGIRIM
-// Format balasan tetap disusun dalam Bahasa Indonesia, lalu diterjemahkan oleh AITerjemah.js
-// jika bahasa pesan bukan Indonesia. Jika terjemahan gagal, balasan Indonesia tetap dikirim.
-// Jalur cepat (tanpa AI) tidak punya `bahasa`, sehingga dibalas langsung dalam Bahasa Indonesia.
-// Notifikasi ke kepala sekolah TIDAK memakai fungsi ini (tetap Bahasa Indonesia).
-// ============================================================
-function perluTerjemah(bahasa) {
-  const b = String(bahasa || '').trim().toLowerCase();
-  return !!b && !b.startsWith('indonesia');
-}
-
-async function kirimBalasanWali(target, teks, bahasa) {
-  let isi = teks;
-  if (perluTerjemah(bahasa)) {
-    try {
-      isi = await terjemahkanBalasan({ teks, bahasa });
-    } catch (e) {
-      console.error(`Terjemahan ke ${bahasa} gagal, balasan dikirim dalam Bahasa Indonesia:`, e.message);
-      isi = teks;
+async function sb(path, options = {}) {
+  const url = `${SUPABASE_URL}${path}`;
+  const res = await fetch(url, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
     }
+  });
+
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
   }
-  return kirimFonnte(target, isi);
+
+  if (!res.ok) {
+    throw new Error(`Supabase ${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
+  }
+
+  return data;
 }
 
-function salam() { return 'Assalamu’alaikum warahmatullahi wabarakatuh.'; }
-function penutup() { return 'Wassalamu’alaikum warahmatullahi wabarakatuh.'; }
+const FONNTE_TOKEN = process.env.FONNTE_TOKEN;
 
-function daftarTanggal(list) {
-  return list.map(d => `• *${formatTanggal(d)}*`).join('\n');
+async function kirimFonnte(target, message) {
+  if (!target || !message) return false;
+
+  const res = await fetch('https://api.fonnte.com/send', {
+    method: 'POST',
+    headers: {
+      Authorization: FONNTE_TOKEN,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ target, message })
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Fonnte ${res.status}: ${text}`);
+  }
+
+  return true;
 }
 
-// Setiap balasan hanya punya SATU salam pembuka dan SATU salam penutup,
-// walaupun terdiri dari beberapa bagian (mis. dua anak dengan hasil berbeda).
-function bungkusBalasan(bagian) {
-  return [salam(), '', bagian.join('\n\n'), '', penutup()].join('\n');
+async function kirimBalasanWali(target, message) {
+  try {
+    const hasil = await terjemahkanBalasan(message);
+    await kirimFonnte(target, hasil || message);
+  } catch (e) {
+    console.error('Gagal menerjemahkan balasan:', e);
+    await kirimFonnte(target, message);
+  }
+}
+
+function normalisasiNomor(nomor) {
+  if (!nomor) return '';
+  let n = String(nomor).replace(/\D/g, '');
+  if (n.startsWith('0')) {
+    n = '62' + n.slice(1);
+  }
+  if (n.startsWith('8')) {
+    n = '62' + n;
+  }
+  return n;
+}
+
+function tanggalLokal(date = new Date()) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function parseTanggal(tanggal) {
+  if (!tanggal) return null;
+  const m = String(tanggal).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (
+    d.getFullYear() !== Number(m[1]) ||
+    d.getMonth() !== Number(m[2]) - 1 ||
+    d.getDate() !== Number(m[3])
+  ) {
+    return null;
+  }
+
+  return d;
+}
+
+function formatTanggal(tanggal) {
+  const d = parseTanggal(tanggal);
+  if (!d) return tanggal;
+
+  const hari = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  return `${hari[d.getDay()]}, ${d.getDate()} ${bulan[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function tambahHari(tanggal, jumlah) {
+  const d = parseTanggal(tanggal);
+  if (!d) return null;
+  d.setDate(d.getDate() + jumlah);
+  return tanggalLokal(d);
+}
+
+function normalisasiNama(nama) {
+  return String(nama || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function bersihkanPesan(pesan) {
+  return String(pesan || '').trim().replace(/\s+/g, ' ');
+}
+
+const SALAM = 'Assalamu’alaikum warahmatullahi wabarakatuh.';
+const PENUTUP = 'Wassalamu’alaikum warahmatullahi wabarakatuh.';
+
+function balasanDenganSalam(isi) {
+  return [SALAM, '', isi, '', PENUTUP].join('\n');
+}
+
+function daftarTanggal(tanggal) {
+  return tanggal.map(t => `• *${formatTanggal(t)}*`).join('\n');
 }
 
 function isiSakit(nama, tgl, lanjut = null) {
   const n = tgl.length;
   return [
-    `Baik, Bunda. Laporan bahwa *${nama}* hari ini sakit sudah kami terima dan telah dicatat. 🤒`, '',
-    `Semoga *${nama}* segera diberikan kesembuhan, kesehatan, dan kekuatan, serta dapat kembali beraktivitas bersama teman-teman di sekolah. 🌷`, '',
+    `Baik, Bunda. Laporan bahwa *${nama}* hari ini sakit sudah kami terima dan telah dicatat. 🤒`,
+    '',
+    `Semoga *${nama}* segera diberikan kesembuhan, kesehatan, dan kekuatan, serta dapat kembali beraktivitas bersama teman-teman di sekolah. 🌷`,
+    '',
     `📌 *Catatan:* *${nama}* kini tercatat sakit selama ${n} hari sekolah:`,
-    daftarTanggal(tgl), '',
-    `Jika dalam ${n} hari tersebut *${nama}* belum sembuh, mohon Bunda mengirimkan laporan sakit kembali${lanjut ? ` pada (${formatTanggal(lanjut)})` : ''}. Jika *${nama}* sembuh sebelum ${n} hari dan masuk sekolah, status sakit akan otomatis diganti menjadi hadir, jadi Bunda tidak perlu khawatir. 😊`
+    daftarTanggal(tgl),
+    '',
+    `Jika dalam ${n} hari tersebut *${nama}* belum sembuh, mohon Bunda mengirimkan laporan sakit kembali${lanjut ? ` pada (${formatTanggal(lanjut)})` : ''}. Jika *${nama}* sembuh sebelum${lanjut ? ` (${formatTanggal(lanjut)})` : ''} dan masuk sekolah, status sakit akan otomatis diganti menjadi hadir, jadi Bunda tidak perlu khawatir. 😊`
   ].join('\n');
 }
 
-function isiIzin(nama, tgl, tidakAktif = []) {
-  const T = tanggal();
-  const kalimat = tgl.length === 1
-    ? `Baik, Bunda. Laporan izin untuk *${nama}* pada hari *${formatTanggal(tgl[0])}*${tgl[0] === T ? ' (hari ini)' : ''} sudah kami terima dan telah dicatat. 📝`
-    : `Baik, Bunda. Laporan izin untuk *${nama}* pada hari berikut sudah kami terima dan telah dicatat: 📝\n${daftarTanggal(tgl)}`;
-  const baris = [kalimat];
-  if (tidakAktif.length) {
-    baris.push('', `ℹ️ *Catatan:* ${tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak dicatat.`);
-  }
-  baris.push('', `Semoga segala keperluan Bunda dan *${nama}* diberikan kelancaran, kemudahan, dan keberkahan. 🤲`);
-  return baris.join('\n');
+function balasanSakit(nama, tgl, lanjut = null) {
+  return balasanDenganSalam(isiSakit(nama, tgl, lanjut));
 }
 
-function isiSudahHadir(nama) {
-  return `⚠️ *${nama}* sudah tercatat hadir di sekolah, jadi data tidak diubah. Guru akan mengecek.`;
-}
-
-function isiBukanHariSekolah(tidakAktif) {
-  return `Baik, Bunda. Pesan sudah kami terima. Namun ${tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak perlu dicatat izin. 🙏`;
-}
-
-function balasanSakit(nama, tgl, lanjut = null) { return bungkusBalasan([isiSakit(nama, tgl, lanjut)]); }
-function balasanIzin(nama, tgl, tidakAktif = []) { return bungkusBalasan([isiIzin(nama, tgl, tidakAktif)]); }
-function balasanBukanHariSekolah(tidakAktif) { return bungkusBalasan([isiBukanHariSekolah(tidakAktif)]); }
-
-function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
-  const { namaDiPesan = [], namaBeda = false, statusDugaan = '', tampilkanPesan = true, alasanRagu = '', jumlahHari = 0 } = opsi;
-  const intro = namaBeda
-    ? 'Sistem menginformasikan bahwa nama anak yang tertulis di pesan *berbeda* dengan anak yang terdaftar di nomor pengirim.'
-    : alasanRagu === 'izin_panjang'
-      ? `Sistem menerima laporan izin yang *melebihi ${BATAS_JUMLAH_HARI_IZIN} hari*${jumlahHari ? ` (sekitar ${jumlahHari} hari)` : ''}, sehingga izin ini belum dicatat otomatis.`
-    : alasanRagu === 'waktu'
-      ? 'Sistem menerima laporan izin/sakit, tetapi tanggal atau waktu yang dimaksud belum jelas atau tidak dapat dihitung secara otomatis.'
-      : 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi belum dapat memastikan maksudnya.';
-  const baris = [
-    salam(), '',
-    // Judul hanya untuk notifikasi ke kepala sekolah; versi nama beda (grup/pribadi) tanpa judul.
-    ...(namaBeda ? [] : ['⚠️ *Pemberitahuan: Pesan Perlu Dicek*', '']),
-    intro, '',
-    `👤 *Pengirim:* ${pengirim || '-'}`,
-    `👧 *Nama anak${namaBeda ? ' (terdaftar di nomor ini)' : ''}:* *${namaAnak || 'Belum berhasil diidentifikasi'}*`
-  ];
-  if (namaBeda && namaDiPesan.length) baris.push(`📝 *Nama di pesan:* *${namaDiPesan.join(' | ')}*`);
-  // Dugaan isi pesan ikut disembunyikan jika isi pesan tidak ditampilkan (grup/pribadi).
-  if (tampilkanPesan && (statusDugaan === 'sakit' || statusDugaan === 'izin')) baris.push(`🔎 *Dugaan isi pesan:* ${statusDugaan}`);
-  if (tampilkanPesan) baris.push(`💬 *Pesan:* "${String(pesan || '').slice(0, 1000)}"`);
-  baris.push(
-    '',
-    namaBeda
-      ? `Mohon perbaiki nama anak pada pesan sesuai data yang terdaftar: *${namaAnak || '-'}*. 🙏`
-      : alasanRagu === 'izin_panjang'
-        ? `📌 *Catatan:* Izin melebihi ${BATAS_JUMLAH_HARI_IZIN} hari. Mohon dikonfirmasi kepada wali murid dan dicatat secara manual. 🙏`
-        : 'Mohon dilakukan pengecekan secara manual. 🙏',
-    '',
-    penutup()
-  );
-  return baris.join('\n');
-}
-
-function notifikasiAIGagal(pengirim, namaAnak, pesan, error) {
-  const detail = String(error?.message || error || 'Kesalahan tidak diketahui').slice(0, 500);
+function isiIzin(nama, tanggal, alasan) {
   return [
-    salam(),
+    `Baik, Bunda. Laporan izin untuk *${nama}* pada *${formatTanggal(tanggal)}* sudah kami terima dan telah dicatat. 😊`,
     '',
-    '🚨 *Pemberitahuan: AI Tidak Dapat Memproses Pesan*',
+    alasan ? `📝 *Alasan:* ${alasan}` : '',
     '',
-    'Sistem menerima pesan dari wali, tetapi layanan Gemini sedang mengalami kendala sehingga pesan belum dapat dianalisis secara otomatis.',
-    '',
-    `👤 *Pengirim:* ${pengirim || '-'}`,
-    `👧 *Nama anak:* *${namaAnak || 'Belum berhasil diidentifikasi'}*`,
-    '',
-    '⚠️ Absensi belum diubah secara otomatis. Mohon dilakukan pengecekan dan pencatatan secara manual jika diperlukan. 🙏',
-    '',
-    `🔧 *Status sistem:* ${detail}`,
-    '',
-    penutup()
-  ].join('\n');
+    `Semoga *${nama}* selalu dalam keadaan sehat dan dapat kembali beraktivitas bersama teman-teman di sekolah. 🌷`
+  ].filter(Boolean).join('\n');
 }
 
-function daftarNama(list) {
-  const n = list.map(s => s.nama || s.nama_panggilan).filter(Boolean);
-  return n.length > 1 ? n.slice(0, -1).join(', ') + ' dan ' + n[n.length - 1] : (n[0] || '');
+function balasanIzin(nama, tanggal, alasan) {
+  return balasanDenganSalam(isiIzin(nama, tanggal, alasan));
 }
 
-function tanggal() {
-  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
-}
-
-// ============================================================
-// HITUNG TANGGAL & HARI SEKOLAH
-// ============================================================
-const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-const INDEKS_HARI = { minggu: 0, senin: 1, selasa: 2, rabu: 3, kamis: 4, jumat: 5, sabtu: 6 };
-
-function isoKeUtc(iso) {
-  const [y, m, d] = iso.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d));
-}
-function tambahHari(iso, n) {
-  const dt = isoKeUtc(iso);
-  dt.setUTCDate(dt.getUTCDate() + n);
-  return dt.toISOString().slice(0, 10);
-}
-function indeksHari(iso) { return isoKeUtc(iso).getUTCDay(); }
-function formatTanggal(iso) {
-  const dt = isoKeUtc(iso);
-  return `${NAMA_HARI[dt.getUTCDay()]}, ${dt.getUTCDate()} ${NAMA_BULAN[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`;
-}
-function tanggalValid(y, m, d) {
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d
-    ? dt.toISOString().slice(0, 10)
-    : null;
-}
-// kelasId opsional: libur_tanggal dengan kelas_id tertentu hanya berlaku untuk kelas itu;
-// kelas_id kosong (null) berlaku untuk semua kelas.
-function hariSekolah(iso, libur, kelasId = null) {
-  if (libur.mingguan.has(indeksHari(iso))) return false;
-  if (libur.tanggalUmum.has(iso)) return false;
-  if (kelasId !== null && kelasId !== undefined) {
-    const khusus = libur.tanggalKelas.get(String(kelasId));
-    if (khusus && khusus.has(iso)) return false;
+async function ambilLiburMingguan() {
+  try {
+    const data = await sb('/rest/v1/libur_mingguan?select=hari&aktif=eq.true');
+    if (Array.isArray(data) && data.length) {
+      return data.map(x => Number(x.hari)).filter(x => Number.isInteger(x));
+    }
+  } catch (e) {
+    console.error('Gagal membaca libur mingguan:', e);
   }
+  return HARI_LIBUR_MINGGUAN_CADANGAN;
+}
+
+async function ambilLiburTanggal() {
+  try {
+    const data = await sb('/rest/v1/libur_tanggal?select=tanggal');
+    if (Array.isArray(data)) {
+      return new Set(data.map(x => x.tanggal).filter(Boolean));
+    }
+  } catch (e) {
+    console.error('Gagal membaca libur tanggal:', e);
+  }
+  return new Set();
+}
+
+async function isHariSekolah(tanggal, liburMingguan, liburTanggal) {
+  const d = parseTanggal(tanggal);
+  if (!d) return false;
+  if (liburMingguan.includes(d.getDay())) return false;
+  if (liburTanggal.has(tanggal)) return false;
   return true;
 }
 
-// ---- Pembacaan tabel libur (toleran terhadap nama kolom) ----
-const HARI_DARI_NAMA = {
-  minggu: 0, ahad: 0, sunday: 0, sun: 0,
-  senin: 1, monday: 1, mon: 1,
-  selasa: 2, tuesday: 2, tue: 2,
-  rabu: 3, wednesday: 3, wed: 3,
-  kamis: 4, thursday: 4, thu: 4,
-  jumat: 5, "jum'at": 5, jumaat: 5, friday: 5, fri: 5,
-  sabtu: 6, saturday: 6, sat: 6
-};
-const KOLOM_ABAI = /(^id$|created|updated|dibuat|diubah|keterangan|catatan|nama|deskripsi|alasan|note)/i;
+async function buatRencana(jenis, mulaiTanggal, jumlahHari = null) {
+  const liburMingguan = await ambilLiburMingguan();
+  const liburTanggal = await ambilLiburTanggal();
 
-function barisNonaktif(r) {
-  return ['aktif', 'is_active', 'active', 'berlaku'].some(k => r[k] === false || r[k] === 0 || r[k] === 'false');
-}
+  if (jenis === 'sakit') {
+    const jumlah = HARI_SAKIT_OTOMATIS;
+    const tanggal = [];
+    let cursor = mulaiTanggal;
 
-// Mengubah baris tabel libur_mingguan menjadi himpunan indeks hari JS (0=Minggu ... 6=Sabtu).
-function parseLiburMingguan(rows) {
-  const nilai = [];
-  for (const r of rows) {
-    if (barisNonaktif(r)) continue;
-    for (const [k, v] of Object.entries(r)) {
-      if (KOLOM_ABAI.test(k) || v === null || v === undefined || typeof v === 'boolean') continue;
-      const t = String(v).trim().toLowerCase();
-      if (t in HARI_DARI_NAMA) { nilai.push({ hari: HARI_DARI_NAMA[t], nama: true }); break; }
-      if (/^\d+$/.test(t) && Number(t) <= 7) { nilai.push({ angka: Number(t) }); break; }
-    }
-  }
-  const angka = nilai.filter(n => n.angka !== undefined).map(n => n.angka);
-  // Angka 7 = format ISO (1=Senin..7=Minggu); angka 0 = format JS (0=Minggu..6=Sabtu).
-  const iso = angka.includes(7) && !angka.includes(0);
-  const hasil = new Set();
-  for (const n of nilai) {
-    if (n.nama) hasil.add(n.hari);
-    else hasil.add(iso ? n.angka % 7 : n.angka);
-  }
-  return hasil;
-}
-
-// Mengubah baris tabel libur_tanggal (kolom: mulai, sampai, kelas_id, keterangan) menjadi:
-//   umum  : tanggal libur untuk semua kelas (kelas_id kosong)
-//   kelas : Map kelas_id -> tanggal libur khusus kelas itu
-// `sampai` boleh kosong (libur satu hari).
-function parseLiburTanggal(rows, dari, sampai) {
-  const umum = new Set();
-  const kelas = new Map();
-  for (const r of rows) {
-    if (barisNonaktif(r)) continue;
-    const ambilTgl = v => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null);
-    let awal = ambilTgl(r.mulai);
-    let akhir = ambilTgl(r.sampai) || awal;
-    if (!awal) {
-      // Cadangan jika nama kolom berbeda: pakai semua kolom bertanggal pada baris itu.
-      const tgl = Object.entries(r)
-        .filter(([k]) => !KOLOM_ABAI.test(k))
-        .map(([, v]) => ambilTgl(v)).filter(Boolean).sort();
-      if (!tgl.length) continue;
-      awal = tgl[0]; akhir = tgl[tgl.length - 1];
-    }
-    if (akhir < awal) akhir = awal;
-
-    const tujuan = (r.kelas_id === null || r.kelas_id === undefined || r.kelas_id === '')
-      ? umum
-      : (kelas.get(String(r.kelas_id)) || kelas.set(String(r.kelas_id), new Set()).get(String(r.kelas_id)));
-
-    let d = awal < dari ? dari : awal;
-    for (let i = 0; i < 400 && d <= akhir && d <= sampai; i++, d = tambahHari(d, 1)) tujuan.add(d);
-  }
-  return { umum, kelas };
-}
-
-// Libur sekolah: tabel `libur_mingguan` (kolom hari: 0=Minggu ... 6=Sabtu) dan
-// `libur_tanggal` (mulai, sampai, kelas_id, keterangan).
-async function ambilLibur(dari, sampai) {
-  let mingguan = new Set(HARI_LIBUR_MINGGUAN_CADANGAN);
-  let tanggalLibur = { umum: new Set(), kelas: new Map() };
-
-  try {
-    const rows = await sb('libur_mingguan?select=*');
-    if (Array.isArray(rows) && rows.length === 0) {
-      mingguan = new Set(); // tabel terbaca dan kosong: tidak ada libur mingguan
-    } else {
-      const hasil = parseLiburMingguan(rows || []);
-      if (hasil.size) mingguan = hasil;
-      else console.error('Isi libur_mingguan tidak dikenali, memakai cadangan Sabtu-Minggu');
-    }
-  } catch (e) {
-    console.error('Tabel libur_mingguan tidak terbaca, memakai cadangan Sabtu-Minggu:', e.message);
-  }
-
-  try {
-    const rows = await sb('libur_tanggal?select=*');
-    tanggalLibur = parseLiburTanggal(rows || [], dari, sampai);
-  } catch (e) {
-    console.error('Tabel libur_tanggal tidak terbaca, libur tanggal diabaikan:', e.message);
-  }
-
-  return { mingguan, tanggalUmum: tanggalLibur.umum, tanggalKelas: tanggalLibur.kelas };
-}
-
-// Mengubah penanda waktu dari AI menjadi tanggal ISO. Mengembalikan null jika tidak bisa dihitung.
-function hitungTanggal(w, T, tanpaBatasDepan = false) {
-  const tipe = w?.tipe;
-  let hasil = null;
-
-  if (tipe === 'hari_ini') hasil = T;
-  else if (tipe === 'besok') hasil = tambahHari(T, 1);
-  else if (tipe === 'lusa') hasil = tambahHari(T, 2);
-  else if (tipe === 'nama_hari') {
-    const target = INDEKS_HARI[w.nama_hari];
-    if (target === undefined) return null;
-    const sekarang = indeksHari(T);
-    if (w.pekan_depan) {
-      // Senin pekan depan + selisih hari dalam pekan (Senin = 0 ... Minggu = 6)
-      let keSenin = (8 - sekarang) % 7;
-      if (keSenin === 0) keSenin = 7;
-      hasil = tambahHari(T, keSenin + ((target + 6) % 7));
-    } else {
-      let selisih = (target - sekarang + 7) % 7;
-      if (selisih === 0) selisih = 7; // nama hari yang sama dengan hari ini dianggap pekan depan
-      hasil = tambahHari(T, selisih);
-    }
-  } else if (tipe === 'tanggal') {
-    const d = Number(w.tanggal);
-    if (!Number.isInteger(d) || d < 1 || d > 31) return null;
-    const [Y, M, D] = T.split('-').map(Number);
-    if (w.bulan) {
-      let y = w.tahun || Y;
-      hasil = tanggalValid(y, w.bulan, d);
-      if (hasil && hasil < T && !w.tahun) hasil = tanggalValid(y + 1, w.bulan, d);
-    } else {
-      hasil = d >= D ? tanggalValid(Y, M, d) : tanggalValid(M === 12 ? Y + 1 : Y, M === 12 ? 1 : M + 1, d);
-    }
-  } else {
-    return null; // lampau / tidak_jelas
-  }
-
-  if (!hasil || hasil < T || (!tanpaBatasDepan && hasil > tambahHari(T, BATAS_HARI_KE_DEPAN))) return null;
-  return hasil;
-}
-
-// Hari masuk sekolah pertama SETELAH tanggal `iso` (+1 hari; jika libur dilewati sampai ketemu hari masuk).
-function hariMasukBerikutnya(iso, libur, kelasId = null) {
-  let d = tambahHari(iso, 1);
-  for (let i = 0; i < 60; i++, d = tambahHari(d, 1)) {
-    if (hariSekolah(d, libur, kelasId)) return d;
-  }
-  return null;
-}
-
-function selisihHari(a, b) {
-  return Math.round((isoKeUtc(b) - isoKeUtc(a)) / 86400000);
-}
-
-// Hari TERAKHIR sebuah rentang ("sampai hari Rabu"). Nama hari dihitung dari hari PERTAMA rentang
-// (bukan dari hari ini), dan hari yang sama dengan hari pertama dianggap 1 hari saja.
-function hitungAkhir(s, mulai, T) {
-  if (s?.tipe === 'nama_hari' && !s.pekan_depan) {
-    const target = INDEKS_HARI[s.nama_hari];
-    if (target === undefined) return null;
-    return tambahHari(mulai, (target - indeksHari(mulai) + 7) % 7);
-  }
-  // Hari terakhir boleh jauh ke depan: yang dibatasi adalah panjang rentang, bukan jaraknya dari hari ini.
-  return hitungTanggal(s, T, true);
-}
-
-// Menyusun tanggal yang akan dicatat. Hasilnya `untuk(kelasId)` karena libur_tanggal bisa khusus per kelas.
-// - sakit : HARI_SAKIT_OTOMATIS hari sekolah aktif mulai hari ini (hanya jika pesan bicara hari ini).
-// - izin  : sesuai tanggal/hari yang disebut (tanpa penanda waktu = hari ini).
-async function buatRencana(status, waktu) {
-  const T = tanggal();
-  const entri = Array.isArray(waktu) ? waktu : [];
-  const libur = await ambilLibur(T, tambahHari(T, BATAS_HARI_KE_DEPAN + BATAS_JUMLAH_HARI_IZIN + 15));
-
-  if (status === 'sakit') {
-    if (entri.some(w => w.tipe !== 'hari_ini')) {
-      return { ok: false, alasan: 'sakit untuk waktu selain hari ini' };
-    }
-    return {
-      ok: true,
-      untuk: kelasId => {
-        const tanggalSakit = [];
-        let d = T;
-        for (let i = 0; i < 40 && tanggalSakit.length < HARI_SAKIT_OTOMATIS; i++, d = tambahHari(d, 1)) {
-          if (hariSekolah(d, libur, kelasId)) tanggalSakit.push(d);
-        }
-        const terakhir = tanggalSakit[tanggalSakit.length - 1];
-        return { tanggal: tanggalSakit, tidakAktif: [], lanjut: terakhir ? hariMasukBerikutnya(terakhir, libur, kelasId) : null };
+    while (tanggal.length < jumlah) {
+      if (await isHariSekolah(cursor, liburMingguan, liburTanggal)) {
+        tanggal.push(cursor);
       }
-    };
-  }
-
-  const sumber = entri.length ? entri : [{ tipe: 'hari_ini', jumlah_hari: 1 }];
-  const semua = new Set();
-  for (const w of sumber) {
-    if (w.sampai_gagal) return { ok: false, alasan: 'tanggal akhir rentang tidak dapat dihitung' };
-    const mulai = hitungTanggal(w, T);
-    if (!mulai) return { ok: false, alasan: `waktu tidak dapat dihitung (${w.tipe})` };
-
-    let jumlah = Math.max(1, Number(w.jumlah_hari) || 1);
-    if (w.sampai) {
-      // Rentang "sampai hari X": jumlah hari dihitung sistem (hari terakhir ikut dihitung).
-      const akhir = hitungAkhir(w.sampai, mulai, T);
-      if (!akhir || akhir < mulai) return { ok: false, alasan: 'tanggal akhir rentang tidak valid' };
-      jumlah = selisihHari(mulai, akhir) + 1;
+      cursor = tambahHari(cursor, 1);
     }
-    if (jumlah > BATAS_JUMLAH_HARI_IZIN) return { ok: false, alasan: 'jumlah hari terlalu panjang', izinPanjang: jumlah };
-    for (let i = 0; i < jumlah; i++) semua.add(tambahHari(mulai, i));
+
+    let lanjut = cursor;
+    while (!(await isHariSekolah(lanjut, liburMingguan, liburTanggal))) {
+      lanjut = tambahHari(lanjut, 1);
+    }
+
+    return { tanggal, lanjut };
   }
 
-  const urut = [...semua].sort();
+  const jumlah = Math.max(1, Number(jumlahHari || 1));
+  const tanggal = [];
+  let cursor = mulaiTanggal;
+
+  while (tanggal.length < jumlah) {
+    if (await isHariSekolah(cursor, liburMingguan, liburTanggal)) {
+      tanggal.push(cursor);
+    }
+    cursor = tambahHari(cursor, 1);
+  }
+
+  return { tanggal, lanjut: null };
+}
+
+async function cariWaliByNomor(nomor) {
+  const n = normalisasiNomor(nomor);
+  if (!n) return [];
+  const data = await sb(`/rest/v1/wali?select=*&nomor=eq.${encodeURIComponent(n)}`);
+  return Array.isArray(data) ? data : [];
+}
+
+async function cariSiswaByNama(nama) {
+  const n = normalisasiNama(nama);
+  if (!n) return [];
+  const data = await sb(`/rest/v1/siswa?select=*&order=nama.asc`);
+  if (!Array.isArray(data)) return [];
+  return data.filter(x => normalisasiNama(x.nama) === n);
+}
+
+async function cariSiswaUntukWali(waliId) {
+  if (!waliId) return [];
+  const data = await sb(`/rest/v1/siswa?select=*&wali_id=eq.${encodeURIComponent(waliId)}&order=nama.asc`);
+  return Array.isArray(data) ? data : [];
+}
+
+async function sudahDiproses(messageId) {
+  if (!messageId) return false;
+  try {
+    const data = await sb(`/rest/v1/pesan_diproses?select=id,waktu&message_id=eq.${encodeURIComponent(messageId)}&limit=1`);
+    if (Array.isArray(data) && data.length) {
+      const waktu = new Date(data[0].waktu).getTime();
+      if (Number.isFinite(waktu) && Date.now() - waktu < DUPLIKAT_WINDOW_MS) {
+        return true;
+      }
+    }
+  } catch (e) {
+    console.error('Gagal cek duplikat:', e);
+  }
+  return false;
+}
+
+async function tandaiSudahDiproses(messageId, nomor, pesan) {
+  if (!messageId) return;
+  try {
+    await sb('/rest/v1/pesan_diproses', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=ignore-duplicates' },
+      body: JSON.stringify({
+        message_id: messageId,
+        nomor,
+        pesan,
+        waktu: new Date().toISOString()
+      })
+    });
+  } catch (e) {
+    console.error('Gagal menyimpan pesan diproses:', e);
+  }
+}
+
+async function simpanAbsensi({ siswaId, tanggal, status, alasan = null }) {
+  if (!siswaId || !tanggal || !status) return null;
+
+  const existing = await sb(`/rest/v1/absensi?select=*&siswa_id=eq.${encodeURIComponent(siswaId)}&tanggal=eq.${encodeURIComponent(tanggal)}&limit=1`);
+  if (Array.isArray(existing) && existing.length) {
+    return { inserted: false, existing: existing[0] };
+  }
+
+  const data = await sb('/rest/v1/absensi', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ siswa_id: siswaId, tanggal, status, alasan })
+  });
+
   return {
-    ok: true,
-    untuk: kelasId => ({
-      tanggal: urut.filter(d => hariSekolah(d, libur, kelasId)),
-      tidakAktif: urut.filter(d => !hariSekolah(d, libur, kelasId))
-    })
+    inserted: true,
+    data: Array.isArray(data) ? data[0] : data
   };
 }
 
-async function catatPesan(dari, isi, hasil, cek) {
-  await sb('pesan_masuk', { method: 'POST', body: { dari_nomor: dari, isi, hasil, perlu_dicek: cek }, prefer: 'return=minimal' });
+async function simpanSakit(siswaId, tanggal, alasan = null) {
+  return simpanAbsensi({ siswaId, tanggal, status: 'sakit', alasan });
 }
 
-async function simpan(dari, pesan, anak, status, catatan, rencana) {
-  // Tanggal dihitung per anak, karena libur_tanggal bisa khusus kelas tertentu.
-  const per = anak.map(s => ({ s, ...rencana.untuk(s.kelas_id) }));
-  const aktif = per.filter(p => p.tanggal.length);
-  const liburSaja = per.filter(p => !p.tanggal.length);
+async function simpanIzin(siswaId, tanggal, alasan = null) {
+  return simpanAbsensi({ siswaId, tanggal, status: 'izin', alasan });
+}
 
-  const bagian = [];
-  const sudahHadir = [];
-  const rows = [];
-  const kelompok = new Map();
-  const diubah = new Date().toISOString();
-  const catatanDb = status === 'sakit'
-    ? `${(catatan || '').slice(0, 150)} | sakit otomatis ${HARI_SAKIT_OTOMATIS} hari sekolah`
-    : (catatan || '').slice(0, 200);
-
-  if (aktif.length) {
-    const semuaTgl = [...new Set(aktif.flatMap(p => p.tanggal))];
-    const ids = aktif.map(p => p.s.id).join(',');
-    const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&select=siswa_id,tanggal,status`);
-
-    for (const p of aktif) {
-      const hadirDi = new Set(ada.filter(a => a.siswa_id === p.s.id && a.status === 'hadir').map(a => a.tanggal));
-      let tulis = p.tanggal.filter(d => !hadirDi.has(d));
-      if (status === 'sakit' && hadirDi.size) tulis = []; // sudah hadir: sakit tidak dicatat
-      if (!tulis.length) { sudahHadir.push(p.s); continue; }
-
-      tulis.forEach(d => rows.push({
-        siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
-        catatan: catatanDb, diubah
-      }));
-      const k = `${tulis.join(',')}|${p.tidakAktif.join(',')}|${p.lanjut || ''}`;
-      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif: p.tidakAktif, lanjut: p.lanjut || null });
-      kelompok.get(k).anak.push(p.s);
-    }
-
-    if (rows.length) {
-      await sb('absensi?on_conflict=siswa_id,tanggal', { method: 'POST', body: rows, prefer: 'resolution=merge-duplicates,return=minimal' });
-    }
+async function simpan({ jenis, siswa, rencana, alasan = null }) {
+  if (!siswa || !rencana || !Array.isArray(rencana.tanggal)) {
+    return { berhasil: [], gagal: [] };
   }
 
-  const ubah = [...kelompok.values()].flatMap(g => g.anak);
-  const semuaDicatat = [...new Set(rows.map(r => r.tanggal))].sort();
-  await catatPesan(
-    dari,
-    pesan,
-    (ubah.length || sudahHadir.length
-      ? `${status}: ${daftarNama(ubah.length ? ubah : sudahHadir)} [${semuaDicatat.join(', ')}]${sudahHadir.length ? ' (sebagian sudah hadir)' : ''}`
-      : `${status}: ${daftarNama(anak)} - tanggal bukan hari sekolah`).slice(0, 300),
-    sudahHadir.length > 0
-  );
+  const berhasil = [];
+  const gagal = [];
 
-  for (const g of kelompok.values()) {
-    const nm = daftarNama(g.anak);
-    bagian.push(status === 'sakit' ? isiSakit(nm, g.tanggal, g.lanjut) : isiIzin(nm, g.tanggal, g.tidakAktif));
-  }
-
-  // Anak yang tanggal izinnya jatuh seluruhnya pada hari libur.
-  const liburKelompok = new Map();
-  for (const p of liburSaja) {
-    const k = p.tidakAktif.join(',');
-    if (!liburKelompok.has(k)) liburKelompok.set(k, { anak: [], tidakAktif: p.tidakAktif });
-    liburKelompok.get(k).anak.push(p.s);
-  }
-  for (const g of liburKelompok.values()) {
-    bagian.push(`Baik, Bunda. Pesan untuk *${daftarNama(g.anak)}* sudah kami terima. Namun ${g.tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak perlu dicatat izin. 🙏`);
-  }
-
-  const namaHadir = daftarNama(sudahHadir);
-  if (namaHadir) bagian.push(isiSudahHadir(namaHadir));
-
-  // Satu salam pembuka dan satu salam penutup untuk seluruh balasan.
-  return { balasan: bungkusBalasan(bagian) };
-}
-
-// Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
-async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa }) {
-  const rencana = await buatRencana(status, waktu);
-  if (!rencana.ok) {
-    await catatPesan(dari, pesan, `Ragu: ${rencana.alasan}`.slice(0, 300), true);
-    await kirimRagu(target, dari, daftarNama(anak), pesan, rencana.izinPanjang
-      ? { alasanRagu: 'izin_panjang', jumlahHari: rencana.izinPanjang }
-      : { alasanRagu: 'waktu' });
-    return;
-  }
-  const hasil = await simpan(dari, pesan, anak, status, catatan, rencana);
-  if (hasil.balasan) await kirimBalasanWali(target, hasil.balasan, bahasa);
-}
-
-function getGroupId(b) {
-  if (b?.sender && String(b.sender).includes('@g.us')) return String(b.sender);
-  if (b?.group_id && String(b.group_id).includes('@g.us')) return String(b.group_id);
-  if (b?.groupId && String(b.groupId).includes('@g.us')) return String(b.groupId);
-  if (b?.chat_id && String(b.chat_id).includes('@g.us')) return String(b.chat_id);
-  if (b?.chatId && String(b.chatId).includes('@g.us')) return String(b.chatId);
-  return '';
-}
-
-function getPengirim(b) {
-  const groupId = getGroupId(b);
-  return nomor(groupId ? b.member : b.sender);
-}
-
-function getTargetBalasan(b) {
-  const groupId = getGroupId(b);
-  return groupId || getPengirim(b);
-}
-
-// kelas_id anak dibutuhkan agar libur_tanggal khusus kelas bisa diterapkan.
-// Jika kolom kelas_id tidak ada di tabel siswa, sistem tetap jalan (libur khusus kelas diabaikan).
-let SISWA_PUNYA_KELAS_ID = null;
-
-async function cariAnak(dari) {
-  const ambil = async kolom => sb(`wali?no_wa=eq.${encodeURIComponent(dari)}&select=id,no_wa,siswa_wali(siswa(${kolom}))`);
-  let wali;
-  if (SISWA_PUNYA_KELAS_ID !== false) {
+  for (const tanggal of rencana.tanggal) {
     try {
-      wali = await ambil('id,nama,nama_panggilan,aktif,kelas_id');
-      SISWA_PUNYA_KELAS_ID = true;
+      let hasil;
+      if (jenis === 'sakit') {
+        hasil = await simpanSakit(siswa.id, tanggal, alasan);
+      } else if (jenis === 'izin') {
+        hasil = await simpanIzin(siswa.id, tanggal, alasan);
+      } else {
+        throw new Error(`Jenis absensi tidak dikenal: ${jenis}`);
+      }
+
+      if (hasil?.inserted) {
+        berhasil.push(tanggal);
+      } else {
+        gagal.push(tanggal);
+      }
     } catch (e) {
-      console.error('Kolom siswa.kelas_id tidak terbaca, libur khusus kelas diabaikan:', e.message);
-      SISWA_PUNYA_KELAS_ID = false;
+      console.error('Gagal menyimpan absensi:', e);
+      gagal.push(tanggal);
     }
   }
-  if (!wali) wali = await ambil('id,nama,nama_panggilan,aktif');
-  return ((wali[0] && wali[0].siswa_wali) || [])
-    .map(x => x.siswa)
-    .filter(s => s && s.aktif)
-    .sort((a, b) => String(a.nama || '').localeCompare(String(b.nama || '')));
+
+  return { berhasil, gagal };
 }
 
-const SAKIT = /\b(sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit)\b/i;
-const IZIN = /\b(izin|ijin|permisi|tidak masuk|ga masuk|gak masuk|nggak masuk|ngga masuk|libur|acara|keluar kota|mudik|keperluan keluarga)\b/i;
+function deteksiSakitCepat(pesan) {
+  const p = bersihkanPesan(pesan).toLowerCase();
+  const kataSakit = ['sakit', 'demam', 'flu', 'batuk', 'pilek', 'muntah', 'diare', 'kurang enak badan', 'tidak enak badan'];
+  return kataSakit.some(k => p.includes(k));
+}
 
-// Frasa ini membuat konteks perlu dianalisis AI, agar pesan lama/masa depan/penyangkalan
-// tidak salah dicatat sebagai absensi hari ini.
-const KONTEKS_TIDAK_HARI_INI = /\b(kemarin|kemaren|tadi malam|tadi pagi|sebelumnya|dulu|besok|lusa|nanti|minggu depan|minggu lalu|bulan depan|bulan lalu|hari lain)\b/i;
-const PENYANGKALAN = /\b(bukan|tidak|nggak|gak|ga|jangan)\b.{0,30}\b(sakit|demam|flu|batuk|pilek|panas|kurang sehat|kurang enak badan|tidak enak badan)\b|\b(sakit|demam|flu|batuk|pilek|panas|kurang sehat|kurang enak badan|tidak enak badan)\b.{0,30}\b(bukan|tidak|nggak|gak|ga)\b/i;
-const KONTEKS_RUMIT = /\b(kalau|jika|seandainya|tapi|namun|sedangkan|padahal|karena|sebab|soalnya)\b/i;
+function deteksiIzinCepat(pesan) {
+  const p = bersihkanPesan(pesan).toLowerCase();
+  const kataIzin = ['izin', 'tidak masuk', 'tidak dapat masuk', 'tidak bisa masuk', 'berhalangan'];
+  return kataIzin.some(k => p.includes(k));
+}
 
-// Pesan yang memuat label "Nama :" atau berbentuk surat panjang harus dicek AI,
-// karena nama anak di pesan perlu dibandingkan dengan anak yang terdaftar.
-const ADA_LABEL_NAMA = /\bnama\s*(lengkap|anak|ananda|siswa)?\s*[:=]/i;
+function ekstrakNamaSederhana(pesan) {
+  const teks = bersihkanPesan(pesan);
+  const pola = [
+    /(?:nama|anak|ananda)\s*[:=-]\s*([A-Za-zÀ-ÿ.' -]+)/i,
+    /(?:untuk|atas nama)\s+([A-Za-zÀ-ÿ.' -]+)/i
+  ];
 
-// Tanggal, nama hari, atau durasi ("tanggal 10", "hari Rabu", "3 hari", "sampai Jumat")
-// harus dihitung lewat AI + hitung tanggal, bukan dicatat sebagai hari ini.
-const ADA_PENANDA_WAKTU = /\b(tanggal|tgl)\b|\b(senin|selasa|rabu|kamis|jumat|jum'at|sabtu|minggu|pekan)\b|\b\d{1,2}\s*(jan|feb|mar|apr|mei|jun|jul|agu|sep|okt|nov|des)[a-z]*\b|\b\d{1,2}\s*[\/-]\s*\d{1,2}\b|\b\d+\s*(hari|hr)\b|\b(sampai|s\/d|selama|mulai)\b/i;
-
-function deteksiCepat(t) {
-  if (ADA_LABEL_NAMA.test(t) || t.length > 300) return null;
-  if (ADA_PENANDA_WAKTU.test(t)) return null;
-  if (KONTEKS_TIDAK_HARI_INI.test(t)) return null;
-  if (PENYANGKALAN.test(t)) return null;
-  if (KONTEKS_RUMIT.test(t)) {
-    // Kalimat yang memakai "karena" tetap aman untuk pola laporan sederhana
-    // seperti "izin karena demam"; pola lain diserahkan ke AI.
-    const sederhana = /\b(izin|ijin|permisi|tidak masuk|nggak masuk|gak masuk|ga masuk)\b.{0,80}\b(sakit|demam|flu|batuk|pilek|panas|kurang sehat|kurang enak badan|tidak enak badan)\b/i.test(t)
-      || /\b(sakit|demam|flu|batuk|pilek|panas|kurang sehat|kurang enak badan|tidak enak badan)\b.{0,80}\b(izin|ijin|permisi|tidak masuk|nggak masuk|gak masuk|ga masuk)\b/i.test(t);
-    if (!sederhana) return null;
+  for (const regex of pola) {
+    const m = teks.match(regex);
+    if (m?.[1]) {
+      return m[1].trim();
+    }
   }
-  if (SAKIT.test(t)) return 'sakit';
-  if (IZIN.test(t)) return 'izin';
+
   return null;
 }
 
-function cariAnakDariNama(pesan, anak) {
-  const t = pesan.toLowerCase();
-  return anak.filter(s => {
-    const nama = String(s.nama_panggilan || s.nama || '').toLowerCase().trim();
-    return nama && new RegExp('\\b' + nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(t);
+async function prosesDenganAI({ pesan, siswa }) {
+  try {
+    return await analisisPesan({ pesan, siswa });
+  } catch (e) {
+    console.error('Gagal analisis AI:', e);
+    return { jenis: null, tanggal: null, alasan: null, nama: null };
+  }
+}
+
+function bentukBalasan({ jenis, nama, tanggal, lanjut, alasan }) {
+  if (jenis === 'sakit') {
+    return balasanSakit(nama, tanggal, lanjut);
+  }
+  if (jenis === 'izin') {
+    return balasanIzin(nama, tanggal[0], alasan);
+  }
+  return balasanDenganSalam(`Baik, Bunda. Pesan terkait *${nama || 'Ananda'}* sudah kami terima dan akan kami proses. 😊`);
+}
+
+function buatLaporanGagal(nama, gagal) {
+  if (!gagal?.length) return '';
+  return [
+    `⚠️️ Beberapa tanggal untuk *${nama}* belum dapat dicatat:`,
+    daftarTanggal(gagal)
+  ].join('\n');
+}
+
+async function prosesPesanWali({ nomor, pesan, siswa }) {
+  const hariIni = tanggalLokal();
+  let jenis = null;
+  let nama = siswa?.nama || ekstrakNamaSederhana(pesan);
+  let alasan = null;
+  let tanggalMulai = hariIni;
+  let jumlahHari = null;
+
+  const sakitCepat = deteksiSakitCepat(pesan);
+  const izinCepat = deteksiIzinCepat(pesan);
+
+  if (sakitCepat) {
+    jenis = 'sakit';
+  } else if (izinCepat) {
+    jenis = 'izin';
+  }
+
+  if (!jenis) {
+    const ai = await prosesDenganAI({ pesan, siswa });
+    jenis = ai?.jenis || null;
+    alasan = ai?.alasan || null;
+    nama = ai?.nama || nama;
+    tanggalMulai = ai?.tanggal || hariIni;
+    jumlahHari = ai?.jumlahHari || null;
+  }
+
+  if (!jenis) {
+    return balasanDenganSalam(`Mohon maaf, Bunda. Pesan belum dapat kami pahami sebagai laporan sakit atau izin. Silakan sampaikan kembali laporan untuk *${siswa?.nama || 'Ananda'}* dengan lebih jelas. 🙏`);
+  }
+
+  if (!nama && siswa?.nama) {
+    nama = siswa.nama;
+  }
+  if (!nama) {
+    nama = 'Ananda';
+  }
+
+  const siswaDiproses = siswa;
+  if (!siswaDiproses) {
+    return balasanDenganSalam(`Mohon maaf, Bunda. Data anak belum dapat ditemukan. Silakan periksa kembali nama Ananda yang dilaporkan. 🙏`);
+  }
+
+  const rencana = await buatRencana(jenis, tanggalMulai, jumlahHari);
+  const hasil = await simpan({ jenis, siswa: siswaDiproses, rencana, alasan });
+
+  let balasan = bentukBalasan({
+    jenis,
+    nama: siswaDiproses.nama,
+    tanggal: rencana.tanggal,
+    lanjut: rencana.lanjut,
+    alasan
   });
+
+  if (hasil.gagal.length) {
+    balasan += `\n\n${buatLaporanGagal(siswaDiproses.nama, hasil.gagal)}`;
+  }
+
+  return balasan;
 }
 
-async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = null, opsi = {}) {
-  if (!KEPALA_SEKOLAH_NUMBER || KEPALA_SEKOLAH_NUMBER.includes('ISI_')) return;
-  const teks = jenis === 'ai_error'
-    ? notifikasiAIGagal(dari, nama, pesan, error)
-    : notifikasiRagu(dari, nama, pesan, opsi);
-  await kirimFonnte(nomor(KEPALA_SEKOLAH_NUMBER), teks);
+async function tentukanSiswaWali(wali, pesan) {
+  const siswa = await cariSiswaUntukWali(wali.id);
+  if (!siswa.length) return null;
+  if (siswa.length === 1) return siswa[0];
+
+  const nama = ekstrakNamaSederhana(pesan);
+  if (nama) {
+    const target = normalisasiNama(nama);
+    const cocok = siswa.find(s => normalisasiNama(s.nama) === target);
+    if (cocok) return cocok;
+
+    const sebagian = siswa.find(s => normalisasiNama(s.nama).includes(target) || target.includes(normalisasiNama(s.nama)));
+    if (sebagian) return sebagian;
+  }
+
+  return null;
 }
 
-// Notifikasi "ragu" (aturan sama untuk grup dan chat pribadi):
-// - Ragu karena NAMA BERBEDA -> dibalas langsung ke tempat pesan masuk
-//   (grup PAUD jika dari grup, chat pribadi pengirim jika dari chat pribadi).
-// - Semua ragu lainnya (maksud/waktu tidak jelas, anak tidak teridentifikasi)
-//   -> dikirim ke kepala sekolah saja.
-async function kirimRagu(target, dari, nama, pesan, opsi = {}) {
-  if (opsi.namaBeda) {
-    // Ke grup/chat pribadi: isi pesan asli TIDAK ditampilkan.
-    await kirimBalasanWali(target, notifikasiRagu(dari, nama, pesan, { ...opsi, tampilkanPesan: false }), opsi.bahasa);
-  } else {
-    await notifikasiKeKepala(dari, nama, pesan, 'ragu', null, opsi);
-  }
+function adalahGrup(body) {
+  return (
+    body?.chat?.endsWith('@g.us') ||
+    body?.target?.endsWith('@g.us') ||
+    body?.from?.endsWith('@g.us')
+  );
 }
 
-// ============================================================
-// ANTI-DUPLIKAT
-// Pesan yang sama (nomor pengirim + isi) dalam JENDELA_DUPLIKAT_MENIT menit diabaikan.
-// Membutuhkan tabel Supabase: pesan_dedup(kunci text primary key, dibuat timestamptz default now()).
-// Jika tabel belum ada, sistem tetap berjalan tanpa anti-duplikat (dan mencatat peringatan di log).
-// ============================================================
-function kunciDuplikat(dari, pesan) {
-  const isi = String(pesan || '').toLowerCase().replace(/\s+/g, ' ').trim();
-  return crypto.createHash('sha256').update(`${dari}|${isi}`).digest('hex');
+function nomorPengirim(body) {
+  return normalisasiNomor(body?.sender || body?.author || body?.from || '');
 }
 
-// true = pesan baru (boleh diproses), false = duplikat (abaikan)
-async function klaimPesan(kunci) {
-  try {
-    try {
-      await sb('pesan_dedup', { method: 'POST', body: { kunci }, prefer: 'return=minimal' });
-    } catch (e) {
-      if (!String(e.message).startsWith('409')) throw e;
-      // Kunci sudah ada: boleh diambil alih hanya jika sudah lewat dari jendela waktu.
-      const batas = new Date(Date.now() - JENDELA_DUPLIKAT_MENIT * 60000).toISOString();
-      const diambil = await sb(`pesan_dedup?kunci=eq.${kunci}&dibuat=lt.${encodeURIComponent(batas)}`, {
-        method: 'PATCH', body: { dibuat: new Date().toISOString() }, prefer: 'return=representation'
-      });
-      return Array.isArray(diambil) && diambil.length > 0;
-    }
-    // Bersihkan data lama sesekali agar tabel tidak membesar.
-    if (Math.random() < 0.05) {
-      const lama = new Date(Date.now() - 24 * 3600000).toISOString();
-      await sb(`pesan_dedup?dibuat=lt.${encodeURIComponent(lama)}`, { method: 'DELETE' }).catch(() => {});
-    }
-    return true;
-  } catch (e) {
-    console.error('Anti-duplikat tidak aktif (cek tabel pesan_dedup):', e.message);
-    return true;
-  }
+function isiPesan(body) {
+  return String(body?.message || body?.text || body?.body || '').trim();
 }
 
-// Dipakai saat pemrosesan gagal, agar kiriman ulang dari Fonnte/wali tidak ikut terblokir.
-async function lepasKlaim(kunci) {
-  try { await sb(`pesan_dedup?kunci=eq.${kunci}`, { method: 'DELETE' }); } catch (_) {}
+function idPesan(body) {
+  return body?.id || body?.messageId || body?.message_id || body?.metadata?.id || '';
 }
-
-async function proses(b) {
-  const pesan = String(b.message || b.text || '').trim();
-  if (!pesan) return;
-
-  const groupId = getGroupId(b);
-  const dari = getPengirim(b);
-  const target = getTargetBalasan(b);
-
-  // 1. Jika payload menyatakan pesan berasal dari grup, hanya grup PAUD yang boleh masuk.
-  if (groupId && groupId !== PAUD_GROUP_ID) return;
-
-  // 2. Hanya nomor wali terdaftar yang boleh diproses.
-  if (!dari) return;
-  const anak = await cariAnak(dari);
-  if (!anak.length) return;
-
-  // 3. Anti-duplikat: nomor + isi pesan sama dalam 5 menit -> diabaikan total.
-  const kunci = kunciDuplikat(dari, pesan);
-  if (!(await klaimPesan(kunci))) {
-    console.log('Pesan duplikat diabaikan');
-    return;
-  }
-
-  try {
-    await prosesPesan({ pesan, dari, target, anak, kunci });
-  } catch (e) {
-    await lepasKlaim(kunci);
-    throw e;
-  }
-}
-
-async function prosesPesan({ pesan, dari, target, anak, kunci }) {
-  // 4. Deteksi cepat hanya untuk kalimat yang cukup aman. SAKIT tetap menang atas IZIN.
-  const cepat = deteksiCepat(pesan);
-  if (cepat) {
-    let pilih = [];
-    if (anak.length === 1) pilih = anak;
-    else if (/\b(keduanya|semua|dua-duanya|duaduanya|semuanya)\b/i.test(pesan)) pilih = anak;
-    else pilih = cariAnakDariNama(pesan, anak);
-
-    if (pilih.length) {
-      await catatDanBalas({ dari, pesan, target, anak: pilih, status: cepat, catatan: pesan, waktu: [] });
-      return;
-    }
-  }
-
-  // 5. Bahasa bebas/ambigu masuk ke AI.js.
-  let hasilAI;
-  try {
-    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal() });
-  } catch (e) {
-    // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
-    console.error('AI error:', e);
-    await lepasKlaim(kunci); // pesan yang dikirim ulang nanti tetap boleh diproses
-    await catatPesan(dari, pesan, 'Gemini error - belum dianalisis, perlu pengecekan manual', true).catch(() => {});
-    const nama = anak.length === 1 ? (anak[0].nama || anak[0].nama_panggilan) : 'Belum berhasil diidentifikasi';
-    await notifikasiKeKepala(dari, nama, pesan, 'ai_error', e).catch(err => console.error('Gagal notifikasi AI error:', err));
-    return;
-  }
-
-  if (hasilAI.kategori === 'bukan_izin_sakit') {
-    await catatPesan(dari, pesan, 'Bukan izin/sakit', false);
-    return;
-  }
-
-  if (hasilAI.kategori === 'ragu' || hasilAI.nama_beda) {
-    // Nama anak SELALU dari data terdaftar di nomor pengirim, bukan dari isi pesan.
-    const nama = hasilAI.nama_anak
-      || (anak.length === 1 ? anak[0].nama : '')
-      || 'Belum berhasil diidentifikasi';
-    const catatan = hasilAI.nama_beda
-      ? `Ragu: nama di pesan (${(hasilAI.nama_di_pesan || []).join(' | ')}) berbeda dengan anak terdaftar (${nama})`
-      : 'Ragu: perlu pengecekan guru';
-    await catatPesan(dari, pesan, catatan.slice(0, 300), true);
-    await kirimRagu(target, dari, nama, pesan, {
-      namaDiPesan: hasilAI.nama_di_pesan || [],
-      namaBeda: !!hasilAI.nama_beda,
-      statusDugaan: hasilAI.status_dugaan || '',
-      bahasa: hasilAI.bahasa
-    });
-    return;
-  }
-
-  // 6. AI yakin. Validasi siswa sekali lagi sebelum menyimpan.
-  let pilih = (hasilAI.siswa_ids || [])
-    .map(id => anak.find(s => String(s.id) === String(id)))
-    .filter(Boolean);
-  if (!pilih.length && anak.length === 1) pilih = anak;
-
-  if (!pilih.length) {
-    await catatPesan(dari, pesan, 'Ragu: anak tidak teridentifikasi', true);
-    await kirimRagu(target, dari, 'Belum berhasil diidentifikasi', pesan);
-    return;
-  }
-
-  const status = hasilAI.status === 'sakit' ? 'sakit' : 'izin';
-  await catatDanBalas({
-    dari, pesan, target, anak: pilih, status,
-    catatan: hasilAI.alasan || pesan,
-    waktu: hasilAI.waktu || [],
-    bahasa: hasilAI.bahasa
-  });
-}
-
-module.exports = async (req, res) => {
-  const kunci = String((req.query && req.query.key) || '').trim();
-
-  if (req.method !== 'POST') {
-    if (!kunci) return res.status(200).send('Webhook aktif');
-    if (!WEBHOOK_SECRET) return res.status(200).send('WEBHOOK_SECRET belum terbaca di Vercel');
-    return res.status(200).send(kunci === WEBHOOK_SECRET ? 'Kunci cocok' : 'Kunci salah');
-  }
-
-  if (!WEBHOOK_SECRET || kunci !== WEBHOOK_SECRET) return res.status(401).send('Tidak diizinkan');
-
-  try { await proses(req.body || {}); }
-  catch (e) { console.error('Webhook error:', e); }
-
-  return res.status(200).json({ ok: true });
-};
-
-// Dipakai oleh cek-libur.js untuk menguji pembacaan tabel libur (tidak memengaruhi webhook).
-module.exports._uji = { sb, ambilLibur, hariSekolah, formatTanggal, tanggal, tambahHari, indeksHari, NAMA_HARI };
