@@ -3,7 +3,11 @@
 // AI dipisahkan ke AI.js agar mudah diperbaiki tanpa mengubah alur utama.
 //
 // Variabel Vercel yang dibutuhkan:
-// SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, FONNTE_TOKEN, WEBHOOK_SECRET
+// SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Per sekolah (diisi di menu Pengaturan, tabel pengaturan_rahasia): token Fonnte, kunci AI,
+// ID grup, nomor kepala sekolah, dan kunci Webhook. Alamat: /api/Webhook?key=<kunci sekolah>
+// Masa transisi: FONNTE_TOKEN, GEMINI_API_KEY, WEBHOOK_SECRET lama hanya dipakai sebagai
+// cadangan untuk sekolah pertama sampai kolomnya diisi di Pengaturan.
 
 const crypto = require('crypto');
 const { analisisPesan } = require('./AI');
@@ -12,8 +16,7 @@ const { terjemahkanBalasan } = require('./AITerjemah');
 // ============================================================
 // KONFIGURASI WHATSAPP PAUD — MUDAH DIGANTI
 // ============================================================
-const PAUD_GROUP_ID = '120363410620341838@g.us';
-const KEPALA_SEKOLAH_NUMBER = '6285117441486';
+// ID grup dan nomor kepala sekolah dibaca per sekolah dari tabel pengaturan_rahasia.
 
 // Libur mingguan dibaca dari tabel Supabase `libur_mingguan`, dan libur tanggal tertentu
 // dari tabel `libur_tanggal`. Daftar di bawah HANYA cadangan jika tabel libur_mingguan
@@ -32,8 +35,15 @@ const BATAS_JUMLAH_HARI_IZIN = 30; // izin lebih dari ini tidak dicatat otomatis
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const FONNTE_TOKEN = process.env.FONNTE_TOKEN;
+const SEKOLAH_PERTAMA = 1;
+const ENV_FONNTE = process.env.FONNTE_TOKEN || '';
+const ENV_GEMINI = (process.env.GEMINI_API_KEY || '').trim();
 const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || '').trim();
+
+// Konteks per permintaan (aman untuk permintaan bersamaan): sekolahId, tokenFonnte, kunciAi, idGrup, nomorKepala
+const { AsyncLocalStorage } = require('async_hooks');
+const konteks = new AsyncLocalStorage();
+const K = () => konteks.getStore() || {};
 
 function nomor(value) { return String(value || '').replace(/\D/g, ''); }
 
@@ -51,11 +61,12 @@ async function sb(path, { method = 'GET', body, prefer } = {}) {
 }
 
 async function kirimFonnte(target, teks) {
-  if (!target || !FONNTE_TOKEN) return false;
+  const tokenFonnte = K().tokenFonnte;
+  if (!target || !tokenFonnte) return false;
   try {
     const r = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
-      headers: { Authorization: FONNTE_TOKEN, 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { Authorization: tokenFonnte, 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ target: String(target), message: teks })
     });
     const raw = await r.text();
@@ -84,7 +95,7 @@ async function kirimBalasanWali(target, teks, bahasa) {
   let isi = teks;
   if (perluTerjemah(bahasa)) {
     try {
-      isi = await terjemahkanBalasan({ teks, bahasa });
+      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: K().kunciAi });
     } catch (e) {
       console.error(`Terjemahan ke ${bahasa} gagal, balasan dikirim dalam Bahasa Indonesia:`, e.message);
       isi = teks;
@@ -322,7 +333,7 @@ async function ambilLibur(dari, sampai) {
   let tanggalLibur = { umum: new Set(), kelas: new Map() };
 
   try {
-    const rows = await sb('libur_mingguan?select=*');
+    const rows = await sb(`libur_mingguan?sekolah_id=eq.${K().sekolahId}&select=*`);
     if (Array.isArray(rows) && rows.length === 0) {
       mingguan = new Set(); // tabel terbaca dan kosong: tidak ada libur mingguan
     } else {
@@ -335,7 +346,7 @@ async function ambilLibur(dari, sampai) {
   }
 
   try {
-    const rows = await sb('libur_tanggal?select=*');
+    const rows = await sb(`libur_tanggal?sekolah_id=eq.${K().sekolahId}&select=*`);
     tanggalLibur = parseLiburTanggal(rows || [], dari, sampai);
   } catch (e) {
     console.error('Tabel libur_tanggal tidak terbaca, libur tanggal diabaikan:', e.message);
@@ -465,7 +476,7 @@ async function buatRencana(status, waktu) {
 }
 
 async function catatPesan(dari, isi, hasil, cek) {
-  await sb('pesan_masuk', { method: 'POST', body: { dari_nomor: dari, isi, hasil, perlu_dicek: cek }, prefer: 'return=minimal' });
+  await sb('pesan_masuk', { method: 'POST', body: { sekolah_id: K().sekolahId, dari_nomor: dari, isi, hasil, perlu_dicek: cek }, prefer: 'return=minimal' });
 }
 
 async function simpan(dari, pesan, anak, status, catatan, rencana) {
@@ -486,7 +497,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
   if (aktif.length) {
     const semuaTgl = [...new Set(aktif.flatMap(p => p.tanggal))];
     const ids = aktif.map(p => p.s.id).join(',');
-    const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&select=siswa_id,tanggal,status`);
+    const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&sekolah_id=eq.${K().sekolahId}&select=siswa_id,tanggal,status`);
 
     for (const p of aktif) {
       const hadirDi = new Set(ada.filter(a => a.siswa_id === p.s.id && a.status === 'hadir').map(a => a.tanggal));
@@ -495,7 +506,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
       if (!tulis.length) { sudahHadir.push(p.s); continue; }
 
       tulis.forEach(d => rows.push({
-        siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
+        sekolah_id: K().sekolahId, siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
         catatan: catatanDb, diubah
       }));
       const k = `${tulis.join(',')}|${p.tidakAktif.join(',')}|${p.lanjut || ''}`;
@@ -580,7 +591,7 @@ function getTargetBalasan(b) {
 let SISWA_PUNYA_KELAS_ID = null;
 
 async function cariAnak(dari) {
-  const ambil = async kolom => sb(`wali?no_wa=eq.${encodeURIComponent(dari)}&select=id,no_wa,siswa_wali(siswa(${kolom}))`);
+  const ambil = async kolom => sb(`wali?sekolah_id=eq.${K().sekolahId}&no_wa=eq.${encodeURIComponent(dari)}&select=id,no_wa,siswa_wali(siswa(${kolom}))`);
   let wali;
   if (SISWA_PUNYA_KELAS_ID !== false) {
     try {
@@ -641,11 +652,12 @@ function cariAnakDariNama(pesan, anak) {
 }
 
 async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = null, opsi = {}) {
-  if (!KEPALA_SEKOLAH_NUMBER || KEPALA_SEKOLAH_NUMBER.includes('ISI_')) return;
+  const nomorKepala = K().nomorKepala;
+  if (!nomorKepala) return;
   const teks = jenis === 'ai_error'
     ? notifikasiAIGagal(dari, nama, pesan, error)
     : notifikasiRagu(dari, nama, pesan, opsi);
-  await kirimFonnte(nomor(KEPALA_SEKOLAH_NUMBER), teks);
+  await kirimFonnte(nomor(nomorKepala), teks);
 }
 
 // Notifikasi "ragu" (aturan sama untuk grup dan chat pribadi):
@@ -670,14 +682,14 @@ async function kirimRagu(target, dari, nama, pesan, opsi = {}) {
 // ============================================================
 function kunciDuplikat(dari, pesan) {
   const isi = String(pesan || '').toLowerCase().replace(/\s+/g, ' ').trim();
-  return crypto.createHash('sha256').update(`${dari}|${isi}`).digest('hex');
+  return crypto.createHash('sha256').update(`${K().sekolahId}|${dari}|${isi}`).digest('hex');
 }
 
 // true = pesan baru (boleh diproses), false = duplikat (abaikan)
 async function klaimPesan(kunci) {
   try {
     try {
-      await sb('pesan_dedup', { method: 'POST', body: { kunci }, prefer: 'return=minimal' });
+      await sb('pesan_dedup', { method: 'POST', body: { kunci, sekolah_id: K().sekolahId }, prefer: 'return=minimal' });
     } catch (e) {
       if (!String(e.message).startsWith('409')) throw e;
       // Kunci sudah ada: boleh diambil alih hanya jika sudah lewat dari jendela waktu.
@@ -713,7 +725,7 @@ async function proses(b) {
   const target = getTargetBalasan(b);
 
   // 1. Jika payload menyatakan pesan berasal dari grup, hanya grup PAUD yang boleh masuk.
-  if (groupId && groupId !== PAUD_GROUP_ID) return;
+  if (groupId && groupId !== K().idGrup) return;
 
   // 2. Hanya nomor wali terdaftar yang boleh diproses.
   if (!dari) return;
@@ -753,7 +765,7 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
   // 5. Bahasa bebas/ambigu masuk ke AI.js.
   let hasilAI;
   try {
-    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal() });
+    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: K().kunciAi });
   } catch (e) {
     // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
     console.error('AI error:', e);
@@ -808,18 +820,54 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
   });
 }
 
+// Mencari sekolah dari kunci di alamat Webhook, lalu memuat konfigurasinya.
+async function cariSekolah(kunci) {
+  if (!kunci) return null;
+  let id = null, r = null;
+  const rows = await sb(`pengaturan_rahasia?webhook_kunci=eq.${encodeURIComponent(kunci)}&select=*`);
+  if (Array.isArray(rows) && rows[0]) { r = rows[0]; id = r.sekolah_id; }
+  else if (WEBHOOK_SECRET && kunci === WEBHOOK_SECRET) {
+    // Masa transisi: kunci lama milik sekolah pertama
+    id = SEKOLAH_PERTAMA;
+    const x = await sb(`pengaturan_rahasia?sekolah_id=eq.${id}&select=*`);
+    r = (Array.isArray(x) && x[0]) || {};
+  }
+  if (!id) return null;
+
+  const sk = await sb(`sekolah?id=eq.${id}&select=status`);
+  if (!Array.isArray(sk) || !sk[0] || sk[0].status !== 'aktif') return { nonaktif: true, sekolahId: id };
+
+  const cadangan = id === SEKOLAH_PERTAMA;
+  return {
+    sekolahId: id,
+    tokenFonnte: r.token_fonnte || (cadangan ? ENV_FONNTE : '') || '',
+    kunciAi: r.kunci_ai || (cadangan ? ENV_GEMINI : '') || '',
+    idGrup: r.id_grup || '',
+    nomorKepala: r.nomor_kepala || ''
+  };
+}
+
 module.exports = async (req, res) => {
   const kunci = String((req.query && req.query.key) || '').trim();
 
   if (req.method !== 'POST') {
     if (!kunci) return res.status(200).send('Webhook aktif');
-    if (!WEBHOOK_SECRET) return res.status(200).send('WEBHOOK_SECRET belum terbaca di Vercel');
-    return res.status(200).send(kunci === WEBHOOK_SECRET ? 'Kunci cocok' : 'Kunci salah');
+    try {
+      const c = await cariSekolah(kunci);
+      return res.status(200).send(c && !c.nonaktif ? 'Kunci cocok' : 'Kunci salah');
+    } catch (e) {
+      console.error('Cek kunci Webhook gagal:', e);
+      return res.status(200).send('Kunci tidak dapat diperiksa');
+    }
   }
 
-  if (!WEBHOOK_SECRET || kunci !== WEBHOOK_SECRET) return res.status(401).send('Tidak diizinkan');
+  let ctx;
+  try { ctx = await cariSekolah(kunci); }
+  catch (e) { console.error('Webhook: gagal memuat sekolah:', e); return res.status(200).json({ ok: false }); }
+  if (!ctx) return res.status(401).send('Tidak diizinkan');
+  if (ctx.nonaktif) return res.status(200).json({ ok: true });
 
-  try { await proses(req.body || {}); }
+  try { await konteks.run(ctx, () => proses(req.body || {})); }
   catch (e) { console.error('Webhook error:', e); }
 
   return res.status(200).json({ ok: true });
