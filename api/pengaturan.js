@@ -122,7 +122,7 @@ module.exports = async (req, res) => {
         'GET'
       );
       const m = k && k[0];
-      if (!m || !m.aktif || m.role !== 'kepala_sekolah')
+      if (!m || !m.aktif || !['kepala_sekolah','wakil_kepala'].includes(m.role))
         return res.status(403).json({
           error: 'Hanya Kepala Sekolah sekolah ini atau Developer yang boleh'
         });
