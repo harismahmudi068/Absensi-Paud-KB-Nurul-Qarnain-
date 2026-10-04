@@ -124,7 +124,7 @@ function isiSakit(nama, tgl, lanjut = null) {
     `Semoga *${nama}* segera diberikan kesembuhan, kesehatan, dan kekuatan, serta dapat kembali beraktivitas bersama teman-teman di sekolah. 🌷`, '',
     `📌 *Catatan:* *${nama}* kini tercatat sakit selama ${n} hari sekolah:`,
     daftarTanggal(tgl), '',
-    `Jika dalam ${n} hari tersebut *${nama}* belum sembuh, mohon Bunda mengirimkan laporan sakit kembali pada *${lanjut ? `pada(${formatTanggal(lanjut)})` : ''}*. Namun jika *${nama}* sembuh sebelum *${lanjut ? `(${formatTanggal(lanjut)})` : ''}* dan masuk sekolah, status sakit akan otomatis diganti menjadi hadir, jadi Bunda tidak perlu khawatir. 😊`
+    `Jika dalam ${n} hari tersebut *${nama}* belum sembuh, mohon Bunda mengirimkan laporan sakit kembali pada *${lanjut ? `(${formatTanggal(lanjut)})` : ''}*. Namun jika *${nama}* sembuh sebelum *${lanjut ? `(${formatTanggal(lanjut)})` : ''}* dan masuk sekolah, status sakit akan otomatis diganti menjadi hadir, jadi Bunda tidak perlu khawatir. 😊`
   ].join('\n');
 }
 
