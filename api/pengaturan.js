@@ -79,7 +79,7 @@ function urlWebhook(req, kunci) {
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '')
     .split(',')[0]
     .trim();
-  return `https://${host}/api/Webhook?key=${kunci}`;
+  return `https://${host}/api/webhook?key=${kunci}`;
 }
 
 module.exports = async (req, res) => {
