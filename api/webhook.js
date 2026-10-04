@@ -5,7 +5,7 @@
 // Variabel Vercel yang dibutuhkan:
 // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 // Per sekolah (diisi di menu Pengaturan, tabel pengaturan_rahasia): token Fonnte, kunci AI,
-// ID grup, nomor kepala sekolah, dan kunci Webhook. Alamat: /api/Webhook?key=<kunci sekolah>
+// ID grup, nomor kepala sekolah, dan kunci Webhook. Alamat: /api/webhook?key=<kunci sekolah>
 // Masa transisi: FONNTE_TOKEN, GEMINI_API_KEY, WEBHOOK_SECRET lama hanya dipakai sebagai
 // cadangan untuk sekolah pertama sampai kolomnya diisi di Pengaturan.
 
