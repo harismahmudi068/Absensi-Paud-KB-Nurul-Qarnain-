@@ -1,8 +1,11 @@
 // Fungsi server akun guru (multi-sekolah).
 // Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
-// Aksi untuk Kepala Sekolah sekolah itu atau Developer (wajib kirim sekolah_id):
-//   cek_nomor, tautkan, tambah, tambah_batch, ubah_role, aktif, hapus
+// Aksi untuk Kepala Sekolah / Wakil Kepala Sekolah sekolah itu atau Developer (wajib kirim sekolah_id):
+//   otp_kelola_kirim, otp_kelola_verifikasi (bukti kepemilikan: OTP ke nomor pengelola sendiri)
+//   cek_nomor, tautkan, tambah, tambah_batch (wajib izin dari OTP, kecuali Developer)
+//   ubah_role, aktif, hapus
+// Aksi untuk pemilik akun sendiri: akun_sendiri, nomor_otp_kirim, nomor_simpan
 // Aksi khusus Developer:
 //   reset (atur sandi baru), hapus_akun (hapus akun seluruhnya)
 // Aksi untuk pemilik akun sendiri (semua pengguna aktif):
@@ -11,10 +14,37 @@
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+const crypto = require('crypto');
+const { kirimOtp, cekOtp, ipDari } = require('./_lib');
+
 const RE_UUID = /^[0-9a-f-]{36}$/i;
 const RE_USER = /^[a-z0-9._-]{3,20}$/;
 const RE_WA = /^628\d{8,12}$/;
-const ROLE_SEKOLAH = ['guru', 'kepala_sekolah'];
+const ROLE_SEKOLAH = ['guru', 'wakil_kepala', 'kepala_sekolah'];
+const ROLE_PENGELOLA = ['kepala_sekolah', 'wakil_kepala'];
+const IZIN_MENIT = 15;
+
+// Izin singkat setelah OTP pengelola benar (dipakai tambah guru dan impor)
+function tandaTangan(teks) {
+  return crypto
+    .createHmac('sha256', process.env.OTP_RAHASIA || KEY || '')
+    .update(teks)
+    .digest('hex');
+}
+function izinBuat(uid, sid) {
+  const p = `${uid}.${sid}.${Date.now() + IZIN_MENIT * 60000}`;
+  return p + '.' + tandaTangan('izin:' + p);
+}
+function izinCek(token, uid, sid) {
+  const a = String(token || '').split('.');
+  if (a.length !== 4) throw new Error('Verifikasi kode diperlukan. Minta kode ke nomor WhatsApp Anda');
+  const p = a.slice(0, 3).join('.');
+  const b1 = Buffer.from(tandaTangan('izin:' + p), 'hex');
+  const b2 = Buffer.from(a[3], 'hex');
+  const sah = b1.length === b2.length && crypto.timingSafeEqual(b1, b2);
+  if (!sah || a[0] !== uid || Number(a[1]) !== Number(sid) || Number(a[2]) < Date.now())
+    throw new Error('Verifikasi kode sudah berakhir. Minta kode baru');
+}
 const PESAN_USER =
   'Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah';
 
@@ -180,7 +210,7 @@ module.exports = async (req, res) => {
     });
 
     const p = await panggil(
-      `/rest/v1/profil?id=eq.${user.id}&select=role,aktif,username`,
+      `/rest/v1/profil?id=eq.${user.id}&select=role,aktif,username,no_wa`,
       'GET'
     );
     const pemanggil = p && p[0];
@@ -249,6 +279,43 @@ module.exports = async (req, res) => {
     }
 
     // =============================================================
+    // GANTI NOMOR WHATSAPP SENDIRI (OTP ke nomor lama dan nomor baru)
+    // =============================================================
+    if (b.aksi === 'nomor_otp_kirim' || b.aksi === 'nomor_simpan') {
+      const baru = normWA(b.no_wa_baru);
+      if (!RE_WA.test(baru)) throw new Error('Nomor WhatsApp baru tidak valid');
+      const lama = pemanggil.no_wa || '';
+      if (baru === lama) throw new Error('Nomor baru sama dengan nomor sekarang');
+
+      if (b.aksi === 'nomor_otp_kirim') {
+        try {
+          await panggil('/auth/v1/token?grant_type=password', 'POST', {
+            email: user.email,
+            password: String(b.sandi_sekarang || '')
+          });
+        } catch (e) {
+          throw new Error('Kata sandi saat ini salah');
+        }
+        const ada = await cariProfilByWA(baru);
+        if (ada && ada.id !== user.id) throw new Error('Nomor WhatsApp sudah dipakai akun lain');
+        const ip = ipDari(req);
+        await kirimOtp({ nomor: baru, keperluan: 'ganti_baru', ip, pembuka: 'Kode untuk menautkan nomor ini ke akun absensi Anda' });
+        if (lama)
+          await kirimOtp({ nomor: lama, keperluan: 'ganti_lama', ip, pembuka: 'Kode untuk mengganti nomor WhatsApp akun absensi Anda' });
+        return res.status(200).json({ ok: true, perlu_kode_lama: !!lama });
+      }
+
+      await cekOtp(baru, 'ganti_baru', b.kode_baru);
+      if (lama) await cekOtp(lama, 'ganti_lama', b.kode_lama);
+      try {
+        await panggil(`/rest/v1/profil?id=eq.${user.id}`, 'PATCH', { no_wa: baru }, { Prefer: 'return=minimal' });
+      } catch (e) {
+        throw new Error(pesanDuplikat(e) ? 'Nomor WhatsApp sudah dipakai akun lain' : e.message);
+      }
+      return res.status(200).json({ ok: true });
+    }
+
+    // =============================================================
     // AKSI KHUSUS DEVELOPER (tanpa sekolah_id)
     // =============================================================
     if (b.aksi === 'reset' || b.aksi === 'hapus_akun') {
@@ -267,6 +334,15 @@ module.exports = async (req, res) => {
 
       if (id === user.id)
         return res.status(400).json({ error: 'Tidak bisa menghapus akun sendiri' });
+      const tp = (await panggil(`/rest/v1/profil?id=eq.${id}&select=role`, 'GET')) || [];
+      if (tp[0] && tp[0].role === 'developer')
+        return res.status(400).json({ error: 'Akun Developer tidak dapat dihapus dari sini' });
+      const aktifDi =
+        (await panggil(`/rest/v1/keanggotaan?profil_id=eq.${id}&aktif=eq.true&select=sekolah_id`, 'GET')) || [];
+      if (aktifDi.length)
+        return res.status(400).json({
+          error: 'Guru ini masih aktif di ' + aktifDi.length + ' sekolah. Nonaktifkan atau keluarkan dulu dari semua sekolah'
+        });
       await panggil(`/rest/v1/profil?id=eq.${id}`, 'DELETE');
       await panggil('/auth/v1/admin/users/' + id, 'DELETE');
       return res.status(200).json({ ok: true });
@@ -281,10 +357,29 @@ module.exports = async (req, res) => {
 
     if (!isDev) {
       const k = await ambilKeanggotaan(user.id, sekolahId);
-      if (!k || !k.aktif || k.role !== 'kepala_sekolah')
+      if (!k || !k.aktif || !ROLE_PENGELOLA.includes(k.role))
         return res
           .status(403)
-          .json({ error: 'Hanya Kepala Sekolah sekolah ini atau Developer yang boleh' });
+          .json({ error: 'Hanya Kepala Sekolah atau Wakil Kepala Sekolah sekolah ini, atau Developer, yang boleh' });
+    }
+
+    // ---------- OTP pengelola (bukti kepemilikan) ----------
+    if (b.aksi === 'otp_kelola_kirim' || b.aksi === 'otp_kelola_verifikasi') {
+      if (isDev) return res.status(200).json({ ok: true, izin: izinBuat(user.id, sekolahId) });
+      const nomorSaya = pemanggil.no_wa || '';
+      if (!RE_WA.test(nomorSaya))
+        throw new Error('Isi nomor WhatsApp Anda dulu di Data Guru > Ubah profil saya > Nomor WhatsApp');
+      if (b.aksi === 'otp_kelola_kirim') {
+        await kirimOtp({
+          nomor: nomorSaya,
+          keperluan: 'kelola_guru',
+          ip: ipDari(req),
+          pembuka: 'Kode untuk menambah atau mengimpor guru di absensi'
+        });
+        return res.status(200).json({ ok: true, nomor: '••••' + nomorSaya.slice(-4) });
+      }
+      await cekOtp(nomorSaya, 'kelola_guru', b.kode);
+      return res.status(200).json({ ok: true, izin: izinBuat(user.id, sekolahId), menit: IZIN_MENIT });
     }
 
     // ---------- cek nomor (hanya nama yang dibuka) ----------
@@ -305,7 +400,8 @@ module.exports = async (req, res) => {
     if (b.aksi === 'tautkan') {
       const wa = normWA(b.no_wa);
       if (!RE_WA.test(wa)) throw new Error('Nomor WhatsApp tidak valid');
-      const role = isDev && ROLE_SEKOLAH.includes(b.role) ? b.role : 'guru';
+      if (!isDev) izinCek(b.izin, user.id, sekolahId);
+      const role = ROLE_SEKOLAH.includes(b.role) && (isDev || b.role !== 'kepala_sekolah') ? b.role : 'guru';
       const t = await cariProfilByWA(wa);
       if (!t || !t.aktif) throw new Error('Akun dengan nomor ini tidak ditemukan');
       if (await ambilKeanggotaan(t.id, sekolahId))
@@ -318,9 +414,12 @@ module.exports = async (req, res) => {
 
     // ---------- tambah akun baru ----------
     if (b.aksi === 'tambah') {
+      if (!isDev) izinCek(b.izin, user.id, sekolahId);
       const d = periksaDataAkun(b, { wajibWA: b.role !== 'developer' });
       if (d.role === 'developer' && !isDev)
         throw new Error('Hanya Developer yang boleh membuat akun Developer');
+      if (d.role === 'kepala_sekolah' && !isDev)
+        throw new Error('Hanya Developer yang boleh menetapkan Kepala Sekolah');
       if (d.no_wa && (await cariProfilByWA(d.no_wa)))
         throw new Error('Nomor WhatsApp sudah punya akun. Gunakan Tautkan');
       if (d.role === 'kepala_sekolah' && (await adaKepalaLain(sekolahId, null)))
@@ -331,6 +430,7 @@ module.exports = async (req, res) => {
 
     // ---------- tambah batch (impor XLSX) ----------
     if (b.aksi === 'tambah_batch') {
+      if (!isDev) izinCek(b.izin, user.id, sekolahId);
       const data = Array.isArray(b.data) ? b.data : [];
       if (!data.length) return res.status(400).json({ error: 'Data batch kosong' });
       if (data.length > 50)
@@ -342,6 +442,8 @@ module.exports = async (req, res) => {
           const d = periksaDataAkun(data[i] || {}, { wajibWA: false });
           if (d.role === 'developer' && !isDev)
             throw new Error('Hanya Developer yang boleh membuat akun Developer');
+          if (d.role === 'kepala_sekolah' && !isDev)
+            throw new Error('Role Kepala Sekolah hanya bisa ditetapkan Developer');
           if (d.no_wa && (await cariProfilByWA(d.no_wa)))
             throw new Error('Nomor WhatsApp sudah punya akun');
           if (d.role === 'kepala_sekolah' && (await adaKepalaLain(sekolahId, null)))
@@ -374,6 +476,8 @@ module.exports = async (req, res) => {
       const target = await ambilKeanggotaan(id, sekolahId);
       if (!target)
         return res.status(404).json({ error: 'Guru tidak ditemukan di sekolah ini' });
+      if (!isDev && target.role === 'kepala_sekolah')
+        return res.status(403).json({ error: 'Data Kepala Sekolah hanya bisa diubah oleh Developer' });
 
       const ubah = (isi) =>
         panggil(
@@ -387,6 +491,8 @@ module.exports = async (req, res) => {
         const role = String(b.role || '');
         if (!ROLE_SEKOLAH.includes(role))
           return res.status(400).json({ error: 'Role tidak valid' });
+        if (role === 'kepala_sekolah' && !isDev)
+          return res.status(403).json({ error: 'Hanya Developer yang boleh menetapkan Kepala Sekolah' });
         if (role === 'kepala_sekolah' && (await adaKepalaLain(sekolahId, id)))
           return res
             .status(400)
@@ -401,10 +507,6 @@ module.exports = async (req, res) => {
         await ubah({ aktif });
       } else {
         // hapus = keluarkan dari sekolah ini; akun tetap ada
-        if (target.role === 'kepala_sekolah' && !isDev)
-          return res
-            .status(403)
-            .json({ error: 'Kepala Sekolah hanya bisa dikeluarkan oleh Developer' });
         await panggil(
           `/rest/v1/keanggotaan?profil_id=eq.${id}&sekolah_id=eq.${sekolahId}`,
           'DELETE'
