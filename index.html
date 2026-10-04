@@ -73,41 +73,6 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-</head><body>
-<div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">KB Nurul Qarnain</h2><p class="mu" style="text-align:center;margin:0 0 16px">Sistem Absensi - masuk sebagai guru</p>
-<label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
-<button id="lb" class="btn success" style="width:100%" onclick="masuk()">Masuk</button><div id="lerr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div>
-<p class="mu" style="text-align:center;margin:14px 0 0">Lupa kata sandi? <a href="https://wa.me/6285117441486?text=Assalamualaikum%2C%20saya%20lupa%20kata%20sandi%20absensi." target="_blank" rel="noopener">Hubungi admin</a></p></div></div>
-<div class="app hid" id="ap">
-<aside class="sidebar"><div class="brand"><div class="logo">🏫</div><div><b id="bnm">KB Nurul Qarnain</b><br><small>Sistem Absensi</small></div></div><nav id="sn" class="nav"></nav><div class="foot"><a class="wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener">💬 Bantuan via WhatsApp</a>Anak Hebat Berawal dari<br>Kebiasaan Baik ♡</div></aside>
-<main class="main"><header class="top"><button class="hamb" onclick="drw(1)">☰</button><div style="flex:1;min-width:0"><small id="who" style="font-size:14px;opacity:1;font-weight:700"></small></div><div class="pill dtp" id="dt"></div><a class="hb wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener" title="Bantuan via WhatsApp">💬</a><button class="pill" onclick="keluar()">Keluar</button></header>
-<section class="content" id="v"></section></main></div>
-<nav class="bottom hid" id="bn"></nav>
-<div class="mb" id="drw" onclick="if(event.target===this)drw(0)"><div class="modal"><div class="mh"><b>Menu</b><button onclick="drw(0)">✕</button></div><div class="mbody"><div id="dn" class="nav"></div></div></div></div>
-<div class="mb" id="md" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="closeM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" onclick="closeM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
-<div class="mb" id="cf" style="z-index:150"><div class="modal" style="width:min(400px,100%)"><div class="mbody" style="text-align:center;padding:24px 20px 14px"><div id="cfi" style="font-size:42px;line-height:1"></div><h3 id="cft" style="margin:10px 0 6px"></h3><div id="cfm" class="mu" style="font-size:14px;white-space:pre-line"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" id="cfn">Batal</button><button class="btn success" id="cfy">Ya</button></div></div></div>
-<div class="toast" id="ts"></div><div id="ld"><div class="spin"></div><div id="ldt">Memuat...</div></div><input type="file" id="fx" accept=".xlsx,.xls" class="hid" onchange="impor(this)">
-<script>
-const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j4AB79X1wVZVLgdfcO0sAQ_EMFBq3KN';
-const db=supabase.createClient(URL_SB,KEY_SB);
-/* ---------- multi-sekolah: sekolah aktif + pembungkus tabel ---------- */
-let SEK=null,MEMB=[],PROFIL=null;
-const TENANT=new Set(['absensi','kelas','laporan_ortu','libur_mingguan','libur_tanggal','pengaturan','percakapan_tertunda','pesan_masuk','siswa','wali']);
-const _dbFrom=db.from.bind(db);
-db.from=t=>{const q=_dbFrom(t);if(!TENANT.has(t))return q;
- const tambah=r=>Array.isArray(r)?r.map(x=>({...x,sekolah_id:SEK})):{...r,sekolah_id:SEK};
- const sel=q.select.bind(q),ins=q.insert.bind(q),ups=q.upsert.bind(q),upd=q.update.bind(q),del=q.delete.bind(q);
- q.select=(...a)=>sel(...a).eq('sekolah_id',SEK);
- q.insert=(r,...a)=>ins(tambah(r),...a);
- q.upsert=(r,o,...a)=>ups(tambah(r),o&&o.onConflict==='no_wa'?{...o,onConflict:'sekolah_id,no_wa'}:o,...a);
- q.update=(...a)=>upd(...a).eq('sekolah_id',SEK);
- q.delete=(...a)=>del(...a).eq('sekolah_id',SEK);
- return q};
-const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],HR=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 const hariIni=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}),jamJkt=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jakarta'}):'';
 let TODAY=hariIni();const ST=['Hadir','Terlambat','Izin','Sakit','Alpa'],cap=s=>s.charAt(0).toUpperCase()+s.slice(1),low=s=>s.toLowerCase();
@@ -153,64 +118,6 @@ async function muatRahasia(){try{RHS=await apiPengaturan({aksi:'baca'})}catch(e)
 const LOAD={dashboard:()=>muatRange(TODAY,TODAY),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:muatRahasia};
 /* ---------- libur ---------- */
 const liburInfo=(d,k)=>{if(S.mingguan.includes(wd(d)))return 'libur mingguan hari '+HR[wd(d)];const l=S.libur.find(x=>x.tgl<=d&&d<=(x.sampai||x.tgl)&&(!x.kelas||x.kelas===k));return l?(l.ket||'libur'):''};
-const isLibur=(d,k)=>!!liburInfo(d,k);
-const liburKey=(d,k)=>d+'|'+(k||'*');
-const kelasTerpilih=(k)=>k?act().filter(s=>s.kelas===k):act();
-const infoLiburTerpilih=(d,k)=>{const ss=kelasTerpilih(k),ks=[...new Set(ss.filter(s=>isLibur(d,s.kelas)).map(s=>s.kelas))];if(!ks.length)return '';return ks.length===1?'kelas '+ks[0]:'kelas '+ks.join(', ')};
-const dayStat=(s,d)=>{const r=A(d)[s.id];return r?r.st:isLibur(d,s.kelas)&&!okL[liburKey(d,s.kelas)]?'Libur':d<=TODAY?'Belum':''};
-const adaStatusLibur=(d,k)=>kelasTerpilih(k).some(s=>{const r=A(d)[s.id];return r&&r.st==='Libur'});
-async function kosongkanAbsensiKelas(d,k){const ids=kelasTerpilih(k).map(s=>s.id);if(ids.length)await dbq(db.from('absensi').delete().eq('tanggal',d).in('siswa_id',ids));if(S.absen[d])ids.forEach(id=>delete S.absen[d][id]);if(draft&&d===attDate)ids.forEach(id=>delete draft[id]);}
-async function kosongkanAbsensiLibur(d,k){const siswa=kelasTerpilih(k),ids=siswa.filter(s=>{const r=A(d)[s.id];return r&&r.st==='Libur'}).map(s=>s.id);if(ids.length)await dbq(db.from('absensi').delete().eq('tanggal',d).in('siswa_id',ids));if(S.absen[d])ids.forEach(id=>delete S.absen[d][id]);if(draft&&d===attDate)ids.forEach(id=>delete draft[id]);}
-async function okLib(k,d){const i=liburInfo(d,k),ada=adaStatusLibur(d,k),key=liburKey(d,k);if((!i&&!ada)||okL[key])return true;if(liburPrompted[key])return false;liburPrompted[key]=1;const sumber=i?'terjadwal libur':'memiliki absensi berstatus Libur';const masuk=await konfirmasi(fmt(d)+': '+sumber+' untuk '+(k?'kelas '+k:'kelas yang dipilih')+'.\n\nHari ini tetap masuk seperti hari biasa?\n\nJika Ya, absensi berstatus Libur akan dikosongkan terlebih dahulu.',{judul:'Hari ini libur',ikon:'🏖',ya:'Ya, masuk'});if(!masuk)return false;if(i)await kosongkanAbsensiKelas(d,k);else await kosongkanAbsensiLibur(d,k);okL[key]=1;return true;}
-async function cekLiburSebelumAbsensi(k,d){const ss=kelasTerpilih(k),keys=[...new Set(ss.filter(s=>isLibur(d,s.kelas)||((A(d)[s.id]||{}).st==='Libur')).map(s=>s.kelas))].filter(kelas=>!okL[liburKey(d,kelas)]);if(!keys.length)return true;const nama=keys.length===1?'kelas '+keys[0]:'kelas '+keys.join(', ');const masuk=await konfirmasi(fmt(d)+': hari ini '+(keys.length===1?'terjadwal libur atau memiliki absensi berstatus Libur untuk '+nama:'terdapat kelas yang terjadwal libur atau memiliki absensi berstatus Libur ('+nama)+'.\n\nTetap masuk seperti hari biasa?\n\nJika Ya, absensi berstatus Libur akan dikosongkan terlebih dahulu.',{judul:'Hari ini libur',ikon:'🏖',ya:'Ya, masuk'});if(!masuk){keys.forEach(kelas=>liburPrompted[liburKey(d,kelas)]=1);return false;}for(const kelas of keys){if(isLibur(d,kelas))await kosongkanAbsensiKelas(d,kelas);else await kosongkanAbsensiLibur(d,kelas);okL[liburKey(d,kelas)]=1;}return true;}
-function hariBulan(b,rekap=false){const p=b.split('-').map(Number),n=new Date(p[0],p[1],0).getDate(),r=[];let batas=n;if(rekap){const prefix=b+'-',tercatat=Object.keys(S.absen).filter(d=>d.startsWith(prefix)&&Object.keys(S.absen[d]||{}).length).sort();const last=tercatat[tercatat.length-1]||'';const maxHari=last?Number(last.slice(8)):0;const ym=TODAY.slice(0,7);if(b===ym)batas=Math.max(Number(TODAY.slice(8)),maxHari);else if(b>ym)batas=maxHari;else batas=n}for(let i=1;i<=batas;i++){const d=b+'-'+String(i).padStart(2,'0');if(!rekap&&d>TODAY)break;r.push(d)}return r}
-const statusRekap=(s,d)=>dayStat(s,d)||'Belum';
-function ringkas(s,b,rekap=false){const c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0},ds=hariBulan(b,rekap);ds.forEach(d=>{const st=rekap?statusRekap(s,d):dayStat(s,d);c[st]=(c[st]||0)+1});const n=ds.length;return{c,n,ds,pct:n?Math.round((c.Hadir+c.Terlambat+c.Libur)*100/n):0}}
-const segarkan=()=>dbq(db.rpc('segarkan_libur'));
-/* ---------- login + navigasi ---------- */
-function loginView(msg){terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=msg||''}
-function masuk(){const b=$('#lb');if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="bs"></span>Memproses...';$('#lerr').textContent='';guard(async()=>{const u=$('#lu').value.trim(),pw=$('#lp').value;if(!u||!pw)throw new Error('Isi username dan kata sandi');let email=u;
- if(!u.includes('@')){const r=await db.rpc('email_dari_username',{u});if(r.error)throw r.error;if(!r.data)throw new Error('Username tidak ditemukan');email=r.data}
- const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
-async function mulai(){const {data:{session}}=await db.auth.getSession();if(!session)return loginView();
- try{me=session.user.id;
-  const pf=await dbq(db.from('profil').select('*').eq('id',me).maybeSingle());
-  if(!pf||!pf.aktif){await db.auth.signOut();return loginView('Akun ini tidak terdaftar atau sudah dinonaktifkan')}
-  PROFIL=pf;
-  if(pf.role==='developer')MEMB=(await dbq(db.from('sekolah').select('id,nama,status').order('nama'))).map(s=>({sekolah_id:s.id,nama:s.nama,role:'developer'}));
-  else MEMB=(await dbq(db.from('keanggotaan').select('sekolah_id,role,sekolah(nama,status)').eq('profil_id',me).eq('aktif',true))).filter(x=>x.sekolah&&x.sekolah.status==='aktif').map(x=>({sekolah_id:x.sekolah_id,nama:x.sekolah.nama,role:x.role}));
-  if(!MEMB.length){await db.auth.signOut();return loginView('Akun ini belum terhubung ke sekolah yang aktif. Hubungi Kepala Sekolah.')}
-  let ingat=null;try{ingat=Number(sessionStorage.getItem('sekolah_aktif'))}catch(e){}
-  const pilih=MEMB.length===1?MEMB[0]:MEMB.find(m=>m.sekolah_id===ingat);
-  if(pilih)await masukSekolah(pilih);else tampilPilihSekolah()}
- catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
-async function masukSekolah(m){try{SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
-  S.absen={};S.pesan=[];draft=null;attKelas='';kk='';rk='';lo='';q='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
-  await muatDasar();$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');
-  const bv=sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView');view=(bv&&allowed(bv))?bv:'dashboard';await go(view)}
- catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
-function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''))}
-async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
-async function gantiSekolah(){await stopScan();drw(0);tampilPilihSekolah()}
-async function keluar(){await stopScan('keluar');await db.auth.signOut();S.absen={};SEK=null;MEMB=[];PROFIL=null;try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}loginView()}
-function drw(o){$('#drw').classList.toggle('show',!!o)}
-async function go(id){await stopScan();TODAY=hariIni();view=id;drw(0);if(id!=='absensi')draft=null;$('#v').innerHTML='';ld(1);
- try{if(LOAD[id])await LOAD[id]()}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
-function renderAll(){
- const ms=MENUS.filter(m=>allowed(m[0])),h=ms.map(m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`).join('');
- const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Ganti sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=['dashboard','absensi','scan','rekap'].filter(allowed).slice(0,4);
- $('#bn').innerHTML=pref.map(id=>{const m=MENUS.find(x=>x[0]===id);return `<button class="${view===id?'on':''}" onclick="go('${id}')"><span>${m[2]}</span>${m[1]}</button>`}).join('')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`;
- $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
-async function muatGambarKartu(){
- const imgs=[...document.querySelectorAll('#v img[data-kartu-id]')];
- for(let i=0;i<imgs.length;i++){
-  const id=Number(imgs[i].dataset.kartuId),s=S.siswa.find(x=>x.id===id);
-  if(s){
-   imgs[i].src=kartuUrl(s);
-   imgs[i].alt='Kartu '+(s.pan||'');
-  }
-  if(i%2===1)await new Promise(r=>setTimeout(r,0));
- }
 }
 function renderV(){
  $('#v').innerHTML=V[view]();
@@ -256,9 +163,6 @@ async function setWali(sid,wa){await dbq(db.from('siswa_wali').delete().eq('sisw
 const kid=n=>(S.kelas.find(k=>k.nama.toLowerCase()===String(n||'').trim().toLowerCase())||{}).id||null;
 function addSiswa(){if(!S.kelas.length)return toast('Tambah kelas dulu di menu Pengaturan',false);form('Tambah Siswa',[{k:'nama',l:'Nama lengkap'},{k:'pan',l:'Nama panggilan'},{k:'nisn',l:'NISN (opsional)',t:'tel'},{k:'kelas',l:'Kelas',o:S.kelas.map(k=>k.nama)},{k:'wa',l:'WhatsApp orang tua (08...)',t:'tel'}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
  const dup=nisn?S.siswa.find(x=>x.nisn===nisn):null;if(dup)throw new Error('NISN sudah digunakan oleh '+dup.nama);
- const s=await dbq(db.from('siswa').insert({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas)}).select().single());await setWali(s.id,normWA(v.wa));await muatDasar();toast('Siswa tersimpan');renderV()})}
-function ubahSiswa(id){const s=S.siswa.find(x=>x.id===id);form('Ubah Siswa',[{k:'nama',l:'Nama lengkap',v:s.nama},{k:'pan',l:'Nama panggilan',v:s.pan},{k:'nisn',l:'NISN (opsional)',t:'tel',v:s.nisn},{k:'kelas',l:'Kelas',o:S.kelas.map(k=>k.nama),v:s.kelas},{k:'wa',l:'WhatsApp orang tua',t:'tel',v:s.wa}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
- const dup=nisn?S.siswa.find(x=>x.id!==id&&x.nisn===nisn):null;if(dup)throw new Error('NISN sudah digunakan oleh '+dup.nama);
  await dbq(db.from('siswa').update({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas)}).eq('id',id));if(normWA(v.wa)!==s.wa)await setWali(id,normWA(v.wa));await muatDasar();toast('Data siswa diperbarui');renderV()})}
 function togSiswa(id){guard(async()=>{const s=S.siswa.find(x=>x.id===id);await dbq(db.from('siswa').update({aktif:!s.aktif}).eq('id',id));s.aktif=!s.aktif;renderV()})}
 /* ---------- guru ---------- */
@@ -449,11 +353,6 @@ function fmtNip(v){const a=String(v||'').replace(/\D/g,'');return a.length===18?
 function ttdKepsek(b){const g=S.guru.find(x=>x.role==='kepala_sekolah'&&x.aktif)||S.guru.find(x=>x.role==='kepala_sekolah')||{};return{tgl:KOTA_TTD+', '+fmt(hariIni()),nama:g.nama||'',nip:fmtNip(g.nip)}}
 const rgbX=a=>{const h=a.slice(-6);return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]};
 function pdfRiwayat(d,M,b,k){
- const n=M.ds.length,PW=297,PH=210,mg=6,FW=[7,40,21,14],SW=[9,12,8,8,8,8,10],SHC=['FF20B979','FFD99A27','FF248FE9','FFEF5361','FF7A4BE5','FF526B84','FF176B3A'],SUM=['H','T','I','S','A','L'],
- dw=Math.min(7,(PW-2*mg-FW.reduce((a,c)=>a+c,0)-SW.reduce((a,c)=>a+c,0))/n),tw=FW.reduce((a,c)=>a+c,0)+n*dw+SW.reduce((a,c)=>a+c,0),sx=(PW-tw)/2;
- d.setFillColor(...rgbX('FF7650B8'));d.rect(sx,mg,tw,9,'F');d.setFont('helvetica','bold');d.setFontSize(13);d.setTextColor(255,255,255);d.text('RIWAYAT ABSENSI - '+ns().toUpperCase(),sx+tw/2,mg+6.2,{align:'center'});
- d.setFillColor(...rgbX('FFEEE5FB'));d.rect(sx,mg+9,tw,6,'F');d.setFont('helvetica','normal');d.setFontSize(8);d.setTextColor(...rgbX('FF4B3A75'));d.text('Bulan '+fmtB(b)+(k?' - Kelas '+k:' - Semua kelas')+'   |   Dicetak '+fmt(TODAY),sx+tw/2,mg+13.2,{align:'center'});
- const HS=(c,sp,x)=>({content:c,rowSpan:sp,styles:Object.assign({fillColor:rgbX(x),textColor:[255,255,255],fontStyle:'bold',halign:'center',valign:'middle'},{})});
  const r1=['No','Nama','NISN','Kelas'].map(h=>HS(h,2,'FF176B3A')),r2=[];
  M.ds.forEach(dd=>{const w=wd(dd),f=rgbX(w===0||w===6?'FFE0A030':'FF3B9E63');r1.push({content:String(+dd.slice(8)),styles:{fillColor:f,textColor:[255,255,255],fontStyle:'bold',halign:'center',valign:'middle'}});r2.push({content:HRS[w],styles:{fillColor:f,textColor:[255,255,255],fontStyle:'bold',halign:'center',valign:'middle',fontSize:4.8}})});
  ['Hadir','Terlambat','Izin','Sakit','Alpa','Libur','% Hadir'].forEach((h,i)=>r1.push(HS(h,2,SHC[i])));
@@ -499,9 +398,6 @@ async function apiKirim(nomor,teks){const {data:{session}}=await db.auth.getSess
 async function kirimList(list){let ok=0,gagal=[];ld(1);try{for(let i=0;i<list.length;i++){const s=list[i];$('#ldt').textContent='Mengirim '+(i+1)+' dari '+list.length+'...';try{if(!s.wa)throw new Error('tanpa nomor');await apiKirim(s.wa,pesanOrtu(s,lb));ok++}catch(e){gagal.push(s.pan+' ('+(e.message||e)+')')}if(i<list.length-1)await new Promise(r=>setTimeout(r,1200))}}finally{ld(0)}
  info('Hasil pengiriman laporan','<div class="note">✅ Berhasil: <b>'+ok+'</b> pesan<br>❌ Gagal: <b>'+gagal.length+'</b> pesan</div>'+(gagal.length?'<div class="mu">'+gagal.map(esc).join('<br>')+'</div>':''));toast(ok+' terkirim, '+gagal.length+' gagal',!gagal.length)}
 async function kirimSemua(){const l=act().filter(s=>!lo||s.kelas===lo);if(!l.length)return toast('Tidak ada anak',false);if(await konfirmasi('Kirim laporan '+fmtB(lb)+' ke '+l.length+' orang tua sekarang?',{judul:'Kirim semua laporan',ikon:'📤',ya:'Kirim'}))kirimList(l)}
-async function kirimSatu(id){const s=S.siswa.find(x=>x.id===id);if(await konfirmasi('Kirim laporan '+fmtB(lb)+' '+s.pan+' ke '+s.wa+'?',{judul:'Kirim laporan',ikon:'📤',ya:'Kirim'}))kirimList([s])}
-async function hapusWaliYatim(wids){const ids=[...new Set(wids||[])];if(!ids.length)return 0;const r=await dbq(db.from('siswa_wali').select('wali_id').in('wali_id',ids));const used=new Set((r||[]).map(x=>x.wali_id));const orphan=ids.filter(id=>!used.has(id));if(!orphan.length)return 0;await dbq(db.from('wali').delete().in('id',orphan));return orphan.length}
-async function hapusSiswa(id){const s=S.siswa.find(x=>x.id===id);if(!s)return;if(!await konfirmasi('Hapus '+s.nama+'? Seluruh riwayat absensi dan data walinya ikut terhapus dan tidak bisa dikembalikan. Bila hanya berhenti sekolah, lebih baik Nonaktifkan.',{judul:'Hapus data anak',ya:'Hapus',bahaya:1}))return;
  guard(async()=>{const tw=(await dbq(db.from('siswa_wali').select('wali_id').eq('siswa_id',id))).map(x=>x.wali_id);await dbq(db.from('absensi').delete().eq('siswa_id',id));await dbq(db.from('siswa_wali').delete().eq('siswa_id',id));await dbq(db.from('siswa').delete().eq('id',id));
   let n=0,err='';try{n=await hapusWaliYatim(tw)}catch(e){err=e.message||String(e)}
   ssel.delete(id);S.absen={};await muatDasar();err?toast('Anak dihapus, tetapi data wali gagal dihapus: '+err,false):toast(n?'Data anak dan data wali dihapus':tw.length?'Data anak dihapus (data wali masih dipakai anak lain)':'Data anak dihapus');renderV()})}
@@ -605,7 +501,7 @@ function doneMsg(id){guard(async()=>{await dbq(db.from('pesan_masuk').update({pe
 /* ---------- pengaturan ---------- */
 V.pengaturan=()=>`${taInit()}<div class="panel"><div class="ph">🏫 Nama Sekolah</div><div class="pb"><div class="note">Nama ini tampil di halaman masuk, menu samping, dashboard, kartu pelajar, riwayat/rekap absensi (PDF dan XLSX), serta pesan laporan orang tua. Setelah disimpan, halaman dimuat ulang otomatis.</div><div class="tb"><input id="nsInp" class="input grow" maxlength="80" value="${esc(ns())}" placeholder="Nama sekolah" onkeydown="if(event.key==='Enter')simpanNamaSekolah($('#nsBtn'))"><button id="nsBtn" class="btn success" onclick="simpanNamaSekolah(this)">💾 Simpan</button></div></div></div>
 ${panelKoneksi()}<div class="panel"><div class="ph">🏫 Kelas dan Jam Masuk <button class="btn success" onclick="addKelas()">+ Tambah Kelas</button></div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Perubahan tersimpan otomatis.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <input type="time" class="input" value="${k.jam}" onchange="setJam(${k.id},this.value)"></span><button class="btn sm soft" onclick="ubahKelas(${k.id})">Ubah nama</button> <button class="btn sm danger" onclick="delKelas(${k.id})">Hapus</button></div>`).join('')}</div></div></div>
-<div class="panel"><div class="ph">⏰ Alpa Otomatis</div><div class="pb"><div class="note">Anak yang belum tercatat sampai jam ini otomatis berstatus Alpa (tidak berlaku di hari libur). Server memeriksa tiap 10 menit. Bila orang tua mengabari izin sesudahnya, statusnya diubah.</div>
+<div class="panel"><div class="ph">⏰ Alpa Otomatis</div><div class="pb"><div class="note">Anak yang belum tercatat sampai jam ini otomatis berstatus Alpa (tidak berlaku di hari libur). Server memeriksa tiap 5 menit. Bila orang tua mengabari izin sesudahnya, statusnya diubah.</div>
 <div class="tb"><label><input type="checkbox" ${S.set.alpa_aktif?'checked':''} onchange="setAlpa({alpa_aktif:this.checked})"> Aktifkan alpa otomatis</label><input type="time" class="input" value="${S.set.jam}" onchange="setAlpa({alpa_jam:this.value})"></div></div></div>
 <div class="panel"><div class="ph">🎓 Tahun Ajaran <span class="mu">Sekarang: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="note">Saat tahun ajaran berganti, data absensi lama serta seluruh data siswa, relasi siswa-wali, dan data wali akan dihapus. Data guru dan kelas tetap ada. Unduh rekap total tahun ajaran di bawah ini sebelum menghapus.</div>
 <div class="tb"><span class="mu">Dari</span>${dt('month',taA,"taA=this.value")}<span class="mu">Sampai</span>${dt('month',taB,"taB=this.value")}<select class="select" onchange="taK=this.value">${kopt(taK,1)}</select></div>
@@ -616,18 +512,6 @@ function panelKoneksi(){const R=RHS||{};
  const st=(o,f)=>o&&o.ada?`<span class="badge Hadir">Terisi ${esc(o.tampil||'')}</span> <button class="btn sm soft" onclick="hapusRahasia('${f}')">Hapus</button>`:'<span class="badge Belum">Belum diisi</span>';
  const err=R.error?`<div class="note" style="color:var(--rd)">⚠ ${esc(R.error)}</div>`:'';
  return `<div class="panel"><div class="ph">🔌 Koneksi WhatsApp dan AI</div><div class="pb"><div class="note">Data ini dipakai sekolah Anda untuk membaca dan membalas pesan wali. Kunci dan token tidak ditampilkan lagi setelah disimpan. Kosongkan kolomnya bila tidak ingin mengganti.</div>${err}
-<div class="fg"><div class="fd"><label class="l">Kunci API AI (Gemini) ${st(R.kunci_ai,'kunci_ai')}</label><input id="rhAI" class="input" type="password" autocomplete="off" placeholder="Tempel kunci baru di sini"></div>
-<div class="fd"><label class="l">Token Fonnte ${st(R.token_fonnte,'token_fonnte')}</label><input id="rhFT" class="input" type="password" autocomplete="off" placeholder="Tempel token baru di sini"></div>
-<div class="fd"><label class="l">ID grup WhatsApp</label><input id="rhGR" class="input" value="${esc(R.id_grup||'')}" placeholder="contoh 120363410620341838@g.us"></div>
-<div class="fd"><label class="l">Nomor kepala sekolah (untuk notifikasi)</label><input id="rhNK" class="input" value="${esc(R.nomor_kepala||'')}" placeholder="contoh 08123456789"></div></div>
-<button class="btn success" onclick="simpanKoneksi(this)">💾 Simpan koneksi</button></div></div>
-<div class="panel"><div class="ph">🔗 Alamat Webhook</div><div class="pb"><div class="note">Pasang alamat ini di pengaturan Webhook Fonnte untuk sekolah Anda. Alamatnya rahasia dan unik untuk sekolah Anda, jadi disembunyikan. Untuk melihatnya, masukkan kata sandi akun Anda.</div><div class="tb"><button class="btn success" onclick="mintaWebhook(false)">🔓 Tampilkan alamat</button><button class="btn danger" onclick="mintaWebhook(true)">♻ Buat ulang kunci</button></div></div></div>`}
-function simpanKoneksi(btn){const ai=$('#rhAI').value.trim(),ft=$('#rhFT').value.trim(),gr=$('#rhGR').value.trim(),nk=$('#rhNK').value.trim();
- const b={aksi:'simpan',id_grup:gr,nomor_kepala:nk};if(ai)b.kunci_ai=ai;if(ft)b.token_fonnte=ft;
- if(btn)btn.disabled=true;guard(async()=>{try{await apiPengaturan(b);await muatRahasia();toast('Koneksi disimpan');renderV()}finally{if(btn)btn.disabled=false}})}
-async function hapusRahasia(f){const n=f==='kunci_ai'?'kunci API AI':'token Fonnte';if(!await konfirmasi('Hapus '+n+' sekolah ini? Fitur yang memakainya berhenti sampai diisi lagi.',{judul:'Hapus '+n,ya:'Hapus',bahaya:1}))return;
- guard(async()=>{await apiPengaturan({aksi:'simpan',hapus:[f]});await muatRahasia();toast(n+' dihapus');renderV()})}
-function mintaWebhook(baru){form(baru?'Buat ulang kunci Webhook':'Tampilkan alamat Webhook',[{k:'sandi',l:'Kata sandi akun Anda',t:'password'}],async v=>{
  if(!v.sandi)throw new Error('Isi kata sandi akun Anda');
  if(baru&&!await konfirmasi('Kunci lama langsung berhenti berlaku. Alamat baru harus dipasang ulang di Fonnte. Lanjutkan?',{judul:'Buat ulang kunci',ya:'Buat ulang',bahaya:1}))return;
  const j=await apiPengaturan({aksi:baru?'buat_ulang_webhook':'webhook',sandi:v.sandi});setTimeout(()=>tampilWebhook(j.url,baru),200)})}
