@@ -4,18 +4,18 @@
 // ============================================================
 
 // ============================================================
-// NOMOR ADMIN
-// CUKUP UBAH BAGIAN INI JIKA NOMOR ADMIN BERUBAH
-// Format: 628xxxxxxxxxx
+// TUJUAN NOTIFIKASI
+// Nomor kepala sekolah dan token Fonnte diatur per sekolah di menu Pengaturan > Koneksi
+// (tabel pengaturan_rahasia). Masa transisi: FONNTE_TOKEN lama hanya cadangan untuk sekolah pertama.
 // ============================================================
-const NOMOR_ADMIN_ALPA = '6285117441486';
+const SEKOLAH_PERTAMA = 1;
 
 // ============================================================
 // ENVIRONMENT VARIABLES
 // ============================================================
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const FONNTE = process.env.FONNTE_TOKEN;
+const ENV_FONNTE = process.env.FONNTE_TOKEN || '';
 const ALPA_SECRET = process.env.ALPA_NOTIF_SECRET;
 
 
@@ -76,23 +76,12 @@ function cekKonfigurasi() {
     );
   }
 
-  if (!FONNTE) {
-    throw new Error(
-      'FONNTE_TOKEN belum dikonfigurasi di Vercel'
-    );
-  }
-
   if (!ALPA_SECRET) {
     throw new Error(
       'ALPA_NOTIF_SECRET belum dikonfigurasi di Vercel'
     );
   }
 
-  if (!/^628\d{8,12}$/.test(NOMOR_ADMIN_ALPA)) {
-    throw new Error(
-      'NOMOR_ADMIN_ALPA tidak valid'
-    );
-  }
 }
 
 
@@ -116,18 +105,18 @@ function formatTanggal(tanggal) {
 // ============================================================
 // KIRIM WHATSAPP MELALUI FONNTE
 // ============================================================
-async function kirimFonnte(teks) {
+async function kirimFonnte(token, nomorTujuan, teks) {
 
   const response = await fetch(
     'https://api.fonnte.com/send',
     {
       method: 'POST',
       headers: {
-        Authorization: FONNTE,
+        Authorization: token,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        target: NOMOR_ADMIN_ALPA,
+        target: nomorTujuan,
         message: teks
       })
     }
@@ -257,7 +246,7 @@ module.exports = async (req, res) => {
     // CEK DATA NOTIFIKASI DI SUPABASE
     // --------------------------------------------------------
     const data = await supabase(
-      `notifikasi_alpa?id=eq.${encodeURIComponent(id)}&select=id,tanggal,pesan,status,percobaan,terkirim,terakhir_error`
+      `notifikasi_alpa?id=eq.${encodeURIComponent(id)}&select=id,sekolah_id,tanggal,pesan,status,percobaan,terkirim,terakhir_error`
     );
 
 
@@ -306,7 +295,23 @@ module.exports = async (req, res) => {
     // --------------------------------------------------------
     // KIRIM WHATSAPP
     // --------------------------------------------------------
-    await kirimFonnte(teks);
+    const sekolahId = Number(notif.sekolah_id);
+    const rahasia = (await supabase(
+      `pengaturan_rahasia?sekolah_id=eq.${sekolahId}&select=token_fonnte,nomor_kepala`
+    ) || [])[0] || {};
+
+    const token = rahasia.token_fonnte ||
+      (sekolahId === SEKOLAH_PERTAMA ? ENV_FONNTE : '');
+    const nomorTujuan = String(rahasia.nomor_kepala || '').replace(/\D/g, '');
+
+    if (!token) {
+      throw new Error('Token Fonnte sekolah belum diisi di Pengaturan > Koneksi');
+    }
+    if (!/^628\d{8,12}$/.test(nomorTujuan)) {
+      throw new Error('Nomor kepala sekolah belum diisi atau tidak valid di Pengaturan > Koneksi');
+    }
+
+    await kirimFonnte(token, nomorTujuan, teks);
 
 
     // --------------------------------------------------------
