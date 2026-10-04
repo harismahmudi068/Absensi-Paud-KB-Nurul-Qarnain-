@@ -49,15 +49,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 #drw .modal{position:absolute;left:0;top:0;bottom:0;width:min(300px,88%);border-radius:0 18px 18px 0;max-height:none;background:#fffdf5}
 #drw .nav button{color:#284737;background:#f2f8ef;border:1px solid #dcebdc}#drw .nav button.on{color:#fff;background:linear-gradient(90deg,#188b49,#6e4aa8)}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#163e68;color:#fff;padding:12px 18px;border-radius:14px;z-index:130;display:none;max-width:88vw;text-align:center;font-weight:700}.toast.ok{background:#159965}.toast.err{background:#c83e4c}
-.login{min-height:100vh;display:grid;place-items:center;padding:16px;background:linear-gradient(160deg,#e4f6e8,#fff8df 55%,#eee5fb)}.lbox{width:min(380px,100%);background:#fff;border-radius:20px;padding:24px;box-shadow:var(--sh);border:1px solid var(--bd)}.lbox .logo{margin:0 auto 10px;width:56px;height:56px;font-size:30px}.lbox .input{width:100%;margin:4px 0 12px}.pubreg{min-height:100vh;display:grid;place-items:center;padding:16px;background:linear-gradient(160deg,#e4f6e8,#fff8df 55%,#eee5fb)}
-.pubbox{width:min(560px,100%);background:#fff;border-radius:20px;padding:22px;box-shadow:var(--sh);border:1px solid var(--bd)}
-.pubbox h2{margin:0 0 4px;text-align:center}.pubbox .sub{text-align:center;margin:0 0 18px}
-.pubgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pubgrid .full{grid-column:1/-1}
-.pubotp{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
-.pubactions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}
-.pubmsg{margin-top:10px;text-align:center;font-size:13px;font-weight:700}.pubmsg.err{color:var(--rd)}.pubmsg.ok{color:var(--g)}
-@media(max-width:600px){.pubgrid{grid-template-columns:1fr}.pubgrid .full{grid-column:auto}.pubotp{grid-template-columns:1fr}}
-
+.login{min-height:100vh;display:grid;place-items:center;padding:16px;background:linear-gradient(160deg,#e4f6e8,#fff8df 55%,#eee5fb)}.lbox{width:min(380px,100%);background:#fff;border-radius:20px;padding:24px;box-shadow:var(--sh);border:1px solid var(--bd)}.lbox .logo{margin:0 auto 10px;width:56px;height:56px;font-size:30px}.lbox .input{width:100%;margin:4px 0 12px}
 #reader{width:100%;max-width:420px;margin:0 auto 10px}
 .bottom{display:none}
 @media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}.cards{grid-template-columns:repeat(2,1fr)}}
@@ -88,40 +80,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">KB Nurul Qarnain</h2><p class="mu" style="text-align:center;margin:0 0 16px">Sistem Absensi - masuk sebagai guru</p>
 <label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
-<button id="lb" class="btn success" style="width:100%" onclick="masuk()">Masuk</button><button class="btn soft" style="width:100%;margin-top:8px" onclick="bukaDaftarSekolah()">🏫 Daftar sekolah baru</button><div id="lerr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div>
-<p class="mu" style="text-align:center;margin:14px 0 0">Lupa kata sandi? <a href="https://wa.me/6285117441486?text=Assalamualaikum%2C%20saya%20lupa%20kata%20sandi%20absensi." target="_blank" rel="noopener">Hubungi admin</a></p></div></div>
-<div class="pubreg hid" id="rg">
-  <div class="pubbox">
-    <div class="logo" style="margin:0 auto 10px;width:56px;height:56px;font-size:30px">🏫</div>
-    <h2>Daftar Sekolah Baru</h2>
-    <p class="mu sub">Buat akun Kepala Sekolah untuk mengajukan pendaftaran sekolah.</p>
-
-    <div class="note">Nomor WhatsApp harus aktif karena kode OTP akan dikirim ke nomor tersebut. Setelah pendaftaran berhasil, akun masih menunggu persetujuan Developer.</div>
-
-    <div class="pubgrid">
-      <div class="fd full"><label class="l">Nama sekolah *</label><input id="rgSekolah" class="input" maxlength="80" autocomplete="organization" placeholder="Nama sekolah"></div>
-      <div class="fd full"><label class="l">Alamat sekolah</label><input id="rgAlamat" class="input" maxlength="150" autocomplete="street-address" placeholder="Alamat sekolah (opsional)"></div>
-      <div class="fd"><label class="l">Nama Kepala Sekolah *</label><input id="rgKepala" class="input" maxlength="80" autocomplete="name" placeholder="Nama lengkap"></div>
-      <div class="fd"><label class="l">NIP</label><input id="rgNip" class="input" maxlength="30" autocomplete="off" placeholder="NIP (opsional)"></div>
-      <div class="fd full"><label class="l">Nomor WhatsApp *</label><input id="rgWA" class="input" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="Contoh 08123456789"></div>
-      <div class="fd full">
-        <label class="l">Verifikasi WhatsApp *</label>
-        <div class="pubotp">
-          <input id="rgOtp" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="6 digit OTP">
-          <button id="rgOtpBtn" class="btn orange" onclick="kirimOtpDaftar()">Kirim OTP</button>
-        </div>
-      </div>
-      <div class="fd"><label class="l">Username *</label><input id="rgUser" class="input" maxlength="20" autocomplete="username" autocapitalize="none" placeholder="3-20 karakter"></div>
-      <div class="fd"><label class="l">Kata sandi *</label><input id="rgPass" type="password" class="input" maxlength="100" autocomplete="new-password" placeholder="Minimal 6 karakter"></div>
-    </div>
-
-    <div id="rgMsg" class="pubmsg"></div>
-    <div class="pubactions">
-      <button class="btn soft" onclick="tutupDaftarSekolah()">Kembali ke login</button>
-      <button id="rgSubmit" class="btn success" onclick="daftarSekolah()">✓ Kirim pendaftaran</button>
-    </div>
-  </div>
-</div>
+<button id="lb" class="btn success" style="width:100%" onclick="masuk()">Masuk</button><div id="lerr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div>
+<p class="mu" style="text-align:center;margin:14px 0 0">Lupa kata sandi? <a href="https://wa.me/6285117441486?text=Assalamualaikum%2C%20saya%20lupa%20kata%20sandi%20absensi." target="_blank" rel="noopener">Hubungi admin</a></p><p class="mu" style="text-align:center;margin:8px 0 0">Sekolah Anda belum terdaftar? <a href="#" onclick="formDaftarSekolah();return false">Daftarkan sekolah</a></p></div></div>
 <div class="app hid" id="ap">
 <aside class="sidebar"><div class="brand"><div class="logo">🏫</div><div><b id="bnm">KB Nurul Qarnain</b><br><small>Sistem Absensi</small></div></div><nav id="sn" class="nav"></nav><div class="foot"><a class="wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener">💬 Bantuan via WhatsApp</a>Anak Hebat Berawal dari<br>Kebiasaan Baik ♡</div></aside>
 <main class="main"><header class="top"><button class="hamb" onclick="drw(1)">☰</button><div style="flex:1;min-width:0"><small id="who" style="font-size:14px;opacity:1;font-weight:700"></small></div><div class="pill dtp" id="dt"></div><a class="hb wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener" title="Bantuan via WhatsApp">💬</a><button class="pill" onclick="keluar()">Keluar</button></header>
@@ -207,108 +167,33 @@ function hariBulan(b,rekap=false){const p=b.split('-').map(Number),n=new Date(p[
 const statusRekap=(s,d)=>dayStat(s,d)||'Belum';
 function ringkas(s,b,rekap=false){const c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0},ds=hariBulan(b,rekap);ds.forEach(d=>{const st=rekap?statusRekap(s,d):dayStat(s,d);c[st]=(c[st]||0)+1});const n=ds.length;return{c,n,ds,pct:n?Math.round((c.Hadir+c.Terlambat+c.Libur)*100/n):0}}
 const segarkan=()=>dbq(db.rpc('segarkan_libur',{p_sekolah:SEK}));
-/* ---------- pendaftaran publik ---------- */
-const API_PUBLIK='/api/publik';
-let otpDaftarTimer=null, otpDaftarSisa=0;
-
-async function apiPublik(body){
-  const r=await fetch(API_PUBLIK,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
-  const j=await r.json().catch(()=>({}));
-  if(!r.ok)throw new Error(j.error||j.message||('Gagal ('+r.status+')'));
-  return j;
-}
-function setPesanDaftar(msg,ok=false){
-  const x=$('#rgMsg');x.textContent=msg||'';x.className='pubmsg '+(ok?'ok':'err');
-}
-function bukaDaftarSekolah(){
-  stopScan().catch(()=>{});
-  $('#lg').classList.add('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');
-  $('#rg').classList.remove('hid');
-  setPesanDaftar('');
-  window.scrollTo(0,0);
-}
-function tutupDaftarSekolah(){
-  clearInterval(otpDaftarTimer);otpDaftarTimer=null;otpDaftarSisa=0;
-  $('#rg').classList.add('hid');
-  loginView('');
-  window.scrollTo(0,0);
-}
-function validUserPublik(u){return /^[a-z0-9._-]{3,20}$/.test(String(u||'').toLowerCase())}
-function mulaiTimerOtp(){
-  clearInterval(otpDaftarTimer);otpDaftarSisa=60;
-  const b=$('#rgOtpBtn');
-  const tick=()=>{
-    if(otpDaftarSisa<=0){clearInterval(otpDaftarTimer);otpDaftarTimer=null;b.disabled=false;b.textContent='Kirim OTP';return}
-    b.disabled=true;b.textContent='Kirim lagi ('+otpDaftarSisa+' dtk)';otpDaftarSisa--;
-  };
-  tick();otpDaftarTimer=setInterval(tick,1000);
-}
-async function kirimOtpDaftar(){
-  const b=$('#rgOtpBtn'),nomor=normWA($('#rgWA').value);
-  setPesanDaftar('');
-  if(!/^628\d{8,12}$/.test(nomor))return setPesanDaftar('Nomor WhatsApp tidak valid. Contoh: 08123456789');
-  if(b.disabled)return;
-  b.disabled=true;b.textContent='Mengirim...';
-  try{
-    await apiPublik({aksi:'otp_kirim',keperluan:'daftar',nomor});
-    $('#rgWA').value=nomor;
-    setPesanDaftar('Kode OTP sudah dikirim ke WhatsApp tersebut. Berlaku 5 menit.',true);
-    mulaiTimerOtp();
-  }catch(e){
-    b.disabled=false;b.textContent='Kirim OTP';
-    setPesanDaftar(e.message||String(e));
-  }
-}
-async function daftarSekolah(){
-  const b=$('#rgSubmit');
-  if(b.disabled)return;
-  const namaSekolah=$('#rgSekolah').value.trim();
-  const alamat=$('#rgAlamat').value.trim();
-  const namaKepala=$('#rgKepala').value.trim();
-  const nip=$('#rgNip').value.trim();
-  const nomor=normWA($('#rgWA').value);
-  const username=$('#rgUser').value.trim().toLowerCase();
-  const sandi=$('#rgPass').value;
-  const kode=$('#rgOtp').value.replace(/\D/g,'');
-  setPesanDaftar('');
-
-  if(namaSekolah.length<3)return setPesanDaftar('Nama sekolah minimal 3 karakter');
-  if(namaKepala.length<3)return setPesanDaftar('Nama Kepala Sekolah minimal 3 karakter');
-  if(!/^628\d{8,12}$/.test(nomor))return setPesanDaftar('Nomor WhatsApp tidak valid');
-  if(!validUserPublik(username))return setPesanDaftar('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah');
-  if(sandi.length<6)return setPesanDaftar('Kata sandi minimal 6 karakter');
-  if(kode.length!==6)return setPesanDaftar('Masukkan kode OTP 6 angka');
-
-  b.disabled=true;b.innerHTML='<span class="bs"></span>Mengirim...';
-  try{
-    await apiPublik({
-      aksi:'daftar',nama_sekolah:namaSekolah,alamat,nama_kepala:namaKepala,
-      nip,nomor,username,sandi,kode
-    });
-    clearInterval(otpDaftarTimer);otpDaftarTimer=null;
-    setPesanDaftar('Pendaftaran berhasil dikirim. Akun Anda menunggu persetujuan Developer.',true);
-    $('#rgSubmit').style.display='none';
-    setTimeout(()=>{
-      $('#rgSubmit').style.display='';
-      $('#rgSubmit').disabled=false;
-      $('#rgSubmit').textContent='✓ Kirim pendaftaran';
-      tutupDaftarSekolah();
-      $('#lerr').textContent='Pendaftaran diterima. Tunggu persetujuan Developer sebelum login.';
-    },2200);
-  }catch(e){
-    b.disabled=false;b.textContent='✓ Kirim pendaftaran';
-    setPesanDaftar(e.message||String(e));
-  }
-}
-
 /* ---------- login + navigasi ---------- */
 function loginView(msg){terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=msg||''}
+function formDaftarSekolah(){info('Daftarkan sekolah','<div class="note">Isi data sekolah dan akun kepala sekolah. Pendaftaran akan diperiksa admin; akun aktif setelah disetujui dan Anda dihubungi lewat WhatsApp.</div>'
+ +'<div class="fg">'
+ +'<div class="fd"><label class="l">Nama sekolah</label><input id="dfSk" class="input" maxlength="80"></div>'
+ +'<div class="fd"><label class="l">Alamat / kota (opsional)</label><input id="dfAl" class="input" maxlength="150"></div>'
+ +'<div class="fd"><label class="l">Nama kepala sekolah</label><input id="dfNm" class="input" maxlength="80"></div>'
+ +'<div class="fd"><label class="l">NIP kepala sekolah (opsional)</label><input id="dfNip" class="input" maxlength="30"></div>'
+ +'<div class="fd"><label class="l">Nomor WhatsApp kepala sekolah</label><div style="display:flex;gap:8px"><input id="dfWa" class="input" inputmode="tel" placeholder="08123456789" style="flex:1"><button id="dfKb" type="button" class="btn soft" onclick="kirimKodeDaftar()">Kirim kode</button></div></div>'
+ +'<div class="fd"><label class="l">Kode dari WhatsApp (6 angka)</label><input id="dfKd" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>'
+ +'<div class="fd"><label class="l">Username (huruf kecil, tanpa spasi)</label><input id="dfUs" class="input" autocapitalize="none" maxlength="20"></div>'
+ +'<div class="fd"><label class="l">Kata sandi (minimal 6 karakter)</label><input id="dfPw" type="password" class="input" autocomplete="new-password"></div>'
+ +'<div class="fd"><label class="l">Ulangi kata sandi</label><input id="dfPw2" type="password" class="input" autocomplete="new-password"></div>'
+ +'</div><div id="dfErr" class="mu" style="color:var(--rd);margin:6px 0"></div>'
+ +'<button id="dfKirim" class="btn success" style="width:100%" onclick="kirimDaftar()">Kirim pendaftaran</button>')}
+async function apiPublik(body){const r=await fetch('/api/publik',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('Layanan pendaftaran belum tersedia (404). Hubungi admin');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
+function kirimKodeDaftar(){const b=$('#dfKb'),e=$('#dfErr');if(b.disabled)return;e.textContent='';const wa=$('#dfWa').value.trim();if(!wa){e.textContent='Isi nomor WhatsApp dulu';return}
+ b.disabled=true;b.textContent='Mengirim...';
+ apiPublik({aksi:'otp_kirim',keperluan:'daftar',nomor:wa}).then(()=>{toast('Kode dikirim ke WhatsApp Anda');let n=60;b.textContent='Kirim ulang ('+n+')';const t=setInterval(()=>{n--;if(!$('#dfKb')){clearInterval(t);return}if(n<=0){clearInterval(t);b.disabled=false;b.textContent='Kirim ulang'}else b.textContent='Kirim ulang ('+n+')'},1000)}).catch(x=>{e.textContent=x.message||String(x);b.disabled=false;b.textContent='Kirim kode'})}
+function kirimDaftar(){const b=$('#dfKirim'),e=$('#dfErr');if(b.disabled)return;e.textContent='';
+ const v={aksi:'daftar',nama_sekolah:$('#dfSk').value.trim(),alamat:$('#dfAl').value.trim(),nama_kepala:$('#dfNm').value.trim(),nip:$('#dfNip').value.trim(),nomor:$('#dfWa').value.trim(),kode:$('#dfKd').value.trim(),username:$('#dfUs').value.trim().toLowerCase(),sandi:$('#dfPw').value};
+ if(!v.nama_sekolah||!v.nama_kepala||!v.nomor||!v.kode||!v.username||!v.sandi){e.textContent='Lengkapi semua kolom yang wajib';return}
+ if(v.sandi!==$('#dfPw2').value){e.textContent='Kata sandi dan ulangannya tidak sama';return}
+ b.disabled=true;b.innerHTML='<span class="bs"></span>Mengirim...';
+ apiPublik(v).then(()=>{info('Pendaftaran terkirim','<div style="text-align:center;padding:10px 4px"><div style="font-size:42px">✅</div><h3 style="margin:8px 0">Terima kasih</h3><div class="mu">Pendaftaran sekolah <b>'+esc(v.nama_sekolah)+'</b> sudah kami terima. Admin akan memeriksa data Anda. Setelah disetujui, Anda bisa masuk dengan username <b>'+esc(v.username)+'</b>.</div></div>')}).catch(x=>{e.textContent=x.message||String(x);b.disabled=false;b.textContent='Kirim pendaftaran'})}
 function masuk(){const b=$('#lb');if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="bs"></span>Memproses...';$('#lerr').textContent='';guard(async()=>{const u=$('#lu').value.trim(),pw=$('#lp').value;if(!u||!pw)throw new Error('Isi username dan kata sandi');let email=u;
- if(!u.includes('@')){const r=await db.rpc('email_dari_username',{u});if(r.error)throw r.error;if(!r.data)throw new Error('Username tidak ditemukan');email=r.data}
+ if(!u.includes('@')){const r=await db.rpc('email_dari_username',{u});if(r.error)throw r.error;if(!r.data)throw new Error('Username tidak ditemukan atau akun belum aktif. Bila Anda baru mendaftarkan sekolah, mohon tunggu persetujuan admin.');email=r.data}
  const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
 async function mulai(){const {data:{session}}=await db.auth.getSession();if(!session)return loginView();
  try{me=session.user.id;
