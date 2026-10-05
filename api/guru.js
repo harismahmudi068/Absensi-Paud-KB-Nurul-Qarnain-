@@ -5,7 +5,9 @@
 //   otp_kelola_kirim, otp_kelola_verifikasi (bukti kepemilikan: OTP ke nomor pengelola sendiri)
 //   cek_nomor, tautkan, tambah, tambah_batch (wajib izin dari OTP, kecuali Developer)
 //   ubah_role, aktif, hapus
-// Aksi untuk pemilik akun sendiri: akun_sendiri, nomor_otp_kirim, nomor_simpan
+// Aksi untuk pemilik akun sendiri: akun_sendiri, nomor_otp_kirim, nomor_simpan, otp_cek
+// Ganti Kepala Sekolah: Kepala Sekolah lama, Wakil, atau Developer; kepala lama otomatis menjadi Guru
+// (fungsi database ganti_kepala_sekolah, satu transaksi).
 // Aksi khusus Developer:
 //   reset (atur sandi baru), hapus_akun (hapus akun seluruhnya)
 // Aksi untuk pemilik akun sendiri (semua pengguna aktif):
@@ -15,7 +17,7 @@ const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const crypto = require('crypto');
-const { kirimOtp, cekOtp, ipDari } = require('./_lib');
+const { kirimOtp, cekOtp, lihatOtp, ipDari } = require('./_lib');
 
 const RE_UUID = /^[0-9a-f-]{36}$/i;
 const RE_USER = /^[a-z0-9._-]{3,20}$/;
@@ -113,6 +115,19 @@ async function adaKepalaLain(sekolahId, kecualiProfilId) {
       'GET'
     )) || [];
   return r.some((x) => x.profil_id !== kecualiProfilId);
+}
+
+// Kepala lama menjadi Guru dan guru terpilih menjadi Kepala Sekolah dalam satu transaksi database.
+async function jadikanKepala(sekolahId, profilId, olehId) {
+  try {
+    await panggil('/rest/v1/rpc/ganti_kepala_sekolah', 'POST', {
+      p_sekolah: sekolahId,
+      p_baru: profilId,
+      p_oleh: olehId
+    });
+  } catch (e) {
+    throw new Error('Gagal mengganti Kepala Sekolah: ' + e.message);
+  }
 }
 
 async function tambahKeanggotaan(profilId, sekolahId, role) {
@@ -279,6 +294,19 @@ module.exports = async (req, res) => {
     }
 
     // =============================================================
+    // CEK KODE (tombol Verifikasi): tidak menghanguskan kode
+    // =============================================================
+    if (b.aksi === 'otp_cek') {
+      const jenis = String(b.jenis || '');
+      if (!['ganti_baru', 'ganti_lama', 'kelola_guru'].includes(jenis))
+        throw new Error('Permintaan tidak valid');
+      const tujuan = jenis === 'ganti_baru' ? normWA(b.no_wa_baru) : pemanggil.no_wa || '';
+      if (!RE_WA.test(tujuan)) throw new Error('Nomor WhatsApp tidak valid');
+      await lihatOtp(tujuan, jenis, b.kode);
+      return res.status(200).json({ ok: true });
+    }
+
+    // =============================================================
     // GANTI NOMOR WHATSAPP SENDIRI (OTP ke nomor lama dan nomor baru)
     // =============================================================
     if (b.aksi === 'nomor_otp_kirim' || b.aksi === 'nomor_simpan') {
@@ -401,14 +429,14 @@ module.exports = async (req, res) => {
       const wa = normWA(b.no_wa);
       if (!RE_WA.test(wa)) throw new Error('Nomor WhatsApp tidak valid');
       if (!isDev) izinCek(b.izin, user.id, sekolahId);
-      const role = ROLE_SEKOLAH.includes(b.role) && (isDev || b.role !== 'kepala_sekolah') ? b.role : 'guru';
+      const role = ROLE_SEKOLAH.includes(b.role) ? b.role : 'guru';
       const t = await cariProfilByWA(wa);
       if (!t || !t.aktif) throw new Error('Akun dengan nomor ini tidak ditemukan');
       if (await ambilKeanggotaan(t.id, sekolahId))
         throw new Error('Sudah terdaftar di sekolah ini');
-      if (role === 'kepala_sekolah' && (await adaKepalaLain(sekolahId, t.id)))
-        throw new Error('Sekolah ini sudah punya Kepala Sekolah aktif');
-      await tambahKeanggotaan(t.id, sekolahId, role);
+      // Kepala Sekolah: ditautkan sebagai Guru lebih dulu, lalu diganti secara atomis
+      await tambahKeanggotaan(t.id, sekolahId, role === 'kepala_sekolah' ? 'guru' : role);
+      if (role === 'kepala_sekolah') await jadikanKepala(sekolahId, t.id, user.id);
       return res.status(200).json({ ok: true, nama: t.nama });
     }
 
@@ -418,13 +446,18 @@ module.exports = async (req, res) => {
       const d = periksaDataAkun(b, { wajibWA: b.role !== 'developer' });
       if (d.role === 'developer' && !isDev)
         throw new Error('Hanya Developer yang boleh membuat akun Developer');
-      if (d.role === 'kepala_sekolah' && !isDev)
-        throw new Error('Hanya Developer yang boleh menetapkan Kepala Sekolah');
       if (d.no_wa && (await cariProfilByWA(d.no_wa)))
         throw new Error('Nomor WhatsApp sudah punya akun. Gunakan Tautkan');
-      if (d.role === 'kepala_sekolah' && (await adaKepalaLain(sekolahId, null)))
-        throw new Error('Sekolah ini sudah punya Kepala Sekolah aktif');
-      await buatAkun({ ...d, sekolahId });
+      // Kepala Sekolah: dibuat sebagai Guru lebih dulu, lalu diganti secara atomis
+      const jadiKepala = d.role === 'kepala_sekolah';
+      const baruId = await buatAkun({ ...d, role: jadiKepala ? 'guru' : d.role, sekolahId });
+      if (jadiKepala) {
+        try {
+          await jadikanKepala(sekolahId, baruId, user.id);
+        } catch (e) {
+          throw new Error('Akun dibuat sebagai Guru, tetapi ' + e.message);
+        }
+      }
       return res.status(200).json({ ok: true });
     }
 
@@ -491,13 +524,14 @@ module.exports = async (req, res) => {
         const role = String(b.role || '');
         if (!ROLE_SEKOLAH.includes(role))
           return res.status(400).json({ error: 'Role tidak valid' });
-        if (role === 'kepala_sekolah' && !isDev)
-          return res.status(403).json({ error: 'Hanya Developer yang boleh menetapkan Kepala Sekolah' });
-        if (role === 'kepala_sekolah' && (await adaKepalaLain(sekolahId, id)))
-          return res
-            .status(400)
-            .json({ error: 'Sudah ada Kepala Sekolah aktif. Ubah peran yang lama terlebih dahulu' });
-        await ubah({ role });
+        if (role === 'kepala_sekolah') {
+          if (!target.aktif)
+            return res.status(400).json({ error: 'Aktifkan guru ini dulu sebelum menjadikannya Kepala Sekolah' });
+          // Atomis: Kepala Sekolah lama otomatis menjadi Guru
+          await jadikanKepala(sekolahId, id, user.id);
+        } else {
+          await ubah({ role });
+        }
       } else if (b.aksi === 'aktif') {
         const aktif = !!b.aktif;
         if (aktif && target.role === 'kepala_sekolah' && (await adaKepalaLain(sekolahId, id)))
