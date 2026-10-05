@@ -174,6 +174,19 @@ module.exports = async (req, res) => {
     }
 
     // ---------------------------------------------------------
+    // CEK KODE (tombol Verifikasi): tidak menghanguskan kode
+    // ---------------------------------------------------------
+    if (b.aksi === 'otp_cek') {
+      const keperluan = String(b.keperluan || '');
+      if (!['daftar', 'reset', 'nomor_hilang'].includes(keperluan))
+        throw new Error('Permintaan tidak valid');
+      const nomor = L.normWA(b.nomor);
+      if (!L.RE_WA.test(nomor)) throw new Error('Nomor WhatsApp tidak valid');
+      await L.lihatOtp(nomor, keperluan, b.kode);
+      return res.status(200).json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
     // RESET: KIRIM KODE (respons seragam agar nomor tidak bisa ditebak)
     // ---------------------------------------------------------
     if (b.aksi === 'reset_kirim') {
