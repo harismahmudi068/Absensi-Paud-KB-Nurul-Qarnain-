@@ -297,10 +297,13 @@ module.exports = async (req, res) => {
     // --------------------------------------------------------
     const sekolahId = Number(notif.sekolah_id);
     const rahasia = (await supabase(
-      `pengaturan_rahasia?sekolah_id=eq.${sekolahId}&select=token_fonnte,nomor_kepala`
+      `pengaturan_rahasia?sekolah_id=eq.${sekolahId}&select=nomor_kepala`
+    ) || [])[0] || {};
+    const tokenUtama = (await supabase(
+      `fonnte_token?sekolah_id=eq.${sekolahId}&select=token&order=id.asc&limit=1`
     ) || [])[0] || {};
 
-    const token = rahasia.token_fonnte ||
+    const token = tokenUtama.token ||
       (sekolahId === SEKOLAH_PERTAMA ? ENV_FONNTE : '');
     const nomorTujuan = String(rahasia.nomor_kepala || '').replace(/\D/g, '');
 
