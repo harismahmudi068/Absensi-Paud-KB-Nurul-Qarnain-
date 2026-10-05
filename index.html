@@ -117,11 +117,11 @@ const _dbFrom=db.from.bind(db);
 db.from=t=>{const q=_dbFrom(t);if(!TENANT.has(t))return q;
  const tambah=r=>Array.isArray(r)?r.map(x=>({...x,sekolah_id:SEK})):{...r,sekolah_id:SEK};
  const sel=q.select.bind(q),ins=q.insert.bind(q),ups=q.upsert.bind(q),upd=q.update.bind(q),del=q.delete.bind(q);
- q.select=(...a)=>sel(...a).eq('sekolah_id',SEK);
+ q.select=(...a)=>SEK==null?sel(...a):sel(...a).eq('sekolah_id',SEK);
  q.insert=(r,...a)=>ins(tambah(r),...a);
  q.upsert=(r,o,...a)=>ups(tambah(r),o&&o.onConflict==='no_wa'?{...o,onConflict:'sekolah_id,no_wa'}:o,...a);
- q.update=(...a)=>upd(...a).eq('sekolah_id',SEK);
- q.delete=(...a)=>del(...a).eq('sekolah_id',SEK);
+ q.update=(...a)=>SEK==null?upd(...a):upd(...a).eq('sekolah_id',SEK);
+ q.delete=(...a)=>SEK==null?del(...a):del(...a).eq('sekolah_id',SEK);
  return q};
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],HR=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -129,7 +129,7 @@ const hariIni=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'
 let TODAY=hariIni();const ST=['Hadir','Terlambat','Izin','Sakit','Alpa'],cap=s=>s.charAt(0).toUpperCase()+s.slice(1),low=s=>s.toLowerCase();
 const fmt=d=>{if(!d)return '';const p=d.split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]},fmtB=b=>{const p=b.split('-');return BLN[p[1]-1]+' '+p[0]},wd=d=>new Date(d+'T00:00:00').getDay();
 const dt=(type,v,fn)=>`<label class="input dt"><span>${v?(type==='month'?fmtB(v):fmt(v)):'Pilih tanggal'}</span><input type="${type}" value="${v||''}" onchange="if(this.value){this.previousElementSibling.textContent=(this.type=='month'?fmtB:fmt)(this.value);${fn||''}}"></label>`;
-const MENUS=[['dashboard','Dashboard','⌂','KGD'],['siswa','Data Siswa','👥','KG'],['guru','Data Guru','👨‍🏫','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['kartu','Kartu','🪪','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['libur','Jadwal Libur','🥳','KG'],['pesan','Pesan WA','💬','KG'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
+const MENUS=[['dashboard','Dashboard','⌂','KG'],['siswa','Data Siswa','👥','KG'],['guru','Data Guru','👨‍🏫','KG'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['kartu','Kartu','🪪','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['libur','Jadwal Libur','🥳','KG'],['pesan','Pesan WA','💬','KG'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah';
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
@@ -251,12 +251,17 @@ async function mulai(){const {data:{session}}=await db.auth.getSession();if(!ses
   const pf=await dbq(db.from('profil').select('id,nama,username,role,aktif,nip,dibuat').eq('id',me).maybeSingle());
   if(!pf||!pf.aktif){await db.auth.signOut();return loginView('Akun ini tidak terdaftar atau sudah dinonaktifkan')}
   PROFIL=pf;
-  if(pf.role==='developer')MEMB=(await dbq(db.from('sekolah').select('id,nama,status').order('nama'))).map(s=>({sekolah_id:s.id,nama:s.nama,role:'developer'}));
-  else MEMB=(await dbq(db.from('keanggotaan').select('sekolah_id,role,sekolah(nama,status)').eq('profil_id',me).eq('aktif',true))).filter(x=>x.sekolah&&x.sekolah.status==='aktif').map(x=>({sekolah_id:x.sekolah_id,nama:x.sekolah.nama,role:x.role}));
+  if(pf.role==='developer'){MEMB=[];return await masukDeveloper()}
+  MEMB=(await dbq(db.from('keanggotaan').select('sekolah_id,role,sekolah(nama,status)').eq('profil_id',me).eq('aktif',true))).filter(x=>x.sekolah&&x.sekolah.status==='aktif').map(x=>({sekolah_id:x.sekolah_id,nama:x.sekolah.nama,role:x.role}));
   if(!MEMB.length){await db.auth.signOut();return loginView('Akun ini belum terhubung ke sekolah yang aktif. Hubungi Kepala Sekolah.')}
   let ingat=null;try{ingat=Number(sessionStorage.getItem('sekolah_aktif'))}catch(e){}
   const pilih=MEMB.length===1?MEMB[0]:MEMB.find(m=>m.sekolah_id===ingat);
   if(pilih)await masukSekolah(pilih);else tampilPilihSekolah()}
+ catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
+async function masukDeveloper(){try{SEK=null;role='Developer';meNama=PROFIL.nama;
+  S.absen={};S.pesan=[];S.siswa=[];S.kelas=[];S.guru=[];S.libur=[];S.mingguan=[];S.set={};RHS=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
+  try{sessionStorage.removeItem('sekolah_aktif');sessionStorage.removeItem('bukaView')}catch(e){}
+  terapNama();$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');view='developer';pasangBanner();await go('developer')}
  catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
 async function masukSekolah(m){try{SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
   S.absen={};S.pesan=[];RHS=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;attKelas='';kk='';rk='';lo='';q='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
@@ -266,13 +271,13 @@ async function masukSekolah(m){try{SEK=m.sekolah_id;role=LBL[m.role];meNama=PROF
 function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''))}
 async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
 async function gantiSekolah(){await stopScan();drw(0);tampilPilihSekolah()}
-async function keluar(){await stopScan('keluar');await db.auth.signOut();S.absen={};S.set={};SEK=null;MEMB=[];PROFIL=null;try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}loginView()}
+async function keluar(){try{await stopScan('keluar')}catch(e){}try{await db.auth.signOut()}catch(e){}try{sessionStorage.clear()}catch(e){}location.reload()}
 function drw(o){$('#drw').classList.toggle('show',!!o)}
 async function go(id){await stopScan();TODAY=hariIni();view=id;drw(0);if(id!=='absensi')draft=null;$('#v').innerHTML='';ld(1);
  try{if(LOAD[id])await LOAD[id]()}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),h=ms.map(m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`).join('');
- const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Ganti sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=['dashboard','absensi','scan','rekap'].filter(allowed).slice(0,4);
+ const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Ganti sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=(role==='Developer'?['developer']:['dashboard','absensi','scan','rekap']).filter(allowed).slice(0,4);
  $('#bn').innerHTML=pref.map(id=>{const m=MENUS.find(x=>x[0]===id);return `<button class="${view===id?'on':''}" onclick="go('${id}')"><span>${m[2]}</span>${m[1]}</button>`}).join('')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`;
  $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
 async function muatGambarKartu(){
@@ -716,16 +721,17 @@ async function hapusPesan(){const ids=[...psel];if(!ids.length||!await konfirmas
 
 function doneMsg(id){guard(async()=>{await dbq(db.from('pesan_masuk').update({perlu_dicek:false}).eq('id',id));await muatPesan();renderV()})}
 /* ---------- pengaturan ---------- */
-V.pengaturan=()=>`${taInit()}<div class="panel"><div class="ph">🏫 Nama Sekolah</div><div class="pb"><div class="note">Nama ini tampil di menu samping, dashboard, kartu pelajar, riwayat/rekap absensi (PDF dan XLSX), serta pesan laporan orang tua. Setelah disimpan, halaman dimuat ulang otomatis.</div><div class="tb"><input id="nsInp" class="input grow" maxlength="80" value="${esc(ns())}" placeholder="Nama sekolah" onkeydown="if(event.key==='Enter')simpanNamaSekolah($('#nsBtn'))"><button id="nsBtn" class="btn success" onclick="simpanNamaSekolah(this)">💾 Simpan</button></div></div></div>
-<div class="panel"><div class="ph">📍 Alamat Sekolah</div><div class="pb"><div class="note">Kota dipakai pada tanda tangan Kepala Sekolah di rekap (contoh: Jember, Minggu 4 Oktober 2026).</div><div class="fg"><div class="fd"><label class="l">Alamat sekolah</label><input id="alInp" class="input" maxlength="150" value="${esc(S.set.alamat||'')}" placeholder="Jl. Contoh No. 1"></div><div class="fd"><label class="l">Kota / kabupaten (untuk tanda tangan rekap)</label><input id="ktInp" class="input" maxlength="60" value="${esc(S.set.kota||'')}" placeholder="contoh Jember"></div></div><button class="btn success" onclick="simpanAlamat(this)">💾 Simpan alamat</button></div></div>
-${panelKoneksi()}<div class="panel"><div class="ph">🏫 Kelas dan Jam Masuk <button class="btn success" onclick="addKelas()">+ Tambah Kelas</button></div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Perubahan tersimpan otomatis.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <input type="time" class="input" value="${k.jam}" onchange="setJam(${k.id},this.value)"></span><span>Wali kelas <select class="select" onchange="setWali(${k.id},this.value)">${woptGuru(k.wali)}</select></span><button class="btn sm soft" onclick="ubahKelas(${k.id})">Ubah nama</button> <button class="btn sm danger" onclick="delKelas(${k.id})">Hapus</button></div>`).join('')}</div></div></div>
+V.pengaturan=()=>`${taInit()}<div class="panel"><div class="ph">🏫 Kelas dan Jam Masuk <button class="btn success" onclick="addKelas()">+ Tambah Kelas</button></div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Perubahan tersimpan otomatis.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <input type="time" class="input" value="${k.jam}" onchange="setJam(${k.id},this.value)"></span><span>Wali kelas <select class="select" onchange="setWali(${k.id},this.value)">${woptGuru(k.wali)}</select></span><button class="btn sm soft" onclick="ubahKelas(${k.id})">Ubah nama</button> <button class="btn sm danger" onclick="delKelas(${k.id})">Hapus</button></div>`).join('')}</div></div></div>
 <div class="panel"><div class="ph">⏰ Alpa Otomatis</div><div class="pb"><div class="note">Anak yang belum tercatat sampai jam ini otomatis berstatus Alpa (tidak berlaku di hari libur). Server menjalankannya tepat pada jam yang diatur. Bila orang tua mengabari izin sesudahnya, statusnya diubah.</div>
 <div class="tb"><label><input type="checkbox" ${S.set.alpa_aktif?'checked':''} onchange="setAlpa({alpa_aktif:this.checked})"> Aktifkan alpa otomatis</label><input type="time" class="input" value="${S.set.jam}" onchange="setAlpa({alpa_jam:this.value})"></div></div></div>
 <div class="panel"><div class="ph">🎓 Tahun Ajaran <span class="mu">Sekarang: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="note">Saat tahun ajaran berganti, data absensi lama serta seluruh data siswa, relasi siswa-wali, dan data wali akan dihapus. Data guru dan kelas tetap ada. Unduh rekap total tahun ajaran di bawah ini sebelum menghapus.</div>
 <div class="tb"><span class="mu">Dari</span>${dt('month',taA,"taA=this.value")}<span class="mu">Sampai</span>${dt('month',taB,"taB=this.value")}<select class="select" onchange="taK=this.value">${kopt(taK,1)}</select></div>
 <div class="tb"><button class="btn success grow" onclick="unduhTA('pdf',this)">⬇ Rekap Tahun Ajaran (PDF)</button><button class="btn grow" onclick="unduhTA('xlsx',this)">⬇ Rekap Tahun Ajaran (XLSX)</button></div>
 <div class="note">Pilih kelas tertentu atau semua kelas. Setiap bulan tampil di halaman (PDF) atau sheet (XLSX) tersendiri, lengkap dengan tanda tangan Kepala Sekolah.</div>
-<button class="btn danger" onclick="tahunBaru()">Mulai tahun ajaran baru</button></div></div>`;
+<button class="btn danger" onclick="tahunBaru()">Mulai tahun ajaran baru</button></div></div>
+<div class="panel"><div class="ph">🏫 Nama Sekolah</div><div class="pb"><div class="note">Nama ini tampil di menu samping, dashboard, kartu pelajar, riwayat/rekap absensi (PDF dan XLSX), serta pesan laporan orang tua. Setelah disimpan, halaman dimuat ulang otomatis.</div><div class="tb"><input id="nsInp" class="input grow" maxlength="80" value="${esc(ns())}" placeholder="Nama sekolah" onkeydown="if(event.key==='Enter')simpanNamaSekolah($('#nsBtn'))"><button id="nsBtn" class="btn success" onclick="simpanNamaSekolah(this)">💾 Simpan</button></div></div></div>
+<div class="panel"><div class="ph">📍 Alamat Sekolah</div><div class="pb"><div class="note">Kota dipakai pada tanda tangan Kepala Sekolah di rekap (contoh: Jember, Minggu 4 Oktober 2026).</div><div class="fg"><div class="fd"><label class="l">Alamat sekolah</label><input id="alInp" class="input" maxlength="150" value="${esc(S.set.alamat||'')}" placeholder="Jl. Contoh No. 1"></div><div class="fd"><label class="l">Kota / kabupaten (untuk tanda tangan rekap)</label><input id="ktInp" class="input" maxlength="60" value="${esc(S.set.kota||'')}" placeholder="contoh Jember"></div></div><button class="btn success" onclick="simpanAlamat(this)">💾 Simpan alamat</button></div></div>
+${panelKoneksi()}`;
 function panelKoneksi(){const R=RHS||{};
  const st=(o,f)=>RHS===null?'<span class="badge Belum">Memuat...</span>':o&&o.ada?`<span class="badge Hadir">Terisi ${esc(o.tampil||'')}</span> <button class="btn sm soft" onclick="hapusRahasia('${f}')">Hapus</button>`:'<span class="badge Belum">Belum diisi</span>';
  const mm=RHS===null?'<div class="note">⏳ Memuat status koneksi...</div>':'';
@@ -770,7 +776,7 @@ async function delKelas(id){const k=S.kelas.find(x=>x.id===id);if(S.siswa.some(s
 async function runChecks(){const R=[],add=(l,n,d)=>R.push([l,n,d]),as=act(),nama=a=>a.map(s=>s.pan).join(', ');
  let t0=performance.now();try{await dbq(db.from('pengaturan').select('id').limit(1));add('ok','Koneksi Supabase','Tersambung ('+Math.round(performance.now()-t0)+' ms)')}catch(e){add('err','Koneksi Supabase',e.message)}
  add('ok','Sesi login',meNama+' ('+role+')');
- for(const t of ['kelas','siswa','wali','siswa_wali','absensi','profil','pengaturan','libur_mingguan','libur_tanggal','laporan_ortu','pesan_masuk','percakapan_tertunda']){try{const r=await db.from(t).select('*',{count:'exact',head:true});if(r.error)throw r.error;add('ok','Tabel '+t,r.count+' baris')}catch(e){add('err','Tabel '+t,e.message)}}
+ for(const t of ['kelas','siswa','wali','siswa_wali','absensi','profil','pengaturan','libur_mingguan','libur_tanggal','laporan_ortu','pesan_masuk','percakapan_tertunda']){try{const r=await db.from(t).select(t==='profil'?'id':'*',{count:'exact',head:true});if(r.error)throw r.error;add('ok','Tabel '+t,r.count+' baris')}catch(e){add('err','Tabel '+t,e.message)}}
  for(const [n,u,k] of [['Webhook Fonnte','/api/webhook','aktif'],['API guru','/api/guru','aktif']]){try{const t=await (await fetch(u)).text();add(t.toLowerCase().includes(k)?'ok':'warn',n,t.toLowerCase().includes(k)?'Aktif':'Tidak merespons dengan benar')}catch(e){add('err',n,'Tidak bisa dihubungi')}}
  const sec=location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname),cam=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);add(sec&&cam?'ok':'warn','Kamera untuk scan',sec&&cam?'HTTPS dan kamera tersedia':'Kamera butuh HTTPS dan browser yang mendukung');
  add(typeof XLSX!=='undefined'&&typeof ExcelJS!=='undefined'&&window.jspdf&&window.Html5Qrcode&&window.qrcode?'ok':'warn','Pustaka XLSX, PDF, QR',typeof XLSX!=='undefined'&&typeof ExcelJS!=='undefined'&&window.jspdf&&window.Html5Qrcode&&window.qrcode?'Semua termuat':'Ada yang belum termuat (butuh internet)');
@@ -783,17 +789,25 @@ async function runChecks(){const R=[],add=(l,n,d)=>R.push([l,n,d]),as=act(),nama
  add(S.mingguan.length?'ok':'info','Libur mingguan',S.mingguan.length?S.mingguan.map(d=>HR[d]).join(', '):'Belum ada hari libur mingguan');add('info','Alpa otomatis',S.set.alpa_aktif?'Aktif, jam '+S.set.jam:'Dimatikan');
  const bl=as.filter(s=>dayStat(s,TODAY)==='Belum');add('info','Absensi hari ini',bl.length?bl.length+' anak belum absen':'Semua sudah tercatat');
  return R}
+async function runChecksDev(){const R=[],add=(l,n,d)=>R.push([l,n,d]);
+ let t0=performance.now();try{await dbq(db.from('sekolah').select('id').limit(1));add('ok','Koneksi Supabase','Tersambung ('+Math.round(performance.now()-t0)+' ms)')}catch(e){add('err','Koneksi Supabase',e.message)}
+ add('ok','Sesi login',meNama+' ('+role+')');
+ for(const t of ['sekolah','keanggotaan','profil','kelas','siswa','wali','siswa_wali','absensi','pengaturan','libur_mingguan','libur_tanggal','laporan_ortu','pesan_masuk','percakapan_tertunda']){try{const r=await db.from(t).select(t==='profil'?'id':'*',{count:'exact',head:true});if(r.error)throw r.error;add('ok','Tabel '+t+' (semua sekolah)',r.count+' baris')}catch(e){add('err','Tabel '+t,e.message)}}
+ for(const [n,u] of [['Webhook Fonnte','/api/webhook'],['API guru','/api/guru'],['API pengaturan','/api/pengaturan'],['API publik','/api/publik'],['API developer','/api/developer'],['API kirim','/api/kirim']]){try{const t=await (await fetch(u)).text();add(t.toLowerCase().includes('aktif')?'ok':'warn',n,t.toLowerCase().includes('aktif')?'Aktif':'Tidak merespons dengan benar')}catch(e){add('err',n,'Tidak bisa dihubungi')}}
+ const sec=location.protocol==='https:'||/^(localhost|127\.0\.0\.1)$/.test(location.hostname);add(sec?'ok':'warn','HTTPS',sec?'Aman':'Kamera dan login butuh HTTPS');
+ add((S.devPend||[]).length+(S.devNomor||[]).length?'info':'ok','Antrean persetujuan',((S.devPend||[]).length+(S.devNomor||[]).length)+' menunggu');
+ return R}
 const LV={ok:['Hadir','✓ Baik'],warn:['Terlambat','⚠ Perhatian'],err:['Sakit','✗ Masalah'],info:['Izin','ℹ Info']};
 let devTab='ringkas';
 const MB=()=>{try{return !!sessionStorage.getItem('mode_bantuan')}catch(e){return false}};
 async function apiDev(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/developer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/developer tidak ditemukan (404). Pastikan file api/developer.js sudah di-deploy');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
-async function muatDev(){const [g,sk,pd,pn,lg]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100}))]);S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['log','📜 Log'],['sistem','🩺 Sistem']];
+async function muatDev(){const [g,sk,pd,pn,lg,sm]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100})),dbq(db.rpc('developer_penyimpanan')).catch(e=>({error:(e&&e.message)||String(e)}))]);S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg;S.devSimpan=sm}
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devTab=t;renderV()}
 function segarDev(){guard(async()=>{await muatDev();renderV();toast('Data diperbarui')})}
 V.developer=()=>{const nm=(S.devPend||[]).length+(S.devNomor||[]).length;
  const tabs=DEVTAB.map(([k,l])=>`<button class="btn ${devTab===k?'success':'soft'} sm" onclick="setDevTab('${k}')">${l}${k==='setuju'&&nm?` <span class="badge Belum">${nm}</span>`:''}</button>`).join('');
- const isi={ringkas:devRingkas,setuju:devSetuju,sekolah:devSekolah,guru:panelDevGuru,log:devLog,sistem:devSistem}[devTab]();
+ const isi={ringkas:devRingkas,setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,log:devLog,sistem:devSistem}[devTab]();
  return `<div class="panel"><div class="ph">🛠 Developer <button class="btn soft sm" onclick="segarDev()">↻ Muat ulang</button></div><div class="pb"><div class="tb" style="flex-wrap:wrap;gap:6px">${tabs}</div></div></div>${isi}`};
 function devRingkas(){const sk=S.devSek||[],ak=sk.filter(x=>x.status==='aktif').length,nm=(S.devPend||[]).length+(S.devNomor||[]).length,gr=(S.devGuru||[]).filter(g=>g.role!=='developer').length,sw=sk.reduce((a,x)=>a+(x.jml_siswa||0),0);
  return `<div class="panel"><div class="pb"><div class="cards"><div class="card stat"><b>${ak}</b>Sekolah aktif</div><div class="card stat"><b>${nm}</b>Menunggu persetujuan</div><div class="card stat"><b>${gr}</b>Guru</div><div class="card stat"><b>${sw}</b>Siswa aktif</div></div>${nm?'<div class="note" style="margin-top:12px">Ada permintaan yang menunggu. Buka tab Persetujuan.</div>':''}</div></div>`}
@@ -841,11 +855,38 @@ function keluarBantuan(){guard(async()=>{let d=null,mb=null;try{d=JSON.parse(ses
  if(error){await db.auth.signOut();loginView('Sesi Developer berakhir, silakan masuk kembali');return}
  if(mb)apiDev({aksi:'catat_keluar',profil_id:mb.profil_id,sekolah_id:mb.sekolah_id}).catch(()=>{});
  sessionStorage.setItem('bukaView','developer');await mulai()})}
+let devSekFiltr='';
+function devGuru(){const sk=S.devSek||[];if(!S.devGuru)return panelDevGuru();
+ const opt='<option value="">Semua sekolah</option>'+sk.map(x=>`<option value="${x.id}" ${String(x.id)===devSekFiltr?'selected':''}>${esc(x.nama)}${x.status!=='aktif'?' (nonaktif)':''}</option>`).join('');
+ return `<div class="panel"><div class="pb"><label class="l">Tampilkan guru dari</label><select class="select" onchange="devSekFiltr=this.value;renderV()">${opt}</select></div></div>`+(devSekFiltr?devGuruSekolah(Number(devSekFiltr)):panelDevGuru())}
+function devGuruSekolah(sid){const sk=(S.devSek||[]).find(x=>x.id===sid)||{nama:'',status:''};
+ const m=(S.devGuru||[]).filter(g=>g.role!=='developer').map(g=>({g,k:(g.keanggotaan||[]).find(k=>k.sekolah_id===sid)})).filter(x=>x.k);
+ return `<div class="panel"><div class="ph">👥 Guru - ${esc(sk.nama)} <button class="btn success sm" onclick="devTambahGuru(${sid})">+ Tambah Guru</button></div><div class="pb">${m.length?tab(['Nama','NIP','Username','WhatsApp','Peran','Status','Aksi'],m.map(({g,k})=>`<tr><td><b>${esc(g.nama)}</b></td><td>${esc(g.nip||'')}</td><td>${esc(g.username)}</td><td>${esc(fmtWA(g.no_wa)||'-')}</td><td><select class="select" onchange="devUbahRole('${g.id}',${sid},this.value)">${['kepala_sekolah','wakil_kepala','guru'].map(r=>`<option value="${r}" ${r===k.role?'selected':''}>${LBL[r]}</option>`).join('')}</select></td><td>${k.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td><div class="tb" style="margin:0;flex-wrap:wrap">${k.aktif&&g.aktif&&sk.status==='aktif'?`<button class="btn sm soft" onclick="masukSebagai('${g.id}',${sid})">🔑 Masuk</button>`:''}<button class="btn sm ${k.aktif?'danger':'success'}" onclick="devAktif('${g.id}',${sid},${!k.aktif})">${k.aktif?'Nonaktifkan':'Aktifkan'}</button><button class="btn sm danger" onclick="devKeluarkan('${g.id}',${sid})">Keluarkan</button></div></td></tr>`).join('')):'<div class="mu">Belum ada guru di sekolah ini.</div>'}</div></div>`}
+function devUbahRole(pid,sid,r){guard(async()=>{try{await apiGuru({sekolah_id:sid,aksi:'ubah_role',id:pid,role:r});toast('Peran diubah')}finally{await muatDev();renderV()}})}
+function devAktif(pid,sid,n){guard(async()=>{await apiGuru({sekolah_id:sid,aksi:'aktif',id:pid,aktif:n});await muatDev();toast(n?'Guru diaktifkan':'Guru dinonaktifkan');renderV()})}
+async function devKeluarkan(pid,sid){const g=(S.devGuru||[]).find(x=>x.id===pid);if(!await konfirmasi('Keluarkan '+(g?g.nama:'guru ini')+' dari sekolah ini? Akunnya tetap ada.',{judul:'Keluarkan guru',ya:'Keluarkan',bahaya:1}))return;guard(async()=>{await apiGuru({sekolah_id:sid,aksi:'hapus',id:pid});await muatDev();toast('Guru dikeluarkan');renderV()})}
+function devTambahGuru(sid){form('Tambah guru',[{k:'wa',l:'Nomor WhatsApp guru (contoh 08123456789)'}],async v=>{const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp tidak valid');
+  const c=await apiGuru({sekolah_id:sid,aksi:'cek_nomor',no_wa:wa});
+  if(c.sudah_di_sekolah)throw new Error('Nomor ini sudah terdaftar sebagai '+c.nama+' di sekolah ini');
+  if(c.ada){if(!await konfirmasi('Nomor ini sudah punya akun atas nama '+c.nama+'. Tautkan ke sekolah ini?',{judul:'Tautkan guru',ya:'Tautkan'}))return;await apiGuru({sekolah_id:sid,aksi:'tautkan',no_wa:wa});await muatDev();toast(c.nama+' ditautkan ke sekolah ini');renderV();return}
+  setTimeout(()=>{form('Guru baru',[{k:'nama',l:'Nama guru'},{k:'nip',l:'NIP (opsional)'},{k:'user',l:'Username (huruf kecil, tanpa spasi)'},{k:'sandi',l:'Kata sandi awal (minimal 6 karakter)',t:'password'},{k:'role',l:'Peran',o:['Guru','Wakil Kepala Sekolah','Kepala Sekolah']}],async z=>{await apiGuru({sekolah_id:sid,aksi:'tambah',nama:z.nama,nip:z.nip,username:z.user,sandi:z.sandi,role:KEYR[z.role]||'guru',no_wa:wa});await muatDev();toast('Guru ditambahkan');renderV()})},150)});$('#ms').textContent='Lanjut'}
+const BATAS_DB_MB=500;
+const fmtBy=n=>{n=Number(n)||0;return n>=1073741824?(n/1073741824).toFixed(2)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'};
+function devPenyimpanan(){const d=S.devSimpan;
+ if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat data penyimpanan...</div></div></div>';
+ if(d.error)return `<div class="panel"><div class="ph">💾 Penyimpanan Supabase</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL langkah 5D sudah dijalankan.</div></div></div>`;
+ const batas=BATAS_DB_MB*1048576,pk=Math.min(100,d.ukuran_db/batas*100),wr=pk<60?'#1f9d55':pk<85?'#e0a100':'#d64545',tbl=d.tabel||[],ss=d.sekolah||[];
+ const kunci=['kelas','siswa','wali','absensi','pesan_masuk','laporan_ortu','notifikasi_alpa','libur_tanggal'],tot={};kunci.forEach(t=>{tot[t]=ss.reduce((a,x)=>a+(x[t]||0),0)});
+ const uk=n=>{const x=tbl.find(v=>v.nama===n);return x?x.ukuran:0},perk=x=>kunci.reduce((a,t)=>a+(tot[t]?uk(t)*(x[t]||0)/tot[t]:0),0);
+ const urut=[...ss].sort((a,b)=>perk(b)-perk(a));
+ return `<div class="panel"><div class="ph">💾 Penyimpanan Supabase</div><div class="pb"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${fmtBy(d.ukuran_db)} dari ${BATAS_DB_MB} MB</b><span class="mu">${pk.toFixed(1)}% terpakai · sisa ${fmtBy(Math.max(0,batas-d.ukuran_db))}</span></div><div style="height:14px;background:#e6e9ee;border-radius:8px;overflow:hidden;margin:8px 0"><div style="width:${pk}%;height:100%;background:${wr}"></div></div><div class="note">Ukuran database sekarang, termasuk katalog sistem Supabase. Batas ${BATAS_DB_MB} MB mengikuti paket Free; bila paket Supabase Anda berbeda, sesuaikan di dashboard Supabase. Penyimpanan file belum dipakai aplikasi ini.</div></div></div>
+<div class="panel"><div class="ph">🏫 Pemakaian per sekolah <span class="mu">perkiraan</span></div><div class="pb">${urut.length?tab(['Sekolah','Perkiraan ukuran','Siswa','Absensi','Pesan masuk'],urut.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${fmtBy(perk(x))}</td><td>${x.siswa}</td><td>${x.absensi}</td><td>${x.pesan_masuk}</td></tr>`).join('')):'<div class="mu">Belum ada sekolah.</div>'}<div class="note" style="margin-top:8px">Perkiraan dihitung dari porsi jumlah baris tiap sekolah pada tabel yang dipakai bersama.</div></div></div>
+<div class="panel"><div class="ph">🗂 Tabel terbesar</div><div class="pb">${tab(['Tabel','Ukuran','Perkiraan baris'],tbl.slice(0,12).map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${fmtBy(x.ukuran)}</td><td>${x.baris}</td></tr>`).join(''))}</div></div>`}
 function devLog(){const l=S.devLog||[];
  return `<div class="panel"><div class="ph">📜 Log audit <span class="mu">100 terbaru</span></div><div class="pb">${l.length?tab(['Waktu','Pelaku','Sekolah','Aksi','Rincian'],l.map(x=>`<tr><td>${esc(new Date(x.waktu).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'short',timeStyle:'short'}))}</td><td>${esc(x.pelaku||'-')}</td><td>${esc(x.sekolah||'-')}</td><td><b>${esc(x.aksi)}</b></td><td>${esc(x.rincian||'')}</td></tr>`).join('')):'<div class="mu">Belum ada catatan.</div>'}</div></div>`}
 function devSistem(){const r=chk?chk.r:null,n=l=>r?r.filter(x=>x[0]===l).length:0;
  return `<div class="panel"><div class="ph">🩺 Pemeriksaan sistem <button class="btn" onclick="jalankanCek()">↻ Periksa Sistem</button></div><div class="pb"><div>${r?`<span class="mu">terakhir ${chk.t}: ${n('ok')} baik, ${n('warn')} perhatian, ${n('err')} masalah</span>`:''}</div>${r?tab(['Hasil','Pemeriksaan','Keterangan'],r.map(x=>`<tr><td><span class="badge ${LV[x[0]][0]}">${LV[x[0]][1]}</span></td><td><b>${x[1]}</b></td><td>${esc(x[2])}</td></tr>`).join('')):'<div class="note" style="margin-top:8px">Ketuk Periksa Sistem untuk memeriksa koneksi, tabel, webhook, kamera, dan kelengkapan data.</div>'}</div></div>`}
-function jalankanCek(){guard(async()=>{toast('Memeriksa...');chk={t:new Date().toTimeString().slice(0,8),r:await runChecks()};renderV();toast('Pemeriksaan selesai')})}
+function jalankanCek(){guard(async()=>{toast('Memeriksa...');chk={t:new Date().toTimeString().slice(0,8),r:await (SEK==null?runChecksDev():runChecks())};renderV();toast('Pemeriksaan selesai')})}
 document.addEventListener('click',e=>{
  const b=e.target.closest('button');
  if(!b||b.disabled)return;
