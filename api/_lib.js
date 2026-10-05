@@ -229,6 +229,30 @@ async function cekOtp(nomor, keperluan, kode) {
   return true;
 }
 
+// Memeriksa kode TANPA menghanguskannya (tombol Verifikasi sebelum submit).
+// Salah tetap dihitung sebagai percobaan.
+async function lihatOtp(nomor, keperluan, kode) {
+  const bersih = String(kode || '').replace(/\D/g, '');
+  if (bersih.length !== 6) throw new Error('Kode harus 6 angka');
+  const sekarang = new Date().toISOString();
+  const r = await panggil(
+    `/rest/v1/otp_kode?tujuan=eq.${nomor}&keperluan=eq.${keperluan}&terpakai=eq.false&kedaluwarsa=gt.${encodeURIComponent(sekarang)}&select=id,kode_hash,percobaan&order=dibuat.desc&limit=1`,
+    'GET'
+  );
+  const o = r && r[0];
+  if (!o) throw new Error('Kode tidak ditemukan atau sudah kedaluwarsa. Minta kode baru');
+  if (o.percobaan >= OTP_MAKS_SALAH) throw new Error('Terlalu banyak percobaan salah. Minta kode baru');
+  const dihitung = Buffer.from(hashKode(nomor, keperluan, bersih), 'hex');
+  const tersimpan = Buffer.from(String(o.kode_hash), 'hex');
+  if (!(dihitung.length === tersimpan.length && crypto.timingSafeEqual(dihitung, tersimpan))) {
+    await panggil(`/rest/v1/otp_kode?id=eq.${o.id}`, 'PATCH', { percobaan: o.percobaan + 1 }, {
+      Prefer: 'return=minimal'
+    });
+    throw new Error('Kode salah');
+  }
+  return true;
+}
+
 // ------------------------------------------------------------
 // Enkripsi (AES-256-GCM) untuk data yang harus bisa dibuka lagi oleh server,
 // misalnya kata sandi baru pada permintaan nomor hilang sebelum disetujui.
@@ -292,6 +316,7 @@ async function ubahUsernameAkun(userId, usernameLama, usernameBaru) {
 }
 
 module.exports = {
+  lihatOtp,
   enkripsi,
   dekripsi,
   catatLog,
