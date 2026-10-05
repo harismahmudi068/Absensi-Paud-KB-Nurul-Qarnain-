@@ -3,7 +3,10 @@
 // Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
 // Boleh dipakai oleh Kepala Sekolah sekolah itu atau Developer.
-// Aksi: baca, simpan, webhook (butuh sandi), buat_ulang_webhook (butuh sandi)
+// Aksi: baca, simpan (kunci AI dan nomor kepala sekolah),
+//       token_tambah, token_hapus, grup_tambah, grup_hapus (banyak token Fonnte dan ID grup per sekolah),
+//       tes_fonnte, tes_ai (kirim pesan tes ke nomor Kepala Sekolah),
+//       webhook (butuh sandi), buat_ulang_webhook (butuh sandi)
 
 const crypto = require('crypto');
 
@@ -49,6 +52,51 @@ function normWA(n) {
 }
 
 const samar = (v) => (v ? '••••' + String(v).slice(-4) : null);
+const AI_MODEL = 'gemini-3.5-flash-lite';
+
+// Kirim satu pesan lewat Fonnte; mengembalikan { ok, alasan }
+async function kirimFonnte(token, target, pesan) {
+  try {
+    const r = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: { Authorization: token, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ target: String(target), message: pesan })
+    });
+    const t = await r.text();
+    let j = {};
+    try { j = JSON.parse(t); } catch (_) {}
+    if (!r.ok) return { ok: false, alasan: j.reason || 'HTTP ' + r.status };
+    if (j.status === false) return { ok: false, alasan: j.reason || 'Ditolak Fonnte' };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, alasan: e.message };
+  }
+}
+
+// Tes kunci Gemini dengan satu permintaan singkat
+async function tesGemini(kunci) {
+  const ac = new AbortController();
+  const waktu = setTimeout(() => ac.abort(), 15000);
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': kunci },
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'Balas hanya dengan satu kata: OK' }] }] }),
+        signal: ac.signal
+      }
+    );
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || 'HTTP ' + r.status);
+    const bagian = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+    return String((bagian[0] && bagian[0].text) || 'OK').trim().slice(0, 60);
+  } catch (e) {
+    throw new Error('Tes AI gagal: ' + (e.name === 'AbortError' ? 'waktu habis' : e.message));
+  } finally {
+    clearTimeout(waktu);
+  }
+}
 
 async function catat(pelaku, sekolahId, aksi, rincian) {
   try {
@@ -136,18 +184,39 @@ module.exports = async (req, res) => {
       return (r && r[0]) || {};
     };
 
+    const ambilToken = async () =>
+      (await panggil(
+        `/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=id,label,token,perangkat&order=id.asc`,
+        'GET'
+      )) || [];
+    const ambilGrup = async () =>
+      (await panggil(
+        `/rest/v1/grup_wa?sekolah_id=eq.${sekolahId}&select=id,grup_id,label,token_id&order=id.asc`,
+        'GET'
+      )) || [];
+    const namaSekolah = async () => {
+      const x = await panggil(`/rest/v1/sekolah?id=eq.${sekolahId}&select=nama`, 'GET');
+      return (x && x[0] && x[0].nama) || 'Sekolah';
+    };
+
     // ---------------------------------------------------------
     // BACA
     // ---------------------------------------------------------
     if (b.aksi === 'baca') {
-      const r = await ambil();
+      const [r, tk, gp] = await Promise.all([ambil(), ambilToken(), ambilGrup()]);
       const tampil = !!b.tampilkan && isDev;
       if (tampil) await catat(user.id, sekolahId, 'lihat_rahasia', 'kunci AI dan token Fonnte');
       return res.status(200).json({
         ok: true,
         kunci_ai: { ada: !!r.kunci_ai, tampil: samar(r.kunci_ai), nilai: tampil ? r.kunci_ai || '' : undefined },
-        token_fonnte: { ada: !!r.token_fonnte, tampil: samar(r.token_fonnte), nilai: tampil ? r.token_fonnte || '' : undefined },
-        id_grup: r.id_grup || '',
+        tokens: tk.map((t) => ({
+          id: t.id,
+          label: t.label,
+          perangkat: t.perangkat || '',
+          tampil: samar(t.token),
+          nilai: tampil ? t.token : undefined
+        })),
+        grup: gp.map((g) => ({ id: g.id, grup_id: g.grup_id, label: g.label || '', token_id: g.token_id })),
         nomor_kepala: r.nomor_kepala || ''
       });
     }
@@ -166,20 +235,7 @@ module.exports = async (req, res) => {
         diubah.push('kunci_ai');
       }
 
-      const tokenF = String(b.token_fonnte || '').trim();
-      if (tokenF) {
-        if (tokenF.length < 6 || /\s/.test(tokenF)) throw new Error('Token Fonnte tidak valid');
-        isi.token_fonnte = tokenF;
-        diubah.push('token_fonnte');
-      }
-
-      if (b.id_grup !== undefined) {
-        const g = String(b.id_grup || '').trim();
-        if (g && !RE_GRUP.test(g))
-          throw new Error('ID grup tidak valid. Contoh: 120363410620341838@g.us');
-        isi.id_grup = g || null;
-        diubah.push('id_grup');
-      }
+      // Token Fonnte dan ID grup diatur lewat aksi token_tambah / grup_tambah (boleh banyak).
 
       if (b.nomor_kepala !== undefined) {
         const n = normWA(b.nomor_kepala);
@@ -191,7 +247,7 @@ module.exports = async (req, res) => {
 
       if (Array.isArray(b.hapus)) {
         for (const f of b.hapus) {
-          if (['kunci_ai', 'token_fonnte'].includes(f)) {
+          if (f === 'kunci_ai') {
             isi[f] = null;
             if (!diubah.includes(f)) diubah.push(f);
           }
@@ -209,6 +265,124 @@ module.exports = async (req, res) => {
       });
       await catat(user.id, sekolahId, 'ubah_pengaturan_rahasia', diubah.join(', '));
       return res.status(200).json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
+    // TOKEN FONNTE (boleh banyak per sekolah)
+    // ---------------------------------------------------------
+    if (b.aksi === 'token_tambah') {
+      const tokenF = String(b.token || '').trim();
+      if (tokenF.length < 6 || /\s/.test(tokenF)) throw new Error('Token Fonnte tidak valid');
+      const label = String(b.label || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      const perangkat = String(b.perangkat || '').trim() ? normWA(b.perangkat) : null;
+      if (perangkat && !RE_WA.test(perangkat)) throw new Error('Nomor perangkat tidak valid');
+      const ada = await ambilToken();
+      if (ada.length >= 10) throw new Error('Maksimal 10 token Fonnte per sekolah');
+      try {
+        await panggil(
+          '/rest/v1/fonnte_token',
+          'POST',
+          { sekolah_id: sekolahId, label: label || 'Token ' + (ada.length + 1), token: tokenF, perangkat },
+          { Prefer: 'return=minimal' }
+        );
+      } catch (e) {
+        if (/duplicate|unique|already/i.test(e.message)) throw new Error('Token ini sudah terdaftar');
+        throw e;
+      }
+      await catat(user.id, sekolahId, 'token_fonnte_tambah', label || null);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (b.aksi === 'token_hapus') {
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id <= 0) throw new Error('Token tidak valid');
+      await panggil(`/rest/v1/fonnte_token?id=eq.${id}&sekolah_id=eq.${sekolahId}`, 'DELETE');
+      await catat(user.id, sekolahId, 'token_fonnte_hapus', String(id));
+      return res.status(200).json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
+    // ID GRUP WHATSAPP (boleh banyak per sekolah)
+    // ---------------------------------------------------------
+    if (b.aksi === 'grup_tambah') {
+      const gid = String(b.grup_id || '').trim();
+      if (!RE_GRUP.test(gid))
+        throw new Error('ID grup tidak valid. Contoh: 120363410620341838@g.us');
+      const label = String(b.label || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      let tokenId = null;
+      if (b.token_id !== null && b.token_id !== undefined && b.token_id !== '') {
+        tokenId = Number(b.token_id);
+        const tk = await ambilToken();
+        if (!Number.isInteger(tokenId) || !tk.some((t) => t.id === tokenId))
+          throw new Error('Token tidak ditemukan');
+      }
+      const ada = await ambilGrup();
+      if (ada.length >= 40) throw new Error('Maksimal 40 ID grup per sekolah');
+      try {
+        await panggil(
+          '/rest/v1/grup_wa',
+          'POST',
+          { sekolah_id: sekolahId, grup_id: gid, label: label || null, token_id: tokenId },
+          { Prefer: 'return=minimal' }
+        );
+      } catch (e) {
+        if (/duplicate|unique|already/i.test(e.message)) throw new Error('ID grup ini sudah terdaftar');
+        throw e;
+      }
+      await catat(user.id, sekolahId, 'grup_wa_tambah', label || gid);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (b.aksi === 'grup_hapus') {
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id <= 0) throw new Error('Grup tidak valid');
+      await panggil(`/rest/v1/grup_wa?id=eq.${id}&sekolah_id=eq.${sekolahId}`, 'DELETE');
+      await catat(user.id, sekolahId, 'grup_wa_hapus', String(id));
+      return res.status(200).json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
+    // TES TOKEN FONNTE dan API AI (pesan tes ke nomor Kepala Sekolah)
+    // ---------------------------------------------------------
+    if (b.aksi === 'tes_fonnte') {
+      const id = Number(b.id);
+      const t = (await ambilToken()).find((x) => x.id === id);
+      if (!t) throw new Error('Token tidak ditemukan');
+      const r = await ambil();
+      const tujuan = String(r.nomor_kepala || '');
+      if (!RE_WA.test(tujuan))
+        throw new Error('Isi nomor Kepala Sekolah lalu simpan dulu sebelum tes');
+      const h = await kirimFonnte(
+        t.token,
+        tujuan,
+        `✅ *TES TOKEN FONNTE*\nSekolah: ${await namaSekolah()}\nToken: ${t.label}\n\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
+      );
+      await catat(user.id, sekolahId, 'tes_fonnte', `${t.label}: ${h.ok ? 'berhasil' : h.alasan}`);
+      if (!h.ok) throw new Error('Tes gagal: ' + h.alasan);
+      return res.status(200).json({ ok: true, pesan: 'Pesan tes terkirim ke nomor Kepala Sekolah' });
+    }
+
+    if (b.aksi === 'tes_ai') {
+      const r = await ambil();
+      if (!r.kunci_ai) throw new Error('Kunci API AI belum diisi');
+      const balasan = await tesGemini(r.kunci_ai);
+      let tambahan = '';
+      const tujuan = String(r.nomor_kepala || '');
+      const tk = await ambilToken();
+      if (tk.length && RE_WA.test(tujuan)) {
+        const h = await kirimFonnte(
+          tk[0].token,
+          tujuan,
+          `✅ *TES API AI*\nSekolah: ${await namaSekolah()}\nBalasan AI: ${balasan}\n\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
+        );
+        tambahan = h.ok
+          ? ' Pesan tes dikirim ke nomor Kepala Sekolah.'
+          : ' Pesan WhatsApp gagal dikirim: ' + h.alasan;
+      } else {
+        tambahan = ' (Pesan WhatsApp tidak dikirim: belum ada token atau nomor Kepala Sekolah.)';
+      }
+      await catat(user.id, sekolahId, 'tes_ai', 'berhasil');
+      return res.status(200).json({ ok: true, pesan: 'API AI berfungsi. Balasan: ' + balasan + '.' + tambahan });
     }
 
     // ---------------------------------------------------------
