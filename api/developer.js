@@ -9,6 +9,9 @@
 //   sekolah_status    {sekolah_id, status}  -> aktifkan / nonaktifkan sekolah
 //   masuk_sebagai     {profil_id, sekolah_id} -> izin masuk sebagai pengguna lain (mode bantuan)
 //   catat_keluar      {profil_id, sekolah_id} -> catat akhir mode bantuan
+//   beritahu_kepala   {batas}               -> WhatsApp ke semua Kepala Sekolah: unduh rekap sebelum data dihapus
+//   hapus_absensi     {sandi, konfirmasi}   -> kosongkan seluruh tabel absensi (butuh sandi dan ketikan HAPUS ABSENSI)
+//   sinkron_alpa                            -> sinkronkan ulang jadwal cron Alpa Otomatis semua sekolah
 
 const L = require('./_lib');
 
@@ -335,6 +338,90 @@ module.exports = async (req, res) => {
         sekolah: sk.nama,
         role: k.role
       });
+    }
+
+    // ---------------------------------------------------------
+    // PEMBERITAHUAN KEPALA SEKOLAH (sebelum data dihapus)
+    // ---------------------------------------------------------
+    if (b.aksi === 'beritahu_kepala') {
+      const batas = teks(b.batas, 60);
+      const baris =
+        (await L.panggil(
+          '/rest/v1/keanggotaan?role=eq.kepala_sekolah&aktif=eq.true&select=sekolah_id,profil(nama,no_wa,aktif),sekolah(nama,status)',
+          'GET'
+        )) || [];
+      const tujuan = baris.filter(
+        (x) => x.sekolah && x.sekolah.status === 'aktif' && x.profil && x.profil.aktif
+      );
+      let terkirim = 0, gagal = 0, tanpaNomor = 0;
+      for (const x of tujuan) {
+        const wa = x.profil.no_wa;
+        if (!wa || !L.RE_WA.test(wa)) { tanpaNomor++; continue; }
+        const pesan =
+          `📢 *PEMBERITAHUAN PENGEMBANG SISTEM ABSENSI*\n\n` +
+          `Yth. Bapak/Ibu Kepala Sekolah *${x.sekolah.nama}*,\n\n` +
+          `Untuk menjaga kapasitas penyimpanan, data absensi akan segera dihapus. ` +
+          `Mohon segera mengunduh rekap absensi di menu *Pengaturan > Tahun Ajaran* (PDF atau XLSX)` +
+          `${batas ? ` paling lambat *${batas}*` : ''}.\n\n` +
+          `Data yang sudah dihapus tidak dapat dikembalikan. Terima kasih 🙏`;
+        try {
+          await L.kirimDev(wa, pesan);
+          terkirim++;
+        } catch (e) {
+          gagal++;
+          console.error('beritahu_kepala gagal untuk', x.sekolah.nama, e.message);
+        }
+      }
+      await L.catatLog({
+        pelaku: user.id,
+        aksi: 'beritahu_kepala',
+        rincian: `terkirim ${terkirim}, gagal ${gagal}, tanpa nomor ${tanpaNomor}${batas ? ', batas ' + batas : ''}`
+      });
+      return res.status(200).json({ ok: true, terkirim, gagal, tanpa_nomor: tanpaNomor, total: tujuan.length });
+    }
+
+    // ---------------------------------------------------------
+    // KOSONGKAN TABEL ABSENSI
+    // ---------------------------------------------------------
+    if (b.aksi === 'hapus_absensi') {
+      if (String(b.konfirmasi || '').trim() !== 'HAPUS ABSENSI')
+        throw new Error('Ketik HAPUS ABSENSI persis seperti contoh untuk melanjutkan');
+      try {
+        await L.panggil('/auth/v1/token?grant_type=password', 'POST', {
+          email: user.email,
+          password: String(b.sandi || '')
+        });
+      } catch (e) {
+        throw new Error('Kata sandi salah');
+      }
+      // Pengaman: sebaiknya Kepala Sekolah sudah diberi tahu dalam 7 hari terakhir
+      if (!b.lanjut_tanpa_pemberitahuan) {
+        const tujuhHari = new Date(Date.now() - 7 * 24 * 3600000).toISOString();
+        const sudah =
+          (await L.panggil(
+            `/rest/v1/log_audit?aksi=eq.beritahu_kepala&waktu=gt.${encodeURIComponent(tujuhHari)}&select=id&limit=1`,
+            'GET'
+          )) || [];
+        if (!sudah.length) throw new Error('BELUM_ADA_PEMBERITAHUAN');
+      }
+      const jumlah = await L.panggil('/rest/v1/rpc/developer_kosongkan_absensi', 'POST', {
+        p_oleh: user.id
+      });
+      await L.catatLog({
+        pelaku: user.id,
+        aksi: 'hapus_absensi',
+        rincian: `Seluruh tabel absensi dikosongkan (${Number(jumlah) || 0} baris)`
+      });
+      return res.status(200).json({ ok: true, jumlah: Number(jumlah) || 0 });
+    }
+
+    // ---------------------------------------------------------
+    // SINKRON JADWAL ALPA
+    // ---------------------------------------------------------
+    if (b.aksi === 'sinkron_alpa') {
+      await L.panggil('/rest/v1/rpc/sinkronkan_jadwal_alpa', 'POST', {});
+      await L.catatLog({ pelaku: user.id, aksi: 'sinkron_alpa', rincian: 'Jadwal Alpa Otomatis disinkronkan ulang' });
+      return res.status(200).json({ ok: true });
     }
 
     return res.status(400).json({ error: 'Aksi tidak dikenal' });
