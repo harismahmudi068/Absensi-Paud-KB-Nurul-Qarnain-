@@ -114,7 +114,7 @@ function hashKode(nomor, keperluan, kode) {
 }
 
 // Membuat dan mengirim OTP ke nomor. Melempar error berpesan ramah bila ditolak.
-async function kirimOtp({ nomor, keperluan, ip, pembuka }) {
+async function kirimOtp({ nomor, keperluan, ip, pembuka, kosong }) {
   const sejam = new Date(Date.now() - 3600000).toISOString();
 
   const terakhir =
@@ -162,6 +162,16 @@ async function kirimOtp({ nomor, keperluan, ip, pembuka }) {
     { Prefer: 'return=representation' }
   );
   const id = baris && baris[0] && baris[0].id;
+
+  // Nomor tidak terdaftar: tetap dihitung agar respons tidak bisa dipakai menebak nomor
+  if (kosong) {
+    if (id) {
+      await panggil(`/rest/v1/otp_kode?id=eq.${id}`, 'PATCH', { terpakai: true }, {
+        Prefer: 'return=minimal'
+      });
+    }
+    return true;
+  }
 
   try {
     await kirimDev(
@@ -219,7 +229,73 @@ async function cekOtp(nomor, keperluan, kode) {
   return true;
 }
 
+// ------------------------------------------------------------
+// Enkripsi (AES-256-GCM) untuk data yang harus bisa dibuka lagi oleh server,
+// misalnya kata sandi baru pada permintaan nomor hilang sebelum disetujui.
+// ------------------------------------------------------------
+function kunciEnkripsi() {
+  return crypto.scryptSync(OTP_RAHASIA || 'tanpa-rahasia', 'sandi-permintaan-v1', 32);
+}
+function enkripsi(teks) {
+  const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', kunciEnkripsi(), iv);
+  const isi = Buffer.concat([c.update(String(teks), 'utf8'), c.final()]);
+  return [iv.toString('hex'), c.getAuthTag().toString('hex'), isi.toString('hex')].join('.');
+}
+function dekripsi(kode) {
+  const [iv, tag, isi] = String(kode || '').split('.');
+  if (!iv || !tag || !isi) throw new Error('Data terenkripsi rusak');
+  const d = crypto.createDecipheriv('aes-256-gcm', kunciEnkripsi(), Buffer.from(iv, 'hex'));
+  d.setAuthTag(Buffer.from(tag, 'hex'));
+  return Buffer.concat([d.update(Buffer.from(isi, 'hex')), d.final()]).toString('utf8');
+}
+
+// Catatan audit (gagal mencatat tidak boleh menggagalkan aksi utama)
+async function catatLog({ pelaku, sekolah_id, aksi, rincian }) {
+  try {
+    await panggil(
+      '/rest/v1/log_audit',
+      'POST',
+      { pelaku: pelaku || null, sekolah_id: sekolah_id || null, aksi, rincian: rincian || null },
+      { Prefer: 'return=minimal' }
+    );
+  } catch (e) {
+    console.error('catatLog gagal:', e.message);
+  }
+}
+
+// Ganti username akun: email di Auth dan tabel profil harus berubah bersamaan.
+async function ubahUsernameAkun(userId, usernameLama, usernameBaru) {
+  if (usernameBaru === usernameLama) return;
+  const ada = await panggil(
+    `/rest/v1/profil?username=eq.${encodeURIComponent(usernameBaru)}&select=id`,
+    'GET'
+  );
+  if (ada && ada.length && ada[0].id !== userId) throw new Error('Username sudah dipakai');
+  await panggil('/auth/v1/admin/users/' + userId, 'PUT', {
+    email: usernameBaru + '@absensi.local',
+    email_confirm: true
+  });
+  try {
+    await panggil(`/rest/v1/profil?id=eq.${userId}`, 'PATCH', { username: usernameBaru }, {
+      Prefer: 'return=minimal'
+    });
+  } catch (e) {
+    try {
+      await panggil('/auth/v1/admin/users/' + userId, 'PUT', {
+        email: usernameLama + '@absensi.local',
+        email_confirm: true
+      });
+    } catch (_) {}
+    throw new Error(pesanDuplikat(e) ? 'Username sudah dipakai' : e.message);
+  }
+}
+
 module.exports = {
+  enkripsi,
+  dekripsi,
+  catatLog,
+  ubahUsernameAkun,
   SB,
   KEY,
   DEV_WA,
