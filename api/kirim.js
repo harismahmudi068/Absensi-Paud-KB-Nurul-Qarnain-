@@ -31,8 +31,9 @@ module.exports = async (req, res) => {
       const m = (await sb(`/rest/v1/keanggotaan?profil_id=eq.${user.id}&sekolah_id=eq.${sekolahId}&select=role,aktif`))[0];
       if (!m || !m.aktif || !['guru', 'wakil_kepala', 'kepala_sekolah'].includes(m.role)) return res.status(403).json({ error: 'Tidak punya akses ke sekolah ini' });
     }
-    const r0 = (await sb(`/rest/v1/pengaturan_rahasia?sekolah_id=eq.${sekolahId}&select=token_fonnte`))[0] || {};
-    const FONNTE = r0.token_fonnte || (sekolahId === SEKOLAH_PERTAMA ? ENV_FONNTE : '');
+    // Token utama = token pertama yang didaftarkan sekolah (Pengaturan > Konfigurasi)
+    const t0 = (await sb(`/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=token&order=id.asc&limit=1`))[0] || {};
+    const FONNTE = t0.token || (sekolahId === SEKOLAH_PERTAMA ? ENV_FONNTE : '');
     if (!FONNTE) return res.status(500).json({ error: 'Token Fonnte sekolah belum diisi di Pengaturan > Koneksi' });
     const nomor = String(b.nomor || '').replace(/\D/g, '');
     const teks = String(b.teks || '');
