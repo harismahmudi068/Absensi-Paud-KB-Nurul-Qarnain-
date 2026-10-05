@@ -6,6 +6,9 @@
 // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 // Per sekolah (diisi di menu Pengaturan, tabel pengaturan_rahasia): token Fonnte, kunci AI,
 // ID grup, nomor kepala sekolah, dan kunci Webhook. Alamat: /api/webhook?key=<kunci sekolah>
+// Satu sekolah boleh punya BANYAK token Fonnte (tabel fonnte_token) dan BANYAK ID grup (tabel grup_wa),
+// semuanya memakai satu alamat Webhook. Token balasan dipilih dari: token milik grup, lalu nomor
+// perangkat pada pesan masuk (field device), lalu token pertama (utama).
 // Masa transisi: FONNTE_TOKEN, GEMINI_API_KEY, WEBHOOK_SECRET lama hanya dipakai sebagai
 // cadangan untuk sekolah pertama sampai kolomnya diisi di Pengaturan.
 
@@ -40,10 +43,32 @@ const ENV_FONNTE = process.env.FONNTE_TOKEN || '';
 const ENV_GEMINI = (process.env.GEMINI_API_KEY || '').trim();
 const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || '').trim();
 
-// Konteks per permintaan (aman untuk permintaan bersamaan): sekolahId, tokenFonnte, kunciAi, idGrup, nomorKepala
+// Konteks per permintaan (aman untuk permintaan bersamaan): sekolahId, tokens, grup, tokenFonnte, kunciAi, nomorKepala
 const { AsyncLocalStorage } = require('async_hooks');
 const konteks = new AsyncLocalStorage();
 const K = () => konteks.getStore() || {};
+
+function normDevice(x) {
+  let d = String(x || '').replace(/\D/g, '');
+  if (d[0] === '0') d = '62' + d.slice(1);
+  return d;
+}
+
+// Memilih token Fonnte yang dipakai untuk membalas pesan ini
+function pilihToken(b, groupId) {
+  const c = K();
+  const g = groupId ? (c.grup || []).find((x) => x.grup_id === groupId) : null;
+  if (g && g.token_id) {
+    const t = (c.tokens || []).find((x) => x.id === g.token_id);
+    if (t) return t.token;
+  }
+  const dev = normDevice(b.device);
+  if (dev) {
+    const t = (c.tokens || []).find((x) => x.perangkat && normDevice(x.perangkat) === dev);
+    if (t) return t.token;
+  }
+  return c.tokenFonnte;
+}
 
 function nomor(value) { return String(value || '').replace(/\D/g, ''); }
 
@@ -724,8 +749,10 @@ async function proses(b) {
   const dari = getPengirim(b);
   const target = getTargetBalasan(b);
 
-  // 1. Jika payload menyatakan pesan berasal dari grup, hanya grup PAUD yang boleh masuk.
-  if (groupId && groupId !== K().idGrup) return;
+  // 1. Jika pesan berasal dari grup, hanya grup yang terdaftar di sekolah ini yang boleh masuk.
+  const ctx = K();
+  if (groupId && !(ctx.grup || []).some((g) => g.grup_id === groupId)) return;
+  ctx.tokenFonnte = pilihToken(b, groupId);
 
   // 2. Hanya nomor wali terdaftar yang boleh diproses.
   if (!dari) return;
@@ -838,11 +865,19 @@ async function cariSekolah(kunci) {
   if (!Array.isArray(sk) || !sk[0] || sk[0].status !== 'aktif') return { nonaktif: true, sekolahId: id };
 
   const cadangan = id === SEKOLAH_PERTAMA;
+  const [tk, gp] = await Promise.all([
+    sb(`fonnte_token?sekolah_id=eq.${id}&select=id,label,token,perangkat&order=id.asc`),
+    sb(`grup_wa?sekolah_id=eq.${id}&select=grup_id,token_id`)
+  ]);
+  const tokens = Array.isArray(tk) ? tk : [];
+  let grup = Array.isArray(gp) ? gp : [];
+  if (!grup.length && r.id_grup) grup = [{ grup_id: r.id_grup, token_id: null }];
   return {
     sekolahId: id,
-    tokenFonnte: r.token_fonnte || (cadangan ? ENV_FONNTE : '') || '',
+    tokens,
+    grup,
+    tokenFonnte: (tokens[0] && tokens[0].token) || (cadangan ? ENV_FONNTE : '') || '',
     kunciAi: r.kunci_ai || (cadangan ? ENV_GEMINI : '') || '',
-    idGrup: r.id_grup || '',
     nomorKepala: r.nomor_kepala || ''
   };
 }
