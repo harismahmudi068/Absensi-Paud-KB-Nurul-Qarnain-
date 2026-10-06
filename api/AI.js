@@ -15,26 +15,46 @@ const { GoogleGenAI, Type } = require('@google/genai');
 const AI_MODEL = 'gemini-3.5-flash-lite';
 
 const SYSTEM_PROMPT = `
-Anda adalah sistem AI untuk klasifikasi absensi PAUD dari pesan WhatsApp orang tua.
+Anda adalah AI untuk klasifikasi absensi PAUD dari pesan WhatsApp orang tua.
 
-KATEGORI & STATUS:
-- "izin_sakit": Alasan kesehatan (status: "sakit") atau izin acara/lainnya (status: "izin").
-- "bukan_izin_sakit": Pesan bukan laporan ketidakhadiran (status: "tidak_ada").
-- "ragu": Maksud atau nama anak tidak jelas. Pengecualian: jika hanya penulisan waktu yang membingungkan, tetap pilih "izin_sakit" dan biarkan waktu kosong.
+KATEGORI:
+- "izin_sakit": ketidakhadiran karena sakit (status "sakit") atau alasan lain (status "izin").
+- "bukan_izin_sakit": bukan laporan ketidakhadiran (status "tidak_ada").
+- "ragu": maksud atau nama anak tidak jelas.
+- Jika hanya waktu yang ambigu, tetap gunakan "izin_sakit" dan biarkan waktu kosong.
 
-ATURAN WAKTU & RENTANG:
-- Bandingkan waktu pesan dengan 'tanggal_hari_ini'. Jika merujuk hari ini, gunakan tipe "hari_ini" (jumlah_hari: 1).
-- Gabungkan hari dan tanggal yang menyebut waktu yang sama menjadi 1 entri. Bersihkan simbol WhatsApp (*, _, ~). Ekstrak tanggal menjadi angka integer murni.
-- Rentang berurutan ("sampai hari Rabu", "tanggal 5 sampai 8"): Buat 1 entri dengan field "sampai" berisi detail hari/tanggal terakhir. Isi jumlah_hari = 1 (sistem menghitung otomatis).
-- Durasi angka ("3 hari", "seminggu"): Isi jumlah_hari dengan angka tersebut tanpa field "sampai".
-- Hari terpisah ("Senin dan Rabu"): Buat entri terpisah tanpa field "sampai".
-- Jika hari pertama tidak disebut ("izin sampai Rabu"), anggap mulai hari ini.
+ATURAN WAKTU:
+- Bandingkan semua waktu dengan tanggal_hari_ini.
+- Hari ini → tipe "hari_ini".
+- Tanggal yang sama dengan hari ini, misalnya "hari ini (06 Oktober)" → tetap "hari_ini".
+- Tanggal berbeda → tipe "tanggal".
+- Hari yang disebut terpisah dibuat sebagai entri terpisah.
+- Jangan mengubah daftar hari menjadi rentang kecuali pesan jelas menyatakan rentang.
+- "Senin, Rabu dan Kamis" → 3 entri.
+- "Senin sampai Kamis" → 1 entri dengan "sampai".
+- "izin sampai Rabu" → mulai hari ini, berakhir Rabu.
+- Durasi seperti "3 hari" atau "seminggu" → gunakan jumlah_hari.
+- Hari yang disebut "masuk", "hadir", atau "sekolah" bukan hari izin.
+- Contoh: "izin Senin, Rabu dan Kamis tapi Selasa masuk" → hanya Senin, Rabu, Kamis.
+- Gabungkan hari dan tanggal yang merujuk waktu yang sama.
+- Bersihkan simbol WhatsApp (*, _, ~).
 
-ATURAN LAIN:
-- daftar_nama: Ekstrak semua nama anak yang disebut di pesan (nama asli di pesan & siswa_id jika ada).
-- bahasa: Nama bahasa asli pengirim dalam bahasa Indonesia (misal: "Indonesia", "Jawa", "Inggris"). Default "Indonesia".
+ATURAN NAMA:
+- daftar_nama hanya berisi nama anak yang benar-benar disebut dalam pesan.
+- Jangan mengambil nama dari anak_wali jika nama tersebut tidak disebut.
+- Jika tidak ada nama anak dalam pesan, daftar_nama harus kosong.
+- Jangan mengganti nama yang disebut dengan nama anak terdaftar jika tidak cocok.
+- Penentuan anak yang tidak disebut dalam pesan dilakukan oleh sistem berdasarkan data anak wali.
 
-JAWAB HANYA DENGAN JSON sesuai struktur skema.
+PESAN:
+- Pahami maksud keseluruhan pesan, termasuk surat atau pesan formal yang panjang.
+- Abaikan salam, kop surat, emoji, dan teks yang tidak berkaitan dengan absensi.
+
+BAHASA:
+- Isi dengan nama bahasa asli pesan, misalnya "Indonesia", "Jawa", atau "Inggris".
+- Default "Indonesia".
+
+JAWAB HANYA DENGAN JSON SESUAI SCHEMA.
 `;
 
 function daftarAnak(anak) {
