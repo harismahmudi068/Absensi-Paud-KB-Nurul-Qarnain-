@@ -178,7 +178,61 @@ function balasanSakit(nama, tgl, lanjut = null) { return bungkusBalasan([isiSaki
 function balasanIzin(nama, tgl, tidakAktif = []) { return bungkusBalasan([isiIzin(nama, tgl, tidakAktif)]); }
 function balasanBukanHariSekolah(tidakAktif) { return bungkusBalasan([isiBukanHariSekolah(tidakAktif)]); }
 
+// Nama pada pesan yang tidak mirip dengan nama anak terdaftar (perbandingan per kata)
+function namaYangBerbeda(namaDiPesan, namaTerdaftar) {
+  const kata = String(namaTerdaftar || '').toLowerCase().split(/[\s|]+/).filter(x => x.length > 2);
+  return (namaDiPesan || []).filter(n => {
+    const w = String(n || '').toLowerCase().split(/\s+/).filter(x => x.length > 2);
+    return w.length > 0 && !w.some(x => kata.some(k => k.includes(x) || x.includes(k)));
+  });
+}
+
+// Notifikasi "ragu" untuk kepala sekolah: menjelaskan hasil analisis, penyebab keraguan,
+// dan apa yang perlu dikonfirmasi, sehingga kepala sekolah tidak perlu menebak.
+function notifikasiRaguDetail(pengirim, namaAnak, pesan, opsi = {}) {
+  const {
+    namaDiPesan = [], statusDugaan = '', alasanRagu = '', jumlahHari = 0,
+    alasanAI = '', keyakinan = 0, detailWaktu = ''
+  } = opsi;
+  const teksAnak = namaAnak || 'Belum berhasil diidentifikasi';
+  const anakTerdaftar = !!namaAnak && namaAnak !== 'Belum berhasil diidentifikasi';
+  const beda = namaYangBerbeda(namaDiPesan, namaAnak);
+  const dugaan = statusDugaan === 'sakit' ? 'Sakit' : statusDugaan === 'izin' ? 'Izin' : 'Belum bisa ditentukan';
+
+  let penyebab, konfirmasi;
+  if (alasanRagu === 'izin_panjang') {
+    penyebab = `Izin melebihi ${BATAS_JUMLAH_HARI_IZIN} hari${jumlahHari ? ` (sekitar ${jumlahHari} hari)` : ''}, sehingga tidak dicatat otomatis.`;
+    konfirmasi = ['Lama izin yang sebenarnya, konfirmasikan kepada wali murid', 'Setelah dikonfirmasi, catat secara manual di menu Absensi'];
+  } else if (alasanRagu === 'waktu') {
+    penyebab = 'Tanggal atau waktu yang dimaksud belum jelas atau tidak dapat dihitung otomatis.' + (detailWaktu ? ` (${String(detailWaktu).slice(0, 200)})` : '');
+    konfirmasi = ['Tanggal atau hari anak tidak masuk', 'Lama izin/sakit (berapa hari)', 'Setelah dikonfirmasi, catat secara manual di menu Absensi'];
+  } else if (alasanRagu === 'anak_tidak_jelas') {
+    penyebab = anakTerdaftar
+      ? 'Pesan mengarah ke izin/sakit, tetapi sistem belum bisa memastikan anak mana yang dimaksud.'
+      : 'Pesan mengarah ke izin/sakit, tetapi tidak ada anak terdaftar yang cocok dengan nomor pengirim atau nama di pesan.';
+    konfirmasi = ['Anak mana yang dimaksud' + (anakTerdaftar ? ` (terdaftar di nomor ini: ${teksAnak})` : ''), 'Status yang benar (izin atau sakit)', 'Setelah dikonfirmasi, catat secara manual di menu Absensi'];
+  } else {
+    penyebab = 'Maksud pesan belum jelas: bisa berupa izin atau sakit, bisa juga informasi lain yang tidak berkaitan dengan absensi.';
+    konfirmasi = ['Apakah pesan ini memang izin atau sakit', 'Jika ya, status yang benar (izin atau sakit), anak yang dimaksud, dan tanggalnya', 'Setelah dikonfirmasi, catat secara manual di menu Absensi'];
+  }
+
+  const baris = [
+    salam(), '',
+    '⚠️ *Pemberitahuan: Pesan Perlu Dicek*', '',
+    'Sistem menerima pesan dari wali murid, tetapi belum yakin sehingga tidak mencatat absensi otomatis.', '',
+    `👤 *Pengirim:* ${pengirim || '-'}`,
+    `👧 *Nama anak${anakTerdaftar ? ' (terdaftar di nomor ini)' : ''}:* *${teksAnak}*`
+  ];
+  if (beda.length) baris.push(`📝 *Nama di pesan (berbeda dari data terdaftar):* *${beda.join(' | ')}*`);
+  baris.push('', `💬 *Pesan:* "${String(pesan || '').slice(0, 1000)}"`, '', '🔎 *Hasil analisis sistem*', `• Dugaan: ${dugaan}`);
+  if (keyakinan > 0) baris.push(`• Tingkat keyakinan: ${Math.round(keyakinan * 100)}%`);
+  if (alasanAI) baris.push(`• Catatan analisis: ${String(alasanAI).slice(0, 300)}`);
+  baris.push('', `❓ *Alasan ragu:* ${penyebab}`, '', '✅ *Yang perlu dikonfirmasi:*', ...konfirmasi.map(x => `• ${x}`), '', penutup());
+  return baris.join('\n');
+}
+
 function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
+  if (!opsi.namaBeda) return notifikasiRaguDetail(pengirim, namaAnak, pesan, opsi);
   const { namaDiPesan = [], namaBeda = false, statusDugaan = '', tampilkanPesan = true, alasanRagu = '', jumlahHari = 0 } = opsi;
   const intro = namaBeda
     ? 'Sistem menginformasikan bahwa nama anak yang tertulis di pesan *berbeda* dengan anak yang terdaftar di nomor pengirim.'
@@ -583,9 +637,14 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
   const rencana = await buatRencana(status, waktu);
   if (!rencana.ok) {
     await catatPesan(dari, pesan, `Ragu: ${rencana.alasan}`.slice(0, 300), true);
+    const info = {
+      statusDugaan: status,
+      alasanAI: catatan && catatan !== pesan ? catatan : '',
+      detailWaktu: rencana.alasan || ''
+    };
     await kirimRagu(target, dari, daftarNama(anak), pesan, rencana.izinPanjang
-      ? { alasanRagu: 'izin_panjang', jumlahHari: rencana.izinPanjang }
-      : { alasanRagu: 'waktu' });
+      ? { ...info, alasanRagu: 'izin_panjang', jumlahHari: rencana.izinPanjang }
+      : { ...info, alasanRagu: 'waktu' });
     return;
   }
   const hasil = await simpan(dari, pesan, anak, status, catatan, rencana);
@@ -821,7 +880,10 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
       namaDiPesan: hasilAI.nama_di_pesan || [],
       namaBeda: !!hasilAI.nama_beda,
       statusDugaan: hasilAI.status_dugaan || '',
-      bahasa: hasilAI.bahasa
+      bahasa: hasilAI.bahasa,
+      alasanRagu: hasilAI.alasan_ragu === 'anak_tidak_jelas' ? 'anak_tidak_jelas' : '',
+      alasanAI: hasilAI.alasan || '',
+      keyakinan: hasilAI.confidence || 0
     });
     return;
   }
@@ -834,7 +896,13 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
 
   if (!pilih.length) {
     await catatPesan(dari, pesan, 'Ragu: anak tidak teridentifikasi', true);
-    await kirimRagu(target, dari, 'Belum berhasil diidentifikasi', pesan);
+    await kirimRagu(target, dari, 'Belum berhasil diidentifikasi', pesan, {
+      alasanRagu: 'anak_tidak_jelas',
+      namaDiPesan: hasilAI.nama_di_pesan || [],
+      statusDugaan: hasilAI.status_dugaan || hasilAI.status || '',
+      alasanAI: hasilAI.alasan || '',
+      keyakinan: hasilAI.confidence || 0
+    });
     return;
   }
 
