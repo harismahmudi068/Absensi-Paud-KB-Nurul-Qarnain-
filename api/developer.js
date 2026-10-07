@@ -44,6 +44,14 @@ module.exports = async (req, res) => {
     if (!pemanggil || !pemanggil.aktif || pemanggil.role !== 'developer')
       return res.status(403).json({ error: 'Hanya Developer yang boleh' });
 
+    // 1b. Wajib verifikasi 2 langkah (token sudah divalidasi Supabase di atas)
+    let aal = null;
+    try {
+      aal = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).aal;
+    } catch (e) {}
+    if (aal !== 'aal2')
+      return res.status(403).json({ error: 'Verifikasi 2 langkah diperlukan. Silakan masuk kembali sebagai Developer.' });
+
     const b = req.body || {};
     const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
     const host = String(req.headers['x-forwarded-host'] || req.headers.host || '')
