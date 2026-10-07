@@ -81,7 +81,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 
 #mbBantu{position:sticky;top:0;z-index:60;background:#ffe27a;color:#4a3b00;padding:8px 12px;font-size:14px;text-align:center;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;border-bottom:2px solid #d9b13a}
 
-.secret-wrap{position:relative;display:flex;flex:1;min-width:0;width:100%}.secret-wrap>.input{width:100%;flex:1;min-width:0;padding-right:48px}.secret-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;background:transparent;color:var(--mu);display:grid;place-items:center;padding:0;border-radius:10px;cursor:pointer;font-size:0}.secret-toggle:hover{background:rgba(32,53,42,.06);color:var(--tx)}.secret-toggle:focus-visible{outline:2px solid var(--p);outline-offset:1px}.secret-toggle svg{width:21px;height:21px;display:block}
+.secret-wrap{position:relative;display:flex;flex:1;min-width:0;width:100%}.secret-wrap>.input{width:100%;flex:1;min-width:0;padding-right:48px}.secret-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%)!important;width:32px;height:32px;border:0;background:transparent!important;box-shadow:none!important;color:var(--mu);display:flex;align-items:center;justify-content:center;padding:0;border-radius:0;cursor:pointer;font-size:0;transition:none!important;animation:none!important;line-height:1;flex:0 0 32px;-webkit-tap-highlight-color:transparent}.secret-toggle:hover,.secret-toggle:active{background:transparent!important;box-shadow:none!important;color:var(--tx)}.secret-toggle:active{transform:translateY(-50%)!important;filter:none!important}.secret-toggle:focus-visible{outline:2px solid var(--p);outline-offset:1px}.secret-toggle::before{display:none!important}.secret-toggle svg{width:21px;height:21px;display:block;flex:0 0 21px}
+#lg .secret-toggle{top:calc(50% - 3px)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -142,18 +143,28 @@ function enhanceSecretInputs(root=document){
     wrap.appendChild(input);
     const btn=document.createElement('button');
     btn.type='button';
-    btn.className='secret-toggle';
+    btn.className='secret-toggle nobusy';
     btn.setAttribute('aria-label','Tampilkan sandi');
     btn.setAttribute('title','Tampilkan sandi');
     btn.innerHTML=eye;
-    btn.addEventListener('click',e=>{
-      e.preventDefault();
+    const toggleSandi=()=>{
       const show=input.type==='password';
       input.type=show?'text':'password';
       btn.innerHTML=show?eyeOff:eye;
       btn.setAttribute('aria-label',show?'Sembunyikan sandi':'Tampilkan sandi');
       btn.setAttribute('title',show?'Sembunyikan sandi':'Tampilkan sandi');
       input.focus({preventScroll:true});
+    };
+    btn.addEventListener('pointerdown',e=>{
+      if(e.button!==undefined && e.button!==0)return;
+      e.preventDefault();
+      toggleSandi();
+    });
+    btn.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        toggleSandi();
+      }
     });
     wrap.appendChild(btn);
   });
