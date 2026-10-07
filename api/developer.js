@@ -9,8 +9,9 @@
 //   sekolah_status    {sekolah_id, status}  -> aktifkan / nonaktifkan sekolah
 //   masuk_sebagai     {profil_id, sekolah_id} -> izin masuk sebagai pengguna lain (mode bantuan)
 //   catat_keluar      {profil_id, sekolah_id} -> catat akhir mode bantuan
-//   beritahu_kepala   {batas}               -> WhatsApp ke semua Kepala Sekolah: unduh rekap sebelum data dihapus
+//   beritahu_kepala   {batas, jenis}        -> WhatsApp ke semua Kepala Sekolah: unduh rekap sebelum data dihapus (jenis 'tabungan' = rekap tabungan)
 //   hapus_absensi     {sandi, konfirmasi}   -> kosongkan seluruh tabel absensi (butuh sandi dan ketikan HAPUS ABSENSI)
+//   hapus_tabungan    {sandi, konfirmasi}   -> kosongkan tabel tabungan_transaksi dan tabungan_bawaan (butuh sandi dan ketikan HAPUS TABUNGAN)
 //   sinkron_alpa                            -> sinkronkan ulang jadwal cron Alpa Otomatis semua sekolah
 
 const L = require('./_lib');
@@ -345,6 +346,7 @@ module.exports = async (req, res) => {
     // ---------------------------------------------------------
     if (b.aksi === 'beritahu_kepala') {
       const batas = teks(b.batas, 60);
+      const tabungan = b.jenis === 'tabungan';
       const baris =
         (await L.panggil(
           '/rest/v1/keanggotaan?role=eq.kepala_sekolah&aktif=eq.true&select=sekolah_id,profil(nama,no_wa,aktif),sekolah(nama,status)',
@@ -360,8 +362,12 @@ module.exports = async (req, res) => {
         const pesan =
           `📢 *PEMBERITAHUAN PENGEMBANG SISTEM ABSENSI*\n\n` +
           `Yth. Bapak/Ibu Kepala Sekolah *${x.sekolah.nama}*,\n\n` +
-          `Untuk menjaga kapasitas penyimpanan, data absensi akan segera dihapus. ` +
-          `Mohon segera mengunduh rekap absensi di menu *Pengaturan > Tahun Ajaran* (PDF atau XLSX)` +
+          (tabungan
+            ? 'Untuk menjaga kapasitas penyimpanan, data tabungan siswa akan segera dihapus. '
+            : 'Untuk menjaga kapasitas penyimpanan, data absensi akan segera dihapus. ') +
+          (tabungan
+            ? 'Mohon segera mengunduh rekap saldo tabungan di menu *Tabungan > Rekap & Laporan* (PDF atau XLSX)'
+            : 'Mohon segera mengunduh rekap absensi di menu *Pengaturan > Tahun Ajaran* (PDF atau XLSX)') +
           `${batas ? ` paling lambat *${batas}*` : ''}.\n\n` +
           `Data yang sudah dihapus tidak dapat dikembalikan. Terima kasih 🙏`;
         try {
@@ -374,7 +380,7 @@ module.exports = async (req, res) => {
       }
       await L.catatLog({
         pelaku: user.id,
-        aksi: 'beritahu_kepala',
+        aksi: tabungan ? 'beritahu_kepala_tabungan' : 'beritahu_kepala',
         rincian: `terkirim ${terkirim}, gagal ${gagal}, tanpa nomor ${tanpaNomor}${batas ? ', batas ' + batas : ''}`
       });
       return res.status(200).json({ ok: true, terkirim, gagal, tanpa_nomor: tanpaNomor, total: tujuan.length });
@@ -413,6 +419,43 @@ module.exports = async (req, res) => {
         rincian: `Seluruh tabel absensi dikosongkan (${Number(jumlah) || 0} baris)`
       });
       return res.status(200).json({ ok: true, jumlah: Number(jumlah) || 0 });
+    }
+
+    // ---------------------------------------------------------
+    // KOSONGKAN TABEL TABUNGAN (tabungan_transaksi dan tabungan_bawaan)
+    // ---------------------------------------------------------
+    if (b.aksi === 'hapus_tabungan') {
+      if (String(b.konfirmasi || '').trim() !== 'HAPUS TABUNGAN')
+        throw new Error('Ketik HAPUS TABUNGAN persis seperti contoh untuk melanjutkan');
+      try {
+        await L.panggil('/auth/v1/token?grant_type=password', 'POST', {
+          email: user.email,
+          password: String(b.sandi || '')
+        });
+      } catch (e) {
+        throw new Error('Kata sandi salah');
+      }
+      // Pengaman: sebaiknya Kepala Sekolah sudah diberi tahu (pemberitahuan tabungan) dalam 7 hari terakhir
+      if (!b.lanjut_tanpa_pemberitahuan) {
+        const tujuhHari = new Date(Date.now() - 7 * 24 * 3600000).toISOString();
+        const sudah =
+          (await L.panggil(
+            `/rest/v1/log_audit?aksi=eq.beritahu_kepala_tabungan&waktu=gt.${encodeURIComponent(tujuhHari)}&select=id&limit=1`,
+            'GET'
+          )) || [];
+        if (!sudah.length) throw new Error('BELUM_ADA_PEMBERITAHUAN');
+      }
+      const hasil = await L.panggil('/rest/v1/rpc/developer_kosongkan_tabungan', 'POST', {
+        p_oleh: user.id
+      });
+      const nt = Number(hasil && hasil.transaksi) || 0;
+      const nb = Number(hasil && hasil.bawaan) || 0;
+      await L.catatLog({
+        pelaku: user.id,
+        aksi: 'hapus_tabungan',
+        rincian: `Tabel tabungan dikosongkan (${nt} transaksi, ${nb} saldo bawaan)`
+      });
+      return res.status(200).json({ ok: true, transaksi: nt, bawaan: nb });
     }
 
     // ---------------------------------------------------------
