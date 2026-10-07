@@ -1,6 +1,6 @@
 // Webhook Fonnte PAUD
 // Memproses laporan izin/sakit dari chat pribadi dan GRUP PAUD.
-// AI dipisahkan ke AI.js agar mudah diperbaiki tanpa mengubah alur utama.
+// AI dipisahkan ke _AI.js agar mudah diperbaiki tanpa mengubah alur utama.
 //
 // Variabel Vercel yang dibutuhkan:
 // SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
@@ -13,8 +13,8 @@
 // cadangan untuk sekolah pertama sampai kolomnya diisi di Pengaturan.
 
 const crypto = require('crypto');
-const { analisisPesan } = require('./AI');
-const { terjemahkanBalasan } = require('./AITerjemah');
+const { analisisPesan } = require('./_AI');
+const { terjemahkanBalasan } = require('./_AITerjemah');
 
 // ============================================================
 // KONFIGURASI WHATSAPP PAUD — MUDAH DIGANTI
@@ -106,7 +106,7 @@ async function kirimFonnte(target, teks) {
 
 // ============================================================
 // BALASAN KE WALI DALAM BAHASA PENGIRIM
-// Format balasan tetap disusun dalam Bahasa Indonesia, lalu diterjemahkan oleh AITerjemah.js
+// Format balasan tetap disusun dalam Bahasa Indonesia, lalu diterjemahkan oleh _AITerjemah.js
 // jika bahasa pesan bukan Indonesia. Jika terjemahan gagal, balasan Indonesia tetap dikirim.
 // Jalur cepat (tanpa AI) tidak punya `bahasa`, sehingga dibalas langsung dalam Bahasa Indonesia.
 // Notifikasi ke kepala sekolah TIDAK memakai fungsi ini (tetap Bahasa Indonesia).
