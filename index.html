@@ -1033,7 +1033,11 @@ function simpanAlamat(btn){const al=$('#alInp').value.trim(),kt=$('#ktInp').valu
 async function simpanNamaSekolah(btn){const v=String($('#nsInp').value||'').replace(/\s+/g,' ').trim();
  if(!v)return toast('Nama sekolah wajib diisi',false);if(v===ns())return toast('Nama sekolah belum berubah',false);
  if(btn)btn.disabled=true;ld(1,'Menyimpan nama sekolah...');
- try{const r=await dbq(db.from('pengaturan').update({nama_sekolah:v}).select('id'));if(!r||!r.length)throw new Error('Nama sekolah tidak tersimpan. Pastikan baris pengaturan (id 1) ada dan Anda berhak mengubahnya');
+ try{if(SEK!=null){let ok=false;
+  try{const x=await dbq(db.from('sekolah').update({nama:v}).eq('id',SEK).select('id'));ok=!!(x&&x.length)}catch(e){}
+  if(!ok){try{await dbq(db.rpc('ubah_nama_sekolah',{p_sekolah:String(SEK),p_nama:v}));ok=true}catch(e){}}
+  if(!ok)throw new Error('Nama di tabel sekolah tidak bisa diubah. Jalankan file langkah9-nama-sekolah.sql di Supabase SQL Editor, lalu coba lagi')}
+ const r=await dbq(db.from('pengaturan').update({nama_sekolah:v}).select('id'));if(!r||!r.length)throw new Error('Nama sekolah tidak tersimpan. Pastikan baris pengaturan (id 1) ada dan Anda berhak mengubahnya');
   S.set.nama_sekolah=v;try{localStorage.setItem('nama_sekolah',v);sessionStorage.setItem('bukaView','pengaturan')}catch(e){}
   ld(0);const o=document.createElement('div');o.className='nsfx';o.innerHTML='<div class="nsb"><div class="nsi">🏫</div><div class="nsc">✓</div><b></b><small>Nama sekolah disimpan. Memuat ulang...</small></div>';o.querySelector('b').textContent=v;document.body.appendChild(o);
   setTimeout(()=>location.reload(),1700)}
