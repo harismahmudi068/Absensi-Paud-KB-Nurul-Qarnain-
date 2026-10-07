@@ -97,6 +97,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 <label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
 <button id="lb" class="btn success" style="width:100%" onclick="masuk()">Masuk</button><div id="lerr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div>
 <p class="mu" style="text-align:center;margin:14px 0 0">Lupa sandi atau username? <a href="#" onclick="formReset();return false">Atur ulang akun</a></p><p class="mu" style="text-align:center;margin:8px 0 0">Sekolah Anda belum terdaftar? <a href="#" onclick="formDaftarSekolah();return false">Daftarkan sekolah</a></p><p class="mu" style="text-align:center;margin:8px 0 0">Butuh bantuan? <a href="https://wa.me/6285117441486" target="_blank" rel="noopener">Hubungi Developer via WhatsApp</a></p></div></div>
+<div id="dua" class="login hid"><div class="lbox"><div class="logo">🔐</div><h2 style="text-align:center;margin:0 0 4px">Verifikasi 2 langkah</h2><div id="duaIsi"></div><div id="duaErr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div><p class="mu" style="text-align:center;margin:14px 0 0"><a href="#" onclick="batalDuaFaktor();return false">Batal dan kembali ke halaman masuk</a></p></div></div>
 <div class="app hid" id="ap">
 <aside class="sidebar"><div class="brand"><div class="logo">🏫</div><div><b id="bnm">Sistem Absensi</b><br><small>Sistem Absensi</small></div></div><nav id="sn" class="nav"></nav><div class="foot"><a class="wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener">💬 Bantuan via WhatsApp</a>Anak Hebat Berawal dari<br>Kebiasaan Baik ♡</div></aside>
 <main class="main"><header class="top"><button class="hamb" onclick="drw(1)">☰</button><div style="flex:1;min-width:0"><small id="who" style="font-size:14px;opacity:1;font-weight:700"></small></div><div class="pill dtp" id="dt"></div><a class="hb wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener" title="Bantuan via WhatsApp">💬</a><button class="pill" onclick="keluar()">Keluar</button></header>
@@ -303,7 +304,7 @@ const statusRekap=(s,d)=>dayStat(s,d)||'Belum';
 function ringkas(s,b,rekap=false){const c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0},ds=hariBulan(b,rekap);ds.forEach(d=>{const st=rekap?statusRekap(s,d):dayStat(s,d);c[st]=(c[st]||0)+1});const n=ds.length;return{c,n,ds,pct:n?Math.round((c.Hadir+c.Terlambat+c.Libur)*100/n):0}}
 const segarkan=()=>dbq(db.rpc('segarkan_libur',{p_sekolah:SEK}));
 /* ---------- login + navigasi ---------- */
-function loginView(msg){try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=msg||''}
+function loginView(msg){const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=msg||''}
 function formDaftarSekolah(){info('Daftarkan sekolah','<div class="note">Isi data sekolah dan akun kepala sekolah. Pendaftaran akan diperiksa admin; akun aktif setelah disetujui dan Anda dihubungi lewat WhatsApp.</div>'
  +'<div class="fg">'
  +'<div class="fd"><label class="l">Nama sekolah</label><input id="dfSk" class="input" maxlength="80"></div>'
@@ -363,12 +364,49 @@ function kirimDaftar(){const b=$('#dfKirim'),e=$('#dfErr');if(b.disabled)return;
 function masuk(){const b=$('#lb');if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="bs"></span>Memproses...';$('#lerr').textContent='';guard(async()=>{const u=$('#lu').value.trim(),pw=$('#lp').value;if(!u||!pw)throw new Error('Isi username dan kata sandi');let email=u;
  if(!u.includes('@')){const r=await db.rpc('email_dari_username',{u});if(r.error)throw r.error;if(!r.data)throw new Error('Username tidak ditemukan atau akun belum aktif. Bila Anda baru mendaftarkan sekolah, mohon tunggu persetujuan admin.');email=r.data}
  const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
+/* ---------- verifikasi 2 langkah (TOTP) khusus Developer ---------- */
+function tampilDua(h){$('#lg').classList.add('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#dua').classList.remove('hid');$('#duaIsi').innerHTML=h;$('#duaErr').textContent=''}
+async function batalDuaFaktor(){try{await db.auth.signOut()}catch(e){}loginView()}
+function salinDua(s){try{navigator.clipboard.writeText(s).then(()=>toast('Kunci disalin'),()=>toast('Tidak bisa menyalin, salin manual',false))}catch(e){toast('Tidak bisa menyalin, salin manual',false)}}
+const DUA_INPUT=fid=>`<label class="mu">Kode 6 angka dari aplikasi</label><input id="duaKode" class="input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="text-align:center;letter-spacing:6px;font-size:20px" onkeydown="if(event.key==='Enter')kirimDua('${fid}')"><button id="duaBtn" class="btn success" style="width:100%" onclick="kirimDua('${fid}')">Verifikasi</button>`;
+async function cekDuaFaktor(){
+ const a=await db.auth.mfa.getAuthenticatorAssuranceLevel();if(a.error)throw a.error;
+ if(a.data.currentLevel==='aal2')return true;
+ const f=await db.auth.mfa.listFactors();if(f.error)throw f.error;
+ const t=(f.data.totp||[])[0];
+ if(t)tampilDua('<p class="mu" style="text-align:center;margin:0 0 14px">Buka aplikasi autentikator (mis. Google Authenticator) lalu masukkan kode 6 angka untuk akun Developer.</p>'+DUA_INPUT(t.id));
+ else await formDaftarDua();
+ return false}
+async function formDaftarDua(){
+ tampilDua('<p class="mu" style="text-align:center">Menyiapkan...</p>');
+ const l=await db.auth.mfa.listFactors();
+ for(const x of ((l.data&&l.data.all)||[]))if(x.factor_type==='totp'&&x.status!=='verified')await db.auth.mfa.unenroll({factorId:x.id});
+ const r=await db.auth.mfa.enroll({factorType:'totp',friendlyName:'Developer',issuer:'Absensi PAUD'});
+ if(r.error){tampilDua('<div class="note">Gagal menyiapkan verifikasi 2 langkah: '+esc(r.error.message)+'</div>');return}
+ const t=r.data.totp;
+ tampilDua(`<div class="note">Akun Developer wajib memakai verifikasi 2 langkah. Pasang <b>Google Authenticator</b> (atau Microsoft Authenticator) di HP lebih dulu.</div>
+ <p class="mu" style="margin:12px 0 6px"><b>Langkah 1.</b> Ketuk tombol ini, aplikasi autentikator akan terbuka:</p>
+ <a class="btn success" style="display:block;text-align:center;text-decoration:none" href="${esc(t.uri)}">🔑 Buka di aplikasi autentikator</a>
+ <p class="mu" style="margin:12px 0 6px">Bila tidak terbuka, pilih "Masukkan kunci penyiapan" di aplikasi lalu isi kunci ini:</p>
+ <div style="display:flex;gap:8px;align-items:center"><code style="flex:1;word-break:break-all;background:#f4f4f4;padding:8px;border-radius:8px;user-select:all">${esc(t.secret)}</code><button class="btn sm soft" onclick="salinDua('${esc(t.secret)}')">Salin</button></div>
+ <p class="mu" style="margin:8px 0 0;color:var(--rd)">Simpan kunci ini di tempat aman. Bila HP hilang, kunci ini dipakai untuk memasang ulang.</p>
+ <details style="margin:10px 0"><summary class="mu">Tampilkan kode QR (bila dibuka dari komputer/HP lain)</summary><img id="duaQr" alt="Kode QR" style="width:100%;max-width:220px;display:block;margin:8px auto"></details>
+ <p class="mu" style="margin:12px 0 6px"><b>Langkah 2.</b> Masukkan kode 6 angka yang tampil di aplikasi:</p>`+DUA_INPUT(r.data.id));
+ const q=$('#duaQr');if(q)q.src=t.qr_code}
+async function kirimDua(fid){const b=$('#duaBtn'),e=$('#duaErr');if(!b||b.disabled)return;e.textContent='';
+ const kode=($('#duaKode').value||'').replace(/\s/g,'');
+ if(!/^\d{6}$/.test(kode)){e.textContent='Masukkan 6 angka dari aplikasi autentikator';return}
+ b.disabled=true;b.innerHTML='<span class="bs"></span>Memeriksa...';
+ try{const c=await db.auth.mfa.challenge({factorId:fid});if(c.error)throw c.error;
+  const v=await db.auth.mfa.verify({factorId:fid,challengeId:c.data.id,code:kode});if(v.error)throw v.error;
+  $('#dua').classList.add('hid');await mulai()}
+ catch(x){const m=(x&&x.message)||String(x);e.textContent=/invalid|expired/i.test(m)?'Kode salah atau sudah kedaluwarsa. Coba kode terbaru.':m;b.disabled=false;b.textContent='Verifikasi'}}
 async function mulai(){const {data:{session}}=await db.auth.getSession();if(!session)return loginView();
  try{me=session.user.id;
   const pf=await dbq(db.from('profil').select('id,nama,username,role,aktif,nip,dibuat').eq('id',me).maybeSingle());
   if(!pf||!pf.aktif){await db.auth.signOut();return loginView('Akun ini tidak terdaftar atau sudah dinonaktifkan')}
   PROFIL=pf;
-  if(pf.role==='developer'){MEMB=[];return await masukDeveloper()}
+  if(pf.role==='developer'){MEMB=[];if(!await cekDuaFaktor())return;return await masukDeveloper()}
   MEMB=(await dbq(db.from('keanggotaan').select('sekolah_id,role,sekolah(nama,status)').eq('profil_id',me).eq('aktif',true))).filter(x=>x.sekolah&&x.sekolah.status==='aktif').map(x=>({sekolah_id:x.sekolah_id,nama:x.sekolah.nama,role:x.role}));
   if(!MEMB.length){await db.auth.signOut();return loginView('Akun ini belum terhubung ke sekolah yang aktif. Hubungi Kepala Sekolah.')}
   let ingat=null;try{ingat=Number(sessionStorage.getItem('sekolah_aktif'))}catch(e){}
