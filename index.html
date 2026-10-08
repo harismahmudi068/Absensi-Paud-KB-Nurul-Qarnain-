@@ -389,18 +389,14 @@ function pkAkunList(){try{const a=JSON.parse(localStorage.getItem('pk_akun')||'[
 function pkAkunSimpan(a){try{localStorage.setItem('pk_akun',JSON.stringify(a.slice(0,8)))}catch(e){}}
 function pkAkunTambah(u,n,c){pkAkunSimpan([{u,n,c}].concat(pkAkunList().filter(x=>x.u!==u&&x.c!==c)))}
 function pkAkunHapus(c){pkAkunSimpan(pkAkunList().filter(x=>x.c!==c))}
-async function pkAmbilKredensial(credId){
- const st=await db.auth.passkey.startAuthentication();if(st.error)throw st.error;
- const d=st.data,o=(d.options&&d.options.publicKey)||d.options;
- const pub={challenge:b64u.dec(o.challenge),timeout:o.timeout||60000,rpId:o.rpId||o.rp_id,userVerification:o.userVerification||'preferred'};
- pub.allowCredentials=credId?[{type:'public-key',id:b64u.dec(credId)}]:(o.allowCredentials||[]).map(x=>({type:'public-key',id:b64u.dec(x.id),transports:x.transports}));
- const c=await navigator.credentials.get({publicKey:pub});
- const cred={id:c.id,rawId:b64u.enc(c.rawId),type:c.type,clientExtensionResults:(c.getClientExtensionResults?c.getClientExtensionResults():{}),
-  response:{clientDataJSON:b64u.enc(c.response.clientDataJSON),authenticatorData:b64u.enc(c.response.authenticatorData),signature:b64u.enc(c.response.signature)}};
- if(c.authenticatorAttachment)cred.authenticatorAttachment=c.authenticatorAttachment;
- if(c.response.userHandle)cred.response.userHandle=b64u.enc(c.response.userHandle);
- const v=await db.auth.passkey.verifyAuthentication({challengeId:d.challenge_id,credential:cred});if(v.error)throw v.error;
- return {sesi:v.data,credId:c.id}}
+/* Alur resmi supabase-js tetap dipakai; kita hanya (1) menyempitkan pilihan ke satu akun dan (2) mencatat id kredensial yang dipakai */
+function pkSadap(o){const asli=navigator.credentials.get;
+ navigator.credentials.get=function(x){try{if(o.allowId&&x&&x.publicKey)x.publicKey.allowCredentials=[{type:'public-key',id:b64u.dec(o.allowId)}]}catch(e){}
+  return asli.call(navigator.credentials,x).then(c=>{try{if(c&&c.id)o.hasil=c.id}catch(e){}return c})};
+ return ()=>{try{delete navigator.credentials.get}catch(e){}}}
+function pkSadapBuat(o){const asli=navigator.credentials.create;
+ navigator.credentials.create=function(x){return asli.call(navigator.credentials,x).then(c=>{try{if(c&&c.id)o.hasil=c.id}catch(e){}return c})};
+ return ()=>{try{delete navigator.credentials.create}catch(e){}}}
 function masukPasskey(){const b=$('#lpk');if(!b||b.disabled)return;$('#lerr').textContent='';
  if(pkAkunList().length)return pilihAkunPasskey();pkMasuk(null)}
 function pilihAkunPasskey(){const a=pkAkunList();
@@ -408,21 +404,30 @@ function pilihAkunPasskey(){const a=pkAkunList();
   +a.map(x=>`<div style="display:flex;gap:6px;margin:6px 0"><button class="btn soft" style="flex:1;text-align:left" onclick="closeM();pkMasuk('${esc(x.c)}')">👤 <b>${esc(x.n||x.u)}</b><div class="mu">${esc(x.u)}</div></button><button class="btn sm danger" title="Hapus dari daftar" onclick="pkAkunHapus('${esc(x.c)}');pilihAkunPasskey()">✕</button></div>`).join('')
   +'<button class="btn soft" style="width:100%;margin-top:6px" onclick="closeM();pkMasuk(null)">Akun lain di HP ini…</button>')}
 function pkMasuk(credId){const b=$('#lpk');if(b&&b.disabled)return;if(b)b.disabled=true;$('#lerr').textContent='';
- guard(async()=>{try{
-   let r;
-   try{r=await pkAmbilKredensial(credId)}
-   catch(e){if(/TypeError|DataError|InvalidCharacter|SyntaxError/.test(String(e&&e.name))){const x=await db.auth.signInWithPasskey();if(x.error)throw x.error;r={sesi:x.data,credId:null}}else throw e}
-   if(!r.sesi||!r.sesi.session)throw new Error('Passkey tidak menghasilkan sesi');
+ guard(async()=>{const o={allowId:credId||null,hasil:null},pulih=pkSadap(o);
+  try{let x;try{x=await db.auth.signInWithPasskey()}finally{pulih()}
+   if(x.error)throw x.error;if(!x.data||!x.data.session)throw new Error('Passkey tidak menghasilkan sesi');
    pkSet(true);try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai();
-   if(r.credId&&PROFIL&&r.sesi.user&&PROFIL.id===r.sesi.user.id)pkAkunTambah(PROFIL.username,PROFIL.nama,r.credId)}
+   if(o.hasil&&PROFIL&&x.data.user&&PROFIL.id===x.data.user.id)pkAkunTambah(PROFIL.username,PROFIL.nama,o.hasil)}
   catch(e){if(/webauthn_credential_not_found/.test(pkKode(e))){if(credId)pkAkunHapus(credId);else pkSet(false)}$('#lerr').textContent=pkPesan(e)}},1).finally(()=>{if(b)b.disabled=false})}
 async function muatPasskeySaya(){S.pk=null;S.pkErr='';if(!PK_OK||MB())return;
  try{const r=await db.auth.passkey.list();if(r.error)throw r.error;S.pk=r.data||[];if(S.pk.length)pkSet(true)}catch(e){S.pkErr=pkPesan(e)}}
 async function muatProfilSaya(){if(role!=='Developer')await muatProfil();const {data:{session}}=await db.auth.getSession();S.pfs=session?session.user:null;await muatPasskeySaya()}
 function daftarPasskey(){if(MB())return toast('Tidak tersedia di mode bantuan',false);
- guard(async()=>{try{const {error}=await db.auth.registerPasskey();if(error)throw error;pkSet(true);toast('Passkey berhasil diaktifkan')}
+ guard(async()=>{const o={hasil:null},pulih=pkSadapBuat(o);
+  try{try{const {error}=await db.auth.registerPasskey();if(error)throw error}finally{pulih()}
+   pkSet(true);if(o.hasil&&PROFIL)pkAkunTambah(PROFIL.username,PROFIL.nama,o.hasil);toast('Passkey berhasil diaktifkan')}
   catch(e){if(/webauthn_credential_exists/.test(pkKode(e))){pkSet(true);throw new Error('Perangkat ini sudah terdaftar sebagai passkey. Tombol masuk dengan passkey sekarang aktif')}throw new Error(pkPesan(e))}
   await muatPasskeySaya();renderV()})}
+/* hubungkan passkey yang sudah ada ke daftar pilihan login di browser ini (tanpa kirim apa pun ke server) */
+function pkIngatAkun(){if(MB()||!PROFIL)return toast('Tidak tersedia di mode bantuan',false);
+ guard(async()=>{let c;try{c=await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:location.hostname,userVerification:'preferred',timeout:60000}})}catch(e){throw new Error(pkPesan(e))}
+  if(!c||!c.id)throw new Error('Passkey tidak terbaca');
+  try{if(c.response&&c.response.userHandle){const u=new Uint8Array(c.response.userHandle),t=new TextDecoder().decode(u),re=/^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+    const id=re.test(t)?t:(u.length===16?Array.from(u).map(v=>v.toString(16).padStart(2,'0')).join(''):null);
+    if(id&&id.replace(/-/g,'').toLowerCase()!==String(me).replace(/-/g,'').toLowerCase())throw new Error('Itu passkey akun lain. Ulangi dan pilih akun Anda sendiri')}}
+  catch(e){if(/akun lain/.test(String(e.message)))throw e}
+  pkAkunTambah(PROFIL.username,PROFIL.nama,c.id);pkSet(true);toast('Akun ini sudah masuk daftar pilihan login di HP ini');renderV()})}
 function renamePasskey(id){if(MB())return toast('Tidak tersedia di mode bantuan',false);const x=(S.pk||[]).find(k=>k.id===id)||{};
  form('Ubah nama passkey',[{k:'nama',l:'Nama passkey (mis. HP Samsung Bu Ani)',v:x.friendly_name||''}],async v=>{const n=(v.nama||'').trim();if(!n)throw new Error('Nama wajib diisi');if(n.length>120)throw new Error('Maksimal 120 karakter');
   const r=await db.auth.passkey.update({passkeyId:id,friendlyName:n});if(r.error)throw r.error;await muatPasskeySaya();toast('Nama passkey diubah');renderV()})}
@@ -648,11 +653,13 @@ async function muatStatusProfil(){try{if(role==='Developer'||MB()||!me)return;
  S.nomor=await muatNomor();
  if(S.pkUid!==me){S.pkUid=me;await muatPasskeySaya()}}catch(e){}}
 function notifProfil(){if(role==='Developer'||MB()||!PROFIL)return '';const m=[];
- if(!String(PROFIL.nip||'').trim())m.push('NIP belum diisi');
- if(S.nomor&&!String(S.nomor[me]||'').trim())m.push('Nomor WhatsApp belum diisi');
- if(PK_OK&&Array.isArray(S.pk)&&!S.pk.length)m.push('Passkey (masuk dengan sidik jari) belum diaktifkan');
+ if(!String(PROFIL.nip||'').trim())m.push('NIP');
+ if(S.nomor&&!String(S.nomor[me]||'').trim())m.push('nomor WhatsApp');
+ if(PK_OK&&Array.isArray(S.pk)&&!S.pk.length)m.push('passkey (masuk dengan sidik jari)');
  if(!m.length)return '';
- return `<div class="panel" style="border-left:4px solid #e0a419"><div class="pb"><b>⚠ Lengkapi profil Anda</b><ul style="margin:8px 0 12px 18px;padding:0">${m.map(x=>`<li>${x}</li>`).join('')}</ul><button class="btn success" onclick="go('profil')">Atur sekarang</button></div></div>`}
+ return `<div><b>👤 Profil belum lengkap.</b><div class="mu">Belum diisi: ${m.join(', ')}. Lengkapi di menu Profil Saya agar akun Anda aman dan mudah dipakai masuk.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="go('profil')">Atur sekarang</button></div></div>`}
+function notifGabung(){const a=[bannerKonfigIsi(),notifProfil()].filter(Boolean);if(!a.length)return '';
+ return `<div class="note" style="border-left:4px solid #d7a72f">${a.map((x,i)=>i?`<div style="border-top:1px solid #dfeadc;margin-top:12px;padding-top:12px">${x}</div>`:x).join('')}</div>`}
 V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
  const wa=(S.nomor&&S.nomor[me])||'',sk=(typeof MEMB!=='undefined'&&MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||'';
  const row=(l,v)=>`<div class="mu">${l}</div><div style="word-break:break-word"><b>${v||'<span class="mu">-</span>'}</b></div>`;
@@ -669,7 +676,8 @@ V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
  else{const L=S.pk||[];
   pk='<div class="note">Dengan passkey, Anda bisa masuk cukup dengan sidik jari, wajah, atau PIN layar HP. Kata sandi tetap bisa dipakai. Status di perangkat ini: <b>'+(pkAda()?'passkey aktif':'belum diaktifkan')+'</b>.</div>'
    +(L.length?'<div class="tw"><table><tbody>'+L.map(x=>`<tr><td><b>${esc(x.friendly_name||'Passkey')}</b><div class="mu">Dibuat ${x.created_at?esc(waktuId(x.created_at)):'-'}${x.last_used_at?' · terakhir dipakai '+esc(waktuId(x.last_used_at)):''}</div></td><td style="white-space:nowrap"><button class="btn sm soft" onclick="renamePasskey('${x.id}')">Ubah nama</button> <button class="btn sm danger" onclick="hapusPasskey('${x.id}')">Hapus</button></td></tr>`).join('')+'</tbody></table></div>':'<div class="mu" style="margin:10px 0">Belum ada passkey di akun ini.</div>')
-   +'<button class="btn success" style="width:100%;margin-top:10px" onclick="daftarPasskey()">+ Aktifkan passkey di perangkat ini</button>'}
+   +'<button class="btn success" style="width:100%;margin-top:10px" onclick="daftarPasskey()">+ Aktifkan passkey di perangkat ini</button>'
+   +(L.length&&!pkAkunList().some(x=>x.u===p.username)?'<button class="btn soft" style="width:100%;margin-top:8px" onclick="pkIngatAkun()">🔗 Tambahkan akun ini ke pilihan login</button><div class="mu" style="margin-top:4px">Cukup sekali per browser agar akun muncul di daftar pilihan masuk sidik jari. Bila muncul beberapa akun, pilih akun Anda sendiri.</div>':'')}
  return `<div class="panel"><div class="ph">👤 Profil Saya</div><div class="pb"><div style="display:grid;grid-template-columns:110px 1fr;gap:10px 12px;align-items:start">${data}</div>${aksi}</div></div><div class="panel"><div class="ph">🔐 Passkey (sidik jari / wajah)</div><div class="pb">${pk}</div></div>`};
 
 /* ---------- panduan awal kepala sekolah ---------- */
@@ -685,14 +693,14 @@ function konfigKurang(){const k='kf_'+SEK;
  if(RHS&&!RHS.error){const m=[];if(!String(RHS.nomor_kepala||'').trim())m.push('Nomor Kepala Sekolah');if(!(RHS.tokens||[]).length)m.push('Token Fonnte');try{localStorage.setItem(k,JSON.stringify(m))}catch(e){}return m}
  if(RHS===null){try{const c=JSON.parse(localStorage.getItem(k)||'null');if(Array.isArray(c))return c}catch(e){}return ['Nomor Kepala Sekolah','Token Fonnte']}
  return null}
-function bannerKonfig(){if(!adalahKepala()||KONFIG_NANTI)return '';const m=konfigKurang();if(!m||!m.length)return '';
- return `<div class="note" style="border-left:4px solid #d7a72f"><b>⚙ Konfigurasi belum diatur.</b><div class="mu">Belum diisi: ${m.join(', ')}. Notifikasi WhatsApp belum bisa berjalan. Isi nomor dulu, tambah token, lalu tekan Tes. (ID Group dan Kunci AI) bersifat opsional karena 2 hal ini mencakup izin lewat WhatsApp dengan bahasa bebas sehari-hari.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="lompatPengaturan('pnKonfig','rhNK')">Atur sekarang</button><button class="btn sm soft" onclick="KONFIG_NANTI=true;renderV()">Atur nanti</button></div></div>`}
+function bannerKonfigIsi(){if(!adalahKepala()||KONFIG_NANTI)return '';const m=konfigKurang();if(!m||!m.length)return '';
+ return `<div><b>⚙ Konfigurasi belum diatur.</b><div class="mu">Belum diisi: ${m.join(', ')}. Notifikasi WhatsApp belum bisa berjalan. Isi nomor dulu, tambah token, lalu tekan Tes. (ID Group dan Kunci AI) bersifat opsional karena 2 hal ini mencakup izin lewat WhatsApp dengan bahasa bebas sehari-hari.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="lompatPengaturan('pnKonfig','rhNK')">Atur sekarang</button><button class="btn sm soft" onclick="KONFIG_NANTI=true;renderV()">Atur nanti</button></div></div>`}
 function sapaAwal(){if(!adalahKepala())return;const L=langkahWajib().filter(x=>!x.ok);if(!L.length)return;const k='sapa_'+SEK;try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){}
  info('Selamat Datang 👋','<div style="text-align:center;padding:6px 4px"><div style="font-size:42px">🏫</div><p>Sekolah Anda belum siap dipakai. Masih ada <b>'+L.length+' hal</b> yang perlu diisi: '+L.map(x=>x.t.toLowerCase()).join(', ')+'.</p><button class="btn success" style="width:100%" onclick="closeM();'+L[0].f.replace(/"/g,'&quot;')+'">Mulai atur: '+L[0].b+'</button><button class="btn soft" style="width:100%;margin-top:8px" onclick="closeM()">Nanti</button></div>')}
 V.dashboard=()=>{const a=A(TODAY),l=act(),c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0};l.forEach(s=>c[dayStat(s,TODAY)]++);
  const n=l.length||1,cs=[['Hadir',c.Hadir+c.Terlambat,'termasuk '+c.Terlambat+' terlambat','#159447'],['Izin',c.Izin,'','#248fe9'],['Sakit',c.Sakit,'','#ef5361'],['Alpa',c.Alpa,'','#7a4be5'],['Libur',c.Libur,'','#526b84'],['Belum Absen',c.Belum,'perlu ditindaklanjuti','#c98a1b']];
  const rows=l.map((s,i)=>{const r=a[s.id];return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${esc(s.kelas)}</td><td>${badge(dayStat(s,TODAY))}</td><td>${r?esc((r.jam?r.jam+' - ':'')+r.cara+(r.cat?' - '+r.cat:'')):''}</td></tr>`}).join('');
- return `<div class="hero"><div><h1>Selamat Datang 👋🏻<br>di ${esc(ns())}</h1><p>${fmt(TODAY)} - ${c.Belum} anak belum absen.</p></div><i>🏫</i></div>${panduanAwal()}${bannerKonfig()}${notifProfil()}
+ return `<div class="hero"><div><h1>Selamat Datang 👋🏻<br>di ${esc(ns())}</h1><p>${fmt(TODAY)} - ${c.Belum} anak belum absen.</p></div><i>🏫</i></div>${panduanAwal()}${notifGabung()}
  <div class="panel"><div class="ph">⚡ Aksi Cepat</div><div class="pb"><div class="quick"><button style="background:#168b47" onclick="go('absensi')">✍️ Absensi</button><button style="background:#d7a72f" onclick="go('scan')">📷 Scan</button><button style="background:#7650b8" onclick="go('siswa')">👤 Siswa</button>${S.set&&S.set.tabungan_aktif?'<button style="background:#2a806c" onclick="go(\'tabungan\')">💰 Tabungan</button>':'<button style="background:#2a806c" onclick="go(\'rekap\')">📚 Rekap</button>'}</div></div></div>
  <div class="stats">${cs.map(x=>`<div class="card stat"><b style="color:${x[3]}">${x[1]}</b>${x[0]}<div class="mu">${x[2]||'&nbsp;'}</div><div class="bar"><i style="width:${Math.round(x[1]*100/n)}%;background:${x[3]}"></i></div></div>`).join('')}</div>
  <div class="panel"><div class="ph">📋 Rekap Hari Ini <span class="mu">${fmt(TODAY)}</span></div><div class="pb">${tab(['No','Nama','Kelas','Status','Keterangan'],rows)}</div></div>`};
