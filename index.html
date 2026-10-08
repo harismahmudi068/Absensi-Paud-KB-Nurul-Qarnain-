@@ -1291,18 +1291,25 @@ function beritahuHapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if
  if(!x.kepala_nama)return toast('Sekolah ini belum punya Kepala Sekolah aktif',false);
  form('Beritahu Kepala Sekolah - '+x.nama,[{k:'batas',l:'Batas waktu mengunduh rekap (opsional)',t:'date',min:TODAY}],async v=>{
   const batas=v.batas?fmt(v.batas):'';
-  if(!await konfirmasi('Kirim pemberitahuan WhatsApp ke '+x.kepala_nama+' (Kepala Sekolah '+x.nama+') bahwa data sekolah akan dihapus permanen?'+(batas?'\n\nBatas waktu: '+batas:''),{judul:'Kirim pemberitahuan',ya:'Kirim',ikon:'📢'}))return;
-  const j=await apiDev({aksi:'beritahu_hapus_sekolah',sekolah_id:sid,batas});
-  await muatDev();toast(j.terkirim?'Pemberitahuan terkirim ke '+x.kepala_nama:'Pemberitahuan gagal terkirim',!!j.terkirim);renderV()});$('#ms').textContent='Kirim'}
+  setTimeout(async()=>{
+   ld(1,'Mengirim pemberitahuan ke '+x.kepala_nama+'...');
+   try{const j=await apiDev({aksi:'beritahu_hapus_sekolah',sekolah_id:sid,batas});
+    if(!j||!j.terkirim)throw new Error('Pemberitahuan gagal terkirim. Periksa perangkat Fonnte Developer');
+    await muatDev();devTab='sekolah';renderV();toast('✅ Pemberitahuan berhasil dikirim ke '+x.kepala_nama)}
+   catch(e){toast((e&&e.message)||String(e),false)}
+   finally{ld(0)}},150)});$('#ms').textContent='Kirim'}
 function hapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if(!x)return;
  form('Hapus permanen: '+x.nama,[{k:'nm',l:'Ketik nama sekolah persis <b>'+esc(x.nama)+'</b> untuk melanjutkan'},{k:'sandi',l:'Kata sandi akun Developer',t:'password'}],async v=>{
   if(String(v.nm||'').trim()!==String(x.nama).trim())throw new Error('Nama sekolah yang diketik tidak sama');
   if(!v.sandi)throw new Error('Kata sandi Developer wajib diisi');
   if(!await konfirmasi('SELURUH data '+x.nama+' ('+(x.jml_guru||0)+' guru, '+(x.jml_siswa||0)+' siswa) beserta absensi, tabungan, pesan, dan pengaturannya akan dihapus PERMANEN dan TIDAK BISA dikembalikan. Lanjutkan?',{judul:'Hapus sekolah permanen',ya:'Ya, hapus permanen',bahaya:1}))return;
   const kirim=l=>apiDev({aksi:'hapus_sekolah',sekolah_id:sid,konfirmasi:v.nm.trim(),sandi:v.sandi,lanjut_tanpa_pemberitahuan:!!l});
-  let j;try{j=await kirim(false)}catch(e){
-   if(e.message!=='BELUM_ADA_PEMBERITAHUAN')throw e;
-   const ok=await konfirmasi('Kepala Sekolah '+x.nama+' belum diberi pemberitahuan dalam 7 hari terakhir, jadi mungkin belum sempat mengunduh rekap. Tetap hapus sekarang?',{judul:'Belum ada pemberitahuan',ya:'Tetap hapus',bahaya:1});if(!ok)return;j=await kirim(true)}
+  let j,tanya=false;
+  ld(1,'Menghapus data sekolah...');
+  try{j=await kirim(false)}catch(e){if(e.message!=='BELUM_ADA_PEMBERITAHUAN')throw e;tanya=true}finally{ld(0)}
+  if(tanya){
+   if(!await konfirmasi('Kepala Sekolah '+x.nama+' belum diberi pemberitahuan dalam 7 hari terakhir, jadi mungkin belum sempat mengunduh rekap. Tetap hapus sekarang?',{judul:'Belum ada pemberitahuan',ya:'Tetap hapus',bahaya:1}))return;
+   ld(1,'Menghapus data sekolah...');try{j=await kirim(true)}finally{ld(0)}}
   await muatDev();devSekFiltr='';toast('Sekolah '+x.nama+' dihapus permanen'+(j&&j.akun_dihapus?' ('+j.akun_dihapus+' akun guru ikut dihapus)':''));renderV()});$('#ms').textContent='Hapus permanen'}
 function statusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if(!x)return;const baru=x.status==='aktif'?'nonaktif':'aktif';
  konfirmasi((baru==='nonaktif'?'Nonaktifkan ':'Aktifkan ')+x.nama+'? '+(baru==='nonaktif'?'Semua pengguna sekolah ini tidak bisa masuk, dan Webhook serta alpa otomatisnya berhenti.':'Pengguna sekolah ini bisa masuk kembali.'),{judul:baru==='nonaktif'?'Nonaktifkan sekolah':'Aktifkan sekolah',ya:baru==='nonaktif'?'Nonaktifkan':'Aktifkan',bahaya:baru==='nonaktif'?1:0}).then(ok=>{if(!ok)return;guard(async()=>{await apiDev({aksi:'sekolah_status',sekolah_id:sid,status:baru});await muatDev();toast('Status sekolah diperbarui');renderV()})})}
