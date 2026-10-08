@@ -387,7 +387,7 @@ function masukPasskey(){const b=$('#lpk');if(!b||b.disabled)return;b.disabled=tr
    pkSet(true);try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()}
   catch(e){if(/webauthn_credential_not_found/.test(pkKode(e)))pkSet(false);$('#lerr').textContent=pkPesan(e)}},1).finally(()=>{b.disabled=false})}
 async function muatPasskeySaya(){S.pk=null;S.pkErr='';if(!PK_OK||MB())return;
- try{const r=await db.auth.passkey.list();if(r.error)throw r.error;S.pk=r.data||[]}catch(e){S.pkErr=pkPesan(e)}}
+ try{const r=await db.auth.passkey.list();if(r.error)throw r.error;S.pk=r.data||[];if(S.pk.length)pkSet(true)}catch(e){S.pkErr=pkPesan(e)}}
 async function muatProfilSaya(){if(role!=='Developer')await muatProfil();const {data:{session}}=await db.auth.getSession();S.pfs=session?session.user:null;await muatPasskeySaya()}
 function daftarPasskey(){if(MB())return toast('Tidak tersedia di mode bantuan',false);
  guard(async()=>{try{const {error}=await db.auth.registerPasskey();if(error)throw error;pkSet(true);toast('Passkey berhasil diaktifkan')}
@@ -494,7 +494,9 @@ async function keluar(){
 
   // 2. Bersihkan sessionStorage dan localStorage aplikasi.
   try{sessionStorage.clear()}catch(e){}
+  let _pk=null;try{_pk=localStorage.getItem('pk_aktif')}catch(e){}
   try{localStorage.clear()}catch(e){}
+  try{if(_pk)localStorage.setItem('pk_aktif',_pk)}catch(e){}
 
   // 3. Hapus cookie yang dapat diakses JavaScript pada origin ini.
   try{
@@ -598,6 +600,19 @@ function konfirmasi(pesan,o){o=o||{};return new Promise(res=>{const m=$('#cf'),y
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
  document.addEventListener('keydown',kd);y.onclick=()=>fin(true);n.onclick=()=>fin(false);m.onclick=e=>{if(e.target===m)fin(false)};m.classList.add('show');y.focus()})}
 const V={};
+function nomorHilangProfil(){if(MB())return toast('Tidak tersedia di mode bantuan',false);
+ const sk=(MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||'';if(!sk||!PROFIL)return toast('Data sekolah tidak ditemukan',false);
+ form('Nomor WhatsApp hilang',[{k:'wa',l:'Nomor WhatsApp BARU yang aktif (contoh 08123456789)'}],async v=>{
+  const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp baru tidak valid');
+  await apiPublik({aksi:'hilang_otp',nomor:wa});toast('Kode dikirim ke nomor baru');
+  setTimeout(()=>{form('Verifikasi nomor baru',[{k:'kode',l:'Kode 6 angka yang dikirim ke nomor baru ('+fmtWA(wa)+')',ver:kd=>apiPublik({aksi:'otp_cek',keperluan:'nomor_hilang',nomor:wa,kode:kd})},{k:'ubaru',l:'Username baru (kosongkan bila tidak ingin mengganti)'},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak ingin mengganti)',t:'password'},{k:'sandi2',l:'Ulangi kata sandi baru',t:'password'}],async z=>{
+    if(!/^\d{6}$/.test(z.kode))throw new Error('Kode harus 6 angka');
+    const ub=(z.ubaru||'').trim().toLowerCase();
+    if(ub&&!/^[a-z0-9._-]{3,20}$/.test(ub))throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah');
+    if(z.sandi&&z.sandi.length<6)throw new Error('Kata sandi minimal 6 karakter');
+    if(z.sandi!==(z.sandi2||''))throw new Error('Ulangi kata sandi dengan benar');
+    await apiPublik({aksi:'hilang_kirim',nama:PROFIL.nama,nama_sekolah:sk,username_lama:PROFIL.username,nomor:wa,kode:z.kode,username_baru:ub,sandi_baru:z.sandi||''});
+    setTimeout(()=>info('Permintaan terkirim','<div class="note">Permintaan ganti nomor sudah dikirim ke admin untuk diperiksa. Anda akan dikabari lewat WhatsApp di nomor baru setelah disetujui. Nomor, username, dan kata sandi lama tidak berubah sebelum disetujui.</div>'),150)});$('#ms').textContent='Kirim permintaan'},150)});$('#ms').textContent='Kirim kode ke nomor baru'}
 V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
  const wa=(S.nomor&&S.nomor[me])||'',sk=(typeof MEMB!=='undefined'&&MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||'';
  const row=(l,v)=>`<div class="mu">${l}</div><div style="word-break:break-word"><b>${v||'<span class="mu">-</span>'}</b></div>`;
@@ -606,7 +621,7 @@ V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
   row('Status',p.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'),
   row('Terdaftar',p.dibuat?esc(waktuId(p.dibuat)):''),row('Email akun',esc(u.email||'')),row('Terakhir masuk',u.last_sign_in_at?esc(waktuId(u.last_sign_in_at)):''),
   row('ID akun','<span style="font-size:11px">'+esc(me||'')+'</span>')].join('');
- const aksi=mb?'<div class="note">Mode bantuan: data hanya bisa dilihat.</div>':`<div class="tb" style="margin-top:12px"><button class="btn success" onclick="editProfilSaya()">✏️ Ubah profil${dev?'':' &amp; sandi'}</button>${dev?'':'<button class="btn soft" onclick="gantiNomor()">📱 Nomor WhatsApp</button>'}</div>`;
+ const aksi=mb?'<div class="note">Mode bantuan: data hanya bisa dilihat.</div>':`<div class="tb" style="margin-top:12px"><button class="btn success" onclick="editProfilSaya()">✏️ Ubah profil${dev?'':' &amp; sandi'}</button>${dev?'':'<button class="btn soft" onclick="gantiNomor()">📱 Ubah nomor</button><button class="btn soft" onclick="nomorHilangProfil()">📵 Nomor hilang</button>'}</div>`;
  let pk;
  if(mb)pk='<div class="note">Passkey tidak tersedia di mode bantuan.</div>';
  else if(!PK_OK)pk='<div class="note">Browser ini tidak mendukung passkey. Gunakan Chrome atau Safari versi terbaru di HP.</div>';
