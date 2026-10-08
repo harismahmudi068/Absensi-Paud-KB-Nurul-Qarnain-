@@ -181,7 +181,7 @@ const hariIni=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'
 let TODAY=hariIni();const ST=['Hadir','Terlambat','Izin','Sakit','Alpa'],cap=s=>s.charAt(0).toUpperCase()+s.slice(1),low=s=>s.toLowerCase();
 const fmt=d=>{if(!d)return '';const p=d.split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]},fmtB=b=>{const p=b.split('-');return BLN[p[1]-1]+' '+p[0]},wd=d=>new Date(d+'T00:00:00').getDay();
 const dt=(type,v,fn,cl='')=>`<label class="input dt ${cl}"><span>${v?(type==='month'?fmtB(v):fmt(v)):'Pilih tanggal'}</span><input type="${type}" value="${v||''}" onchange="if(this.value){this.previousElementSibling.textContent=(this.type=='month'?fmtB:fmt)(this.value);${fn||''}}"></label>`;
-const MENUS=[['dashboard','Dashboard','⌂','KG'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['siswa','Data Siswa','👥','KG'],['kartu','Kartu','🪪','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
+const MENUS=[['dashboard','Dashboard','⌂','KG'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['siswa','Data Siswa','👥','KG'],['kartu','Kartu','🪪','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah';
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
@@ -287,7 +287,7 @@ const muatProfil=async()=>{const [g,n]=await Promise.all([muatGuruData(),muatNom
 let RHS=null,izinKelola=null,izinExp=0;
 async function apiPengaturan(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/pengaturan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:CFG_SID||SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/pengaturan tidak ditemukan (404). Pastikan file api/pengaturan.js sudah di-deploy');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
 async function muatRahasia(){try{RHS=await apiPengaturan({aksi:'baca'})}catch(e){RHS={error:e.message||String(e)}}}
-const LOAD={dashboard:()=>muatRange(TODAY,TODAY),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan};
+const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>muatRange(TODAY,TODAY),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan};
 /* ---------- libur ---------- */
 const liburInfo=(d,k)=>{if(S.mingguan.includes(wd(d)))return 'libur mingguan hari '+HR[wd(d)];const l=S.libur.find(x=>x.tgl<=d&&d<=(x.sampai||x.tgl)&&(!x.kelas||x.kelas===k));return l?(l.ket||'libur'):''};
 const isLibur=(d,k)=>!!liburInfo(d,k);
@@ -305,7 +305,7 @@ const statusRekap=(s,d)=>dayStat(s,d)||'Belum';
 function ringkas(s,b,rekap=false){const c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0},ds=hariBulan(b,rekap);ds.forEach(d=>{const st=rekap?statusRekap(s,d):dayStat(s,d);c[st]=(c[st]||0)+1});const n=ds.length;return{c,n,ds,pct:n?Math.round((c.Hadir+c.Terlambat+c.Libur)*100/n):0}}
 const segarkan=()=>dbq(db.rpc('segarkan_libur',{p_sekolah:SEK}));
 /* ---------- login + navigasi ---------- */
-function loginView(msg){const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=msg||''}
+function loginView(msg){tampilTombolPasskey();const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=msg||''}
 function formDaftarSekolah(){info('Daftarkan sekolah','<div class="note">Isi data sekolah dan akun kepala sekolah. Pendaftaran akan diperiksa admin; akun aktif setelah disetujui dan Anda dihubungi lewat WhatsApp.</div>'
  +'<div class="fg">'
  +'<div class="fd"><label class="l">Nama sekolah</label><input id="dfSk" class="input" maxlength="80"></div>'
@@ -367,34 +367,55 @@ function masuk(){const b=$('#lb');if(b.disabled)return;b.disabled=true;b.innerHT
  const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
 
 /* ---------- passkey (sidik jari / wajah / PIN perangkat) ---------- */
-const PK_OK=!!(window.PublicKeyCredential&&navigator.credentials);
-function pkPesan(e){const m=(e&&(e.code||e.name||e.message))||'';const t=String((e&&e.message)||e||'');
- if(/NotAllowed|cancel|abort/i.test(m+t))return 'Dibatalkan atau waktu habis';
+const PK_OK=!!(window.PublicKeyCredential&&navigator.credentials),PK_KEY='pk_aktif';
+function pkSet(on){try{on?localStorage.setItem(PK_KEY,'1'):localStorage.removeItem(PK_KEY)}catch(e){}tampilTombolPasskey()}
+function pkAda(){try{return localStorage.getItem(PK_KEY)==='1'}catch(e){return false}}
+function tampilTombolPasskey(){const b=$('#lpk');if(b)b.classList.toggle('hid',!(PK_OK&&pkAda()))}
+const pkKode=e=>String((e&&(e.code||e.name))||'')+' '+String((e&&e.message)||e||'');
+function pkPesan(e){const m=pkKode(e);
+ if(/NotAllowed|cancel|abort|timed out/i.test(m))return 'Dibatalkan atau waktu habis';
  if(/passkey_disabled/.test(m))return 'Passkey belum diaktifkan di Supabase (Authentication → Passkeys)';
- if(/webauthn_credential_not_found/.test(m))return 'Passkey ini belum terdaftar. Masuk dengan sandi dulu, lalu aktifkan passkey';
+ if(/webauthn_credential_not_found/.test(m))return 'Passkey belum diaktifkan untuk akun ini di perangkat ini. Masuk dengan kata sandi, lalu aktifkan passkey di menu Profil Saya';
  if(/webauthn_credential_exists/.test(m))return 'Perangkat ini sudah terdaftar sebagai passkey';
  if(/too_many_passkeys/.test(m))return 'Jumlah passkey sudah mencapai batas, hapus yang lama dulu';
  if(/email_not_confirmed|phone_not_confirmed/.test(m))return 'Akun belum terverifikasi';
  if(/user_banned/.test(m))return 'Akun diblokir';
- if(/SecurityError/.test(m+t))return 'Domain situs tidak cocok dengan Relying Party ID di Supabase';
- return t||'Gagal memakai passkey'}
+ if(/SecurityError/.test(m))return 'Domain situs tidak cocok dengan Relying Party ID di Supabase';
+ return String((e&&e.message)||e||'Gagal memakai passkey')}
 function masukPasskey(){const b=$('#lpk');if(!b||b.disabled)return;b.disabled=true;$('#lerr').textContent='';
- guard(async()=>{const {data,error}=await db.auth.signInWithPasskey();if(error)throw error;if(!data||!data.session)throw new Error('Passkey tidak menghasilkan sesi');
-  try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).catch(()=>{}).finally(()=>{b.disabled=false});
- }
-function kelolaPasskey(){if(MB())return toast('Tidak tersedia di mode bantuan',false);
- if(!PK_OK)return toast('Browser ini tidak mendukung passkey',false);
- guard(async()=>{const r=await db.auth.passkey.list();if(r.error)throw r.error;const L=r.data||[];
-  const rows=L.map(x=>`<tr><td><b>${esc(x.friendly_name||'Passkey')}</b><div class="mu">Dibuat ${x.created_at?esc(waktuId(x.created_at)):'-'}${x.last_used_at?' · terakhir dipakai '+esc(waktuId(x.last_used_at)):''}</div></td><td style="white-space:nowrap"><button class="btn sm soft" onclick="renamePasskey('${x.id}')">Ubah nama</button> <button class="btn sm danger" onclick="hapusPasskey('${x.id}')">Hapus</button></td></tr>`).join('');
-  info('🔐 Passkey (sidik jari / wajah)','<div class="note">Dengan passkey, Anda bisa masuk cukup dengan sidik jari, wajah, atau PIN layar HP tanpa mengetik username dan kata sandi. Kata sandi tetap bisa dipakai.</div>'
-   +(L.length?'<div class="tw"><table><tbody>'+rows+'</tbody></table></div>':'<div class="mu" style="margin:10px 0">Belum ada passkey di akun ini.</div>')
-   +'<button class="btn success" style="width:100%;margin-top:10px" onclick="daftarPasskey()">+ Aktifkan passkey di perangkat ini</button>')})}
-function daftarPasskey(){guard(async()=>{const {data,error}=await db.auth.registerPasskey();if(error)throw error;toast('Passkey berhasil diaktifkan');kelolaPasskey()}).catch(()=>{})}
-function renamePasskey(id){form('Ubah nama passkey',[{k:'nama',l:'Nama passkey (mis. HP Samsung Bu Ani)'}],async v=>{const n=(v.nama||'').trim();if(!n)throw new Error('Nama wajib diisi');if(n.length>120)throw new Error('Maksimal 120 karakter');
-  const r=await db.auth.passkey.update({passkeyId:id,friendlyName:n});if(r.error)throw r.error;toast('Nama passkey diubah');kelolaPasskey()})}
-async function hapusPasskey(id){if(!await konfirmasi('Hapus passkey ini? Perangkat tersebut tidak bisa lagi dipakai masuk dengan sidik jari.',{bahaya:true,ya:'Hapus'}))return;
- guard(async()=>{const r=await db.auth.passkey.delete({passkeyId:id});if(r.error)throw r.error;toast('Passkey dihapus');kelolaPasskey()})}
-document.addEventListener('DOMContentLoaded',()=>{const b=$('#lpk');if(b&&PK_OK)b.classList.remove('hid')});
+ guard(async()=>{try{const {data,error}=await db.auth.signInWithPasskey();if(error)throw error;if(!data||!data.session)throw new Error('Passkey tidak menghasilkan sesi');
+   pkSet(true);try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()}
+  catch(e){if(/webauthn_credential_not_found/.test(pkKode(e)))pkSet(false);$('#lerr').textContent=pkPesan(e)}},1).finally(()=>{b.disabled=false})}
+async function muatPasskeySaya(){S.pk=null;S.pkErr='';if(!PK_OK||MB())return;
+ try{const r=await db.auth.passkey.list();if(r.error)throw r.error;S.pk=r.data||[]}catch(e){S.pkErr=pkPesan(e)}}
+async function muatProfilSaya(){if(role!=='Developer')await muatProfil();const {data:{session}}=await db.auth.getSession();S.pfs=session?session.user:null;await muatPasskeySaya()}
+function daftarPasskey(){if(MB())return toast('Tidak tersedia di mode bantuan',false);
+ guard(async()=>{try{const {error}=await db.auth.registerPasskey();if(error)throw error;pkSet(true);toast('Passkey berhasil diaktifkan')}
+  catch(e){if(/webauthn_credential_exists/.test(pkKode(e))){pkSet(true);throw new Error('Perangkat ini sudah terdaftar sebagai passkey. Tombol masuk dengan passkey sekarang aktif')}throw new Error(pkPesan(e))}
+  await muatPasskeySaya();renderV()})}
+function renamePasskey(id){if(MB())return toast('Tidak tersedia di mode bantuan',false);const x=(S.pk||[]).find(k=>k.id===id)||{};
+ form('Ubah nama passkey',[{k:'nama',l:'Nama passkey (mis. HP Samsung Bu Ani)',v:x.friendly_name||''}],async v=>{const n=(v.nama||'').trim();if(!n)throw new Error('Nama wajib diisi');if(n.length>120)throw new Error('Maksimal 120 karakter');
+  const r=await db.auth.passkey.update({passkeyId:id,friendlyName:n});if(r.error)throw r.error;await muatPasskeySaya();toast('Nama passkey diubah');renderV()})}
+async function hapusPasskey(id){if(MB())return toast('Tidak tersedia di mode bantuan',false);
+ if(!await konfirmasi('Hapus passkey ini? Perangkat tersebut tidak bisa lagi dipakai masuk dengan sidik jari.',{bahaya:true,ya:'Hapus'}))return;
+ guard(async()=>{const r=await db.auth.passkey.delete({passkeyId:id});if(r.error)throw r.error;await muatPasskeySaya();toast('Passkey dihapus');renderV()})}
+
+/* ---------- halaman Profil Saya ---------- */
+function editProfilSaya(){if(MB())return toast('Tidak tersedia di mode bantuan',false);const dev=role==='Developer',g=PROFIL;if(!g)return;
+ const f=[{k:'nama',l:'Nama',v:g.nama},{k:'nip',l:'NIP (opsional)',v:g.nip||''}];
+ if(!dev)f.push({k:'user',l:'Username',v:g.username},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak diganti)',t:'password'},{k:'lama',l:'Kata sandi saat ini (wajib bila mengganti username atau kata sandi)',t:'password'});
+ form('Ubah profil saya',f,async v=>{
+  const user=dev?g.username:(v.user||'').trim().toLowerCase();
+  if(!v.nama||!user)throw new Error('Nama dan username wajib diisi');
+  if(!dev){if(v.sandi&&v.sandi.length<6)throw new Error('Kata sandi minimal 6 karakter');
+   if(!/^[a-z0-9._-]{3,20}$/.test(user))throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah')}
+  const ubahAkun=!dev&&(user!==g.username||!!v.sandi);
+  if(ubahAkun&&!v.lama)throw new Error('Isi kata sandi saat ini untuk mengganti username atau kata sandi');
+  if(ubahAkun)await apiGuru({aksi:'akun_sendiri',username:user,sandi_baru:v.sandi||'',sandi_sekarang:v.lama});
+  const nip=(v.nip||'').trim()||null;
+  await dbq(db.from('profil').update({nama:v.nama,nip}).eq('id',me));
+  meNama=v.nama;PROFIL.nama=v.nama;PROFIL.nip=nip;if(ubahAkun)PROFIL.username=user;
+  if(!dev)await muatProfil();toast(ubahAkun?'Profil dan akun diperbarui':'Profil diperbarui');renderAll()})}
 /* ---------- verifikasi 2 langkah (TOTP) khusus Developer ---------- */
 function tampilDua(h){$('#lg').classList.add('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#dua').classList.remove('hid');$('#duaIsi').innerHTML=h;$('#duaErr').textContent=''}
 async function batalDuaFaktor(){try{await db.auth.signOut()}catch(e){}loginView()}
@@ -577,6 +598,25 @@ function konfirmasi(pesan,o){o=o||{};return new Promise(res=>{const m=$('#cf'),y
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
  document.addEventListener('keydown',kd);y.onclick=()=>fin(true);n.onclick=()=>fin(false);m.onclick=e=>{if(e.target===m)fin(false)};m.classList.add('show');y.focus()})}
 const V={};
+V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
+ const wa=(S.nomor&&S.nomor[me])||'',sk=(typeof MEMB!=='undefined'&&MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||'';
+ const row=(l,v)=>`<div class="mu">${l}</div><div style="word-break:break-word"><b>${v||'<span class="mu">-</span>'}</b></div>`;
+ const data=[row('Nama lengkap',esc(p.nama||'')),row('Username',esc(p.username||'')),row('Peran',esc(role||'')),row('NIP',esc(p.nip||'')),
+  row('WhatsApp',dev?'':(wa?esc(fmtWA(wa)):'')),row('Sekolah',dev?'':esc(sk)),
+  row('Status',p.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'),
+  row('Terdaftar',p.dibuat?esc(waktuId(p.dibuat)):''),row('Email akun',esc(u.email||'')),row('Terakhir masuk',u.last_sign_in_at?esc(waktuId(u.last_sign_in_at)):''),
+  row('ID akun','<span style="font-size:11px">'+esc(me||'')+'</span>')].join('');
+ const aksi=mb?'<div class="note">Mode bantuan: data hanya bisa dilihat.</div>':`<div class="tb" style="margin-top:12px"><button class="btn success" onclick="editProfilSaya()">✏️ Ubah profil${dev?'':' &amp; sandi'}</button>${dev?'':'<button class="btn soft" onclick="gantiNomor()">📱 Nomor WhatsApp</button>'}</div>`;
+ let pk;
+ if(mb)pk='<div class="note">Passkey tidak tersedia di mode bantuan.</div>';
+ else if(!PK_OK)pk='<div class="note">Browser ini tidak mendukung passkey. Gunakan Chrome atau Safari versi terbaru di HP.</div>';
+ else if(S.pkErr)pk='<div class="note" style="color:var(--rd)">⚠ '+esc(S.pkErr)+'</div>';
+ else{const L=S.pk||[];
+  pk='<div class="note">Dengan passkey, Anda bisa masuk cukup dengan sidik jari, wajah, atau PIN layar HP. Kata sandi tetap bisa dipakai. Status di perangkat ini: <b>'+(pkAda()?'passkey aktif':'belum diaktifkan')+'</b>.</div>'
+   +(L.length?'<div class="tw"><table><tbody>'+L.map(x=>`<tr><td><b>${esc(x.friendly_name||'Passkey')}</b><div class="mu">Dibuat ${x.created_at?esc(waktuId(x.created_at)):'-'}${x.last_used_at?' · terakhir dipakai '+esc(waktuId(x.last_used_at)):''}</div></td><td style="white-space:nowrap"><button class="btn sm soft" onclick="renamePasskey('${x.id}')">Ubah nama</button> <button class="btn sm danger" onclick="hapusPasskey('${x.id}')">Hapus</button></td></tr>`).join('')+'</tbody></table></div>':'<div class="mu" style="margin:10px 0">Belum ada passkey di akun ini.</div>')
+   +'<button class="btn success" style="width:100%;margin-top:10px" onclick="daftarPasskey()">+ Aktifkan passkey di perangkat ini</button>'}
+ return `<div class="panel"><div class="ph">👤 Profil Saya</div><div class="pb"><div style="display:grid;grid-template-columns:110px 1fr;gap:10px 12px;align-items:start">${data}</div>${aksi}</div></div><div class="panel"><div class="ph">🔐 Passkey (sidik jari / wajah)</div><div class="pb">${pk}</div></div>`};
+
 /* ---------- panduan awal kepala sekolah ---------- */
 let KONFIG_NANTI=false;
 const langkahWajib=()=>[
@@ -659,7 +699,7 @@ function guruRows(shown,bh,kel,dev,kunci){
   const mine=g.id===me;
   const pilih=gHapusMode&&bh&&!mine&&!kunci(g)?`<td><input type="checkbox" ${gsel.has(g.id)?'checked':''} onchange="pilihGuru('${g.id}',this.checked)"></td>`:(gHapusMode&&bh?'<td></td>':'');
   const wa=(S.nomor||{})[g.id];
-  return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${wa?esc(fmtWA(wa)):(mine?'<span class="mu">Belum diisi</span>':'<span class="mu">-</span>')}</td><td>${esc(g.username)}</td><td>${kel&&!mine&&!kunci(g)?`<select class="select" onchange="setGuruRole('${g.id}',this.value)">${['kepala_sekolah','wakil_kepala','guru'].map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role]||g.role)}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td>${mine?`<button class="btn sm soft" onclick="editGuru('${g.id}')">Ubah profil &amp; sandi saya</button> <button class="btn sm soft" onclick="gantiNomor()">Nomor WhatsApp</button> <button class="btn sm soft" onclick="kelolaPasskey()">🔐 Passkey</button>`:'<span class="mu">-</span>'}${kel&&!mine&&!kunci(g)?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`
+  return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${wa?esc(fmtWA(wa)):(mine?'<span class="mu">Belum diisi</span>':'<span class="mu">-</span>')}</td><td>${esc(g.username)}</td><td>${kel&&!mine&&!kunci(g)?`<select class="select" onchange="setGuruRole('${g.id}',this.value)">${['kepala_sekolah','wakil_kepala','guru'].map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role]||g.role)}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td>${mine?`<button class="btn sm soft" onclick="go('profil')">👤 Buka Profil Saya</button>`:'<span class="mu">-</span>'}${kel&&!mine&&!kunci(g)?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`
  }).join('');
 }
 function cariGuruInput(el){
@@ -691,7 +731,7 @@ V.guru=()=>{
    ? ['<input type="checkbox" '+(all?'checked':'')+' onchange="pilihSemuaGuru(this.checked)">','No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Aksi']
    : ['No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Aksi'];
  const emptyCol=gHapusMode&&bh?9:8;
- return `<div class="panel"><div class="ph">👨‍🏫 Data Guru ${kel?`<span class="tb" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('guru')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('guru')">⬆ Impor XLSX</button><button class="btn success" onclick="addGuru()">+ Tambah Guru</button></span>`:''}</div><div class="pb"><div class="tb"><input id="guruCari" class="input grow search-smooth" placeholder="Cari nama atau NIP guru..." value="${esc(gQ)}" oninput="cariGuruInput(this)"></div><div class="note">${kel?'Kepala Sekolah, Wakil Kepala Sekolah, atau Developer dapat menambah guru, mengubah peran, dan mengaktifkan atau menonaktifkan guru di sekolah ini. Menambah atau mengimpor guru meminta kode yang dikirim ke WhatsApp Anda sebagai bukti kepemilikan. Mengganti Kepala Sekolah: pilih peran Kepala Sekolah pada guru yang dituju, maka Kepala Sekolah lama otomatis menjadi Guru. Tombol Keluarkan hanya mengeluarkan guru dari sekolah ini. Username, kata sandi, dan nomor WhatsApp hanya bisa diubah oleh pemilik akunnya.':'Anda hanya bisa mengubah profil, kata sandi, dan nomor WhatsApp Anda sendiri. Nomor WhatsApp guru lain tidak ditampilkan.'}</div><div class="tw"><table><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody id="guruBody">${guruRows(shown,bh,kel,dev,kunci)||`<tr><td colspan="${emptyCol}" class="mu">Guru tidak ditemukan.</td></tr>`}</tbody></table></div></div></div>`;
+ return `<div class="panel"><div class="ph">👨‍🏫 Data Guru ${kel?`<span class="tb" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('guru')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('guru')">⬆ Impor XLSX</button><button class="btn success" onclick="addGuru()">+ Tambah Guru</button></span>`:''}</div><div class="pb"><div class="tb"><input id="guruCari" class="input grow search-smooth" placeholder="Cari nama atau NIP guru..." value="${esc(gQ)}" oninput="cariGuruInput(this)"></div><div class="note">${kel?'Kepala Sekolah, Wakil Kepala Sekolah, atau Developer dapat menambah guru, mengubah peran, dan mengaktifkan atau menonaktifkan guru di sekolah ini. Menambah atau mengimpor guru meminta kode yang dikirim ke WhatsApp Anda sebagai bukti kepemilikan. Mengganti Kepala Sekolah: pilih peran Kepala Sekolah pada guru yang dituju, maka Kepala Sekolah lama otomatis menjadi Guru. Tombol Keluarkan hanya mengeluarkan guru dari sekolah ini. Username, kata sandi, nomor WhatsApp, dan passkey diubah oleh pemilik akunnya sendiri lewat menu Profil Saya.':'Profil, kata sandi, nomor WhatsApp, dan passkey Anda diubah lewat menu Profil Saya. Nomor WhatsApp guru lain tidak ditampilkan.'}</div><div class="tw"><table><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody id="guruBody">${guruRows(shown,bh,kel,dev,kunci)||`<tr><td colspan="${emptyCol}" class="mu">Guru tidak ditemukan.</td></tr>`}</tbody></table></div></div></div>`;
 };
 async function apiGuru(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/guru',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/guru tidak ditemukan (404). Pastikan file api/guru.js sudah di-deploy pada project yang sama dengan Index.');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
 function editGuru(id){if(MB())return toast('Tidak tersedia di mode bantuan',false);const g=S.guru.find(x=>x.id===id);if(!g||id!==me)return toast('Anda hanya bisa mengubah akun sendiri',false);
