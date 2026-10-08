@@ -86,7 +86,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 #lg .secret-toggle{top:calc(50% - 3px)}
 @keyframes sorot{0%,60%{box-shadow:0 0 0 4px #d7a72f,0 0 18px #d7a72f88}100%{box-shadow:0 0 0 0 transparent}}.sorot{animation:sorot 2s ease-out;border-radius:14px}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
@@ -96,7 +96,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">Selamat Datang</h2><p class="mu" style="text-align:center;margin:0 0 16px">di Sistem Absensi. Silakan masukkan username dan kata sandi Anda.</p>
 <label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
-<button id="lb" class="btn success" style="width:100%" onclick="masuk()">Masuk</button><div id="lerr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div>
+<button id="lb" class="btn success" style="width:100%" onclick="masuk()">Masuk</button><button id="lpk" type="button" class="btn soft hid" style="width:100%;margin-top:8px" onclick="masukPasskey()">🔐 Masuk dengan sidik jari / passkey</button><div id="lerr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div>
 <p class="mu" style="text-align:center;margin:14px 0 0">Lupa sandi atau username? <a href="#" onclick="formReset();return false">Atur ulang akun</a></p><p class="mu" style="text-align:center;margin:8px 0 0">Sekolah Anda belum terdaftar? <a href="#" onclick="formDaftarSekolah();return false">Daftarkan sekolah</a></p><p class="mu" style="text-align:center;margin:8px 0 0">Butuh bantuan? <a href="https://wa.me/6285117441486" target="_blank" rel="noopener">Hubungi Developer via WhatsApp</a></p></div></div>
 <div id="dua" class="login hid"><div class="lbox"><div class="logo">🔐</div><h2 style="text-align:center;margin:0 0 4px">Verifikasi 2 langkah</h2><div id="duaIsi"></div><div id="duaErr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div><p class="mu" style="text-align:center;margin:14px 0 0"><a href="#" onclick="batalDuaFaktor();return false">Batal dan kembali ke halaman masuk</a></p></div></div>
 <div class="app hid" id="ap">
@@ -120,7 +120,7 @@ const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j
    b.classList.add('busy');
    const cek=()=>{if(!b.isConnected)return;if(n>0||Date.now()-t0<700)setTimeout(cek,120);else b.classList.remove('busy')};
    setTimeout(cek,120);setTimeout(()=>b.classList.remove('busy'),20000)},0)},true)})();
-const db=supabase.createClient(URL_SB,KEY_SB);
+const db=supabase.createClient(URL_SB,KEY_SB,{auth:{experimental:{passkey:true}}});
 /* ---------- multi-sekolah: sekolah aktif + pembungkus tabel ---------- */
 let SEK=null,MEMB=[],PROFIL=null;
 const TENANT=new Set(['absensi','kelas','laporan_ortu','libur_mingguan','libur_tanggal','pengaturan','percakapan_tertunda','pesan_masuk','siswa','wali','tabungan_transaksi','tabungan_bawaan']);
@@ -365,6 +365,36 @@ function kirimDaftar(){const b=$('#dfKirim'),e=$('#dfErr');if(b.disabled)return;
 function masuk(){const b=$('#lb');if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="bs"></span>Memproses...';$('#lerr').textContent='';guard(async()=>{const u=$('#lu').value.trim(),pw=$('#lp').value;if(!u||!pw)throw new Error('Isi username dan kata sandi');let email=u;
  if(!u.includes('@')){const r=await db.rpc('email_dari_username',{u});if(r.error)throw r.error;if(!r.data)throw new Error('Username tidak ditemukan atau akun belum aktif. Bila Anda baru mendaftarkan sekolah, mohon tunggu persetujuan admin.');email=r.data}
  const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
+
+/* ---------- passkey (sidik jari / wajah / PIN perangkat) ---------- */
+const PK_OK=!!(window.PublicKeyCredential&&navigator.credentials);
+function pkPesan(e){const m=(e&&(e.code||e.name||e.message))||'';const t=String((e&&e.message)||e||'');
+ if(/NotAllowed|cancel|abort/i.test(m+t))return 'Dibatalkan atau waktu habis';
+ if(/passkey_disabled/.test(m))return 'Passkey belum diaktifkan di Supabase (Authentication → Passkeys)';
+ if(/webauthn_credential_not_found/.test(m))return 'Passkey ini belum terdaftar. Masuk dengan sandi dulu, lalu aktifkan passkey';
+ if(/webauthn_credential_exists/.test(m))return 'Perangkat ini sudah terdaftar sebagai passkey';
+ if(/too_many_passkeys/.test(m))return 'Jumlah passkey sudah mencapai batas, hapus yang lama dulu';
+ if(/email_not_confirmed|phone_not_confirmed/.test(m))return 'Akun belum terverifikasi';
+ if(/user_banned/.test(m))return 'Akun diblokir';
+ if(/SecurityError/.test(m+t))return 'Domain situs tidak cocok dengan Relying Party ID di Supabase';
+ return t||'Gagal memakai passkey'}
+function masukPasskey(){const b=$('#lpk');if(!b||b.disabled)return;b.disabled=true;$('#lerr').textContent='';
+ guard(async()=>{const {data,error}=await db.auth.signInWithPasskey();if(error)throw error;if(!data||!data.session)throw new Error('Passkey tidak menghasilkan sesi');
+  try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).catch(()=>{}).finally(()=>{b.disabled=false});
+ }
+function kelolaPasskey(){if(MB())return toast('Tidak tersedia di mode bantuan',false);
+ if(!PK_OK)return toast('Browser ini tidak mendukung passkey',false);
+ guard(async()=>{const r=await db.auth.passkey.list();if(r.error)throw r.error;const L=r.data||[];
+  const rows=L.map(x=>`<tr><td><b>${esc(x.friendly_name||'Passkey')}</b><div class="mu">Dibuat ${x.created_at?esc(waktuId(x.created_at)):'-'}${x.last_used_at?' · terakhir dipakai '+esc(waktuId(x.last_used_at)):''}</div></td><td style="white-space:nowrap"><button class="btn sm soft" onclick="renamePasskey('${x.id}')">Ubah nama</button> <button class="btn sm danger" onclick="hapusPasskey('${x.id}')">Hapus</button></td></tr>`).join('');
+  info('🔐 Passkey (sidik jari / wajah)','<div class="note">Dengan passkey, Anda bisa masuk cukup dengan sidik jari, wajah, atau PIN layar HP tanpa mengetik username dan kata sandi. Kata sandi tetap bisa dipakai.</div>'
+   +(L.length?'<div class="tw"><table><tbody>'+rows+'</tbody></table></div>':'<div class="mu" style="margin:10px 0">Belum ada passkey di akun ini.</div>')
+   +'<button class="btn success" style="width:100%;margin-top:10px" onclick="daftarPasskey()">+ Aktifkan passkey di perangkat ini</button>')})}
+function daftarPasskey(){guard(async()=>{const {data,error}=await db.auth.registerPasskey();if(error)throw error;toast('Passkey berhasil diaktifkan');kelolaPasskey()}).catch(()=>{})}
+function renamePasskey(id){form('Ubah nama passkey',[{k:'nama',l:'Nama passkey (mis. HP Samsung Bu Ani)'}],async v=>{const n=(v.nama||'').trim();if(!n)throw new Error('Nama wajib diisi');if(n.length>120)throw new Error('Maksimal 120 karakter');
+  const r=await db.auth.passkey.update({passkeyId:id,friendlyName:n});if(r.error)throw r.error;toast('Nama passkey diubah');kelolaPasskey()})}
+async function hapusPasskey(id){if(!await konfirmasi('Hapus passkey ini? Perangkat tersebut tidak bisa lagi dipakai masuk dengan sidik jari.',{bahaya:true,ya:'Hapus'}))return;
+ guard(async()=>{const r=await db.auth.passkey.delete({passkeyId:id});if(r.error)throw r.error;toast('Passkey dihapus');kelolaPasskey()})}
+document.addEventListener('DOMContentLoaded',()=>{const b=$('#lpk');if(b&&PK_OK)b.classList.remove('hid')});
 /* ---------- verifikasi 2 langkah (TOTP) khusus Developer ---------- */
 function tampilDua(h){$('#lg').classList.add('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#dua').classList.remove('hid');$('#duaIsi').innerHTML=h;$('#duaErr').textContent=''}
 async function batalDuaFaktor(){try{await db.auth.signOut()}catch(e){}loginView()}
@@ -629,7 +659,7 @@ function guruRows(shown,bh,kel,dev,kunci){
   const mine=g.id===me;
   const pilih=gHapusMode&&bh&&!mine&&!kunci(g)?`<td><input type="checkbox" ${gsel.has(g.id)?'checked':''} onchange="pilihGuru('${g.id}',this.checked)"></td>`:(gHapusMode&&bh?'<td></td>':'');
   const wa=(S.nomor||{})[g.id];
-  return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${wa?esc(fmtWA(wa)):(mine?'<span class="mu">Belum diisi</span>':'<span class="mu">-</span>')}</td><td>${esc(g.username)}</td><td>${kel&&!mine&&!kunci(g)?`<select class="select" onchange="setGuruRole('${g.id}',this.value)">${['kepala_sekolah','wakil_kepala','guru'].map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role]||g.role)}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td>${mine?`<button class="btn sm soft" onclick="editGuru('${g.id}')">Ubah profil &amp; sandi saya</button> <button class="btn sm soft" onclick="gantiNomor()">Nomor WhatsApp</button>`:'<span class="mu">-</span>'}${kel&&!mine&&!kunci(g)?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`
+  return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${wa?esc(fmtWA(wa)):(mine?'<span class="mu">Belum diisi</span>':'<span class="mu">-</span>')}</td><td>${esc(g.username)}</td><td>${kel&&!mine&&!kunci(g)?`<select class="select" onchange="setGuruRole('${g.id}',this.value)">${['kepala_sekolah','wakil_kepala','guru'].map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role]||g.role)}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td>${mine?`<button class="btn sm soft" onclick="editGuru('${g.id}')">Ubah profil &amp; sandi saya</button> <button class="btn sm soft" onclick="gantiNomor()">Nomor WhatsApp</button> <button class="btn sm soft" onclick="kelolaPasskey()">🔐 Passkey</button>`:'<span class="mu">-</span>'}${kel&&!mine&&!kunci(g)?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`
  }).join('');
 }
 function cariGuruInput(el){
