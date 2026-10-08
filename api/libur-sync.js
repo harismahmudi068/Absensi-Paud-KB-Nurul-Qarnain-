@@ -2,7 +2,7 @@
 // Sinkron libur nasional + cuti bersama BULAN BERJALAN ke semua sekolah aktif.
 // - Cron Vercel (GET, Authorization: Bearer CRON_SECRET): jalan sekali per bulan.
 // - Developer (POST, token login role developer): ?dry=1 = simulasi saja.
-import { timingSafeEqual } from 'crypto';
+const { timingSafeEqual } = require('crypto');
 
 const BASE = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -31,6 +31,31 @@ function samaRahasia(a, b) {
   const x = Buffer.from(a), y = Buffer.from(b);
   return x.length === y.length && x.length > 0 && timingSafeEqual(x, y);
 }
+// Sumber libur (nasional + cuti bersama), dicoba berurutan. Gagal semua = berhenti tanpa mengubah data.
+const SUMBER = [
+  { nama: 'api-harilibur', url: y => 'https://api-harilibur.vercel.app/api?year=' + y, tgl: h => h.holiday_date, ket: h => h.holiday_name },
+  { nama: 'dayoffapi', url: y => 'https://dayoffapi.vercel.app/api?year=' + y, tgl: h => h.tanggal, ket: h => h.keterangan }
+];
+async function ambilLibur(tahun) {
+  const gagal = [];
+  for (const s of SUMBER) {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 8000);
+    try {
+      const r = await fetch(s.url(tahun), { signal: c.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const j = await r.json();
+      const daftar = (Array.isArray(j) ? j : [])
+        .map(h => ({ tgl: norm(s.tgl(h)), ket: String(s.ket(h) || 'Libur nasional').trim() }))
+        .filter(x => x.tgl.startsWith(tahun + '-'));
+      if (daftar.length < 5) throw new Error('data tidak lengkap (' + daftar.length + ' baris)');
+      return { sumber: s.nama, daftar };
+    } catch (e) {
+      gagal.push(s.nama + ': ' + (e.name === 'AbortError' ? 'timeout' : e.message));
+    } finally { clearTimeout(t); }
+  }
+  throw new Error('Semua sumber libur gagal (' + gagal.join('; ') + '). Tidak ada data yang diubah.');
+}
+
 async function otorisasi(req) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!token) return null;
@@ -39,14 +64,18 @@ async function otorisasi(req) {
   if (!r.ok) return null;
   const u = await r.json();
   const p = await rest('profil?id=eq.' + encodeURIComponent(u.id) + '&select=role,aktif');
-  return p && p[0] && p[0].role === 'developer' && p[0].aktif ? 'developer' : null;
+  if (!(p && p[0] && p[0].role === 'developer' && p[0].aktif)) return null;
+  let aal = null;
+  try { aal = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).aal; } catch (e) {}
+  return aal === 'aal2' ? 'developer' : 'tanpa2fa';
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     if (!BASE || !KEY) return res.status(500).json({ error: 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY belum diatur' });
     const peran = await otorisasi(req);
     if (!peran) return res.status(401).json({ error: 'Tidak diizinkan' });
+    if (peran === 'tanpa2fa') return res.status(403).json({ error: 'Verifikasi 2 langkah diperlukan. Silakan masuk kembali sebagai Developer.' });
     const dry = !!(req.query && req.query.dry === '1');
 
     const wib = new Date(Date.now() + 7 * 3600e3);
@@ -61,17 +90,13 @@ export default async function handler(req, res) {
       if (s && s.length) return res.status(200).json({ lewati: true, bulan });
     }
 
-    // 1. Daftar libur (nasional + cuti bersama). Gagal / tidak lengkap = berhenti, tidak ada yang diubah.
-    const ar = await fetch('https://api-harilibur.vercel.app/api?year=' + tahun);
-    if (!ar.ok) throw new Error('API libur gagal (' + ar.status + ')');
-    const data = await ar.json();
-    if (!Array.isArray(data) || data.length < 5) throw new Error('Data libur dari API tidak lengkap, sinkron dibatalkan');
+    // 1. Daftar libur (nasional + cuti bersama) dari sumber pertama yang berhasil
+    const { sumber, daftar } = await ambilLibur(tahun);
     const nama = new Map();
-    for (const h of data) {
-      const t = norm(h.holiday_date);
-      if (!t || t < awal || t > akhir) continue;
-      const ada = nama.get(t);
-      nama.set(t, ada && ada !== h.holiday_name ? ada + ' / ' + h.holiday_name : h.holiday_name);
+    for (const h of daftar) {
+      if (h.tgl < awal || h.tgl > akhir) continue;
+      const ada = nama.get(h.tgl);
+      nama.set(h.tgl, ada && ada !== h.ket ? ada + ' / ' + h.ket : h.ket);
     }
 
     // 2. Data sekolah
@@ -109,7 +134,7 @@ export default async function handler(req, res) {
         if (!sudah.has(t)) { tambah.push({ sekolah_id: sid, mulai: t, sampai: t, kelas_id: null, keterangan: ket, sumber: 'nasional' }); tglUbah.add(t); }
       }
     }
-    const ringkas = { bulan, sekolah: ids.length, tambah: tambah.length, ubah: ubah.length, hapus: hapus.length, bersih: bersih.length };
+    const ringkas = { bulan, sumber, sekolah: ids.length, tambah: tambah.length, ubah: ubah.length, hapus: hapus.length, bersih: bersih.length };
     if (dry) return res.status(200).json({ ...ringkas, dry: true });
 
     // 4. Tulis
