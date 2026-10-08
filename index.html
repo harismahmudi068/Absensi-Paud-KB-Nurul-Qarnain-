@@ -189,7 +189,7 @@ async function dbq(p){const r=await p;if(r.error)throw r.error;return r.data}
 let ldn=0;function ld(on,m){ldn=Math.max(0,ldn+(on?1:-1));if(on)$('#ldt').textContent=m||'Memuat...';$('#ld').style.display=ldn?'flex':'none'}
 const guard=(fn,q)=>{if(!q)ld(1);return fn().catch(e=>toast((e&&e.message)||String(e),false)).finally(()=>{if(!q)ld(0)})};
 function info(t,h){$('#mt').textContent=t;$('#mbd').innerHTML=h;$('#ms').style.display='none';$('#md').classList.add('show')}
-function toast(m,ok=true){const t=$('#ts');t.textContent=(ok?'✓ ':'⚠ ')+m;t.className='toast '+(ok?'ok':'err');t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200)}
+function toast(m,ok=true){const t=$('#ts');if(!ok)m=idErr(m);t.textContent=(ok?'✓ ':'⚠ ')+m;t.className='toast '+(ok?'ok':'err');t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200)}
 const A=d=>S.absen[d]||{},act=()=>S.siswa.filter(s=>s.aktif),kelola=()=>role!=='Guru',allowed=id=>MENUS.find(m=>m[0]===id)[3].includes(RC[role])&&(id!=='tabungan'||!!(S.set&&S.set.tabungan_aktif));
 const badge=s=>`<span class="badge ${s}">${s}</span>`,ini=s=>esc((s||'?')[0]);
 const tab=(h,r,m)=>`<div class="tw"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${r||`<tr><td colspan="${h.length}" class="mu">${m||'Belum ada data.'}</td></tr>`}</tbody></table></div>`;
@@ -305,7 +305,7 @@ const statusRekap=(s,d)=>dayStat(s,d)||'Belum';
 function ringkas(s,b,rekap=false){const c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0},ds=hariBulan(b,rekap);ds.forEach(d=>{const st=rekap?statusRekap(s,d):dayStat(s,d);c[st]=(c[st]||0)+1});const n=ds.length;return{c,n,ds,pct:n?Math.round((c.Hadir+c.Terlambat+c.Libur)*100/n):0}}
 const segarkan=()=>dbq(db.rpc('segarkan_libur',{p_sekolah:SEK}));
 /* ---------- login + navigasi ---------- */
-function loginView(msg){tampilTombolPasskey();const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=msg||''}
+function loginView(msg){tampilTombolPasskey();const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=idErr(msg||'')}
 function formDaftarSekolah(){info('Daftarkan sekolah','<div class="note">Isi data sekolah dan akun kepala sekolah. Pendaftaran akan diperiksa admin; akun aktif setelah disetujui dan Anda dihubungi lewat WhatsApp.</div>'
  +'<div class="fg">'
  +'<div class="fd"><label class="l">Nama sekolah</label><input id="dfSk" class="input" maxlength="80"></div>'
@@ -355,33 +355,58 @@ function langkahHilang2(d){form('Verifikasi dan data akun baru',[{k:'kode',l:'Ko
 async function apiPublik(body){const r=await fetch('/api/publik',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('Layanan pendaftaran belum tersedia (404). Hubungi admin');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
 function kirimKodeDaftar(){const b=$('#dfKb'),e=$('#dfErr');if(b.disabled)return;e.textContent='';const wa=$('#dfWa').value.trim();if(!wa){e.textContent='Isi nomor WhatsApp dulu';return}
  b.disabled=true;b.textContent='Mengirim...';
- apiPublik({aksi:'otp_kirim',keperluan:'daftar',nomor:wa}).then(()=>{toast('Kode dikirim ke WhatsApp Anda');let n=60;b.textContent='Kirim ulang ('+n+')';const t=setInterval(()=>{n--;if(!$('#dfKb')){clearInterval(t);return}if(n<=0){clearInterval(t);b.disabled=false;b.textContent='Kirim ulang'}else b.textContent='Kirim ulang ('+n+')'},1000)}).catch(x=>{e.textContent=x.message||String(x);b.disabled=false;b.textContent='Kirim kode'})}
+ apiPublik({aksi:'otp_kirim',keperluan:'daftar',nomor:wa}).then(()=>{toast('Kode dikirim ke WhatsApp Anda');let n=60;b.textContent='Kirim ulang ('+n+')';const t=setInterval(()=>{n--;if(!$('#dfKb')){clearInterval(t);return}if(n<=0){clearInterval(t);b.disabled=false;b.textContent='Kirim ulang'}else b.textContent='Kirim ulang ('+n+')'},1000)}).catch(x=>{e.textContent=idErr(x.message||String(x));b.disabled=false;b.textContent='Kirim kode'})}
 function kirimDaftar(){const b=$('#dfKirim'),e=$('#dfErr');if(b.disabled)return;e.textContent='';
  const v={aksi:'daftar',nama_sekolah:$('#dfSk').value.trim(),alamat:$('#dfAl').value.trim(),nama_kepala:$('#dfNm').value.trim(),nip:$('#dfNip').value.trim(),nomor:$('#dfWa').value.trim(),kode:$('#dfKd').value.trim(),username:$('#dfUs').value.trim().toLowerCase(),sandi:$('#dfPw').value};
  if(!v.nama_sekolah||!v.nama_kepala||!v.nomor||!v.kode||!v.username||!v.sandi){e.textContent='Lengkapi semua kolom yang wajib';return}
  if(v.sandi!==$('#dfPw2').value){e.textContent='Kata sandi dan ulangannya tidak sama';return}
  b.disabled=true;b.innerHTML='<span class="bs"></span>Mengirim...';
- apiPublik(v).then(()=>{info('Pendaftaran terkirim','<div style="text-align:center;padding:10px 4px"><div style="font-size:42px">✅</div><h3 style="margin:8px 0">Terima kasih</h3><div class="mu">Pendaftaran sekolah <b>'+esc(v.nama_sekolah)+'</b> sudah kami terima. Admin akan memeriksa data Anda. Setelah disetujui, Anda bisa masuk dengan username <b>'+esc(v.username)+'</b>.</div></div>')}).catch(x=>{e.textContent=x.message||String(x);b.disabled=false;b.textContent='Kirim pendaftaran'})}
+ apiPublik(v).then(()=>{info('Pendaftaran terkirim','<div style="text-align:center;padding:10px 4px"><div style="font-size:42px">✅</div><h3 style="margin:8px 0">Terima kasih</h3><div class="mu">Pendaftaran sekolah <b>'+esc(v.nama_sekolah)+'</b> sudah kami terima. Admin akan memeriksa data Anda. Setelah disetujui, Anda bisa masuk dengan username <b>'+esc(v.username)+'</b>.</div></div>')}).catch(x=>{e.textContent=idErr(x.message||String(x));b.disabled=false;b.textContent='Kirim pendaftaran'})}
 function masuk(){const b=$('#lb');if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="bs"></span>Memproses...';$('#lerr').textContent='';guard(async()=>{const u=$('#lu').value.trim(),pw=$('#lp').value;if(!u||!pw)throw new Error('Isi username dan kata sandi');let email=u;
  if(!u.includes('@')){const r=await db.rpc('email_dari_username',{u});if(r.error)throw r.error;if(!r.data)throw new Error('Username tidak ditemukan atau akun belum aktif. Bila Anda baru mendaftarkan sekolah, mohon tunggu persetujuan admin.');email=r.data}
  const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
 
+/* ---------- terjemahan pesan error ke Bahasa Indonesia ---------- */
+const ERR_ID=[
+ [/Non-Webauthn|ERROR_PASSTHROUGH/i,'Terjadi kesalahan pada passkey. Coba lagi, atau masuk dengan kata sandi'],
+ [/InvalidStateError|already registered|PREVIOUSLY_REGISTERED/i,'Perangkat ini sudah terdaftar sebagai passkey untuk akun ini'],
+ [/NotAllowedError|operation either timed out|not allowed by the user agent|timed out or was not allowed/i,'Dibatalkan atau waktu habis'],
+ [/AbortError|ceremony was aborted|operation was aborted/i,'Proses dibatalkan'],
+ [/NotSupportedError|WebAuthn is not supported|not supported by this browser/i,'Perangkat atau browser ini tidak mendukung passkey'],
+ [/SecurityError/i,'Domain situs tidak cocok dengan Relying Party ID di Supabase'],
+ [/Failed to fetch|NetworkError|Load failed|network request failed/i,'Koneksi internet bermasalah. Periksa jaringan lalu coba lagi'],
+ [/Invalid login credentials/i,'Username atau kata sandi salah'],
+ [/JWT expired|invalid JWT|Auth session missing|Invalid Refresh Token|Refresh Token Not Found/i,'Sesi login sudah berakhir, silakan masuk kembali'],
+ [/Email not confirmed|Phone not confirmed/i,'Akun belum terverifikasi'],
+ [/User not found/i,'Akun tidak ditemukan'],
+ [/User is banned|user_banned/i,'Akun diblokir'],
+ [/Password should be at least|password.*at least 6/i,'Kata sandi minimal 6 karakter'],
+ [/different from the old password|same password/i,'Kata sandi baru harus berbeda dari yang lama'],
+ [/rate limit|too many requests|over_request_rate_limit/i,'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi'],
+ [/row-level security|permission denied|\bForbidden\b|not authorized/i,'Anda tidak memiliki izin untuk tindakan ini'],
+ [/duplicate key|unique constraint/i,'Data sudah ada atau sudah dipakai'],
+ [/violates foreign key/i,'Data masih dipakai oleh data lain sehingga tidak bisa diubah atau dihapus'],
+ [/violates not-null|null value in column|violates check constraint/i,'Ada data wajib yang belum diisi atau tidak valid'],
+ [/Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time-?out|Request Timeout/i,'Server sedang bermasalah. Coba lagi beberapa saat'],
+ [/Unexpected token|is not valid JSON|Unexpected end of JSON/i,'Respons server tidak dapat dibaca. Coba lagi'],
+ [/Cannot read propert|is not a function|is not defined|Cannot access .* before initialization/i,'Terjadi kesalahan pada aplikasi. Muat ulang halaman lalu coba lagi']];
+function idErr(m){const t=String(m==null?'':m);for(const [re,id] of ERR_ID)if(re.test(t))return id;return t}
 /* ---------- passkey (sidik jari / wajah / PIN perangkat) ---------- */
 const PK_OK=!!(window.PublicKeyCredential&&navigator.credentials),PK_KEY='pk_aktif';
 function pkSet(on){try{on?localStorage.setItem(PK_KEY,'1'):localStorage.removeItem(PK_KEY)}catch(e){}tampilTombolPasskey()}
 function pkAda(){try{return localStorage.getItem(PK_KEY)==='1'}catch(e){return false}}
 function tampilTombolPasskey(){const b=$('#lpk');if(b)b.classList.toggle('hid',!(PK_OK&&pkAda()))}
-const pkKode=e=>String((e&&(e.code||e.name))||'')+' '+String((e&&e.message)||e||'');
+const pkKode=e=>String((e&&(e.code||e.name))||'')+' '+String((e&&e.message)||e||'')+(e&&e.cause?' '+String(e.cause.name||'')+' '+String(e.cause.message||''):'');
 function pkPesan(e){const m=pkKode(e);
  if(/NotAllowed|cancel|abort|timed out/i.test(m))return 'Dibatalkan atau waktu habis';
  if(/passkey_disabled/.test(m))return 'Passkey belum diaktifkan di Supabase (Authentication → Passkeys)';
  if(/webauthn_credential_not_found/.test(m))return 'Passkey belum diaktifkan untuk akun ini di perangkat ini. Masuk dengan kata sandi, lalu aktifkan passkey di menu Profil Saya';
- if(/webauthn_credential_exists/.test(m))return 'Perangkat ini sudah terdaftar sebagai passkey';
+ if(/webauthn_credential_exists|InvalidStateError|PREVIOUSLY_REGISTERED|already registered/i.test(m))return 'Perangkat ini sudah terdaftar sebagai passkey untuk akun ini';
  if(/too_many_passkeys/.test(m))return 'Jumlah passkey sudah mencapai batas, hapus yang lama dulu';
  if(/email_not_confirmed|phone_not_confirmed/.test(m))return 'Akun belum terverifikasi';
  if(/user_banned/.test(m))return 'Akun diblokir';
  if(/SecurityError/.test(m))return 'Domain situs tidak cocok dengan Relying Party ID di Supabase';
- return String((e&&e.message)||e||'Gagal memakai passkey')}
+ const r=idErr(m);return r!==m?r:idErr(String((e&&e.message)||e||'Gagal memakai passkey. Coba lagi atau masuk dengan kata sandi'))}
 /* pemilih akun passkey kustom: akun yang pernah masuk dengan passkey di perangkat ini disimpan (username, nama, id kredensial) */
 const b64u={enc:buf=>{const a=new Uint8Array(buf);let t='';for(let i=0;i<a.length;i++)t+=String.fromCharCode(a[i]);return btoa(t).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
  dec:str=>{str=String(str).replace(/-/g,'+').replace(/_/g,'/');while(str.length%4)str+='=';const bin=atob(str),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a.buffer}};
@@ -417,7 +442,7 @@ function daftarPasskey(){if(MB())return toast('Tidak tersedia di mode bantuan',f
  guard(async()=>{const o={hasil:null},pulih=pkSadapBuat(o);
   try{try{const {error}=await db.auth.registerPasskey();if(error)throw error}finally{pulih()}
    pkSet(true);if(o.hasil&&PROFIL)pkAkunTambah(PROFIL.username,PROFIL.nama,o.hasil);toast('Passkey berhasil diaktifkan')}
-  catch(e){if(/webauthn_credential_exists/.test(pkKode(e))){pkSet(true);throw new Error('Perangkat ini sudah terdaftar sebagai passkey. Tombol masuk dengan passkey sekarang aktif')}throw new Error(pkPesan(e))}
+  catch(e){if(/webauthn_credential_exists|InvalidStateError|PREVIOUSLY_REGISTERED|already registered/i.test(pkKode(e))){pkSet(true);throw new Error('Perangkat ini sudah terdaftar sebagai passkey. Tombol masuk dengan passkey sekarang aktif')}throw new Error(pkPesan(e))}
   await muatPasskeySaya();renderV()})}
 /* hubungkan passkey yang sudah ada ke daftar pilihan login di browser ini (tanpa kirim apa pun ke server) */
 function pkIngatAkun(){if(MB()||!PROFIL)return toast('Tidak tersedia di mode bantuan',false);
@@ -624,12 +649,12 @@ function form(t,f,cb){window._fver={};f.forEach(x=>{if(x.ver)_fver[x.k]=x.ver});
 async function formVer(k){const el=$('#f_'+k),o=$('#fv_'+k),fn=window._fver&&_fver[k];if(!el||!fn||!o)return;const kode=el.value.trim();
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
- try{await fn(kode);o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+(e.message||e)}}
+ try{await fn(kode);o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
 async function verifikasiDaftar(){const wa=normWA($('#dfWa').value),kode=$('#dfKd').value.trim(),o=$('#dfVs');
  if(!/^628\d{8,12}$/.test(wa)){o.style.color='var(--rd)';o.textContent='Isi nomor WhatsApp dulu';return}
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
- try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+(e.message||e)}}
+ try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
 function closeM(){$('#md').classList.remove('show')}
 function konfirmasi(pesan,o){o=o||{};return new Promise(res=>{const m=$('#cf'),y=$('#cfy'),n=$('#cfn');$('#cfi').textContent=o.ikon||(o.bahaya?'🗑️':'❓');$('#cft').textContent=o.judul||'Konfirmasi';$('#cfm').textContent=pesan;y.textContent=o.ya||'Ya';y.className='btn '+(o.bahaya?'danger':'success');
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
