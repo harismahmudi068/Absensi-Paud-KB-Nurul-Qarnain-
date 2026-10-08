@@ -12,6 +12,8 @@
 //   beritahu_kepala   {batas, jenis}        -> WhatsApp ke semua Kepala Sekolah: unduh rekap sebelum data dihapus (jenis 'tabungan' = rekap tabungan)
 //   hapus_absensi     {sandi, konfirmasi}   -> kosongkan seluruh tabel absensi (butuh sandi dan ketikan HAPUS ABSENSI)
 //   hapus_tabungan    {sandi, konfirmasi}   -> kosongkan tabel tabungan_transaksi dan tabungan_bawaan (butuh sandi dan ketikan HAPUS TABUNGAN)
+//   beritahu_hapus_sekolah {sekolah_id, batas} -> WhatsApp ke Kepala Sekolah satu sekolah: data sekolah akan dihapus permanen
+//   hapus_sekolah     {sekolah_id, konfirmasi, sandi} -> HAPUS PERMANEN seluruh data satu sekolah (konfirmasi = nama sekolah persis, butuh sandi)
 //   sinkron_alpa                            -> sinkronkan ulang jadwal cron Alpa Otomatis semua sekolah
 
 const L = require('./_lib');
@@ -464,6 +466,115 @@ module.exports = async (req, res) => {
         rincian: `Tabel tabungan dikosongkan (${nt} transaksi, ${nb} saldo bawaan)`
       });
       return res.status(200).json({ ok: true, transaksi: nt, bawaan: nb });
+    }
+
+    // ---------------------------------------------------------
+    // BERITAHU KEPALA SEKOLAH: DATA SEKOLAH AKAN DIHAPUS
+    // ---------------------------------------------------------
+    if (b.aksi === 'beritahu_hapus_sekolah') {
+      const sid = Number(b.sekolah_id);
+      const batas = teks(b.batas, 60);
+      if (!Number.isInteger(sid) || sid <= 0) throw new Error('Sekolah tidak valid');
+      const sk = await satu(`/rest/v1/sekolah?id=eq.${sid}&select=nama`);
+      if (!sk) throw new Error('Sekolah tidak ditemukan');
+      const baris =
+        (await L.panggil(
+          `/rest/v1/keanggotaan?sekolah_id=eq.${sid}&role=eq.kepala_sekolah&aktif=eq.true&select=profil(nama,no_wa,aktif)`,
+          'GET'
+        )) || [];
+      const kepala = baris.map((x) => x.profil).find((p) => p && p.aktif);
+      if (!kepala) throw new Error('Sekolah ini belum punya Kepala Sekolah aktif');
+      if (!kepala.no_wa || !L.RE_WA.test(kepala.no_wa))
+        throw new Error('Nomor WhatsApp Kepala Sekolah belum valid');
+      const pesan =
+        `📢 *PEMBERITAHUAN PENGEMBANG SISTEM ABSENSI*\n\n` +
+        `Yth. Bapak/Ibu Kepala Sekolah *${sk.nama}*,\n\n` +
+        `Data sekolah Anda di sistem ini akan segera dihapus secara permanen. ` +
+        `Mohon segera mengunduh rekap absensi di menu *Pengaturan > Tahun Ajaran* ` +
+        `dan rekap tabungan di menu *Tabungan > Rekap & Laporan* (PDF atau XLSX)` +
+        `${batas ? ` paling lambat *${batas}*` : ''}.\n\n` +
+        `Data yang sudah dihapus tidak dapat dikembalikan. Terima kasih 🙏`;
+      let terkirim = 0;
+      try {
+        await L.kirimDev(kepala.no_wa, pesan);
+        terkirim = 1;
+      } catch (e) {
+        console.error('beritahu_hapus_sekolah gagal:', e.message);
+      }
+      await L.catatLog({
+        pelaku: user.id,
+        sekolah_id: terkirim ? sid : null,
+        aksi: terkirim ? 'beritahu_hapus_sekolah' : 'beritahu_hapus_sekolah_gagal',
+        rincian: `${sk.nama}: ${terkirim ? 'terkirim' : 'gagal'} ke ${kepala.nama}${batas ? ', batas ' + batas : ''}`
+      });
+      return res.status(200).json({ ok: true, terkirim });
+    }
+
+    // ---------------------------------------------------------
+    // HAPUS SEKOLAH PERMANEN (seluruh data satu sekolah)
+    // ---------------------------------------------------------
+    if (b.aksi === 'hapus_sekolah') {
+      const sid = Number(b.sekolah_id);
+      if (!Number.isInteger(sid) || sid <= 0) throw new Error('Sekolah tidak valid');
+      const sk = await satu(`/rest/v1/sekolah?id=eq.${sid}&select=id,nama`);
+      if (!sk) throw new Error('Sekolah tidak ditemukan');
+      if (String(b.konfirmasi || '').trim() !== String(sk.nama || '').trim())
+        throw new Error('Nama sekolah yang diketik tidak sama');
+      try {
+        await L.panggil('/auth/v1/token?grant_type=password', 'POST', {
+          email: user.email,
+          password: String(b.sandi || '')
+        });
+      } catch (e) {
+        throw new Error('Kata sandi salah');
+      }
+
+      // Pengaman: sebaiknya Kepala Sekolah sudah diberi tahu dalam 7 hari terakhir
+      if (!b.lanjut_tanpa_pemberitahuan) {
+        const tujuhHari = new Date(Date.now() - 7 * 24 * 3600000).toISOString();
+        const sudah =
+          (await L.panggil(
+            `/rest/v1/log_audit?aksi=eq.beritahu_hapus_sekolah&sekolah_id=eq.${sid}&waktu=gt.${encodeURIComponent(tujuhHari)}&select=id&limit=1`,
+            'GET'
+          )) || [];
+        if (!sudah.length) throw new Error('BELUM_ADA_PEMBERITAHUAN');
+      }
+
+      // Hapus semua data sekolah di database (fungsi SQL developer_hapus_sekolah)
+      const hasil = await L.panggil('/rest/v1/rpc/developer_hapus_sekolah', 'POST', {
+        p_sekolah: sid
+      });
+      const yatim = (hasil && Array.isArray(hasil.akun_yatim) && hasil.akun_yatim) || [];
+
+      // Hapus akun guru yang hanya terdaftar di sekolah ini
+      let akunDihapus = 0;
+      for (const uid of yatim) {
+        try {
+          await L.panggil(`/rest/v1/profil?id=eq.${uid}`, 'DELETE');
+        } catch (e) {
+          console.error('Hapus profil gagal:', e.message);
+        }
+        try {
+          await L.panggil('/auth/v1/admin/users/' + uid, 'DELETE');
+          akunDihapus++;
+        } catch (e) {
+          console.error('Hapus akun auth gagal:', e.message);
+        }
+      }
+
+      // Rapikan jadwal cron Alpa Otomatis
+      try {
+        await L.panggil('/rest/v1/rpc/sinkronkan_jadwal_alpa', 'POST', {});
+      } catch (e) {
+        console.error('Sinkron jadwal alpa gagal:', e.message);
+      }
+
+      await L.catatLog({
+        pelaku: user.id,
+        aksi: 'hapus_sekolah',
+        rincian: `${sk.nama} (id ${sid}) dihapus permanen, ${akunDihapus} akun guru ikut dihapus`
+      });
+      return res.status(200).json({ ok: true, akun_dihapus: akunDihapus });
     }
 
     // ---------------------------------------------------------
