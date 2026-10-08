@@ -301,11 +301,78 @@ const LIBUR_TEMPLATE=[
 ['2027-05-18','Cuti Bersama Iduladha 1448 Hijriah'],['2027-05-19','Cuti Bersama Waisak 2571 BE'],['2027-05-20','Hari Raya Waisak 2571 BE'],['2027-06-01','Hari Lahir Pancasila'],
 ['2027-06-06','1 Muharam Tahun Baru Islam 1449 Hijriah'],['2027-08-15','Maulid Nabi Muhammad SAW'],['2027-08-17','Proklamasi Kemerdekaan'],['2027-12-24','Cuti Bersama Kelahiran Yesus Kristus (Natal)'],
 ['2027-12-25','Kelahiran Yesus Kristus (Natal)'],['2027-12-26','Isra Mikraj Nabi Muhammad SAW']];
-function unduhTemplateLibur(){const isi='tanggal,keterangan\r\n'+LIBUR_TEMPLATE.map(r=>r[0]+',"'+r[1].replace(/"/g,'""')+'"').join('\r\n');const b=new Blob(['\ufeff'+isi],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='template-libur-nasional.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Template libur nasional diunduh')}
-const kolomLibur=(ln,d)=>{const o=[];let c='',q=false;for(let i=0;i<ln.length;i++){const ch=ln[i];if(q){if(ch==='"'){if(ln[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}else if(ch==='"')q=true;else if(ch===d){o.push(c);c=''}else c+=ch}o.push(c);return o.map(x=>x.trim())};
 const tglLibur=v=>{v=String(v||'').trim();let m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/),y,mo,d;if(m){y=+m[1];mo=+m[2];d=+m[3]}else if(m=v.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/)){d=+m[1];mo=+m[2];y=+m[3]}else return '';const t=new Date(Date.UTC(y,mo-1,d));if(t.getUTCFullYear()!==y||t.getUTCMonth()!==mo-1||t.getUTCDate()!==d)return '';return y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0')};
-function bacaCsvLibur(txt){const rows=[],err=[];String(txt||'').replace(/^\ufeff/,'').split(/\r?\n/).forEach((ln,i)=>{if(!ln.trim())return;const d=ln.includes('\t')?'\t':(ln.includes(';')&&!ln.includes(','))?';':',';const k=kolomLibur(ln,d),t=tglLibur(k[0]);if(!t){if(i===0&&/tanggal/i.test(k[0]))return;err.push('Baris '+(i+1)+': tanggal "'+(k[0]||'')+'" tidak valid');return}rows.push({tanggal:t,keterangan:(k.slice(1).join(', ')||'Libur nasional').slice(0,200)})});return {rows,err}}
-function imporLiburDipilih(el){const f=el.files&&el.files[0];el.value='';if(!f)return;guard(async()=>{const {rows,err}=bacaCsvLibur(await f.text());if(!rows.length)throw new Error(err[0]||'Tidak ada baris libur yang terbaca. Gunakan template.');if(err.length&&!await konfirmasi(err.length+' baris diabaikan:\n'+err.slice(0,5).join('\n')+'\n\nLanjutkan dengan '+rows.length+' baris lainnya?',{judul:'Sebagian baris tidak valid',ikon:'⚠️',ya:'Lanjutkan'}))return;const s=await dbq(db.rpc('impor_libur_nasional',{p_rows:rows,p_simulasi:true}));const ok=await konfirmasi('Simulasi untuk '+s.sekolah+' sekolah aktif ('+s.baris+' tanggal, '+s.dari+' s.d. '+s.sampai+'):\n- tambah '+s.tambah+' baris\n- ubah keterangan '+s.ubah+'\n- hapus '+s.hapus+' (libur nasional lama di rentang itu yang tidak ada di file)\n\nSekolah yang sebelumnya menghapus libur ini akan mendapatkannya kembali. Lanjutkan?',{judul:'Impor libur nasional',ikon:'📅',ya:'Ya, impor'});if(!ok)return;const h=await dbq(db.rpc('impor_libur_nasional',{p_rows:rows,p_simulasi:false}));toast('Selesai: tambah '+h.tambah+', ubah '+h.ubah+', hapus '+h.hapus)})}
+async function unduhTemplateLibur(btn){
+ if(!setUnduhBusy(btn,true,'Membuat template...'))return;
+ try{await jedaUnduh();
+  if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
+  const F='Arial',N=300,H=4,R0=H+1,R1=H+N,fl=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}}),ln={style:'thin',color:{argb:'FFCFD9D3'}},bd={top:ln,left:ln,bottom:ln,right:ln},mid={horizontal:'center',vertical:'middle'};
+  const wb=new ExcelJS.Workbook();wb.creator='Sistem Absensi';wb.created=new Date();
+  const ws=wb.addWorksheet('Libur Nasional',{views:[{state:'frozen',ySplit:H,showGridLines:false}],properties:{tabColor:{argb:'FF176B3A'}},pageSetup:{orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:'1:'+H}});
+  ws.columns=[{width:7},{width:17},{width:13},{width:64}];
+  ['A1:D1','A2:D2','A3:D3'].forEach(x=>ws.mergeCells(x));
+  const t1=ws.getCell('A1'),t2=ws.getCell('A2'),t3=ws.getCell('A3');
+  t1.value='TEMPLATE LIBUR NASIONAL';t1.font={name:F,size:16,bold:true,color:{argb:'FFFFFFFF'}};t1.fill=fl('FF176B3A');t1.alignment=mid;
+  t2.value='Daftar libur nasional dan cuti bersama untuk seluruh sekolah';t2.font={name:F,size:10,color:{argb:'FF14532D'}};t2.fill=fl('FFDFF3E7');t2.alignment=mid;
+  t3.value='Isi Tanggal dan Keterangan mulai baris '+R0+'. Kolom No dan Hari terisi otomatis. Baris contoh boleh diganti atau dihapus.';t3.font={name:F,size:9,italic:true,color:{argb:'FF6D7D73'}};t3.fill=fl('FFF7FAF8');t3.alignment={horizontal:'center',vertical:'middle',wrapText:true};
+  ws.getRow(1).height=34;ws.getRow(2).height=22;ws.getRow(3).height=22;
+  ['No','Tanggal','Hari','Keterangan'].forEach((h,i)=>{const c=ws.getCell(H,i+1);c.value=h;c.font={name:F,size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill=fl('FF176B3A');c.alignment=mid;c.border={top:{style:'medium',color:{argb:'FF0F4F2A'}},left:ln,right:ln,bottom:{style:'medium',color:{argb:'FF0F4F2A'}}}});
+  ws.getRow(H).height=26;
+  const HR_X=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
+  for(let i=0;i<N;i++){const r=R0+i,d=LIBUR_TEMPLATE[i],z=i%2?'FFF4F9F5':'FFFFFFFF',row=ws.getRow(r);row.height=21;
+   let tgl=null,hari='';if(d){const m=d[0].split('-').map(Number);tgl=new Date(Date.UTC(m[0],m[1]-1,m[2]));hari=LIBUR_HARI[tgl.getUTCDay()]}
+   const a=row.getCell(1),b=row.getCell(2),c=row.getCell(3),k=row.getCell(4);
+   a.value={formula:'IF(B'+r+'="","",ROW()-'+H+')',result:d?i+1:''};
+   b.value=tgl;b.numFmt='dd/mm/yyyy';
+   c.value={formula:'IF(B'+r+'="","",CHOOSE(WEEKDAY(B'+r+',2),"Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"))',result:hari};
+   k.value=d?d[1]:null;
+   [a,b,c,k].forEach((x,j)=>{x.fill=fl(z);x.border=bd;x.font={name:F,size:10,bold:j===1,color:{argb:j===0||j===2?'FF526B84':'FF1F2D26'}};x.alignment=j===3?{vertical:'middle',horizontal:'left',indent:1}:mid});
+   b.dataValidation={type:'date',operator:'between',allowBlank:true,formulae:[new Date(Date.UTC(2000,0,1)),new Date(Date.UTC(2099,11,31))],showErrorMessage:true,errorStyle:'stop',errorTitle:'Tanggal tidak valid',error:'Isi tanggal yang benar, contoh 25/12/2026.',showInputMessage:true,promptTitle:'Tanggal',prompt:'Contoh: 25/12/2026'};
+   k.dataValidation={type:'textLength',operator:'lessThanOrEqual',allowBlank:true,formulae:[200],showErrorMessage:true,errorStyle:'stop',errorTitle:'Keterangan terlalu panjang',error:'Keterangan maksimal 200 karakter.'};
+  }
+  ws.conditionalFormatting=[{ref:'A'+R0+':D'+R1,rules:[{type:'expression',priority:1,formulae:['AND($B'+R0+'<>"",WEEKDAY($B'+R0+',2)>5)'],style:{fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFFFE8BF'}},font:{color:{argb:'FF9A5B00'},bold:true}}}]}];
+  ws.autoFilter={from:{row:H,column:1},to:{row:R1,column:4}};
+  const wp=wb.addWorksheet('Petunjuk',{views:[{showGridLines:false}],properties:{tabColor:{argb:'FFD99A27'}}});
+  wp.columns=[{width:6},{width:96}];wp.mergeCells('A1:B1');
+  const p1=wp.getCell('A1');p1.value='PETUNJUK PENGISIAN';p1.font={name:F,size:15,bold:true,color:{argb:'FFFFFFFF'}};p1.fill=fl('FFD99A27');p1.alignment=mid;wp.getRow(1).height=32;
+  const info=[
+   'Isi sheet "Libur Nasional" mulai baris '+R0+', satu baris untuk satu tanggal.',
+   'Tanggal dapat diketik 25/12/2026 atau 2026-12-25. Excel akan mengubahnya menjadi tanggal otomatis.',
+   'Kolom No dan Hari terisi otomatis. Jangan diisi atau dihapus rumusnya.',
+   'Libur beberapa hari berturut-turut (misal cuti bersama): tulis satu baris per tanggal.',
+   'Keterangan maksimal 200 karakter. Bila dikosongkan, sistem menulis "Libur nasional".',
+   'Tanggal Sabtu atau Minggu otomatis diberi warna oranye sebagai penanda.',
+   'Simpan sebagai .xlsx, lalu unggah lewat tombol "Impor libur nasional" di menu Developer. Format CSV tidak dipakai lagi.',
+   'Sebelum disimpan, sistem menampilkan simulasi jumlah baris yang ditambah, diubah, dan dihapus.',
+   'Perhatian: libur nasional lama pada rentang tanggal file yang tidak ada di file akan dihapus. Sekolah yang sebelumnya menghapus libur tertentu akan mendapatkannya kembali.'
+  ];
+  info.forEach((tx,i)=>{const r=i+2,a=wp.getCell(r,1),b=wp.getCell(r,2),warn=i===info.length-1,z=warn?'FFFFF3D6':(i%2?'FFF4F9F5':'FFFFFFFF');
+   a.value=i+1;b.value=tx;[a,b].forEach(x=>{x.fill=fl(z);x.border=bd});
+   a.font={name:F,size:10,bold:true,color:{argb:'FFFFFFFF'}};a.fill=fl(warn?'FFD99A27':'FF176B3A');a.alignment=mid;
+   b.font={name:F,size:10,bold:warn,color:{argb:warn?'FF7A4B00':'FF1F2D26'}};b.alignment={vertical:'middle',horizontal:'left',wrapText:true,indent:1};
+   wp.getRow(r).height=tx.length>95?34:24});
+  await tulisXlsx(wb,'template-libur-nasional.xlsx');toast('Template libur nasional (XLSX) diunduh')
+ }catch(e){toast('Gagal membuat template: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
+const LIBUR_HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+function bacaXlsxLibur(buf){
+ const rows=[],err=[];
+ const wb=XLSX.read(buf,{type:'array'}),nm=wb.SheetNames.find(n=>/libur/i.test(n))||wb.SheetNames[0],ws=wb.Sheets[nm];
+ if(!ws)return {rows,err};
+ const a=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+ let h=-1,ct=0,ck=1;
+ for(let i=0;i<Math.min(a.length,20)&&h<0;i++){const r=a[i]||[],j=r.findIndex(c=>/^\s*tanggal\s*$/i.test(String(c)));if(j>=0){h=i;ct=j;const k=r.findIndex(c=>/^\s*keterangan\s*$/i.test(String(c)));ck=k>=0?k:j+1}}
+ const pad=n=>String(n).padStart(2,'0');
+ const tg=v=>{if(v instanceof Date&&!isNaN(v))return v.getFullYear()+'-'+pad(v.getMonth()+1)+'-'+pad(v.getDate());if(typeof v==='number'&&isFinite(v)&&v>=20000&&v<=80000){const d=new Date(Date.UTC(1899,11,30)+Math.floor(v)*864e5);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())}return tglLibur(v)};
+ const seen=new Map();
+ for(let i=h+1;i<a.length;i++){const r=a[i]||[],tv=r[ct],kv=String(r[ck]==null?'':r[ck]).trim();
+  if((tv===''||tv==null)&&!kv)continue;
+  const t=tg(tv);if(!t){err.push('Baris '+(i+1)+': tanggal "'+String(tv==null?'':tv)+'" tidak valid');continue}
+  if(seen.has(t))err.push('Baris '+(i+1)+': tanggal '+t+' ganda, dipakai baris ini (baris '+seen.get(t)+' diabaikan)');
+  seen.set(t,i+1);
+  const idx=rows.findIndex(x=>x.tanggal===t);const o={tanggal:t,keterangan:(kv||'Libur nasional').slice(0,200)};
+  if(idx>=0)rows[idx]=o;else rows.push(o)}
+ return {rows,err}}
+function imporLiburDipilih(el){const f=el.files&&el.files[0];el.value='';if(!f)return;guard(async()=>{if(!/\.xlsx?$/i.test(f.name))throw new Error('Gunakan file Excel (.xlsx) dari tombol Template libur. Format CSV tidak didukung lagi.');if(typeof XLSX==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');const {rows,err}=bacaXlsxLibur(await f.arrayBuffer());if(!rows.length)throw new Error(err[0]||'Tidak ada baris libur yang terbaca. Gunakan Template libur (XLSX).');if(err.length&&!await konfirmasi(err.length+' baris diabaikan:\n'+err.slice(0,5).join('\n')+'\n\nLanjutkan dengan '+rows.length+' baris lainnya?',{judul:'Sebagian baris tidak valid',ikon:'⚠️',ya:'Lanjutkan'}))return;const s=await dbq(db.rpc('impor_libur_nasional',{p_rows:rows,p_simulasi:true}));const ok=await konfirmasi('Simulasi untuk '+s.sekolah+' sekolah aktif ('+s.baris+' tanggal, '+s.dari+' s.d. '+s.sampai+'):\n- tambah '+s.tambah+' baris\n- ubah keterangan '+s.ubah+'\n- hapus '+s.hapus+' (libur nasional lama di rentang itu yang tidak ada di file)\n\nSekolah yang sebelumnya menghapus libur ini akan mendapatkannya kembali. Lanjutkan?',{judul:'Impor libur nasional',ikon:'📅',ya:'Ya, impor'});if(!ok)return;const h=await dbq(db.rpc('impor_libur_nasional',{p_rows:rows,p_simulasi:false}));toast('Selesai: tambah '+h.tambah+', ubah '+h.ubah+', hapus '+h.hapus)})}
 const liburInfo=(d,k)=>{if(batalAda(d,k))return '';if(S.mingguan.includes(wd(d)))return 'libur mingguan hari '+HR[wd(d)];const l=S.libur.find(x=>x.tgl<=d&&d<=(x.sampai||x.tgl)&&(!x.kelas||x.kelas===k));return l?(l.ket||'libur'):''};
 const isLibur=(d,k)=>!!liburInfo(d,k);
 const liburKey=(d,k)=>d+'|'+(k||'*');
@@ -1445,7 +1512,7 @@ function segarDev(){guard(async()=>{await muatDev();renderV();toast('Data diperb
 V.developer=()=>{const nm=(S.devPend||[]).length+(S.devNomor||[]).length;
  const tabs=DEVTAB.map(([k,l])=>`<button class="btn ${devTab===k?'success':'soft'} sm" onclick="setDevTab('${k}')">${l}${k==='setuju'&&nm?` <span class="badge Belum">${nm}</span>`:''}</button>`).join('');
  const isi={ringkas:devRingkas,setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,hapus:devHapus,log:devLog,sistem:devSistem}[devTab]();
- return `<div class="panel"><div class="ph">🛠 Developer <button class="btn soft sm" onclick="segarDev()">↻ Muat ulang</button> <button class="btn soft sm" onclick="unduhTemplateLibur()">⬇ Template libur</button> <button class="btn orange sm" onclick="document.getElementById('imporLiburFile').click()">⬆ Impor libur nasional</button><input type="file" id="imporLiburFile" accept=".csv,.txt,text/csv,text/plain" hidden onchange="imporLiburDipilih(this)"></div><div class="pb"><div class="tb" style="flex-wrap:wrap;gap:6px">${tabs}</div></div></div>${isi}`};
+ return `<div class="panel"><div class="ph">🛠 Developer <button class="btn soft sm" onclick="segarDev()">↻ Muat ulang</button> <button class="btn soft sm" onclick="unduhTemplateLibur(this)">⬇ Template libur (XLSX)</button> <button class="btn orange sm" onclick="document.getElementById('imporLiburFile').click()">⬆ Impor libur nasional (XLSX)</button><input type="file" id="imporLiburFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden onchange="imporLiburDipilih(this)"></div><div class="pb"><div class="tb" style="flex-wrap:wrap;gap:6px">${tabs}</div></div></div>${isi}`};
 function devRingkas(){const sk=S.devSek||[],ak=sk.filter(x=>x.status==='aktif').length,nm=(S.devPend||[]).length+(S.devNomor||[]).length,gr=(S.devGuru||[]).filter(g=>g.role!=='developer').length,sw=sk.reduce((a,x)=>a+(x.jml_siswa||0),0);
  return `<div class="panel"><div class="pb"><div class="cards"><div class="card stat"><b>${ak}</b>Sekolah aktif</div><div class="card stat"><b>${nm}</b>Menunggu persetujuan</div><div class="card stat"><b>${gr}</b>Guru</div><div class="card stat"><b>${sw}</b>Siswa aktif</div></div>${nm?'<div class="note" style="margin-top:12px">Ada permintaan yang menunggu. Buka tab Persetujuan.</div>':''}</div></div>`}
 function devSetuju(){const pd=S.devPend||[],pn=S.devNomor||[],gr=(S.devGuru||[]).filter(g=>g.role!=='developer');
