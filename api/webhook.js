@@ -177,6 +177,13 @@ function isiBukanHariSekolah(tidakAktif) {
 function balasanSakit(nama, tgl, lanjut = null) { return bungkusBalasan([isiSakit(nama, tgl, lanjut)]); }
 function balasanIzin(nama, tgl, tidakAktif = []) { return bungkusBalasan([isiIzin(nama, tgl, tidakAktif)]); }
 function balasanBukanHariSekolah(tidakAktif) { return bungkusBalasan([isiBukanHariSekolah(tidakAktif)]); }
+function balasanTanggalLampau() {
+  return bungkusBalasan([
+    'Mohon maaf, Bunda. Tanggal yang disebutkan pada pesan Bunda sudah lewat, sehingga laporan belum kami catat. 🙏',
+    `📅 *Hari ini:* ${formatTanggal(tanggal())}`,
+    'Mohon periksa kembali tanggal dan harinya, kemudian kirim kembali pesannya. 😊'
+  ]);
+}
 
 // Nama pada pesan yang tidak mirip dengan nama anak terdaftar (perbandingan per kata)
 function namaYangBerbeda(namaDiPesan, namaTerdaftar) {
@@ -525,6 +532,29 @@ function selisihHari(a, b) {
   return Math.round((isoKeUtc(b) - isoKeUtc(a)) / 86400000);
 }
 
+// true jika penanda waktu dari AI menunjuk tanggal yang SUDAH LEWAT (mis. "izin tanggal 8" padahal hari ini tanggal 9).
+// Tanggal tanpa tahun/bulan dibaca sebagai kemunculan terdekat: lebih dekat ke masa lalu -> lampau,
+// lebih dekat ke depan (mis. "tanggal 2" ditulis tanggal 28) -> dianggap bulan/tahun depan.
+function waktuLampau(w, T) {
+  if (!w) return false;
+  if (w.tipe === 'lampau') return true;
+  if (w.tipe !== 'tanggal') return false;
+  const d = Number(w.tanggal);
+  if (!Number.isInteger(d) || d < 1 || d > 31) return false;
+  const [Y, M] = T.split('-').map(Number);
+
+  if (w.bulan && w.tahun) {
+    const t = tanggalValid(Number(w.tahun), Number(w.bulan), d);
+    return !!t && t < T;
+  }
+  const ini = w.bulan ? tanggalValid(Y, Number(w.bulan), d) : tanggalValid(Y, M, d);
+  if (!ini || ini >= T) return false;
+  const depan = w.bulan
+    ? tanggalValid(Y + 1, Number(w.bulan), d)
+    : tanggalValid(M === 12 ? Y + 1 : Y, M === 12 ? 1 : M + 1, d);
+  return !depan || selisihHari(ini, T) <= selisihHari(T, depan);
+}
+
 // Hari TERAKHIR sebuah rentang ("sampai hari Rabu"). Nama hari dihitung dari hari PERTAMA rentang
 // (bukan dari hari ini), dan hari yang sama dengan hari pertama dianggap 1 hari saja.
 function hitungAkhir(s, mulai, T) {
@@ -543,14 +573,11 @@ function hitungAkhir(s, mulai, T) {
 async function buatRencana(status, waktu) {
   const T = tanggal();
   const entri = Array.isArray(waktu) ? waktu : [];
+  // Tanggal sudah lewat: tidak dicatat, wali diminta memeriksa dan mengirim ulang.
+  if (entri.some(w => waktuLampau(w, T))) {
+    return { ok: false, lampau: true, alasan: 'tanggal sudah lampau' };
+  }
   const libur = await ambilLibur(T, tambahHari(T, BATAS_HARI_KE_DEPAN + BATAS_JUMLAH_HARI_IZIN + 15));
-  console.log('DIAG libur:', JSON.stringify({
-    hariIni: T, sekolahId: K().sekolahId,
-    mingguan: [...libur.mingguan],
-    tanggalUmum: [...libur.tanggalUmum].slice(0, 15),
-    batalSemua: [...libur.batalSemua],
-    batalKelas: [...libur.batalKelas].map(([k, v]) => [k, [...v]])
-  }));
 
   if (status === 'sakit') {
     if (entri.some(w => w.tipe !== 'hari_ini')) {
@@ -605,10 +632,6 @@ async function catatPesan(dari, isi, hasil, cek) {
 async function simpan(dari, pesan, anak, status, catatan, rencana) {
   // Tanggal dihitung per anak, karena libur_tanggal bisa khusus kelas tertentu.
   const per = anak.map(s => ({ s, ...rencana.untuk(s.kelas_id) }));
-  console.log('DIAG anak:', JSON.stringify(per.map(p => ({
-    id: p.s.id, kelas_id: p.s.kelas_id, tipeKelas: typeof p.s.kelas_id,
-    tanggalDitulis: p.tanggal, tanggalLibur: p.tidakAktif
-  }))));
   const aktif = per.filter(p => p.tanggal.length);
   const liburSaja = per.filter(p => !p.tanggal.length);
 
@@ -641,10 +664,8 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
       kelompok.get(k).anak.push(p.s);
     }
 
-    console.log('DIAG tulis absensi:', rows.length, 'baris', JSON.stringify(rows.map(r => [r.siswa_id, r.tanggal, r.status])));
     if (rows.length) {
       await sb('absensi?on_conflict=siswa_id,tanggal', { method: 'POST', body: rows, prefer: 'resolution=merge-duplicates,return=minimal' });
-      console.log('DIAG absensi berhasil ditulis');
     }
   }
 
@@ -685,6 +706,11 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
 // Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
 async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa }) {
   const rencana = await buatRencana(status, waktu);
+  if (!rencana.ok && rencana.lampau) {
+    await catatPesan(dari, pesan, 'Ditolak: tanggal sudah lampau, wali diminta memeriksa dan mengirim ulang', false);
+    await kirimBalasanWali(target, balasanTanggalLampau(), bahasa);
+    return;
+  }
   if (!rencana.ok) {
     await catatPesan(dari, pesan, `Ragu: ${rencana.alasan}`.slice(0, 300), true);
     const info = {
