@@ -544,6 +544,13 @@ async function buatRencana(status, waktu) {
   const T = tanggal();
   const entri = Array.isArray(waktu) ? waktu : [];
   const libur = await ambilLibur(T, tambahHari(T, BATAS_HARI_KE_DEPAN + BATAS_JUMLAH_HARI_IZIN + 15));
+  console.log('DIAG libur:', JSON.stringify({
+    hariIni: T, sekolahId: K().sekolahId,
+    mingguan: [...libur.mingguan],
+    tanggalUmum: [...libur.tanggalUmum].slice(0, 15),
+    batalSemua: [...libur.batalSemua],
+    batalKelas: [...libur.batalKelas].map(([k, v]) => [k, [...v]])
+  }));
 
   if (status === 'sakit') {
     if (entri.some(w => w.tipe !== 'hari_ini')) {
@@ -598,6 +605,10 @@ async function catatPesan(dari, isi, hasil, cek) {
 async function simpan(dari, pesan, anak, status, catatan, rencana) {
   // Tanggal dihitung per anak, karena libur_tanggal bisa khusus kelas tertentu.
   const per = anak.map(s => ({ s, ...rencana.untuk(s.kelas_id) }));
+  console.log('DIAG anak:', JSON.stringify(per.map(p => ({
+    id: p.s.id, kelas_id: p.s.kelas_id, tipeKelas: typeof p.s.kelas_id,
+    tanggalDitulis: p.tanggal, tanggalLibur: p.tidakAktif
+  }))));
   const aktif = per.filter(p => p.tanggal.length);
   const liburSaja = per.filter(p => !p.tanggal.length);
 
@@ -630,8 +641,10 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
       kelompok.get(k).anak.push(p.s);
     }
 
+    console.log('DIAG tulis absensi:', rows.length, 'baris', JSON.stringify(rows.map(r => [r.siswa_id, r.tanggal, r.status])));
     if (rows.length) {
       await sb('absensi?on_conflict=siswa_id,tanggal', { method: 'POST', body: rows, prefer: 'resolution=merge-duplicates,return=minimal' });
+      console.log('DIAG absensi berhasil ditulis');
     }
   }
 
