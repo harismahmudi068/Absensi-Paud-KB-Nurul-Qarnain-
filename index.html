@@ -85,6 +85,12 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 .secret-wrap{position:relative;display:flex;flex:1;min-width:0;width:100%}.secret-wrap>.input{width:100%;flex:1;min-width:0;padding-right:48px}.secret-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%)!important;width:32px;height:32px;border:0;background:transparent!important;box-shadow:none!important;color:var(--mu);display:flex;align-items:center;justify-content:center;padding:0;border-radius:0;cursor:pointer;font-size:0;transition:none!important;animation:none!important;line-height:1;flex:0 0 32px;-webkit-tap-highlight-color:transparent}.secret-toggle:hover,.secret-toggle:active{background:transparent!important;box-shadow:none!important;color:var(--tx)}.secret-toggle:active{transform:translateY(-50%)!important;filter:none!important}.secret-toggle:focus-visible{outline:2px solid var(--p);outline-offset:1px}.secret-toggle::before{display:none!important}.secret-toggle svg{width:21px;height:21px;display:block;flex:0 0 21px}
 #lg .secret-toggle{top:calc(50% - 3px)}
 @keyframes sorot{0%,60%{box-shadow:0 0 0 4px #d7a72f,0 0 18px #d7a72f88}100%{box-shadow:0 0 0 0 transparent}}.sorot{animation:sorot 2s ease-out;border-radius:14px}
+.dnt-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 2px 10px;font-weight:800;color:var(--tx)}.dnt-h span{font-size:12px;font-weight:700;color:var(--mu)}
+.dnt{display:flex;gap:12px;align-items:flex-start;padding:14px;margin-bottom:10px;border-radius:16px;border:1px solid var(--c2);background:var(--c1);box-shadow:var(--sh)}
+.dnt>i{font-style:normal;font-size:22px;width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:12px;background:#fff}
+.dnt-n{min-width:0;flex:1}.dnt-n b{display:block;font-size:14px;color:var(--tx);margin-bottom:3px}.dnt-n p{margin:0;font-size:13px;color:#496451;line-height:1.5;word-break:break-word}.dnt-n .btn{margin-top:10px}
+.dnt-w{--c1:#fff8e6;--c2:#f0dba0}.dnt-e{--c1:#fdeff0;--c2:#f2c3c7}.dnt-e .dnt-n b{color:#a13842}.dnt-l{--c1:#eefaf1;--c2:#c9e6d1}.dnt-ok{--c1:#f4f8f1;--c2:#dfeadc;box-shadow:none}
+@media(max-width:760px){.dnt{padding:12px;gap:10px}.dnt-n .btn{width:100%}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -181,7 +187,7 @@ const hariIni=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'
 let TODAY=hariIni();const ST=['Hadir','Terlambat','Izin','Sakit','Alpa'],cap=s=>s.charAt(0).toUpperCase()+s.slice(1),low=s=>s.toLowerCase();
 const fmt=d=>{if(!d)return '';const p=d.split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]},fmtB=b=>{const p=b.split('-');return BLN[p[1]-1]+' '+p[0]},wd=d=>new Date(d+'T00:00:00').getDay();
 const dt=(type,v,fn,cl='')=>`<label class="input dt ${cl}"><span>${v?(type==='month'?fmtB(v):fmt(v)):'Pilih tanggal'}</span><input type="${type}" value="${v||''}" onchange="if(this.value){this.previousElementSibling.textContent=(this.type=='month'?fmtB:fmt)(this.value);${fn||''}}"></label>`;
-const MENUS=[['dashboard','Dashboard','⌂','KG'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['siswa','Data Siswa','👥','KG'],['kartu','Kartu','🪪','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
+const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['siswa','Data Siswa','👥','KG'],['kartu','Kartu','🪪','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah';
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
@@ -287,7 +293,7 @@ const muatProfil=async()=>{const [g,n]=await Promise.all([muatGuruData(),muatNom
 let RHS=null,izinKelola=null,izinExp=0;
 async function apiPengaturan(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/pengaturan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:CFG_SID||SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/pengaturan tidak ditemukan (404). Pastikan file api/pengaturan.js sudah di-deploy');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
 async function muatRahasia(){try{RHS=await apiPengaturan({aksi:'baca'})}catch(e){RHS={error:e.message||String(e)}}}
-const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>Promise.all([muatRange(TODAY,TODAY),muatStatusProfil()]),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan};
+const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>role==='Developer'?Promise.all([muatDev(),muatProfilSaya()]):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil()]),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan};
 /* ---------- libur ---------- */
 const batalAda=(d,k)=>{const b=S.batal;if(!b||!b.size)return false;if(b.has(d+'|0'))return true;const kl=S.kelas.find(x=>x.nama===k);return !!kl&&b.has(d+'|'+kl.id)};
 async function muatBatal(){S.batal=new Set();try{const r=await dbq(db.from('libur_batal').select('tanggal,kelas_id'));(r||[]).forEach(x=>S.batal.add(x.tanggal+'|'+x.kelas_id))}catch(e){}}
@@ -612,7 +618,7 @@ async function mulai(){const {data:{session}}=await db.auth.getSession();if(!ses
 async function masukDeveloper(){try{SEK=null;role='Developer';meNama=PROFIL.nama;
   S.absen={};S.pesan=[];S.siswa=[];S.kelas=[];S.guru=[];S.libur=[];S.nasional=[];S.nasMap=new Map();S.mingguan=[];S.set={};RHS=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
   try{sessionStorage.removeItem('sekolah_aktif');sessionStorage.removeItem('bukaView')}catch(e){}
-  terapNama();$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');view='developer';pasangBanner();await go('developer')}
+  terapNama();$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');view='dashboard';pasangBanner();await go('dashboard')}
  catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
 async function masukSekolah(m){try{SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
   S.absen={};S.pesan=[];RHS=null;CFG_SID=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;attKelas='';scanKelas='';kk='';rk='';lo='';q='';gQ='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
@@ -724,6 +730,7 @@ async function muatGambarKartu(){
 }
 function renderV(){
  $('#v').innerHTML=V[view]();
+ if(role==='Developer')renderNavDev();
  enhanceCustomSelects($('#v'));
  if(view==='kartu')muatGambarKartu().catch(e=>toast('Gagal menyiapkan kartu: '+(e.message||e),false));
 }
@@ -806,7 +813,7 @@ function bannerKonfigIsi(){if(!adalahKepala()||KONFIG_NANTI)return '';const m=ko
  return `<div><b>⚙ Konfigurasi belum diatur.</b><div class="mu">Belum diisi: ${m.join(', ')}. Notifikasi WhatsApp belum bisa berjalan. Isi nomor dulu, tambah token, lalu tekan Tes. (ID Group dan Kunci AI) bersifat opsional karena 2 hal ini mencakup izin lewat WhatsApp dengan bahasa bebas sehari-hari.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="lompatPengaturan('pnKonfig','rhNK')">Atur sekarang</button><button class="btn sm soft" onclick="KONFIG_NANTI=true;renderV()">Atur nanti</button></div></div>`}
 function sapaAwal(){if(!adalahKepala())return;const L=langkahWajib().filter(x=>!x.ok);if(!L.length)return;const k='sapa_'+SEK;try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){}
  info('Selamat Datang 👋','<div style="text-align:center;padding:6px 4px"><div style="font-size:42px">🏫</div><p>Sekolah Anda belum siap dipakai. Masih ada <b>'+L.length+' hal</b> yang perlu diisi: '+L.map(x=>x.t.toLowerCase()).join(', ')+'.</p><button class="btn success" style="width:100%" onclick="closeM();'+L[0].f.replace(/"/g,'&quot;')+'">Mulai atur: '+L[0].b+'</button><button class="btn soft" style="width:100%;margin-top:8px" onclick="closeM()">Nanti</button></div>')}
-V.dashboard=()=>{const a=A(TODAY),l=act(),c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0};l.forEach(s=>c[dayStat(s,TODAY)]++);
+V.dashboard=()=>{if(role==='Developer')return devDashboard();const a=A(TODAY),l=act(),c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0};l.forEach(s=>c[dayStat(s,TODAY)]++);
  const n=l.length||1,cs=[['Hadir',c.Hadir+c.Terlambat,'termasuk '+c.Terlambat+' terlambat','#159447'],['Izin',c.Izin,'','#248fe9'],['Sakit',c.Sakit,'','#ef5361'],['Alpa',c.Alpa,'','#7a4be5'],['Libur',c.Libur,'','#526b84'],['Belum Absen',c.Belum,'perlu ditindaklanjuti','#c98a1b']];
  const rows=l.map((s,i)=>{const r=a[s.id];return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${esc(s.kelas)}</td><td>${badge(dayStat(s,TODAY))}</td><td>${r?esc((r.jam?r.jam+' - ':'')+r.cara+(r.cat?' - '+r.cat:'')):''}</td></tr>`}).join('');
  return `<div class="hero"><div><h1>Selamat Datang 👋🏻<br>di ${esc(ns())}</h1><p>${fmt(TODAY)} - ${c.Belum} anak belum absen.</p></div><i>🏫</i></div>${panduanAwal()}${notifGabung()}
@@ -1512,24 +1519,75 @@ const MB=()=>{try{return !!sessionStorage.getItem('mode_bantuan')}catch(e){retur
 async function apiDev(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/developer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/developer tidak ditemukan (404). Pastikan file api/developer.js sudah di-deploy');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
 async function muatDev(){const [g,sk,pd,pn,lg,sm,al]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100})),dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_alpa')).catch(e=>({error:(e&&e.message)||String(e)}))]);S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg;S.devSimpan=sm;S.devAlpa=al;await muatKalNas().catch(()=>{})}
 const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['hapus','🗑 Hapus Data'],['log','📜 Log'],['sistem','🩺 Sistem']];
-function setDevTab(t){devTab=t;renderV()}
+function setDevTab(t){devBuka(t)}
+function devBuka(k){drw(0);kalReset();devTab=k;if(view==='developer'){renderAll();scrollTo(0,0)}else go('developer')}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
-function bukaKalenderNas(){guard(async()=>{await muatKalNas();devTab='kalender';renderV()})}
+function bukaKalenderNas(){drw(0);kalReset();devTab='kalender';if(view!=='developer')return go('developer');guard(async()=>{await muatKalNas();renderAll();scrollTo(0,0)})}
+let kalMode=false,kalSel=new Set();
+function kalReset(){kalMode=false;kalSel.clear()}
+function kalRender(){const y=window.scrollY;renderV();window.scrollTo(0,y)}
+function kalMulaiHapus(){kalMode=true;kalSel.clear();renderV()}
+function kalBatal(){kalReset();renderV()}
+function kalPilih(t,on){on?kalSel.add(t):kalSel.delete(t);kalRender()}
+function kalPilihSemua(on){(S.devKal||[]).forEach(r=>on?kalSel.add(r.tanggal):kalSel.delete(r.tanggal));kalRender()}
+function kalPilihBulan(b,on){(S.devKal||[]).filter(r=>r.tanggal.slice(0,7)===b).forEach(r=>on?kalSel.add(r.tanggal):kalSel.delete(r.tanggal));kalRender()}
+async function kalHapusTerpilih(){
+ const ada=new Set((S.devKal||[]).map(r=>r.tanggal)),ts=[...kalSel].filter(t=>ada.has(t)).sort();
+ if(!ts.length)return;
+ const semua=ts.length===ada.size,daftar=ts.slice(0,8).map(t=>'- '+fmt(t)).join('\n')+(ts.length>8?'\n... dan '+(ts.length-8)+' tanggal lainnya':'');
+ if(!await konfirmasi('Hapus '+ts.length+' libur nasional terpilih'+(semua?' (SELURUH daftar)':'')+'?\n\n'+daftar+'\n\nBerlaku untuk semua sekolah dan tidak bisa dikembalikan.',{judul:'Hapus libur nasional terpilih',ya:'Hapus '+ts.length+' tanggal',bahaya:1}))return;
+ guard(async()=>{let ok=0;const gagal=[];
+  for(let i=0;i<ts.length;i+=5){const bagian=ts.slice(i,i+5),hs=await Promise.allSettled(bagian.map(t=>dbq(db.rpc('libur_nasional_hapus',{p_tanggal:t}))));hs.forEach((h,k)=>{if(h.status==='fulfilled')ok++;else gagal.push(bagian[k])})}
+  kalSel.clear();if(gagal.length)gagal.forEach(t=>kalSel.add(t));else kalMode=false;
+  await muatKalNas();renderV();
+  if(gagal.length)toast(ok+' dihapus, '+gagal.length+' gagal. Tanggal yang gagal tetap tercentang, coba lagi.',false);else toast(ok+' libur nasional dihapus')})}
 function devKalender(){
- const rows=S.devKal||[];let last='';
- const body=rows.map((r,i)=>{const bl=r.tanggal.slice(0,7);let h='';if(bl!==last){last=bl;h=`<tr><td colspan="4" style="background:#eef7f1;font-weight:800">${fmtB(bl)}</td></tr>`}
-  return h+`<tr><td>${i+1}</td><td>${fmt(r.tanggal)} <span class="mu">${HR[wd(r.tanggal)]}</span></td><td>${esc(r.keterangan||'')}</td><td><button class="btn soft sm" onclick="ubahLiburNas('${r.tanggal}')">Ubah</button> <button class="btn sm danger" onclick="hapusLiburNas('${r.tanggal}')">Hapus</button></td></tr>`}).join('');
- return `<div class="panel"><div class="ph">📅 Kalender Libur Nasional <span class="mu">${rows.length} tanggal</span> <button class="btn success sm" onclick="tambahLiburNas()">＋ Libur nasional</button> <button class="btn soft sm" onclick="unduhTemplateLibur(this)">⬇ Template (XLSX)</button> <button class="btn orange sm" onclick="document.getElementById('imporLiburFile').click()">⬆ Impor (XLSX)</button><input type="file" id="imporLiburFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden onchange="imporLiburDipilih(this)"></div><div class="pb"><div class="note">Berlaku untuk semua sekolah dan semua kelas. Impor XLSX mengganti seluruh daftar ini. Tombol Ubah dan Hapus mengubah satu tanggal. Tanggal yang sudah lewat dihapus otomatis setiap tengah malam. Perubahan untuk hari ini baru tercermin di absensi pada penyegaran libur berikutnya.</div>${tab(['No','Tanggal','Keterangan','Aksi'],body,'Belum ada libur nasional. Tambah satu per satu atau impor dari XLSX.')}</div></div>`}
+ const rows=S.devKal||[],n=kalSel.size,semua=rows.length>0&&rows.every(r=>kalSel.has(r.tanggal));let last='';
+ const bln={};rows.forEach(r=>{const b=r.tanggal.slice(0,7);(bln[b]=bln[b]||[]).push(r.tanggal)});
+ const body=rows.map((r,i)=>{const bl=r.tanggal.slice(0,7);let h='';if(bl!==last){last=bl;const pb=kalMode?`<input type="checkbox" ${bln[bl].every(t=>kalSel.has(t))?'checked':''} onchange="kalPilihBulan('${bl}',this.checked)" style="margin-right:8px">`:'';h=`<tr><td colspan="${kalMode?5:4}" style="background:#eef7f1;font-weight:800">${pb}${fmtB(bl)}</td></tr>`}
+  const cb=kalMode?`<td><input type="checkbox" ${kalSel.has(r.tanggal)?'checked':''} onchange="kalPilih('${r.tanggal}',this.checked)"></td>`:'';
+  const aksi=kalMode?'<span class="mu">-</span>':`<button class="btn soft sm" onclick="ubahLiburNas('${r.tanggal}')">Ubah</button> <button class="btn sm danger" onclick="hapusLiburNas('${r.tanggal}')">Hapus</button>`;
+  return h+`<tr>${cb}<td>${i+1}</td><td>${fmt(r.tanggal)} <span class="mu">${HR[wd(r.tanggal)]}</span></td><td>${esc(r.keterangan||'')}</td><td>${aksi}</td></tr>`}).join('');
+ const head=kalMode?['<input type="checkbox" '+(semua?'checked':'')+' onchange="kalPilihSemua(this.checked)">','No','Tanggal','Keterangan','Aksi']:['No','Tanggal','Keterangan','Aksi'];
+ const aksiHead=kalMode
+  ?`<button class="btn danger sm" ${n?'':'disabled'} onclick="kalHapusTerpilih()">🗑 Hapus terpilih (${n})</button> <button class="btn soft sm" onclick="kalBatal()">✖ Batal</button>`
+  :`<button class="btn success sm" onclick="tambahLiburNas()">＋ Libur nasional</button> <button class="btn soft sm" onclick="unduhTemplateLibur(this)">⬇ Template (XLSX)</button> <button class="btn orange sm" onclick="document.getElementById('imporLiburFile').click()">⬆ Impor (XLSX)</button> <button class="btn danger sm" ${rows.length?'':'disabled'} onclick="kalMulaiHapus()">🗑 Hapus banyak</button>`;
+ const bar=kalMode?`<div class="tb" style="margin-bottom:8px"><button class="btn soft sm" onclick="kalPilihSemua(${!semua})">${semua?'☐ Kosongkan pilihan':'☑ Pilih semua ('+rows.length+')'}</button><span class="mu">${n} dari ${rows.length} tanggal dipilih</span></div>`:'';
+ return `<div class="panel"><div class="ph">📅 Kalender Libur Nasional <span class="mu">${rows.length} tanggal</span> ${aksiHead}<input type="file" id="imporLiburFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden onchange="imporLiburDipilih(this)"></div><div class="pb"><div class="note">Berlaku untuk semua sekolah dan semua kelas. Impor XLSX mengganti seluruh daftar ini. Tombol Ubah dan Hapus mengubah satu tanggal; tombol Hapus banyak dipakai untuk mencentang beberapa tanggal (atau semuanya) lalu menghapusnya sekaligus. Tanggal yang sudah lewat dihapus otomatis setiap tengah malam. Perubahan untuk hari ini baru tercermin di absensi pada penyegaran libur berikutnya.</div>${bar}${tab(head,body,'Belum ada libur nasional. Tambah satu per satu atau impor dari XLSX.')}</div></div>`}
 function tambahLiburNas(){form('Tambah Libur Nasional',[{k:'tgl',l:'Mulai tanggal',t:'date',v:TODAY},{k:'sampai',l:'Sampai tanggal (kosongkan bila satu hari)',t:'date'},{k:'ket',l:'Keterangan (contoh: Cuti bersama Idulfitri)'}],async v=>{if(!v.tgl)throw new Error('Pilih tanggal mulai');if(v.sampai&&v.sampai<v.tgl)throw new Error('Tanggal akhir sebelum tanggal mulai');const r=await dbq(db.rpc('libur_nasional_simpan',{p_mulai:v.tgl,p_sampai:v.sampai||v.tgl,p_keterangan:v.ket}));await muatKalNas();renderV();toast('Tersimpan: tambah '+r.tambah+', ubah '+r.ubah)})}
 function ubahLiburNas(t){const r=(S.devKal||[]).find(x=>x.tanggal===t);if(!r)return;form('Ubah Libur Nasional',[{k:'tgl',l:'Tanggal',t:'date',v:t},{k:'ket',l:'Keterangan',v:r.keterangan||''}],async v=>{if(!v.tgl)throw new Error('Pilih tanggal');await dbq(db.rpc('libur_nasional_ubah',{p_lama:t,p_baru:v.tgl,p_keterangan:v.ket}));await muatKalNas();renderV();toast('Libur nasional diperbarui')})}
 async function hapusLiburNas(t){if(!await konfirmasi('Hapus libur nasional '+fmt(t)+'?',{judul:'Hapus libur nasional',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.rpc('libur_nasional_hapus',{p_tanggal:t}));await muatKalNas();renderV();toast('Libur nasional dihapus')})}
-function segarDev(){guard(async()=>{await muatDev();renderV();toast('Data diperbarui')})}
-V.developer=()=>{const nm=(S.devPend||[]).length+(S.devNomor||[]).length;
- const tabs=DEVTAB.map(([k,l])=>`<button class="btn ${devTab===k?'success':'soft'} sm" onclick="setDevTab('${k}')">${l}${k==='setuju'&&nm?` <span class="badge Belum">${nm}</span>`:''}</button>`).join('');
- const isi={ringkas:devRingkas,setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,hapus:devHapus,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]();
- return `<div class="panel"><div class="ph">🛠 Developer <button class="btn soft sm" onclick="segarDev()">↻ Muat ulang</button> <button class="btn ${devTab==='kalender'?'success':'orange'} sm" onclick="bukaKalenderNas()">📅 Kalender nasional</button></div><div class="pb"><div class="tb" style="flex-wrap:wrap;gap:6px">${tabs}</div></div></div>${isi}`};
+function segarDev(){drw(0);guard(async()=>{await muatDev();renderV();toast('Data diperbarui')})}
+V.developer=()=>{if(devTab==='ringkas')devTab='setuju';
+ return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,hapus:devHapus,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
+function renderNavDev(){
+ const nm=(S.devPend||[]).length+(S.devNomor||[]).length,bd=nm?` <span class="badge Belum">${nm}</span>`:'';
+ const itm=(on,fn,ic,lb,ex)=>`<button class="${on?'on':''}" onclick="${fn}"><span>${ic}</span>${lb}${ex||''}</button>`,dv=k=>view==='developer'&&devTab===k;
+ let h=itm(view==='dashboard',"go('dashboard')",'⌂','Dashboard');
+ DEVTAB.filter(x=>x[0]!=='ringkas').forEach(([k,l])=>{const n=l.indexOf(' ');h+=itm(dv(k),`devBuka('${k}')`,l.slice(0,n),l.slice(n+1),k==='setuju'?bd:'')});
+ h+=itm(dv('kalender'),'bukaKalenderNas()','📅','Kalender Nasional');
+ h+=itm(view==='profil',"go('profil')",'👤','Profil Saya');
+ h+=itm(false,'segarDev()','↻','Muat Ulang');
+ $('#sn').innerHTML=h;$('#dn').innerHTML=h;
+ $('#bn').innerHTML=itm(view==='dashboard',"go('dashboard')",'⌂','Dashboard')+itm(dv('setuju'),"devBuka('setuju')",'✅','Persetujuan',bd)+itm(dv('sekolah'),"devBuka('sekolah')",'🏫','Sekolah')+itm(dv('simpan'),"devBuka('simpan')",'💾','Penyimpanan')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`}
+function devNotif(){
+ const L=[],pd=(S.devPend||[]).length,pn=(S.devNomor||[]).length,al=S.devAlpa;
+ const kartu=(k,ic,j,isi,tb)=>`<div class="dnt dnt-${k}"><i>${ic}</i><div class="dnt-n"><b>${j}</b><p>${isi}</p>${tb||''}</div></div>`;
+ const libur=(S.devKal||[]).find(r=>r.tanggal===TODAY);
+ if(libur)L.push(kartu('l','🇮🇩','Hari ini libur nasional',esc(libur.keterangan||'Libur nasional')+' - '+fmt(TODAY)+'.<br>Berlaku untuk semua sekolah. Sekolah yang tetap masuk dapat memilih Ya, masuk di menu Absensi.','<button class="btn soft sm" onclick="bukaKalenderNas()">📅 Lihat Kalender Nasional</button>'));
+ if(pd+pn){const a=[];if(pd)a.push(pd+' pendaftaran sekolah baru');if(pn)a.push(pn+' permintaan nomor WhatsApp hilang');L.push(kartu('w','✅','Menunggu persetujuan',a.join(' dan ')+' perlu diperiksa.','<button class="btn success sm" onclick="devBuka(\'setuju\')">Buka Persetujuan</button>'))}
+ if(al&&al.error)L.push(kartu('e','⚠️','Status Alpa Otomatis gagal dimuat',esc(al.error)+'<br>Pastikan skrip SQL langkah 6 sudah dijalankan.','<button class="btn soft sm" onclick="devBuka(\'alpa\')">⏰ Buka Alpa Otomatis</button>'));
+ else if(al){const er=al.map(x=>({x,v:statusAlpa(x)})).filter(o=>o.v[0]==='err');if(er.length)L.push(kartu('e','⏰','Alpa Otomatis error ('+er.length+' sekolah)',er.slice(0,3).map(o=>'<b style="display:inline">'+esc(o.x.nama)+'</b>: '+esc(o.v[2])).join('<br>')+(er.length>3?'<br>dan '+(er.length-3)+' sekolah lainnya.':''),'<button class="btn soft sm" onclick="devBuka(\'alpa\')">⏰ Buka Alpa Otomatis</button>'))}
+ const ce=chk&&chk.r?chk.r.filter(x=>x[0]==='err').length:0;
+ if(ce)L.push(kartu('e','🩺','Pemeriksaan sistem menemukan masalah',ce+' pemeriksaan gagal pada pengecekan terakhir ('+esc(chk.t)+').','<button class="btn soft sm" onclick="devBuka(\'sistem\')">🩺 Buka Pemeriksaan Sistem</button>'));
+ return `<div class="dnt-h">🔔 Pemberitahuan <span>${L.length?L.length+' perlu perhatian':'Tidak ada yang mendesak'}</span></div>`+(L.length?L.join(''):kartu('ok','🌿','Semuanya aman','Tidak ada persetujuan tertunda, error, maupun libur nasional hari ini.'))}
+function devDashboard(){
+ const p=PROFIL||{},u=S.pfs||{},nm=(S.devPend||[]).length+(S.devNomor||[]).length;
+ const row=(l,v)=>`<div class="mu">${l}</div><div style="word-break:break-word"><b>${v||'<span class="mu">-</span>'}</b></div>`;
+ return `<div class="hero"><div><h1>Halo, ${esc(meNama||'Developer')} 👋🏻<br>Dashboard Developer</h1><p>${fmt(TODAY)}</p></div><i>🛠</i></div>${devNotif()}<div class="dnt-h">📊 Ringkasan</div>${devRingkas()}
+<div class="panel"><div class="ph">👤 Profil Saya</div><div class="pb"><div style="display:grid;grid-template-columns:110px 1fr;gap:10px 12px;align-items:start">${row('Nama lengkap',esc(p.nama||''))}${row('Username',esc(p.username||''))}${row('Peran',esc(role||''))}${row('Email akun',esc(u.email||''))}${row('Terakhir masuk',u.last_sign_in_at?esc(waktuId(u.last_sign_in_at)):'')}</div><div class="tb" style="margin-top:12px"><button class="btn success" onclick="go('profil')">👤 Profil lengkap</button><button class="btn soft" onclick="editProfilSaya()">✏️ Ubah profil</button></div></div></div>`}
 function devRingkas(){const sk=S.devSek||[],ak=sk.filter(x=>x.status==='aktif').length,nm=(S.devPend||[]).length+(S.devNomor||[]).length,gr=(S.devGuru||[]).filter(g=>g.role!=='developer').length,sw=sk.reduce((a,x)=>a+(x.jml_siswa||0),0);
- return `<div class="panel"><div class="pb"><div class="cards"><div class="card stat"><b>${ak}</b>Sekolah aktif</div><div class="card stat"><b>${nm}</b>Menunggu persetujuan</div><div class="card stat"><b>${gr}</b>Guru</div><div class="card stat"><b>${sw}</b>Siswa aktif</div></div>${nm?'<div class="note" style="margin-top:12px">Ada permintaan yang menunggu. Buka tab Persetujuan.</div>':''}</div></div>`}
+ return `<div class="panel"><div class="pb"><div class="cards"><div class="card stat"><b>${ak}</b>Sekolah aktif</div><div class="card stat"><b>${nm}</b>Menunggu persetujuan</div><div class="card stat"><b>${gr}</b>Guru</div><div class="card stat"><b>${sw}</b>Siswa aktif</div></div></div></div>`}
 function devSetuju(){const pd=S.devPend||[],pn=S.devNomor||[],gr=(S.devGuru||[]).filter(g=>g.role!=='developer');
  const tgl=x=>fmt(new Date(x).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}));
  const opsi=q=>{const kt=String(q.nama||'').toLowerCase().split(' ')[0],ul=q.username_lama||'';const cocok=gr.filter(g=>(ul&&g.username===ul)||(kt.length>2&&String(g.nama||'').toLowerCase().includes(kt)));const urut=[...cocok,...gr.filter(g=>!cocok.includes(g))];const pre=gr.find(g=>ul&&g.username===ul);
@@ -1552,7 +1610,7 @@ function beritahuHapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if
    ld(1,'Mengirim pemberitahuan ke '+x.kepala_nama+'...');
    try{const j=await apiDev({aksi:'beritahu_hapus_sekolah',sekolah_id:sid,batas});
     if(!j||!j.terkirim)throw new Error('Pemberitahuan gagal terkirim. Periksa perangkat Fonnte Developer');
-    await muatDev();devTab='sekolah';renderV();toast('✅ Pemberitahuan berhasil dikirim ke '+x.kepala_nama)}
+    await muatDev();devTab='sekolah';renderAll();toast('✅ Pemberitahuan berhasil dikirim ke '+x.kepala_nama)}
    catch(e){toast((e&&e.message)||String(e),false)}
    finally{ld(0)}},150)});$('#ms').textContent='Kirim'}
 function hapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if(!x)return;
