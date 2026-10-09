@@ -431,6 +431,17 @@ async function ambilLibur(dari, sampai) {
     console.error('Tabel libur_tanggal tidak terbaca, libur tanggal diabaikan:', e.message);
   }
 
+  // Libur nasional: satu tabel `libur_nasional` (tanggal, keterangan) untuk semua sekolah dan semua kelas.
+  try {
+    const rows = await sb(`libur_nasional?tanggal=gte.${dari}&tanggal=lte.${sampai}&select=tanggal`);
+    for (const r of (rows || [])) {
+      const t = String(r.tanggal || '').slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(t)) tanggalLibur.umum.add(t);
+    }
+  } catch (e) {
+    console.error('Tabel libur_nasional tidak terbaca, libur nasional diabaikan:', e.message);
+  }
+
   return { mingguan, tanggalUmum: tanggalLibur.umum, tanggalKelas: tanggalLibur.kelas };
 }
 
