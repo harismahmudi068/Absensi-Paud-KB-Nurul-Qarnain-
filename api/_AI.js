@@ -38,6 +38,13 @@ ATURAN WAKTU:
 - Contoh: "izin Senin, Rabu dan Kamis tapi Selasa masuk" → hanya Senin, Rabu, Kamis.
 - Gabungkan hari dan tanggal yang merujuk waktu yang sama.
 - Bersihkan simbol WhatsApp (*, _, ~).
+- Tanggal bisa ditulis dengan angka. Urutannya selalu HARI/BULAN/TAHUN (kebiasaan Indonesia), bukan bulan/hari:
+  "08/10/2026", "8-10-2026", "08.10.26", "8/10" → tanggal 8, bulan 10.
+  Tahun 2 digit ("26") berarti 2026. Jika tahun tidak ditulis, kosongkan tahun.
+- Isi "bulan" hanya jika pesan menyebutnya (nama bulan seperti "Oktober", "okt", atau tanggal berbentuk angka seperti di atas). Jika tidak disebut, kosongkan bulan; jangan menebak.
+- Tanggal yang ditulis jelas tetap tipe "tanggal" dan diisi lengkap walaupun sudah lewat dari tanggal_hari_ini; sistem yang menilai.
+- Ungkapan waktu lampau tanpa tanggal jelas (mis. "kemarin", "minggu lalu") yang DILAPORKAN sebagai tidak masuk → tipe "lampau".
+- Jika waktu lampau hanya konteks (mis. "kemarin demam, hari ini belum bisa masuk"), jangan buat entri lampau; catat hanya waktu yang masih berlaku.
 
 ATURAN NAMA:
 - daftar_nama hanya berisi nama anak yang benar-benar disebut dalam pesan.
@@ -131,7 +138,7 @@ function adaKemiripan(namaPesan, siswa) {
 
 // Merapikan 1 penanda waktu (hari pertama maupun "sampai"). Mengembalikan null jika tidak valid.
 function rapikanPenanda(w) {
-  const tipe = ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal'].includes(w?.tipe) ? w.tipe : null;
+  const tipe = ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal', 'lampau'].includes(w?.tipe) ? w.tipe : null;
   if (!tipe) return null;
 
   const hasil = { tipe };
@@ -307,7 +314,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
         items: {
           type: Type.OBJECT,
           properties: {
-            tipe: { type: Type.STRING, enum: ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal'] },
+            tipe: { type: Type.STRING, enum: ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal', 'lampau'] },
             nama_hari: { type: Type.STRING },
             pekan_depan: { type: Type.BOOLEAN },
             tanggal: { type: Type.INTEGER },
