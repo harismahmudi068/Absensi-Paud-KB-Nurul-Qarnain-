@@ -139,10 +139,10 @@ async function kirimFonnte(token, nomorTujuan, teks) {
 // ============================================================
 // UPDATE STATUS NOTIFIKASI
 // ============================================================
-async function updateNotifikasi(id, data) {
+async function updateNotifikasi(id, data, tabel = 'notifikasi_alpa') {
 
   await supabase(
-    `notifikasi_alpa?id=eq.${encodeURIComponent(id)}`,
+    `${tabel}?id=eq.${encodeURIComponent(id)}`,
     {
       method: 'PATCH',
       body: data,
@@ -183,6 +183,8 @@ module.exports = async (req, res) => {
 
 
   let id = null;
+  // Endpoint yang sama dipakai untuk notifikasi alpa dan notifikasi libur.
+  let tabel = 'notifikasi_alpa';
 
   try {
 
@@ -210,6 +212,8 @@ module.exports = async (req, res) => {
     // DATA DARI SUPABASE
     // --------------------------------------------------------
     const body = req.body || {};
+
+    tabel = body.jenis === 'libur' ? 'notifikasi_libur' : 'notifikasi_alpa';
 
     id = body.id
       ? String(body.id)
@@ -246,7 +250,7 @@ module.exports = async (req, res) => {
     // CEK DATA NOTIFIKASI DI SUPABASE
     // --------------------------------------------------------
     const data = await supabase(
-      `notifikasi_alpa?id=eq.${encodeURIComponent(id)}&select=id,sekolah_id,tanggal,pesan,status,percobaan,terkirim,terakhir_error`
+      `${tabel}?id=eq.${encodeURIComponent(id)}&select=id,sekolah_id,tanggal,pesan,status,percobaan,terkirim,terakhir_error`
     );
 
 
@@ -289,7 +293,7 @@ module.exports = async (req, res) => {
       status: 'processing',
       percobaan,
       terakhir_error: null
-    });
+    }, tabel);
 
 
     // --------------------------------------------------------
@@ -324,7 +328,7 @@ module.exports = async (req, res) => {
       status: 'sent',
       terkirim: new Date().toISOString(),
       terakhir_error: null
-    });
+    }, tabel);
 
 
     return res.status(200).json({
@@ -355,7 +359,7 @@ module.exports = async (req, res) => {
           terakhir_error: String(
             error.message || error
           ).slice(0, 500)
-        });
+        }, tabel);
 
       } catch (updateError) {
 
