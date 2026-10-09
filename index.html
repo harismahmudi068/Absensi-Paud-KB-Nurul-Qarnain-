@@ -615,7 +615,7 @@ async function masukDeveloper(){try{SEK=null;role='Developer';meNama=PROFIL.nama
   terapNama();$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');view='developer';pasangBanner();await go('developer')}
  catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
 async function masukSekolah(m){try{SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
-  S.absen={};S.pesan=[];RHS=null;CFG_SID=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;attKelas='';kk='';rk='';lo='';q='';gQ='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
+  S.absen={};S.pesan=[];RHS=null;CFG_SID=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;attKelas='';scanKelas='';kk='';rk='';lo='';q='';gQ='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
   KONFIG_NANTI=false;await muatDasar();if(adalahKepala()||role==='Developer')muatRahasia().then(()=>{if(view==='dashboard'&&!$('#ap').classList.contains('hid'))renderV()});$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');
   const bv=sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView');view=(bv&&allowed(bv))?bv:'dashboard';pasangBanner();await go(view);if(adalahKepala())setTimeout(sapaAwal,300)}
  catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
@@ -987,9 +987,11 @@ function saveAtt(){guard(async()=>{const before=A(attDate),ups=[],del=[],now=new
  await muatRange(attDate,attDate);draft=null;toast(ups.length||del.length?'Absensi tersimpan':'Tidak ada perubahan');renderV()})}
 function markLibur(){if(!attKelas)return toast(PK,false);guard(async()=>{const siswa=kelasTerpilih(attKelas),now=new Date().toISOString();if(!siswa.length)return toast('Tidak ada siswa pada kelas yang dipilih',false);const rows=siswa.map(s=>({siswa_id:s.id,tanggal:attDate,status:'libur',cara:'manual',catatan:null,jam_datang:null,diubah:now,diubah_oleh:me}));await dbq(db.from('absensi').upsert(rows,{onConflict:'siswa_id,tanggal'}));if(S.absen[attDate])siswa.forEach(s=>delete S.absen[attDate][s.id]);S.absen[attDate]=S.absen[attDate]||{};siswa.forEach(s=>{S.absen[attDate][s.id]={st:'Libur',cara:'manual',cat:'',jam:'',iso:null}});draft=null;Object.keys(okL).filter(x=>x.startsWith(attDate+'|')).forEach(x=>delete okL[x]);Object.keys(liburPrompted).filter(x=>x.startsWith(attDate+'|')).forEach(x=>delete liburPrompted[x]);toast(siswa.length+' siswa ditandai Libur');await go('dashboard')})}
 /* ---------- scan ---------- */
-const histHTML=()=>{const h=Object.entries(A(TODAY)).filter(e=>e[1].cara==='scan').map(e=>({s:S.siswa.find(x=>x.id==e[0]),r:e[1]})).filter(x=>x.s).sort((a,b)=>(b.r.jam||'').localeCompare(a.r.jam||''));
+let scanKelas='';
+const histHTML=()=>{const h=Object.entries(A(TODAY)).filter(e=>e[1].cara==='scan').map(e=>({s:S.siswa.find(x=>x.id==e[0]),r:e[1]})).filter(x=>x.s&&(!scanKelas||scanKelas==='*'||x.s.kelas===scanKelas)).sort((a,b)=>(b.r.jam||'').localeCompare(a.r.jam||''));
  return `<div class="ph">🕘 Riwayat Scan Hari Ini <span class="mu">${fmt(TODAY)} - ${h.length} anak</span></div><div class="pb">${tab(['Jam','Anak','Kelas','Status'],h.map(x=>`<tr><td><b>${esc(x.r.jam||'-')}</b></td><td>${esc(x.s.pan)}<div class="mu">${esc(x.s.nama)}</div></td><td>${esc(x.s.kelas)}</td><td>${badge(x.r.st)}</td></tr>`).join(''))}</div>`};
-V.scan=()=>`<div class="panel"><div class="ph">📷 Scan Kartu</div><div class="pb"><div class="rw" id="rw"><div id="reader"></div><div class="fb" id="fb"></div><button class="flip" onclick="balikKamera()" title="Balik kamera">🔄</button></div><div class="tb" style="justify-content:center"><button class="btn success" id="bs" style="min-width:180px" onclick="toggleScan()">Mulai scan</button></div><div id="hasil" style="margin-top:10px;font-weight:700;text-align:center"></div></div></div><div class="panel" id="hist">${histHTML()}</div>`;
+V.scan=()=>`<div class="panel"><div class="ph">📷 Scan Kartu</div><div class="pb"><div class="tb" style="justify-content:center">${cpick('scanKelasPick','kelas',scanKelas,S.kelas.map(k=>({value:k.nama,label:k.nama})).concat([{value:'*',label:'Semua kelas'}]),'setScanKelas','Pilih kelas')}</div>${scanKelas?'':PKH}<div class="rw" id="rw"><div id="reader"></div><div class="fb" id="fb"></div><button class="flip" onclick="balikKamera()" title="Balik kamera">🔄</button></div><div class="tb" style="justify-content:center"><button class="btn success" id="bs" style="min-width:180px" onclick="toggleScan()">Mulai scan</button></div><div id="hasil" style="margin-top:10px;font-weight:700;text-align:center"></div></div></div><div class="panel" id="hist">${histHTML()}</div>`;
+async function setScanKelas(v){document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));if((v||'')===scanKelas)return;await stopScan();scanKelas=v||'';liburPrompted={};renderV()}
 let AC=null;const unlockAC=()=>{try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}};
 function beep(ok){try{unlockAC();const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=ok?1000:380;g.gain.value=.25;o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(ok?.12:.8))}catch(e){}}
 const CEK='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff" fill-opacity=".92"/><path d="M28 52 L44 68 L73 34"/></svg>',SIL='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff" fill-opacity=".92"/><path d="M33 33 L67 67 M67 33 L33 67"/></svg>';let fbT=null;
@@ -997,7 +999,8 @@ function tanda(ok){const f=$('#fb');if(!f)return;clearTimeout(fbT);f.className='
 function hasil(m,ok){const h=$('#hasil');if(!h)return;h.textContent=m;h.style.color=ok?'var(--g)':'var(--rd)';beep(ok);tanda(ok);if(navigator.vibrate)navigator.vibrate(ok?120:[80,60,80])}
 async function mulaiScan(){
  if(scanner)await stopScan('restart');
- if(!await cekLiburSebelumAbsensi('',TODAY))return;
+ if(!scanKelas)return toast(PK,false);
+ if(!await cekLiburSebelumAbsensi(scanKelas,TODAY))return;
  scanner=new Html5Qrcode('reader');
  try{await scanner.start({facingMode:cam==='belakang'?'environment':'user'},{fps:10,qrbox:{width:220,height:220}},onScan,()=>{});$('#bs').textContent='Selesai scan';$('#rw').classList.add('on')}catch(e){scanner=null;toast('Kamera tidak bisa dibuka. Izinkan akses kamera untuk situs ini.',false)}}
 let scanUbah=[];
@@ -1008,6 +1011,7 @@ function toggleScan(){unlockAC();scanner?stopScan():mulaiScan()}
 function balikKamera(){cam=cam==='belakang'?'depan':'belakang';const l=$('#camlbl');if(l)l.textContent=cam;if(scanner)mulaiScan()}
 async function onScan(kode){const now=Date.now();if(busy||(kode===lastKode&&now-lastAt<4000))return;busy=true;lastKode=kode;lastAt=now;
  try{const s=S.siswa.find(x=>x.kode_qr===kode&&x.aktif);if(!s)return hasil('QR tidak dikenal atau siswa nonaktif.',false);
+  if(scanKelas&&scanKelas!=='*'&&s.kelas!==scanKelas)return hasil(`${s.pan} bukan siswa kelas ${scanKelas} (kelas ${s.kelas||'-'}).`,false);
   if(!await okLib(s.kelas,TODAY))return;
   const r=await dbq(db.from('absensi').select('*').eq('siswa_id',s.id).eq('tanggal',TODAY).maybeSingle()),ada=r?fromRow(r):null;
   if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat'))return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false);
