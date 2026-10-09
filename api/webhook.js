@@ -325,6 +325,13 @@ function tanggalValid(y, m, d) {
 // kelasId opsional: libur_tanggal dengan kelas_id tertentu hanya berlaku untuk kelas itu;
 // kelas_id kosong (null) berlaku untuk semua kelas.
 function hariSekolah(iso, libur, kelasId = null) {
+  // Pembatalan libur (tabel libur_batal) menang atas semua jenis libur.
+  // kelas_id = 0 berarti semua kelas; selain itu hanya kelas tersebut.
+  if (libur.batalSemua && libur.batalSemua.has(iso)) return true;
+  if (kelasId !== null && kelasId !== undefined && libur.batalKelas) {
+    const batal = libur.batalKelas.get(String(kelasId));
+    if (batal && batal.has(iso)) return true;
+  }
   if (libur.mingguan.has(indeksHari(iso))) return false;
   if (libur.tanggalUmum.has(iso)) return false;
   if (kelasId !== null && kelasId !== undefined) {
@@ -442,7 +449,26 @@ async function ambilLibur(dari, sampai) {
     console.error('Tabel libur_nasional tidak terbaca, libur nasional diabaikan:', e.message);
   }
 
-  return { mingguan, tanggalUmum: tanggalLibur.umum, tanggalKelas: tanggalLibur.kelas };
+  // Pembatalan libur: libur_batal (tanggal, kelas_id; kelas_id 0 = semua kelas).
+  const batalSemua = new Set();
+  const batalKelas = new Map();
+  try {
+    const rows = await sb(`libur_batal?sekolah_id=eq.${K().sekolahId}&tanggal=gte.${dari}&tanggal=lte.${sampai}&select=tanggal,kelas_id`);
+    for (const r of (rows || [])) {
+      const t = String(r.tanggal || '').slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) continue;
+      if (r.kelas_id === null || r.kelas_id === undefined || Number(r.kelas_id) === 0) batalSemua.add(t);
+      else {
+        const k = String(r.kelas_id);
+        if (!batalKelas.has(k)) batalKelas.set(k, new Set());
+        batalKelas.get(k).add(t);
+      }
+    }
+  } catch (e) {
+    console.error('Tabel libur_batal tidak terbaca, pembatalan libur diabaikan:', e.message);
+  }
+
+  return { mingguan, tanggalUmum: tanggalLibur.umum, tanggalKelas: tanggalLibur.kelas, batalSemua, batalKelas };
 }
 
 // Mengubah penanda waktu dari AI menjadi tanggal ISO. Mengembalikan null jika tidak bisa dihitung.
