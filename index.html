@@ -230,7 +230,7 @@ const hariIni=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'
 let TODAY=hariIni();const ST=['Hadir','Terlambat','Izin','Sakit','Alpa'],cap=s=>s.charAt(0).toUpperCase()+s.slice(1),low=s=>s.toLowerCase();
 const fmt=d=>{if(!d)return '';const p=d.split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]},fmtB=b=>{const p=b.split('-');return BLN[p[1]-1]+' '+p[0]},wd=d=>new Date(d+'T00:00:00').getDay();
 const dt=(type,v,fn,cl='')=>`<label class="input dt ${cl}"><span>${v?(type==='month'?fmtB(v):fmt(v)):'Pilih tanggal'}</span><input type="${type}" value="${v||''}" onchange="if(this.value){this.previousElementSibling.textContent=(this.type=='month'?fmtB:fmt)(this.value);${fn||''}}"></label>`;
-const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['kartu','Kartu','🪪','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
+const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['alumni','Alumni','🏅','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['kartu','Kartu','🪪','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah';
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
@@ -326,7 +326,7 @@ function terapNama(){const ada=!!(S.set&&S.set.nama_sekolah),n=ada?ns():'Sistem 
 async function muatDasar(){
  const [k,s,p,lm,lt,pr,nm,ln]=await Promise.all([dbq(db.from('kelas').select('*').eq('aktif',true).order('id')),dbq(db.from('siswa').select('*, siswa_wali(wali(no_wa))').order('nama')),muatGuruData(),dbq(db.from('libur_mingguan').select('hari')),dbq(db.from('libur_tanggal').select('*').order('mulai')),dbq(db.from('pengaturan').select('*').maybeSingle()),muatNomor(),dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal')).catch(()=>[])]);
  S.kelas=k.map(x=>({id:x.id,nama:x.nama,jam:(x.jam_masuk||'07:30').slice(0,5),wali:x.wali_profil_id||null,urutan:x.urutan==null?null:x.urutan,akhir:!!x.kelas_akhir}));const kn=id=>(S.kelas.find(x=>x.id===id)||{}).nama||'';
- S.siswa=s.map(x=>({id:x.id,nama:x.nama,pan:x.nama_panggilan,nisn:x.nisn||'',kelas:kn(x.kelas_id),kelas_id:x.kelas_id,aktif:x.aktif,kode_qr:x.kode_qr,wa:(x.siswa_wali||[]).map(w=>w.wali&&w.wali.no_wa).filter(Boolean)[0]||''}));
+ S.siswa=s.map(x=>({id:x.id,nama:x.nama,pan:x.nama_panggilan,nisn:x.nisn||'',kelas:kn(x.kelas_id),kelas_id:x.kelas_id,aktif:x.aktif,kode_qr:x.kode_qr,tgl:x.tgl_lahir||'',jk:x.jenis_kelamin||'',alamat:x.alamat||'',masuk:x.tahun_masuk||'',wa:(x.siswa_wali||[]).map(w=>w.wali&&w.wali.no_wa).filter(Boolean)[0]||''}));
  S.guru=p;S.nomor=nm||{};S.nasional=(ln||[]).map(x=>({tgl:x.tanggal,ket:x.keterangan||'Libur nasional'}));S.nasMap=new Map(S.nasional.map(x=>[x.tgl,x.ket]));S.mingguan=lm.map(x=>x.hari);S.libur=lt.map(x=>({id:x.id,tgl:x.mulai,sampai:x.sampai,ket:x.keterangan||'',kelas:x.kelas_id?kn(x.kelas_id):'',sumber:x.sumber||''}));await muatBatal();
  S.set=pr||{};S.set.jam=(S.set.alpa_jam||'10:00').slice(0,5);S.set.njam=(S.set.notif_libur_jam||'06:00').slice(0,5);terapNama()}
 const muatPesan=async()=>{S.pesan=(await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100))).map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek}))};
@@ -336,7 +336,7 @@ const muatProfil=async()=>{const [g,n]=await Promise.all([muatGuruData(),muatNom
 let RHS=null,izinKelola=null,izinExp=0;
 async function apiPengaturan(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/pengaturan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:CFG_SID||SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/pengaturan tidak ditemukan (404). Pastikan file api/pengaturan.js sudah di-deploy');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
 async function muatRahasia(){try{RHS=await apiPengaturan({aksi:'baca'})}catch(e){RHS={error:e.message||String(e)}}}
-const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>role==='Developer'?Promise.all([muatDev(),muatProfilSaya()]):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil()]),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan,kelola:()=>muatKelola()};
+const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>role==='Developer'?Promise.all([muatDev(),muatProfilSaya()]):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil()]),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan,kelola:()=>muatKelola(),alumni:()=>muatAlumni()};
 /* ---------- libur ---------- */
 const batalAda=(d,k)=>{const b=S.batal;if(!b||!b.size)return false;if(b.has(d+'|0'))return true;const kl=S.kelas.find(x=>x.nama===k);return !!kl&&b.has(d+'|'+kl.id)};
 async function muatBatal(){S.batal=new Set();try{const r=await dbq(db.from('libur_batal').select('tanggal,kelas_id'));(r||[]).forEach(x=>S.batal.add(x.tanggal+'|'+x.kelas_id))}catch(e){}}
@@ -896,13 +896,13 @@ V.siswa=()=>{
    ? `<button class="btn danger sm" ${ssel.size?'':'disabled'} onclick="hapusSiswaTerpilih()">🗑 Hapus terpilih (${ssel.size})</button><button class="btn soft sm" onclick="batalHapusSiswa()">✖ Batal</button>`
    : `<button class="btn danger sm" onclick="bukaHapusSiswa()">🗑 Hapus</button>`;
  const head=sHapusMode
-   ? ['<input type="checkbox" '+(all?'checked':'')+' onchange="pilihSemuaSiswa(this.checked)">','No','Nama','NISN','Kelas','WhatsApp Ortu','Status','Aksi']
-   : ['No','Nama','NISN','Kelas','WhatsApp Ortu','Status','Aksi'];
+   ? ['<input type="checkbox" '+(all?'checked':'')+' onchange="pilihSemuaSiswa(this.checked)">','No','Nama','NISN','Kelas','Tgl Lahir','JK','Alamat','Tahun Masuk','WhatsApp Ortu','Status','Aksi']
+   : ['No','Nama','NISN','Kelas','Tgl Lahir','JK','Alamat','Tahun Masuk','WhatsApp Ortu','Status','Aksi'];
  return `<div class="panel"><div class="ph">👥 Data Siswa <span class="tb tbgrid" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('siswa')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('siswa')">⬆ Impor XLSX</button><button class="btn success sm add" onclick="addSiswa()">+ Siswa</button></span></div><div class="pb"><div class="tb"><select class="select" onchange="sk=this.value;ssel.clear();renderV()">${kopt3(sk)}</select><input id="q" class="input grow search-smooth" placeholder="Cari nama atau NISN..." value="${esc(q)}" oninput="cariSiswaInput(this)"></div><div class="tb"><button class="btn success sm dl" onclick="unduhSiswa('pdf',this,sk||'*')">⬇ PDF</button><button class="btn sm dl pdf" onclick="unduhSiswa('xlsx',this,sk||'*')">⬇ XLSX</button></div><div class="note">File XLSX dapat diedit kembali dan dipisahkan menjadi <b>sheet per kelas</b>. Pilih <b>Semua kelas</b> untuk seluruh data. Tombol ini tersedia untuk semua guru.</div>${tab(head,'<tbody id="sb"></tbody>').replace('<tbody><tbody id="sb"></tbody></tbody>','<tbody id="sb">'+siswaRows()+'</tbody>')}</div></div>`;
 };
-function siswaRows(){if(!sk)return '<tr><td colspan="8" class="mu">'+PK+'</td></tr>';return S.siswa.filter(s=>(sk==='*'||s.kelas===sk)&&(s.nama.toLowerCase().includes(q.toLowerCase())||String(s.nisn||'').includes(q.trim()))).map((s,i)=>{
+function siswaRows(){if(!sk)return '<tr><td colspan="12" class="mu">'+PK+'</td></tr>';return S.siswa.filter(s=>(sk==='*'||s.kelas===sk)&&(s.nama.toLowerCase().includes(q.toLowerCase())||String(s.nisn||'').includes(q.trim()))).map((s,i)=>{
  const pilih=sHapusMode?`<td><input type="checkbox" ${ssel.has(s.id)?'checked':''} onchange="pilihSiswa(${s.id},this.checked)"></td>`:'';
- return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan)}</div></td><td>${esc(s.nisn||'-')}</td><td>${esc(s.kelas)}</td><td>${esc(s.wa)}</td><td>${s.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td><button class="btn sm soft" onclick="ubahSiswa(${s.id})">Ubah</button> <button class="btn sm ${s.aktif?'danger':'success'}" onclick="togSiswa(${s.id})">${s.aktif?'Nonaktifkan':'Aktifkan'}</button> <button class="btn sm danger" onclick="hapusSiswa(${s.id})">Hapus</button></td></tr>`;
+ return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan)}</div></td><td>${esc(s.nisn||'-')}</td><td>${esc(s.kelas)}</td><td>${tglDMY(s.tgl)||'-'}</td><td>${jkNama(s.jk)||'-'}</td><td>${esc(s.alamat||'-')}</td><td>${s.masuk||'-'}</td><td>${esc(s.wa)}</td><td>${s.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td><button class="btn sm soft" onclick="ubahSiswa(${s.id})">Ubah</button> <button class="btn sm ${s.aktif?'danger':'success'}" onclick="togSiswa(${s.id})">${s.aktif?'Nonaktifkan':'Aktifkan'}</button> <button class="btn sm danger" onclick="hapusSiswa(${s.id})">Hapus</button></td></tr>`;
 }).join('')}
 function cariSiswaInput(el){q=el.value;const tb=$('#sb');if(tb)tb.innerHTML=siswaRows();}
 function pilihSiswa(id,on){on?ssel.add(id):ssel.delete(id);renderV()}
@@ -910,12 +910,12 @@ function pilihSemuaSiswa(on){const shown=S.siswa.filter(s=>(sk==='*'||s.kelas===
 async function setWali(sid,wa){await dbq(db.from('siswa_wali').delete().eq('siswa_id',sid));if(!wa)return;const w=await dbq(db.from('wali').upsert({no_wa:wa},{onConflict:'no_wa'}).select().single());await dbq(db.from('siswa_wali').insert({siswa_id:sid,wali_id:w.id}))}
 const kid=n=>(S.kelas.find(k=>k.nama.toLowerCase()===String(n||'').trim().toLowerCase())||{}).id||null;
 function belumAdaKelas(){if(!kelola())return toast('Belum ada kelas. Minta Kepala Sekolah menambahkannya di menu Pengaturan',false);info('Belum ada kelas','<div style="text-align:center;padding:6px 4px"><div style="font-size:42px">🏫</div><p>Siswa harus dimasukkan ke dalam kelas. Tambahkan kelas terlebih dahulu.</p><button class="btn success" style="width:100%" onclick="closeM();addKelas()">+ Tambah Kelas</button><button class="btn soft" style="width:100%;margin-top:8px" onclick="lompatPengaturan(\'pnKelas\')">Buka Pengaturan Kelas</button></div>')}
-function addSiswa(){if(!S.kelas.length)return belumAdaKelas();form('Tambah Siswa',[{k:'nama',l:'Nama lengkap'},{k:'pan',l:'Nama panggilan'},{k:'nisn',l:'NISN (opsional)',t:'tel'},{k:'kelas',l:'Kelas',o:S.kelas.map(k=>k.nama)},{k:'wa',l:'WhatsApp orang tua (08...)',t:'tel'}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
+function addSiswa(){if(!S.kelas.length)return belumAdaKelas();form('Tambah Siswa',[{k:'nama',l:'Nama lengkap'},{k:'pan',l:'Nama panggilan'},{k:'nisn',l:'NISN (opsional)',t:'tel'},{k:'kelas',l:'Kelas',o:S.kelas.map(k=>k.nama)},{k:'wa',l:'WhatsApp orang tua (08...)',t:'tel'},{k:'tgl',l:'Tanggal lahir (opsional)',t:'date'},{k:'jk',l:'Jenis kelamin',o:['-','Laki-laki','Perempuan']},{k:'alamat',l:'Alamat (opsional)'},{k:'masuk',l:'Tahun masuk',t:'tel',v:TODAY.slice(0,4)}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
  const dup=nisn?S.siswa.find(x=>x.nisn===nisn):null;if(dup)throw new Error('NISN sudah digunakan oleh '+dup.nama);
- const s=await dbq(db.from('siswa').insert({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas)}).select().single());await setWali(s.id,normWA(v.wa));await muatDasar();toast('Siswa tersimpan');renderV()})}
-function ubahSiswa(id){const s=S.siswa.find(x=>x.id===id);form('Ubah Siswa',[{k:'nama',l:'Nama lengkap',v:s.nama},{k:'pan',l:'Nama panggilan',v:s.pan},{k:'nisn',l:'NISN (opsional)',t:'tel',v:s.nisn},{k:'kelas',l:'Kelas',o:S.kelas.map(k=>k.nama),v:s.kelas},{k:'wa',l:'WhatsApp orang tua',t:'tel',v:s.wa}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
+ const s=await dbq(db.from('siswa').insert({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas),...siswaExtra(v)}).select().single());await setWali(s.id,normWA(v.wa));await muatDasar();toast('Siswa tersimpan');renderV()})}
+function ubahSiswa(id){const s=S.siswa.find(x=>x.id===id);form('Ubah Siswa',[{k:'nama',l:'Nama lengkap',v:s.nama},{k:'pan',l:'Nama panggilan',v:s.pan},{k:'nisn',l:'NISN (opsional)',t:'tel',v:s.nisn},{k:'kelas',l:'Kelas',o:S.kelas.map(k=>k.nama),v:s.kelas},{k:'wa',l:'WhatsApp orang tua',t:'tel',v:s.wa},{k:'tgl',l:'Tanggal lahir (opsional)',t:'date',v:s.tgl},{k:'jk',l:'Jenis kelamin',o:['-','Laki-laki','Perempuan'],v:jkNama(s.jk)||'-'},{k:'alamat',l:'Alamat (opsional)',v:s.alamat},{k:'masuk',l:'Tahun masuk',t:'tel',v:String(s.masuk||'')}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
  const dup=nisn?S.siswa.find(x=>x.id!==id&&x.nisn===nisn):null;if(dup)throw new Error('NISN sudah digunakan oleh '+dup.nama);
- await dbq(db.from('siswa').update({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas)}).eq('id',id));if(normWA(v.wa)!==s.wa)await setWali(id,normWA(v.wa));await muatDasar();toast('Data siswa diperbarui');renderV()})}
+ await dbq(db.from('siswa').update({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas),...siswaExtra(v)}).eq('id',id));if(normWA(v.wa)!==s.wa)await setWali(id,normWA(v.wa));await muatDasar();toast('Data siswa diperbarui');renderV()})}
 function togSiswa(id){guard(async()=>{const s=S.siswa.find(x=>x.id===id);await dbq(db.from('siswa').update({aktif:!s.aktif}).eq('id',id));s.aktif=!s.aktif;renderV()})}
 /* ---------- guru ---------- */
 let gsel=new Set();
@@ -1130,10 +1130,10 @@ async function unduhKartu(btn){if(!setUnduhBusy(btn,true,'Membuat PDF kartu...')
 /* ---------- download data siswa ---------- */
 function siswaRowsDownload(k){return act().filter(s=>!k||k==='*'||s.kelas===k).sort((a,b)=>String(a.kelas).localeCompare(String(b.kelas),'id')||String(a.nama).localeCompare(String(b.nama),'id'))}
 function namaSheetSiswa(n,used){let x=String(n||'Kelas').replace(/[\\\/:*?\[\]]/g,' ').trim()||'Kelas';x=x.slice(0,31);let b=x,i=2;while(used.has(x)){const suf=' '+i++;x=b.slice(0,31-suf.length)+suf}used.add(x);return x}
-function isiSheetSiswa(wb,list,nama){const ws=wb.addWorksheet(nama),ln={style:'thin',color:{argb:'FFCFD9D3'}},head=['Nama Lengkap','Nama Panggilan','NISN (Opsional)','Kelas','WhatsApp Ortu'];ws.columns=[{width:28},{width:18},{width:18},{width:28},{width:20}];ws.addRow(head);ws.getRow(1).height=24;ws.getRow(1).eachCell(c=>{c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B3A'}};c.alignment={horizontal:'center',vertical:'middle'};c.border={top:ln,left:ln,bottom:ln,right:ln}});list.forEach(s=>{const r=ws.addRow([s.nama,s.pan||'',s.nisn||'',s.kelas||'',s.wa?('0'+String(s.wa).replace(/^62/,'')): '']);r.eachCell(c=>{c.font={name:'Arial',size:10};c.border={top:ln,left:ln,bottom:ln,right:ln};c.alignment={vertical:'middle'}});r.getCell(3).numFmt='@'});ws.getColumn(3).numFmt='@';ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'E'+Math.max(1,list.length+1)};return ws}
+function isiSheetSiswa(wb,list,nama){const ws=wb.addWorksheet(nama),ln={style:'thin',color:{argb:'FFCFD9D3'}},head=['Nama Lengkap','Nama Panggilan','NISN (Opsional)','Kelas','WhatsApp Ortu','Tanggal Lahir (dd/mm/yyyy)','Jenis Kelamin','Alamat','Tahun Masuk (Opsional)'];ws.columns=[{width:28},{width:18},{width:18},{width:28},{width:20},{width:24},{width:16},{width:34},{width:18}];ws.addRow(head);ws.getRow(1).height=24;ws.getRow(1).eachCell(c=>{c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B3A'}};c.alignment={horizontal:'center',vertical:'middle'};c.border={top:ln,left:ln,bottom:ln,right:ln}});list.forEach(s=>{const r=ws.addRow([s.nama,s.pan||'',s.nisn||'',s.kelas||'',s.wa?('0'+String(s.wa).replace(/^62/,'')): '',tglDMY(s.tgl),jkNama(s.jk),s.alamat||'',String(s.masuk||'')]);r.eachCell(c=>{c.font={name:'Arial',size:10};c.border={top:ln,left:ln,bottom:ln,right:ln};c.alignment={vertical:'middle'}});r.getCell(3).numFmt='@';r.getCell(6).numFmt='@';r.getCell(9).numFmt='@'});ws.getColumn(3).numFmt='@';ws.getColumn(6).numFmt='@';ws.getColumn(9).numFmt='@';ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'I'+Math.max(1,list.length+1)};return ws}
 async function unduhSiswa(t,btn,k){if(!setUnduhBusy(btn,t==='xlsx'?'Membuat XLSX siswa...':'Membuat PDF siswa...'))return;try{await jedaUnduh();const list=siswaRowsDownload(k);if(!list.length)throw new Error('Tidak ada data siswa untuk diunduh');const groups=[];if(k&&k!=='*')groups.push([k,list]);else{const map=new Map();list.forEach(s=>{if(!map.has(s.kelas))map.set(s.kelas,[]);map.get(s.kelas).push(s)});map.forEach((v,n)=>groups.push([n,v]))}const suffix=k&&k!=='*'?'kelas-'+String(k).replace(/[^\w]+/g,'-'):'semua-kelas';
  if(t==='xlsx'){const wb=new ExcelJS.Workbook();wb.creator=ns();const used=new Set();groups.forEach(([n,v])=>isiSheetSiswa(wb,v,namaSheetSiswa(n,used)));await tulisXlsx(wb,'data-siswa-'+suffix+'.xlsx')}
- else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});groups.forEach(([n,v],gi)=>{if(gi)d.addPage();d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(23,107,58);d.text('DATA SISWA - '+ns().toUpperCase(),148.5,10,{align:'center'});d.setFontSize(9);d.setTextColor(80,100,90);d.text('Kelas: '+n+'   |   Dicetak '+fmt(TODAY),148.5,16,{align:'center'});d.autoTable({startY:21,head:[['Nama Lengkap','Nama Panggilan','NISN (Opsional)','Kelas','WhatsApp Ortu']],body:v.map(s=>[s.nama,s.pan||'',s.nisn||'',s.kelas||'',s.wa?('0'+String(s.wa).replace(/^62/,'')):'']),theme:'grid',styles:{font:'helvetica',fontSize:9,cellPadding:3,valign:'middle'},headStyles:{fillColor:[23,107,58],textColor:[255,255,255],fontStyle:'bold',halign:'center'},columnStyles:{0:{cellWidth:70},1:{cellWidth:42},2:{cellWidth:35},3:{cellWidth:35},4:{cellWidth:45}}})});d.save('data-siswa-'+suffix+'.pdf')}
+ else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});groups.forEach(([n,v],gi)=>{if(gi)d.addPage();d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(23,107,58);d.text('DATA SISWA - '+ns().toUpperCase(),148.5,10,{align:'center'});d.setFontSize(9);d.setTextColor(80,100,90);d.text('Kelas: '+n+'   |   Dicetak '+fmt(TODAY),148.5,16,{align:'center'});d.autoTable({startY:21,head:[['Nama Lengkap','Nama Panggilan','NISN','Kelas','WhatsApp Ortu','Tgl Lahir','JK','Alamat','Thn Masuk']],body:v.map(s=>[s.nama,s.pan||'',s.nisn||'',s.kelas||'',s.wa?('0'+String(s.wa).replace(/^62/,'')):'',tglDMY(s.tgl),jkNama(s.jk),s.alamat||'',s.masuk||'']),theme:'grid',styles:{font:'helvetica',fontSize:9,cellPadding:3,valign:'middle'},headStyles:{fillColor:[23,107,58],textColor:[255,255,255],fontStyle:'bold',halign:'center'},columnStyles:{0:{cellWidth:48},1:{cellWidth:28},2:{cellWidth:26},3:{cellWidth:22},4:{cellWidth:30},5:{cellWidth:22},6:{cellWidth:22},7:{cellWidth:50},8:{cellWidth:18}}})});d.save('data-siswa-'+suffix+'.pdf')}
  toast(list.length+' data siswa berhasil diunduh')}catch(e){toast('Gagal mengunduh data siswa: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
 /* ---------- rekap + unduh riwayat ---------- */
@@ -1263,16 +1263,21 @@ function pilihXlsx(k){if(k!=='guru'||role==='Developer'||(izinKelola&&Date.now()
  mintaIzin(()=>info('Pilih file Excel guru','<div class="note">Verifikasi berhasil dan berlaku 15 menit. Pilih file Excel yang berisi data guru sesuai template terbaru.</div><button class="btn success" style="width:100%" onclick="closeM();bukaPilihFile(\'guru\')">📂 Pilih file Excel</button>'))}
 async function templat(k){try{if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
  const sis=k==='siswa',wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Data'),N=500,cn=S.kelas.map(x=>x.nama),ln={style:'thin',color:{argb:'FFCFD9D3'}},
- head=sis?['Nama Lengkap','Nama Panggilan','NISN (Opsional)','Kelas','WhatsApp Ortu']:['Nama','NIP (Opsional)','WhatsApp (Opsional)','Username','Kata Sandi','Role'],
- contoh=sis?['Muhammad Rayyan','Rayyan','1234567890',cn[0]||'','085712345678']:['Siti Aminah','198001012005011001','081234567890','siti','rahasia123','Guru'],
+ head=sis?['Nama Lengkap','Nama Panggilan','NISN (Opsional)','Kelas','WhatsApp Ortu','Tanggal Lahir (dd/mm/yyyy)','Jenis Kelamin','Alamat','Tahun Masuk (Opsional)']:['Nama','NIP (Opsional)','WhatsApp (Opsional)','Username','Kata Sandi','Role'],
+ contoh=sis?['Muhammad Rayyan','Rayyan','1234567890',cn[0]||'','085712345678','25/12/2019','Laki-laki','Jl. Mawar No. 1',TODAY.slice(0,4)]:['Siti Aminah','198001012005011001','081234567890','siti','rahasia123','Guru'],
  dv=(col,formulae,judul,msg)=>{for(let r=2;r<=N;r++)ws.getCell(r,col).dataValidation={type:'list',allowBlank:true,formulae,showErrorMessage:true,errorStyle:'stop',errorTitle:judul+' tidak valid',error:msg,showInputMessage:true,promptTitle:judul,prompt:'Pilih dari daftar'}};
- wb.creator=ns();ws.columns=sis?[{width:28},{width:18},{width:18},{width:28},{width:20}]:[{width:28},{width:24},{width:22},{width:20},{width:18},{width:26}];ws.addRow(head);ws.addRow(contoh);
+ wb.creator=ns();ws.columns=sis?[{width:28},{width:18},{width:18},{width:28},{width:20},{width:24},{width:16},{width:34},{width:18}]:[{width:28},{width:24},{width:22},{width:20},{width:18},{width:26}];ws.addRow(head);ws.addRow(contoh);
  ws.getRow(1).height=24;ws.getRow(1).eachCell(c=>{c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B3A'}};c.alignment={horizontal:'center',vertical:'middle'};c.border={top:ln,left:ln,bottom:ln,right:ln}});
  ws.getRow(2).eachCell(c=>{c.font={name:'Arial',size:10,italic:true,color:{argb:'FF7A8B80'}}});
  ws.views=[{state:'frozen',ySplit:1}];
  for(let r=2;r<=N;r++)ws.getCell(r,sis?3:3).numFmt='@';ws.getColumn(sis?3:3).numFmt='@';if(!sis){[2,3].forEach(c=>{for(let r=2;r<=N;r++)ws.getCell(r,c).numFmt='@';ws.getColumn(c).numFmt='@'})}
  if(sis){const wsB=wb.addWorksheet('Data 2');wsB.columns=ws.columns.map(c=>({width:c.width}));wsB.addRow(head);wsB.addRow(contoh);wsB.getRow(1).height=24;wsB.getRow(1).eachCell(c=>{c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B3A'}};c.alignment={horizontal:'center',vertical:'middle'};c.border={top:ln,left:ln,bottom:ln,right:ln}});wsB.getRow(2).eachCell(c=>{c.font={name:'Arial',size:10,italic:true,color:{argb:'FF7A8B80'}}});wsB.views=[{state:'frozen',ySplit:1}];for(let r=2;r<=N;r++)wsB.getCell(r,3).numFmt='@';wsB.getColumn(3).numFmt='@';if(cn.length){const ls=wb.addWorksheet('Pilihan',{state:'hidden'});ls.getCell('A1').value='Kelas';cn.forEach((n,i)=>{ls.getCell(i+2,1).value=n});dv(4,['Pilihan!$A$2:$A$'+(cn.length+1)],'Kelas','Pilih nama kelas dari daftar yang tersedia di sistem.');for(let r=2;r<=N;r++)wsB.getCell(r,4).dataValidation={type:'list',allowBlank:true,formulae:['Pilihan!$A$2:$A$'+(cn.length+1)],showErrorMessage:true,errorStyle:'stop',errorTitle:'Kelas tidak valid',error:'Pilih nama kelas dari daftar yang tersedia di sistem.'}}}
  else dv(6,['"Guru,Wakil Kepala Sekolah"'],'Role','Role harus Guru atau Wakil Kepala Sekolah.');
+ if(sis)wb.worksheets.filter(w=>w.state!=='hidden').forEach(w=>{for(let r=2;r<=N;r++){
+  w.getCell(r,6).numFmt='@';w.getCell(r,9).numFmt='@';
+  w.getCell(r,7).dataValidation={type:'list',allowBlank:true,formulae:['"Laki-laki,Perempuan"'],showErrorMessage:true,errorStyle:'stop',errorTitle:'Jenis kelamin tidak valid',error:'Pilih Laki-laki atau Perempuan dari daftar.',showInputMessage:true,promptTitle:'Jenis kelamin',prompt:'Pilih dari daftar'};
+  w.getCell(r,6).dataValidation={type:'custom',allowBlank:true,formulae:['OR(F'+r+'="",AND(LEN(F'+r+')=10,MID(F'+r+',3,1)="/",MID(F'+r+',6,1)="/"))'],showErrorMessage:true,errorStyle:'stop',errorTitle:'Format tanggal salah',error:'Tulis tanggal lahir dengan format dd/mm/yyyy, contoh 25/12/2019.',showInputMessage:true,promptTitle:'Tanggal lahir',prompt:'Format dd/mm/yyyy, contoh 25/12/2019'}}
+  w.getColumn(6).numFmt='@';w.getColumn(9).numFmt='@'});
  await tulisXlsx(wb,'template-'+(sis?'data-anak':'data-guru')+'.xlsx')}catch(e){toast('Gagal membuat template: '+(e.message||e),false)}}
 function impor(inp){const f=inp.files[0];if(!f)return;const k=impK;guard(async()=>{
  const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const DATA_HEAD=k==='siswa'?['nama lengkap','nama panggilan','nisn (opsional)','kelas','whatsapp ortu']:['nama','nip (opsional)','whatsapp (opsional)','username','kata sandi','role'];const sheets=[];wb.SheetNames.forEach(name=>{const ws=wb.Sheets[name];const a=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});const h=(a[0]||[]).map(x=>String(x||'').trim().toLowerCase());if(DATA_HEAD.every((x,i)=>h[i]===x))sheets.push({name,ws,rows:a.slice(1).filter(r=>r.some(c=>String(c).trim()))})});if(!sheets.length)throw new Error('Tidak ditemukan sheet data yang sesuai template. Pastikan header tabel ada di baris pertama.');const rows=[],rowSheets=[];sheets.forEach(x=>x.rows.forEach(r=>{rows.push(r);rowSheets.push(x.name)}));if(!rows.length)throw new Error('Semua sheet data kosong.');
@@ -1307,21 +1312,25 @@ function impor(inp){const f=inp.files[0];if(!f)return;const k=impK;guard(async()
    const incoming=new Set();let incomingNISN=new Set();
    for(let i=0;i<rows.length;i++){
      const r=rows[i].map(c=>String(c).trim());$('#ldt').textContent='Memvalidasi '+(i+1)+' dari '+rows.length+'...';
-     const [nama,pan,nisnRaw,kl,wa]=r,nisn=normNISN(nisnRaw),kid_=kid(kl),key=String(nama||'').toLowerCase()+'|'+kid_;
+     const [nama,pan,nisnRaw,kl,wa,tglRaw,jkRaw,alamatRaw,masukRaw]=r,nisn=normNISN(nisnRaw),kid_=kid(kl),key=String(nama||'').toLowerCase()+'|'+kid_;
      if(!nama){fail(i,r,new Error('nama kosong'));continue}
      if(!validNISN(nisn)){fail(i,r,new Error('NISN harus tepat 10 digit atau dikosongkan'));continue}
      if(!kid_){fail(i,r,new Error('kelas "'+kl+'" tidak ada'));continue}
+     const tgl_=parseTglLahir(tglRaw),jk_=parseJK(jkRaw),masuk_=parseMasuk(masukRaw);
+     if(tgl_==='x'){fail(i,r,new Error('tanggal lahir harus berformat dd/mm/yyyy (contoh 25/12/2019)'));continue}
+     if(jk_==='x'){fail(i,r,new Error('jenis kelamin harus Laki-laki atau Perempuan'));continue}
+     if(masuk_==='x'){fail(i,r,new Error('tahun masuk harus 4 digit angka'));continue}
      if(nisn&&S.siswa.some(x=>x.nisn===nisn)){fail(i,r,new Error('NISN '+nisn+' sudah digunakan'));continue}
      if(incomingNISN&&nisn&&incomingNISN.has(nisn)){fail(i,r,new Error('NISN '+nisn+' muncul lebih dari sekali'));continue}
      if(existing.has(key)||incoming.has(key)){fail(i,r,new Error('sudah ada'));continue}
-     incoming.add(key);if(!incomingNISN)incomingNISN=new Set();if(nisn)incomingNISN.add(nisn);valid.push({row:i,r,data:{nama,nama_panggilan:pan||nama.split(' ')[0],nisn:nisn||null,kelas_id:kid_,wa:normWA(wa)}});
+     incoming.add(key);if(!incomingNISN)incomingNISN=new Set();if(nisn)incomingNISN.add(nisn);valid.push({row:i,r,data:{nama,nama_panggilan:pan||nama.split(' ')[0],nisn:nisn||null,kelas_id:kid_,wa:normWA(wa),tgl:tgl_,jk:jk_,alamat:(alamatRaw||'').trim()||null,masuk:masuk_}});
    }
    for(let b=0;b<valid.length;b+=BATCH){
      const chunk=valid.slice(b,b+BATCH);$('#ldt').textContent='Mengimpor siswa '+Math.min(b+BATCH,valid.length)+' dari '+valid.length+'...';
      let inserted=[];
-     try{inserted=await dbq(db.from('siswa').insert(chunk.map(x=>({nama:x.data.nama,nama_panggilan:x.data.nama_panggilan,nisn:x.data.nisn,kelas_id:x.data.kelas_id}))).select())}
+     try{inserted=await dbq(db.from('siswa').insert(chunk.map(x=>({nama:x.data.nama,nama_panggilan:x.data.nama_panggilan,nisn:x.data.nisn,kelas_id:x.data.kelas_id,tgl_lahir:x.data.tgl,jenis_kelamin:x.data.jk,alamat:x.data.alamat,tahun_masuk:x.data.masuk}))).select())}
      catch(e){
-       for(const z of chunk){try{const n=await dbq(db.from('siswa').insert({nama:z.data.nama,nama_panggilan:z.data.nama_panggilan,nisn:z.data.nisn,kelas_id:z.data.kelas_id}).select().single());inserted.push(n);await setWali(n.id,z.data.wa);ok++}catch(err){fail(z.row,z.r,err)}}
+       for(const z of chunk){try{const n=await dbq(db.from('siswa').insert({nama:z.data.nama,nama_panggilan:z.data.nama_panggilan,nisn:z.data.nisn,kelas_id:z.data.kelas_id,tgl_lahir:z.data.tgl,jenis_kelamin:z.data.jk,alamat:z.data.alamat,tahun_masuk:z.data.masuk}).select().single());inserted.push(n);await setWali(n.id,z.data.wa);ok++}catch(err){fail(z.row,z.r,err)}}
        continue;
      }
      const byKey=new Map(inserted.map(n=>[String(n.nama).toLowerCase()+'|'+n.kelas_id,n]));
@@ -1459,9 +1468,9 @@ async function tahunBaru(){
  const dh=rg.daftar_hapus||[],nm=dh.slice(0,40).map(x=>esc(x.nama)+' ('+esc(x.sebab)+')').join(', ')+(dh.length>40?', dan '+(dh.length-40)+' lainnya':'');
  form('Mulai tahun ajaran baru',f,async v=>{if(!v.label||v.ok!=='MULAI')throw new Error('Isi tahun ajaran dan ketik MULAI');
   const pt=sal>0?(v.tb===OP[0]?'bawa':'tutup'):null;
-  await dbq(db.rpc('mulai_tahun_ajaran',{label:v.label,p_sekolah:SEK,p_tabungan:pt}));S.absen={};S.tab=null;KL.data=null;KL.sel.clear();await muatDasar();
-  toast('Tahun ajaran baru dimulai. Keputusan diterapkan: '+rg.naik+' naik kelas, '+rg.tinggal+' tinggal kelas, '+(rg.lulus||0)+' lulus (dihapus)'+(sal>0?(pt==='bawa'?'. Saldo tabungan tersimpan sebagai saldo bawaan di menu Tabungan':'. Buku tabungan ditutup'):''));renderAll()});
- $('#mbd').insertAdjacentHTML('afterbegin',`<div class="note" style="border:2px solid #d99a27;background:#fff8df"><b>Ringkasan penerapan keputusan (tahun ajaran ${esc(rg.tahun_ajaran)})</b><br>⬆️ Naik kelas: ${rg.naik} siswa dipindah ke kelas tujuan<br>🔁 Tinggal kelas: ${rg.tinggal} siswa tetap di kelasnya<br>🎓 Lulus: ${rg.lulus} siswa (dihapus)<br><br><b>Dihapus permanen dan tidak bisa dipulihkan:</b><br>- Seluruh absensi, laporan orang tua, dan pesan WhatsApp tahun lalu<br>- ${dh.length} siswa (lulus ${rg.lulus}, nonaktif ${rg.nonaktif}) beserta ${rg.wali_hapus} data wali yang tidak punya anak lain di sekolah ini${nm?'<div style="max-height:110px;overflow:auto;margin-top:6px;font-size:12px">'+nm+'</div>':''}<div class="tb" style="margin:10px 0 0"><button type="button" class="btn success sm dl" onclick="unduhSiswa('pdf',this,'*')">⬇ Data Siswa (PDF)</button><button type="button" class="btn sm dl pdf" onclick="unduhSiswa('xlsx',this,'*')">⬇ Data Siswa (XLSX)</button></div><b>Unduh dulu data yang diperlukan sebelum melanjutkan.</b></div>`)}
+  await dbq(db.rpc('mulai_tahun_ajaran',{label:v.label,p_sekolah:SEK,p_tabungan:pt}));S.absen={};S.tab=null;KL.data=null;AL.data=null;KL.sel.clear();await muatDasar();
+  toast('Tahun ajaran baru dimulai. Keputusan diterapkan: '+rg.naik+' naik kelas, '+rg.tinggal+' tinggal kelas, '+(rg.lulus||0)+' lulus (masuk menu Alumni)'+(sal>0?(pt==='bawa'?'. Saldo tabungan tersimpan sebagai saldo bawaan di menu Tabungan':'. Buku tabungan ditutup'):''));renderAll()});
+ $('#mbd').insertAdjacentHTML('afterbegin',`<div class="note" style="border:2px solid #d99a27;background:#fff8df"><b>Ringkasan penerapan keputusan (tahun ajaran ${esc(rg.tahun_ajaran)})</b><br>⬆️ Naik kelas: ${rg.naik} siswa dipindah ke kelas tujuan<br>🔁 Tinggal kelas: ${rg.tinggal} siswa tetap di kelasnya<br>🎓 Lulus: ${rg.lulus} siswa (dicatat ke menu Alumni, lalu dihapus dari daftar siswa)<br><br><b>Dihapus permanen (siswa naik kelas dan tinggal kelas TIDAK dihapus):</b><br>- Seluruh absensi, laporan orang tua, dan pesan WhatsApp tahun lalu<br>- ${dh.length} siswa (lulus ${rg.lulus}, nonaktif ${rg.nonaktif}) beserta ${rg.wali_hapus} data wali yang tidak punya anak lain di sekolah ini${nm?'<div style="max-height:110px;overflow:auto;margin-top:6px;font-size:12px">'+nm+'</div>':''}<div class="tb" style="margin:10px 0 0"><button type="button" class="btn success sm dl" onclick="unduhSiswa('pdf',this,'*')">⬇ Data Siswa (PDF)</button><button type="button" class="btn sm dl pdf" onclick="unduhSiswa('xlsx',this,'*')">⬇ Data Siswa (XLSX)</button></div><b>Unduh dulu data yang diperlukan sebelum melanjutkan.</b></div>`)}
 /* ---------- Kelola Siswa: kenaikan kelas, tinggal kelas, kelulusan, pengesahan ---------- */
 let KL={tab:'naik',asal:'',tujuan:'',q:'',dq:'',sel:new Set(),data:null,ring:null,map:new Map()};
 const KJ={naik:'Naik kelas',tinggal:'Tinggal kelas',lulus:'Lulus'},KJC={naik:'Izin',tinggal:'Sakit',lulus:'Alpa'},KST={sementara:'Sementara',disahkan:'Disahkan',diterapkan:'Diterapkan'},KSC={sementara:'Terlambat',disahkan:'Hadir',diterapkan:'Libur'};
@@ -1476,7 +1485,7 @@ const setUrutan=(id,v)=>guard(async()=>{const n=String(v).trim()===''?null:parse
 const setKelasAkhir=(id,on)=>guard(async()=>{await dbq(db.from('kelas').update({kelas_akhir:!!on}).eq('id',id));const k=S.kelas.find(x=>x.id===id);if(k)k.akhir=!!on;toast(on?'Ditandai sebagai kelas akhir':'Tanda kelas akhir dilepas')});
 const klOpsi=(l,sel,ph)=>`<option value="">${ph}</option>`+l.map(k=>`<option value="${k.id}" ${String(k.id)===String(sel)?'selected':''}>${esc(k.nama)}</option>`).join('');
 const klAsalList=()=>S.kelas.filter(k=>KL.tab==='lulus'?k.akhir:KL.tab==='naik'?!k.akhir:true);
-const klTujuanList=()=>{const a=S.kelas.find(k=>String(k.id)===String(KL.asal));return a&&a.urutan!=null?S.kelas.filter(k=>k.urutan!=null&&k.urutan>a.urutan):[]};
+const klTujuanList=()=>{const a=S.kelas.find(k=>String(k.id)===String(KL.asal));return a&&a.urutan!=null?S.kelas.filter(k=>k.urutan!=null&&(KL.tab==='pindah'?(k.urutan===a.urutan&&k.id!==a.id):k.urutan>a.urutan)):[]};
 const klSiswa=()=>{const z=KL.q.toLowerCase().trim();return S.siswa.filter(s=>s.aktif&&KL.asal&&String(s.kelas_id)===String(KL.asal)&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z))).sort((a,b)=>a.nama.localeCompare(b.nama,'id'))};
 const klKunci=s=>{const d=KL.map.get(s.id);return !!d&&d.status!=='sementara'};
 const klInfo=d=>kb(KJC[d.jenis],KJ[d.jenis])+(d.jenis==='naik'&&d.kelas_tujuan_nama?' → '+esc(d.kelas_tujuan_nama):'')+' '+kb(KSC[d.status],KST[d.status]);
@@ -1490,24 +1499,24 @@ function klPilih(id,on){on?KL.sel.add(id):KL.sel.delete(id);const b=$('#klRingka
 function klSemua(on){klSiswa().filter(s=>!klKunci(s)).forEach(s=>on?KL.sel.add(s.id):KL.sel.delete(s.id));renderV()}
 function klCari(el){KL.q=el.value;klRefresh()}
 function klCariDaftar(el){KL.dq=el.value;const a=$('#klDaftar');if(a)a.innerHTML=klDaftarHtml()}
-const klJudul={naik:['Proses Kenaikan Kelas','Pilih kelas asal dan kelas tujuan, lalu centang siswa yang naik. Guru bebas memilih kelas tujuan yang berurutan lebih tinggi, tidak harus mengikuti urutan otomatis.'],tinggal:['Proses Tinggal Kelas','Pilih kelas asal, lalu centang siswa yang tetap berada di kelas yang sama pada tahun ajaran berikutnya.'],lulus:['Proses Kelulusan','Pilih kelas akhir, lalu centang siswa yang dinyatakan lulus. Data siswa lulus tidak langsung berubah.']};
+const klJudul={naik:['Proses Kenaikan Kelas','Pilih kelas asal dan kelas tujuan, lalu centang siswa yang naik. Guru bebas memilih kelas tujuan yang berurutan lebih tinggi, tidak harus mengikuti urutan otomatis.'],tinggal:['Proses Tinggal Kelas','Pilih kelas asal, lalu centang siswa yang tetap berada di kelas yang sama pada tahun ajaran berikutnya.'],lulus:['Proses Kelulusan','Pilih kelas akhir, lalu centang siswa yang dinyatakan lulus. Data siswa lulus tidak langsung berubah.'],pindah:['Pindah Kelas','Pindahkan siswa ke kelas lain yang urutannya SAMA (misalnya kelas urutan 1 hanya ke kelas urutan 1). Berlaku langsung, bukan keputusan akhir tahun.']};
 function klProsesHtml(){
  const t=KL.tab,all=klSiswa().filter(s=>!klKunci(s)),sem=all.length>0&&all.every(s=>KL.sel.has(s.id)),as=klAsalList();
  const tanpa=S.kelas.filter(k=>k.urutan==null).map(k=>k.nama),adaAkhir=S.kelas.some(k=>k.akhir);
  let w='';
- if(t==='naik'&&tanpa.length)w+=`<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ Urutan kelas belum diisi untuk: ${tanpa.map(esc).join(', ')}. ${kelola()?'Isi di Pengaturan > Kelas.':'Minta Kepala Sekolah mengisinya di Pengaturan > Kelas.'}</div>`;
- if(t==='lulus'&&!adaAkhir)w+=`<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ Belum ada kelas yang ditandai sebagai Kelas akhir. ${kelola()?'Atur di Pengaturan > Kelas.':'Minta Kepala Sekolah mengaturnya di Pengaturan > Kelas.'}</div>`;
- if(t==='naik'&&KL.asal&&!klTujuanList().length&&!tanpa.length)w+=`<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ Tidak ada kelas dengan urutan lebih tinggi dari kelas asal.</div>`;
- const btn={naik:'Proses Kenaikan Kelas',tinggal:'Proses Tinggal Kelas',lulus:'Proses Kelulusan'}[t];
- return `<div class="note">${klJudul[t][1]} Keputusan disimpan sebagai <b>sementara</b>, siswa belum dipindahkan.</div>${w}
-<div class="tb"><select class="select grow" onchange="klAsal(this.value)">${klOpsi(as,KL.asal,t==='lulus'?'- Kelas akhir -':'- Kelas asal -')}</select>${t==='naik'?`<select class="select grow" onchange="klTujuan(this.value)">${klOpsi(klTujuanList(),KL.tujuan,'- Kelas tujuan -')}</select>`:''}</div>
+ if((t==='naik'||t==='pindah')&&tanpa.length)w+=`<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ Urutan kelas belum diisi untuk: ${tanpa.map(esc).join(', ')}. ${kelola()?'Isi di menu Kelas dan Jam Masuk.':'Minta Kepala Sekolah mengisinya di menu Kelas dan Jam Masuk.'}</div>`;
+ if(t==='lulus'&&!adaAkhir)w+=`<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ Belum ada kelas yang ditandai sebagai Kelas akhir. ${kelola()?'Atur di menu Kelas dan Jam Masuk.':'Minta Kepala Sekolah mengaturnya di menu Kelas dan Jam Masuk.'}</div>`;
+ if((t==='naik'||t==='pindah')&&KL.asal&&!klTujuanList().length&&!tanpa.length)w+=`<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ ${t==='pindah'?'Tidak ada kelas lain dengan urutan yang sama dengan kelas asal.':'Tidak ada kelas dengan urutan lebih tinggi dari kelas asal.'}</div>`;
+ const btn={naik:'Proses Kenaikan Kelas',tinggal:'Proses Tinggal Kelas',lulus:'Proses Kelulusan',pindah:'Pindahkan Siswa'}[t];
+ return `<div class="note">${klJudul[t][1]}${t==='pindah'?' Siswa langsung berpindah kelas.':' Keputusan disimpan sebagai <b>sementara</b>, siswa belum dipindahkan.'}</div>${w}
+<div class="tb"><select class="select grow" onchange="klAsal(this.value)">${klOpsi(as,KL.asal,t==='lulus'?'- Kelas akhir -':'- Kelas asal -')}</select>${(t==='naik'||t==='pindah')?`<select class="select grow" onchange="klTujuan(this.value)">${klOpsi(klTujuanList(),KL.tujuan,'- Kelas tujuan -')}</select>`:''}</div>
 <div class="tb"><input class="input grow" style="flex:1 1 100%;width:100%" placeholder="Cari nama atau NISN" value="${esc(KL.q)}" oninput="klCari(this)"></div>
 <label class="mu" style="display:flex;gap:8px;align-items:center;margin:0 0 10px"><input type="checkbox" ${sem?'checked':''} onchange="klSemua(this.checked)"> Pilih semua yang terlihat</label>
 <div id="klList">${klListHtml()}</div><div class="note" id="klRingkas" style="margin-top:12px">${klRingkasHtml()}</div>
 <button class="btn success" onclick="klProses()">${btn}</button>`;
 }
 async function klProses(){
- const j=KL.tab;
+ const j=KL.tab;if(j==='pindah')return klPindah();
  if(!KL.asal)return toast(j==='lulus'?'Pilih kelas akhir terlebih dahulu':'Pilih kelas asal terlebih dahulu',false);
  if(j==='naik'&&!KL.tujuan)return toast('Pilih kelas tujuan terlebih dahulu',false);
  const ids=[...KL.sel];if(!ids.length)return toast('Belum ada siswa yang dipilih',false);
@@ -1527,42 +1536,6 @@ async function klProses(){
 /* ----- Pengesahan ----- */
 const klDaftarHtml=()=>{const z=KL.dq.toLowerCase().trim(),l=(KL.data||[]).filter(d=>!z||d.nama_siswa.toLowerCase().includes(z)||String(d.kelas_asal_nama||'').toLowerCase().includes(z));
  return tab(['Siswa','Kelas asal','Keputusan','Aksi'],l.map(d=>`<tr><td><b>${esc(d.nama_siswa)}</b></td><td>${esc(d.kelas_asal_nama||'-')}</td><td>${klInfo(d)}</td><td>${d.status==='sementara'?`<button class="btn sm danger" onclick="klHapus(${d.id})">Hapus</button>`:d.status==='disahkan'?`<button class="btn sm soft" onclick="klKoreksi(${d.id})">Koreksi</button>`:''}</td></tr>`).join(''),'Belum ada keputusan yang diproses.')};
-function klPengesahanHtml(){
- const r=KL.ring||{},m=r.masalah||[],ok=(r.naik||0)+(r.tinggal||0)+(r.lulus||0);
- const cards=[['Total siswa aktif',r.total],['Sudah diputuskan',ok],['Naik kelas',r.naik],['Tinggal kelas',r.tinggal],['Lulus',r.lulus],['Belum diputuskan',r.belum],['Belum disahkan',r.sementara],['Sudah disahkan',r.disahkan]];
- const ringkas=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px">${cards.map(c=>`<div class="note" style="margin:0;text-align:center"><b style="font-size:22px;display:block">${c[1]||0}</b>${c[0]}</div>`).join('')}</div>`;
- const status=m.length?`<div class="note" style="border-color:#d99a27;background:#fff8df"><b>⚠ ${m.length} siswa perlu diperiksa sebelum pengesahan:</b></div>`+tab(['Siswa','Kelas','Masalah'],m.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${esc(x.kelas)}</td><td>${esc(x.masalah)}</td></tr>`).join('')):(r.sementara>0?'<div class="note">✓ Semua siswa sudah punya keputusan yang valid dan siap disahkan.</div>':(r.disahkan>0?'<div class="note">✓ Semua keputusan sudah disahkan. Kepala Sekolah dapat memulai tahun ajaran baru di menu Pengaturan.</div>':''));
- return `<div class="note">Pengesahan hanya menetapkan keputusan sebagai resmi. Siswa baru dipindahkan, tinggal kelas, atau lulus ketika Kepala Sekolah memulai tahun ajaran baru.</div>${ringkas}${status}
-<div class="tb" style="margin-top:12px"><input class="input grow" placeholder="Cari nama atau kelas" value="${esc(KL.dq)}" oninput="klCariDaftar(this)"></div><div id="klDaftar">${klDaftarHtml()}</div>
-<div class="tb" style="margin-top:12px"><button class="btn success" onclick="klSahkan()">✔ Sahkan Keputusan Akhir Tahun</button></div>`;
-}
-async function verifPasskey(){
- const g=await db.auth.getUser(),uid=g&&g.data&&g.data.user&&g.data.user.id;if(!uid)throw new Error('Sesi login tidak ditemukan. Masuk ulang lalu coba lagi');
- const ak=pkAkunList().find(x=>PROFIL&&x.u===PROFIL.username),o={allowId:ak?ak.c:null,hasil:null},pulih=pkSadap(o);
- const tmp=supabase.createClient(URL_SB,KEY_SB,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,experimental:{passkey:true}}});
- let x;try{x=await tmp.auth.signInWithPasskey()}finally{pulih()}
- if(x.error)throw x.error;
- if(!x.data||!x.data.user||x.data.user.id!==uid)throw new Error('Passkey itu milik akun lain. Pakai passkey akun Anda sendiri')}
-function mintaSandi(judul,tombol){return new Promise(res=>{let ok=false;const md=$('#md'),mo=new MutationObserver(()=>{if(!md.classList.contains('show')){mo.disconnect();res(ok)}});mo.observe(md,{attributes:true,attributeFilter:['class']});
- form(judul||'Masukkan kata sandi',[{k:'sandi',l:'Kata sandi akun Anda ('+esc(meNama||'')+')',t:'password'}],async v=>{
-  if(!v.sandi)throw new Error('Isi kata sandi Anda atau pakai passkey');
-  const g=await db.auth.getUser(),em=g&&g.data&&g.data.user&&g.data.user.email;if(!em)throw new Error('Sesi login tidak ditemukan. Masuk ulang lalu coba lagi');
-  const tmp=supabase.createClient(URL_SB,KEY_SB,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
-  const r=await tmp.auth.signInWithPassword({email:em,password:v.sandi});if(r.error)throw new Error('Kata sandi salah');
-  ok=true});
- $('#ms').textContent=tombol||'Lanjut';
- if(PK_OK&&!MB()){const d=document.createElement('div');d.style.cssText='margin-top:14px;text-align:center';d.innerHTML='<div class="mu" style="margin-bottom:8px">atau</div><button type="button" id="msPk" class="btn soft" style="width:100%">🔐 Pakai sidik jari / pola / passkey</button>';$('#mbd').appendChild(d);
-  $('#msPk').onclick=async()=>{const b=$('#msPk');b.disabled=true;try{await verifPasskey();ok=true;closeM()}catch(e){toast(pkPesan(e),false)}finally{b.disabled=false}}}})}
-async function klSahkan(){
- await guard(muatKelola);renderV();
- const r=KL.ring||{},m=r.masalah||[];
- if(m.length)return toast('Pengesahan ditolak: '+m.length+' siswa belum diputuskan atau bermasalah. Lihat daftar di halaman ini',false);
- if(!(r.sementara>0))return toast(r.disahkan>0?'Semua keputusan sudah disahkan':'Belum ada keputusan untuk disahkan',false);
- const sm=(KL.data||[]).filter(d=>d.status==='sementara'),c=j=>sm.filter(d=>d.jenis===j).length;
- if(!await konfirmasi('Sahkan keputusan akhir tahun ajaran '+r.tahun_ajaran+'?\n\nTotal siswa: '+sm.length+'\n- Naik kelas: '+c('naik')+'\n- Tinggal kelas: '+c('tinggal')+'\n- Lulus: '+c('lulus')+'\n\nSetelah disahkan keputusan menjadi final (perubahan hanya lewat Koreksi yang dicatat). Siswa belum dipindahkan sampai tahun ajaran baru dimulai.',{judul:'Sahkan keputusan',ikon:'✅',ya:'Ya, sahkan'}))return;
- if(!await mintaSandi('Masukkan kata sandi untuk mengesahkan','Sahkan'))return;
- guard(async()=>{const x=await dbq(db.rpc('keputusan_sahkan',{p_sekolah:SEK}));await muatKelola();renderV();toast(x.disahkan+' keputusan disahkan')});
-}
 async function klHapus(id){const d=(KL.data||[]).find(x=>x.id===id);if(!d)return;
  if(!await konfirmasi('Hapus keputusan sementara untuk '+d.nama_siswa+'? Siswa kembali berstatus belum diputuskan.',{judul:'Hapus keputusan',ya:'Hapus',bahaya:1}))return;
  guard(async()=>{await dbq(db.rpc('keputusan_hapus',{p_sekolah:SEK,p_ids:[id]}));await muatKelola();renderV();toast('Keputusan dihapus')})}
@@ -1576,9 +1549,101 @@ function klKoreksi(id){const d=(KL.data||[]).find(x=>x.id===id);if(!d)return;
   await muatKelola();renderV();toast('Koreksi tersimpan dan dicatat')})}
 V.kelola=()=>{
  if(!KL.data)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat keputusan akhir tahun...</div></div></div>';
- const T=[['naik','⬆️ Naik Kelas'],['tinggal','🔁 Tinggal Kelas'],['lulus','🎓 Kelulusan'],['pengesahan','✅ Pengesahan']];
+ const T=[['naik','⬆️ Naik Kelas'],['tinggal','🔁 Tinggal Kelas'],['lulus','🎓 Kelulusan'],['pindah','↔️ Pindah Kelas'],['pengesahan','✅ Pengesahan']];
  return `<div class="panel"><div class="ph">Kelola Siswa <span class="mu">Tahun ajaran diproses: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="utabs kl">${T.map(t=>`<button class="utab${KL.tab===t[0]?' on':''}" onclick="klTab('${t[0]}')">${t[1]}</button>`).join('')}</div>${KL.tab==='pengesahan'?klPengesahanHtml():klProsesHtml()}</div></div>`;
 };
+
+/* ---------- pembantu data siswa lengkap (tgl lahir, jenis kelamin, alamat, tahun masuk) ---------- */
+const tglDMY=iso=>iso?String(iso).slice(8,10)+'/'+String(iso).slice(5,7)+'/'+String(iso).slice(0,4):'';
+const jkNama=x=>x==='L'?'Laki-laki':x==='P'?'Perempuan':'';
+function siswaExtra(v){const th=Number(String(v.masuk||'').trim()),mx=Number(TODAY.slice(0,4))+1;
+ if(!(th>=1990&&th<=mx))throw new Error('Tahun masuk harus tahun 4 digit antara 1990 dan '+mx);
+ return {tgl_lahir:v.tgl||null,jenis_kelamin:v.jk==='Laki-laki'?'L':v.jk==='Perempuan'?'P':null,alamat:(v.alamat||'').trim()||null,tahun_masuk:th}}
+function parseTglLahir(v){v=String(v==null?'':v).trim();if(!v)return null;let d,m,y,mt;
+ if(mt=v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/)){d=+mt[1];m=+mt[2];y=+mt[3]}
+ else if(mt=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)){y=+mt[1];m=+mt[2];d=+mt[3]}
+ else if(/^\d{5}$/.test(v)&&typeof XLSX!=='undefined'){const c=XLSX.SSF.parse_date_code(+v);if(!c)return 'x';y=c.y;m=c.m;d=c.d}
+ else return 'x';
+ const dt=new Date(Date.UTC(y,m-1,d));if(dt.getUTCFullYear()!==y||dt.getUTCMonth()!==m-1||dt.getUTCDate()!==d||y<1990||y>Number(TODAY.slice(0,4)))return 'x';
+ return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0')}
+function parseJK(v){v=String(v==null?'':v).trim().toLowerCase();if(!v)return null;if(['l','laki','laki-laki','laki laki','pria'].includes(v))return 'L';if(['p','perempuan','wanita'].includes(v))return 'P';return 'x'}
+function parseMasuk(v){v=String(v==null?'':v).trim();if(!v)return Number(TODAY.slice(0,4));const n=Number(v);return /^\d{4}$/.test(v)&&n>=1990&&n<=Number(TODAY.slice(0,4))+1?n:'x'}
+
+/* ---------- Pindah kelas (hanya ke kelas dengan urutan yang sama) ---------- */
+async function klPindah(){
+ if(!KL.asal)return toast('Pilih kelas asal terlebih dahulu',false);
+ if(!KL.tujuan)return toast('Pilih kelas tujuan terlebih dahulu',false);
+ const ids=[...KL.sel];if(!ids.length)return toast('Belum ada siswa yang dipilih',false);
+ const asal=S.kelas.find(k=>String(k.id)===String(KL.asal)),tuj=S.kelas.find(k=>String(k.id)===String(KL.tujuan));
+ const ada=ids.map(id=>KL.map.get(id)).filter(Boolean);
+ let msg='Pindahkan '+ids.length+' siswa dari kelas '+asal.nama+' ke kelas '+tuj.nama+'.\n\nSiswa LANGSUNG berpindah kelas sekarang.';
+ if(ada.length)msg+='\n\n'+ada.length+' siswa punya keputusan akhir tahun sementara yang akan DIHAPUS karena kelasnya berubah. Proses ulang keputusannya setelah pindah.';
+ if(!await konfirmasi(msg,{judul:'Pindah Kelas',ikon:'↔️',ya:'Pindahkan'}))return;
+ guard(async()=>{
+  const r=await dbq(db.rpc('siswa_pindah_kelas',{p_sekolah:SEK,p_siswa:ids,p_kelas_asal:Number(KL.asal),p_kelas_tujuan:Number(KL.tujuan)}));
+  KL.sel.clear();await muatDasar();await muatKelola();renderV();
+  if(r.dilewati&&r.dilewati.length)info('Sebagian siswa dilewati',`<div class="note">${r.dipindah} siswa dipindahkan. ${r.dilewati.length} siswa dilewati:</div>`+tab(['Siswa','Alasan'],r.dilewati.map(x=>`<tr><td>${esc(x.nama)}</td><td>${esc(x.alasan)}</td></tr>`).join('')));
+  else toast(r.dipindah+' siswa dipindahkan ke kelas '+tuj.nama+(r.keputusan_dihapus?'. '+r.keputusan_dihapus+' keputusan sementara dihapus, proses ulang bila perlu':''));
+ });
+}
+
+/* ---------- Pengesahan per kelas (oleh wali kelas) ---------- */
+function klPengesahanHtml(){
+ const r=KL.ring||{},m=r.masalah||[],ok=(r.naik||0)+(r.tinggal||0)+(r.lulus||0);
+ const cards=[['Total siswa aktif',r.total],['Sudah diputuskan',ok],['Naik kelas',r.naik],['Tinggal kelas',r.tinggal],['Lulus',r.lulus],['Belum diputuskan',r.belum],['Belum disahkan',r.sementara],['Sudah disahkan',r.disahkan]];
+ const ringkas=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:12px">${cards.map(c=>`<div class="note" style="margin:0;text-align:center"><b style="font-size:22px;display:block">${c[1]||0}</b>${c[0]}</div>`).join('')}</div>`;
+ const ks=(r.kelas||[]).map(k=>{
+  const mk=m.filter(x=>String(x.kelas_id)===String(k.kelas_id));
+  const st=!k.total?kb('Belum','Tidak ada siswa'):mk.length?kb('Terlambat',mk.length+' perlu diperiksa'):k.sementara>0?kb('Izin','Siap disahkan'):k.disahkan>0?kb('Hadir','Sudah disahkan'):kb('Belum','Belum ada keputusan');
+  const wali=k.wali_nama?'Wali kelas: <b>'+esc(k.wali_nama)+'</b>':'Belum ada wali kelas, semua guru boleh mengesahkan';
+  const aksi=k.sementara>0&&!mk.length?(k.boleh?`<button class="btn success sm" onclick="klSahkan(${k.kelas_id})">✔ Sahkan kelas ${esc(k.nama)}</button>`:`<span class="mu">Hanya wali kelas (${esc(k.wali_nama||'-')}) yang dapat mengesahkan kelas ini</span>`):'';
+  return `<div class="note" style="margin:0 0 10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><b>Kelas ${esc(k.nama)}</b>${st}</div><div class="mu" style="margin:4px 0">${wali}</div><div class="mu">${k.total} siswa · naik ${k.naik} · tinggal ${k.tinggal} · lulus ${k.lulus} · belum diputuskan ${k.belum}</div>${mk.length?tab(['Siswa','Masalah'],mk.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${esc(x.masalah)}</td></tr>`).join('')):''}${aksi?'<div class="tb" style="margin:10px 0 0">'+aksi+'</div>':''}</div>`}).join('');
+ const lain=m.filter(x=>x.kelas_id==null);
+ const tanpa=lain.length?`<div class="note" style="border-color:#d99a27;background:#fff8df"><b>⚠ Siswa tanpa kelas yang valid (${lain.length}):</b>`+tab(['Siswa','Masalah'],lain.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${esc(x.masalah)}</td></tr>`).join(''))+'</div>':'';
+ return `<div class="note">Pengesahan dilakukan <b>per kelas oleh wali kelasnya</b>. Kelas yang belum punya wali kelas dapat disahkan oleh semua guru. Pengesahan hanya menetapkan keputusan sebagai resmi. Siswa baru dipindahkan, tinggal kelas, atau lulus ketika Kepala Sekolah memulai tahun ajaran baru, setelah SEMUA kelas disahkan.</div>${ringkas}${ks||'<div class="note">Belum ada kelas aktif.</div>'}${tanpa}
+<div class="tb" style="margin-top:12px"><input class="input grow" placeholder="Cari nama atau kelas" value="${esc(KL.dq)}" oninput="klCariDaftar(this)"></div><div id="klDaftar">${klDaftarHtml()}</div>`;
+}
+async function klSahkan(kid){
+ await guard(muatKelola);renderV();
+ const r=KL.ring||{},k=(r.kelas||[]).find(x=>x.kelas_id===kid);if(!k)return;
+ const mk=(r.masalah||[]).filter(x=>x.kelas_id===kid);
+ if(mk.length)return toast('Pengesahan ditolak: '+mk.length+' siswa kelas '+k.nama+' belum diputuskan atau bermasalah',false);
+ if(!(k.sementara>0))return toast(k.disahkan>0?'Kelas '+k.nama+' sudah disahkan':'Belum ada keputusan untuk disahkan',false);
+ const sm=(KL.data||[]).filter(d=>d.status==='sementara'&&d.kelas_asal_id===kid),c=j=>sm.filter(d=>d.jenis===j).length;
+ if(!await konfirmasi('Sahkan keputusan akhir tahun kelas '+k.nama+' (tahun ajaran '+r.tahun_ajaran+')?\n\nTotal siswa: '+sm.length+'\n- Naik kelas: '+c('naik')+'\n- Tinggal kelas: '+c('tinggal')+'\n- Lulus: '+c('lulus')+'\n\nSetelah disahkan keputusan menjadi final (perubahan hanya lewat Koreksi yang dicatat). Siswa belum dipindahkan sampai tahun ajaran baru dimulai.',{judul:'Sahkan kelas '+k.nama,ikon:'✅',ya:'Ya, sahkan'}))return;
+ guard(async()=>{const x=await dbq(db.rpc('keputusan_sahkan',{p_sekolah:SEK,p_kelas:kid}));await muatKelola();renderV();toast('Kelas '+x.kelas+': '+x.disahkan+' keputusan disahkan')});
+}
+
+/* ---------- Alumni ---------- */
+let AL={data:null,q:'',th:''};
+async function muatAlumni(){AL.data=(await dbq(db.from('alumni').select('*').eq('sekolah_id',SEK).order('tahun_lulus',{ascending:false}).order('nama')))||[]}
+const alFilter=()=>{const z=AL.q.toLowerCase().trim();return(AL.data||[]).filter(a=>(!z||String(a.nama).toLowerCase().includes(z))&&(!AL.th||String(a.tahun_lulus)===AL.th))};
+const alListHtml=()=>{const l=alFilter();return tab(['No','Nama','Tgl Lahir','JK','Alamat','Tahun Masuk','Tahun Lulus','Kepala Sekolah'],l.map((a,i)=>`<tr><td>${i+1}</td><td><b>${esc(a.nama)}</b></td><td>${tglDMY(a.tgl_lahir)||'-'}</td><td>${jkNama(a.jenis_kelamin)||'-'}</td><td>${esc(a.alamat||'-')}</td><td>${a.tahun_masuk||'-'}</td><td>${a.tahun_lulus}</td><td>${esc(a.kepala_sekolah||'-')}</td></tr>`).join(''),'Belum ada data alumni.')};
+const alRefresh=()=>{const a=$('#alList'),b=$('#alJml');if(a)a.innerHTML=alListHtml();if(b)b.textContent=alFilter().length+' alumni'};
+function alCari(el){AL.q=el.value;alRefresh()}
+function alTahun(v){AL.th=v;alRefresh()}
+V.alumni=()=>{
+ if(!AL.data)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat data alumni...</div></div></div>';
+ const ths=[...new Set(AL.data.map(a=>a.tahun_lulus))].sort((a,b)=>b-a);
+ return `<div class="panel"><div class="ph">🏅 Data Alumni <span class="mu" id="alJml">${alFilter().length} alumni</span></div><div class="pb">
+<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ Data alumni hanya disimpan <b>2 tahun</b> sejak siswa dinyatakan lulus, setelah itu dihapus otomatis oleh sistem. Silakan <b>unduh data terbaru</b> sebelum dihapus.</div>
+<div class="tb"><input class="input grow" placeholder="Cari nama alumni..." value="${esc(AL.q)}" oninput="alCari(this)"><select class="select" onchange="alTahun(this.value)"><option value="">Semua tahun lulus</option>${ths.map(t=>`<option value="${t}" ${String(t)===AL.th?'selected':''}>Lulus ${t}</option>`).join('')}</select></div>
+<div class="tb"><button class="btn success sm dl" onclick="unduhAlumni('pdf',this)">⬇ PDF</button><button class="btn sm dl pdf" onclick="unduhAlumni('xlsx',this)">⬇ XLSX</button></div>
+<div id="alList">${alListHtml()}</div></div></div>`;
+};
+async function unduhAlumni(t,btn){
+ if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat XLSX alumni...':'Membuat PDF alumni...'))return;
+ try{await jedaUnduh();const l=alFilter();if(!l.length)throw new Error('Tidak ada data alumni untuk diunduh');
+  const H=['No','Nama','Tanggal Lahir','Jenis Kelamin','Alamat','Tahun Masuk','Tahun Lulus','Kepala Sekolah'],rows=l.map((a,i)=>[i+1,a.nama,tglDMY(a.tgl_lahir),jkNama(a.jenis_kelamin),a.alamat||'',a.tahun_masuk||'',a.tahun_lulus,a.kepala_sekolah||'']);
+  if(t==='xlsx'){if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
+   const wb=new ExcelJS.Workbook();wb.creator=ns();const ws=wb.addWorksheet('Alumni'),ln={style:'thin',color:{argb:'FFCFD9D3'}};
+   ws.columns=[{width:6},{width:28},{width:16},{width:16},{width:36},{width:14},{width:14},{width:26}];ws.addRow(H);ws.getRow(1).height=24;
+   ws.getRow(1).eachCell(c=>{c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B3A'}};c.alignment={horizontal:'center',vertical:'middle'};c.border={top:ln,left:ln,bottom:ln,right:ln}});
+   rows.forEach(x=>{const r=ws.addRow(x);r.eachCell(c=>{c.font={name:'Arial',size:10};c.border={top:ln,left:ln,bottom:ln,right:ln};c.alignment={vertical:'middle'}});r.getCell(3).numFmt='@'});
+   ws.views=[{state:'frozen',ySplit:1}];ws.autoFilter={from:'A1',to:'H'+(rows.length+1)};await tulisXlsx(wb,'data-alumni.xlsx')}
+  else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});d.setFont('helvetica','bold');d.setFontSize(14);d.setTextColor(23,107,58);d.text('DATA ALUMNI - '+ns().toUpperCase(),148.5,10,{align:'center'});d.setFontSize(9);d.setTextColor(80,100,90);d.text('Dicetak '+fmt(TODAY),148.5,16,{align:'center'});
+   d.autoTable({startY:21,head:[H],body:rows,theme:'grid',styles:{font:'helvetica',fontSize:8.5,cellPadding:2.5,valign:'middle'},headStyles:{fillColor:[23,107,58],textColor:[255,255,255],fontStyle:'bold',halign:'center'},columnStyles:{0:{cellWidth:10},1:{cellWidth:50},2:{cellWidth:24},3:{cellWidth:24},4:{cellWidth:60},5:{cellWidth:20},6:{cellWidth:20},7:{cellWidth:45}}});d.save('data-alumni.pdf')}
+  toast(l.length+' data alumni berhasil diunduh')}catch(e){toast('Gagal mengunduh data alumni: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
 /* ---------- Tabungan Siswa ---------- */
 let tabK='',tabQ='';
