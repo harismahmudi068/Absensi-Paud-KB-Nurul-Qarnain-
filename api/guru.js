@@ -11,7 +11,7 @@
 // Aksi khusus Developer:
 //   reset (atur sandi baru), hapus_akun (hapus akun seluruhnya)
 // Aksi untuk pemilik akun sendiri (semua pengguna aktif):
-//   akun_sendiri (ganti username dan/atau sandi, wajib sandi saat ini)
+//   akun_sendiri (ganti username dan/atau sandi, wajib sandi saat ini atau verifikasi passkey)
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -202,6 +202,43 @@ function periksaDataAkun(x, { wajibWA }) {
 
   return { username, nama, nip, sandi, role, no_wa };
 }
+// Verifikasi identitas pemilik akun: kata sandi saat ini ATAU passkey yang baru saja dipakai.
+// Passkey dibuktikan lewat token sesi (sudah divalidasi Supabase): metode login terakhir
+// harus passkey/webauthn dan terjadi dalam PASSKEY_MENIT terakhir.
+const PASSKEY_MENIT = 5;
+function jwtAmr(token) {
+  try {
+    const p = JSON.parse(Buffer.from(String(token).split('.')[1], 'base64url').toString('utf8'));
+    return Array.isArray(p.amr) ? p.amr : [];
+  } catch (e) {
+    return [];
+  }
+}
+async function verifIdentitas(user, token, b) {
+  if (b.verifikasi === 'passkey') {
+    const amr = jwtAmr(token);
+    const batas = Date.now() / 1000 - PASSKEY_MENIT * 60;
+    const ok = amr.some((x) => {
+      const m = String((x && (x.method || x)) || '');
+      const t = Number(x && x.timestamp);
+      return /passkey|webauthn/i.test(m) && t >= batas;
+    });
+    if (!ok) {
+      const dilihat = amr.map((x) => String((x && x.method) || x)).join(',') || '-';
+      throw new Error('Verifikasi passkey tidak valid atau sudah lewat 5 menit. Ulangi, atau pakai kata sandi (metode sesi: ' + dilihat + ')');
+    }
+    return;
+  }
+  try {
+    await panggil('/auth/v1/token?grant_type=password', 'POST', {
+      email: user.email,
+      password: String(b.sandi_sekarang || '')
+    });
+  } catch (e) {
+    throw new Error('Kata sandi saat ini salah');
+  }
+}
+
 
 // ---------------------------------------------------------------
 module.exports = async (req, res) => {
@@ -246,15 +283,8 @@ module.exports = async (req, res) => {
       if (sandiBaru && sandiBaru.length < 6)
         throw new Error('Kata sandi minimal 6 karakter');
 
-      // Wajib sandi saat ini
-      try {
-        await panggil('/auth/v1/token?grant_type=password', 'POST', {
-          email: user.email,
-          password: String(b.sandi_sekarang || '')
-        });
-      } catch (e) {
-        throw new Error('Kata sandi saat ini salah');
-      }
+      // Wajib sandi saat ini atau passkey yang baru dipakai
+      await verifIdentitas(user, token, b);
 
       const perubahan = {};
       const usernameLama = pemanggil.username;
@@ -316,14 +346,7 @@ module.exports = async (req, res) => {
       if (baru === lama) throw new Error('Nomor baru sama dengan nomor sekarang');
 
       if (b.aksi === 'nomor_otp_kirim') {
-        try {
-          await panggil('/auth/v1/token?grant_type=password', 'POST', {
-            email: user.email,
-            password: String(b.sandi_sekarang || '')
-          });
-        } catch (e) {
-          throw new Error('Kata sandi saat ini salah');
-        }
+        await verifIdentitas(user, token, b);
         const ada = await cariProfilByWA(baru);
         if (ada && ada.id !== user.id) throw new Error('Nomor WhatsApp sudah dipakai akun lain');
         const ip = ipDari(req);
