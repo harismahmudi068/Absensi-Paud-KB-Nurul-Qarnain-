@@ -858,11 +858,13 @@ const fiturBelum=()=>{const L=[];if(!S.set)return L;
 function notifFitur(){if(role==='Developer'||!me)return '';const L=fiturBelum();if(!L.length)return '';
  if(adalahKepala())return `<div><b>🔔 Fitur belum aktif.</b><div class="mu">Fitur berikut belum diaktifkan. Tekan Atur untuk langsung membuka pengaturannya.</div>${L.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px"><span>${x.n}</span><button class="btn sm success" onclick="${x.f}">Atur</button></div>`).join('')}</div>`;
  return `<div><b>🔔 Fitur belum aktif.</b><div class="mu">Belum aktif: ${L.map(x=>x.t).join(', ')}. Silakan informasikan kepada Kepala Sekolah agar fitur ini diaktifkan di Pengaturan.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="hubungiKepala()">💬 Hubungi Kepala Sekolah</button></div></div>`}
-function hubungiKepala(){
+async function hubungiKepala(){
  const G=S.guru||[],N=S.nomor||{},ada=g=>g.aktif&&String(N[g.id]||'').trim();
  const kp=G.filter(g=>g.role==='kepala_sekolah').find(ada)||G.filter(g=>g.role==='wakil_kepala').find(ada);
- if(!kp)return toast('Nomor WhatsApp Kepala Sekolah belum tersedia. Silakan sampaikan langsung kepada Kepala Sekolah',false);
- let d=String(N[kp.id]).replace(/\D/g,'');if(d.startsWith('0'))d='62'+d.slice(1);else if(d.startsWith('8'))d='62'+d;
+ let nomor=kp?String(N[kp.id]):(S.nomorKepala||'');
+ if(!String(nomor).trim()){try{nomor=String(await dbq(db.rpc('nomor_wa_kepala',{p_sekolah:SEK}))||'').trim();if(nomor)S.nomorKepala=nomor}catch(e){nomor=''}}
+ if(!String(nomor).trim())return toast('Nomor WhatsApp Kepala Sekolah belum tersedia. Silakan sampaikan langsung kepada Kepala Sekolah',false);
+ let d=String(nomor).replace(/\D/g,'');if(d.startsWith('0'))d='62'+d.slice(1);else if(d.startsWith('8'))d='62'+d;
  const L=fiturBelum().map(x=>x.t),teks='Assalamualaikum, saya '+meNama+' (guru '+ns()+'). Mohon fitur '+(L.length?L.join(', '):'yang belum aktif')+' diaktifkan di menu Pengaturan. Terima kasih.';
  let pergi=false;const tandai=()=>{pergi=true},vis=()=>{if(document.hidden)pergi=true};
  document.addEventListener('visibilitychange',vis);window.addEventListener('pagehide',tandai);window.addEventListener('blur',tandai);
