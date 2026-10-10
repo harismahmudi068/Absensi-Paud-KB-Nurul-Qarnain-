@@ -127,14 +127,14 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 
 .secret-wrap{position:relative;display:flex;flex:1;min-width:0;width:100%}.secret-wrap>.input{width:100%;flex:1;min-width:0;padding-right:48px}.secret-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%)!important;width:32px;height:32px;border:0;background:transparent!important;box-shadow:none!important;color:var(--mu);display:flex;align-items:center;justify-content:center;padding:0;border-radius:0;cursor:pointer;font-size:0;transition:none!important;animation:none!important;line-height:1;flex:0 0 32px;-webkit-tap-highlight-color:transparent}.secret-toggle:hover,.secret-toggle:active{background:transparent!important;box-shadow:none!important;color:var(--tx)}.secret-toggle:active{transform:translateY(-50%)!important;filter:none!important}.secret-toggle:focus-visible{outline:2px solid var(--p);outline-offset:1px}.secret-toggle::before{display:none!important}.secret-toggle svg{width:21px;height:21px;display:block;flex:0 0 21px}
 #lg .secret-toggle{top:calc(50% - 3px)}
-@keyframes sorot{0%,60%{box-shadow:0 0 0 4px #d7a72f,0 0 18px #d7a72f88}100%{box-shadow:0 0 0 0 transparent}}.sorot{animation:sorot 2s ease-out;border-radius:14px}
+@keyframes sorot{0%,20%,40%,60%,80%{box-shadow:0 0 0 4px #d7a72f,0 0 18px #d7a72f88}10%,30%,50%,70%{box-shadow:0 0 0 0 transparent}90%{box-shadow:0 0 0 4px #d7a72f,0 0 18px #d7a72f88}100%{box-shadow:0 0 0 0 transparent}}.sorot{animation:sorot 5s ease-in-out;border-radius:14px}
 .dnt-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:18px 2px 10px;font-weight:800;color:var(--tx)}.dnt-h span{font-size:12px;font-weight:700;color:var(--mu)}
 .dnt{display:flex;gap:12px;align-items:flex-start;padding:14px;margin-bottom:10px;border-radius:16px;border:1px solid var(--c2);background:var(--c1);box-shadow:var(--sh)}
 .dnt>i{font-style:normal;font-size:22px;width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:12px;background:#fff}
 .dnt-n{min-width:0;flex:1}.dnt-n b{display:block;font-size:14px;color:var(--tx);margin-bottom:3px}.dnt-n p{margin:0;font-size:13px;color:#496451;line-height:1.5;word-break:break-word}.dnt-n .btn{margin-top:10px}
 .dnt-w{--c1:#fff8e6;--c2:#f0dba0}.dnt-e{--c1:#fdeff0;--c2:#f2c3c7}.dnt-e .dnt-n b{color:#a13842}.dnt-l{--c1:#eefaf1;--c2:#c9e6d1}.dnt-ok{--c1:#f4f8f1;--c2:#dfeadc;box-shadow:none}
 @media(max-width:760px){.dnt{padding:12px;gap:10px}.dnt-n .btn{width:100%}}
-</style>
+.utabs{position:relative}.aksi-menu{position:fixed;z-index:9999;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:var(--sh);padding:6px;display:flex;flex-direction:column;min-width:170px}.aksi-menu button{border:0;background:none;text-align:left;padding:11px 12px;border-radius:8px;font:inherit;color:var(--tx);cursor:pointer}.aksi-menu button:hover{background:#f1f8f1}.aksi-menu .rd{color:var(--rd)}.aksi-btn{min-width:38px}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -154,7 +154,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 <section class="content" id="v"></section></main></div>
 <nav class="bottom hid" id="bn"></nav>
 <div class="mb" id="drw" onclick="if(event.target===this)drw(0)"><div class="modal"><div class="mh"><b>Menu</b><button onclick="drw(0)">✕</button></div><div class="mbody"><div id="dn" class="nav"></div></div></div></div>
-<div class="mb" id="md" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="closeM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" onclick="closeM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
+<div class="mb" id="md" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="closeM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" id="mtp" onclick="closeM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
 <div class="mb" id="cf" style="z-index:150"><div class="modal" style="width:min(400px,100%)"><div class="mbody" style="text-align:center;padding:24px 20px 14px"><div id="cfi" style="font-size:42px;line-height:1"></div><h3 id="cft" style="margin:10px 0 6px"></h3><div id="cfm" class="mu" style="font-size:14px;white-space:pre-line"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" id="cfn">Batal</button><button class="btn success" id="cfy">Ya</button></div></div></div>
 <div class="toast" id="ts"></div><div id="ld"><div class="spin"></div><div id="ldt">Memuat...</div></div><input type="file" id="fx" accept=".xlsx,.xls" class="hid" onchange="impor(this)">
 <script>
@@ -230,14 +230,15 @@ const hariIni=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'
 let TODAY=hariIni();const ST=['Hadir','Terlambat','Izin','Sakit','Alpa'],cap=s=>s.charAt(0).toUpperCase()+s.slice(1),low=s=>s.toLowerCase();
 const fmt=d=>{if(!d)return '';const p=d.split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]},fmtB=b=>{const p=b.split('-');return BLN[p[1]-1]+' '+p[0]},wd=d=>new Date(d+'T00:00:00').getDay();
 const dt=(type,v,fn,cl='')=>`<label class="input dt ${cl}"><span>${v?(type==='month'?fmtB(v):fmt(v)):'Pilih tanggal'}</span><input type="${type}" value="${v||''}" onchange="if(this.value){this.previousElementSibling.textContent=(this.type=='month'?fmtB:fmt)(this.value);${fn||''}}"></label>`;
-const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['alumni','Alumni','🏅','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['kartu','Kartu','🪪','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
+const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['kartu','Kartu','🪪','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['alumni','Alumni','🏅','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah';
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
 async function dbq(p){const r=await p;if(r.error)throw r.error;return r.data}
 let ldn=0;function ld(on,m){ldn=Math.max(0,ldn+(on?1:-1));if(on)$('#ldt').textContent=m||'Memuat...';$('#ld').style.display=ldn?'flex':'none'}
 const guard=(fn,q)=>{if(!q)ld(1);return fn().catch(e=>toast((e&&e.message)||String(e),false)).finally(()=>{if(!q)ld(0)})};
-function info(t,h){$('#mt').textContent=t;$('#mbd').innerHTML=h;$('#ms').style.display='none';$('#md').classList.add('show')}
+function resetTutup(){const b=$('#mtp');if(!b)return;b.textContent='Tutup';b.className='btn soft';b.onclick=()=>closeM()}
+function info(t,h){resetTutup();$('#mt').textContent=t;$('#mbd').innerHTML=h;$('#ms').style.display='none';$('#md').classList.add('show')}
 function toast(m,ok=true){const t=$('#ts');if(!ok)m=idErr(m);t.textContent=(ok?'✓ ':'⚠ ')+m;t.className='toast '+(ok?'ok':'err');t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200)}
 const A=d=>S.absen[d]||{},act=()=>S.siswa.filter(s=>s.aktif),kelola=()=>role!=='Guru',allowed=id=>MENUS.find(m=>m[0]===id)[3].includes(RC[role])&&(id!=='tabungan'||!!(S.set&&S.set.tabungan_aktif));
 const badge=s=>`<span class="badge ${s}">${s}</span>`,ini=s=>esc((s||'?')[0]);
@@ -335,7 +336,13 @@ async function muatNomor(){const r=await dbq(db.rpc('nomor_wa_guru',{p_sekolah:S
 const muatProfil=async()=>{const [g,n]=await Promise.all([muatGuruData(),muatNomor()]);S.guru=g;S.nomor=n};
 let RHS=null,izinKelola=null,izinExp=0;
 async function apiPengaturan(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/pengaturan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:CFG_SID||SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/pengaturan tidak ditemukan (404). Pastikan file api/pengaturan.js sudah di-deploy');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
-async function muatRahasia(){try{RHS=await apiPengaturan({aksi:'baca'})}catch(e){RHS={error:e.message||String(e)}}}
+async function muatRahasia(){try{RHS=await apiPengaturan({aksi:'baca'})}catch(e){RHS={error:e.message||String(e)}}sinkronNomorKepala()}
+/* nomor Kepala Sekolah di Pengaturan = nomor di Profil Saya Kepala Sekolah */
+const nomorKepalaProfil=()=>{const k=(S.guru||[]).find(g=>g.role==='kepala_sekolah'&&g.aktif);const n=k&&(S.nomor||{})[k.id];return String(n||'').trim()?n:''};
+const _sinkNK={};
+async function sinkronNomorKepala(){try{if(!adalahKepala()||CFG_SID||!RHS||RHS.error)return;const n=nomorKepalaProfil();if(!n)return;
+ if(normWA(RHS.nomor_kepala||'')===normWA(n)||_sinkNK[SEK]===n)return;_sinkNK[SEK]=n;
+ await apiPengaturan({aksi:'simpan',nomor_kepala:fmtWA(n)});RHS=await apiPengaturan({aksi:'baca'});if(view==='pengaturan'||view==='dashboard')renderV()}catch(e){}}
 const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>role==='Developer'?Promise.all([muatDev(),muatProfilSaya()]):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil()]),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan,kelola:()=>muatKelola(),alumni:()=>muatAlumni()};
 /* ---------- libur ---------- */
 const batalAda=(d,k)=>{const b=S.batal;if(!b||!b.size)return false;if(b.has(d+'|0'))return true;const kl=S.kelas.find(x=>x.nama===k);return !!kl&&b.has(d+'|'+kl.id)};
@@ -555,6 +562,20 @@ function pkSadap(o){const asli=navigator.credentials.get;
 function pkSadapBuat(o){const asli=navigator.credentials.create;
  navigator.credentials.create=function(x){return asli.call(navigator.credentials,x).then(c=>{try{if(c&&c.id)o.hasil=c.id}catch(e){}return c})};
  return ()=>{try{delete navigator.credentials.create}catch(e){}}}
+/* verifikasi dengan passkey sebagai pengganti "kata sandi saat ini" (hanya bila passkey sudah aktif) */
+let PKOK=0;const pkFresh=()=>Date.now()-PKOK<240000;
+const bodySandi=sd=>(!sd&&pkFresh())?{verifikasi:'passkey'}:{sandi_sekarang:sd};
+const pkTersedia=()=>PK_OK&&!MB()&&!!PROFIL&&(pkAda()||(Array.isArray(S.pk)&&S.pk.length>0));
+async function pkVerifikasi(){const a=pkAkunList().find(x=>PROFIL&&x.u===PROFIL.username),o={allowId:a?a.c:null,hasil:null},pulih=pkSadap(o);
+ try{const x=await db.auth.signInWithPasskey();if(x.error)throw x.error;const u=x.data&&x.data.user;
+  if(!u)throw new Error('Passkey tidak menghasilkan sesi');
+  if(u.id!==me){try{await db.auth.signOut()}catch(e){}setTimeout(()=>location.reload(),600);throw new Error('Passkey milik akun lain. Silakan masuk kembali')}
+  PKOK=Date.now()}
+ catch(e){throw new Error(pkPesan(e))}finally{pulih()}}
+function pasangPkForm(k){PKOK=0;if(!pkTersedia())return;const el=$('#f_'+k),fd=el&&el.closest('.fd');if(!fd||fd.querySelector('.pkv'))return;
+ const b=document.createElement('button');b.type='button';b.className='btn soft sm pkv';b.style.marginTop='8px';b.textContent='🔑 Atau verifikasi dengan passkey';
+ b.onclick=()=>guard(async()=>{await pkVerifikasi();el.value='';el.disabled=true;el.placeholder='Terverifikasi dengan passkey';b.textContent='✓ Terverifikasi dengan passkey';b.disabled=true;toast('Passkey terverifikasi')},1);
+ fd.appendChild(b)}
 function masukPasskey(){const b=$('#lpk');if(!b||b.disabled)return;$('#lerr').textContent='';
  if(pkAkunList().length)return pilihAkunPasskey();pkMasuk(null)}
 function pilihAkunPasskey(){const a=pkAkunList();
@@ -597,14 +618,15 @@ async function hapusPasskey(id){if(MB())return toast('Tidak tersedia di mode ban
 function editProfilSaya(){if(MB())return toast('Tidak tersedia di mode bantuan',false);const dev=role==='Developer',g=PROFIL;if(!g)return;
  const f=[{k:'nama',l:'Nama',v:g.nama},{k:'nip',l:'NIP (opsional)',v:g.nip||''}];
  if(!dev)f.push({k:'user',l:'Username',v:g.username},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak diganti)',t:'password'},{k:'lama',l:'Kata sandi saat ini (wajib bila mengganti username atau kata sandi)',t:'password'});
+ setTimeout(()=>{if(!dev)pasangPkForm('lama')},0);
  form('Ubah profil saya',f,async v=>{
   const user=dev?g.username:(v.user||'').trim().toLowerCase();
   if(!v.nama||!user)throw new Error('Nama dan username wajib diisi');
   if(!dev){if(v.sandi&&v.sandi.length<6)throw new Error('Kata sandi minimal 6 karakter');
    if(!/^[a-z0-9._-]{3,20}$/.test(user))throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah')}
   const ubahAkun=!dev&&(user!==g.username||!!v.sandi);
-  if(ubahAkun&&!v.lama)throw new Error('Isi kata sandi saat ini untuk mengganti username atau kata sandi');
-  if(ubahAkun)await apiGuru({aksi:'akun_sendiri',username:user,sandi_baru:v.sandi||'',sandi_sekarang:v.lama});
+  if(ubahAkun&&!v.lama&&!pkFresh())throw new Error('Isi kata sandi saat ini atau verifikasi dengan passkey untuk mengganti username atau kata sandi');
+  if(ubahAkun)await apiGuru({aksi:'akun_sendiri',username:user,sandi_baru:v.sandi||'',...bodySandi(v.lama)});
   const nip=(v.nip||'').trim()||null;
   await dbq(db.from('profil').update({nama:v.nama,nip}).eq('id',me));
   meNama=v.nama;PROFIL.nama=v.nama;PROFIL.nip=nip;if(ubahAkun)PROFIL.username=user;
@@ -673,7 +695,7 @@ async function masukSekolah(m){try{SEK=m.sekolah_id;role=LBL[m.role];meNama=PROF
   KONFIG_NANTI=false;await muatDasar();if(adalahKepala()||role==='Developer')muatRahasia().then(()=>{if(view==='dashboard'&&!$('#ap').classList.contains('hid'))renderV()});$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');
   const bv=sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView');view=(bv&&allowed(bv))?bv:'dashboard';pasangBanner();await go(view);if(adalahKepala())setTimeout(sapaAwal,300)}
  catch(e){await db.auth.signOut();loginView('Gagal memuat data: '+(e.message||e))}}
-function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''))}
+function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''));{const b=$('#mtp');if(b){b.textContent='Keluar';b.className='btn danger';b.onclick=()=>{closeM();keluar()}}}}
 async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
 async function gantiSekolah(){await stopScan();drw(0);tampilPilihSekolah()}
 async function keluar(){
@@ -780,12 +802,14 @@ async function muatGambarKartu(){
  }
 }
 function renderV(){
+ tutupAksi();const _tb=view==='kelola'||view==='tabungan',_sl=_tb?(document.querySelector('#v .utabs')||{}).scrollLeft:0;
  $('#v').innerHTML=V[view]();
  if(role==='Developer')renderNavDev();
  enhanceCustomSelects($('#v'));
+ if(_tb)utabTengah(_sl);
  if(view==='kartu')muatGambarKartu().catch(e=>toast('Gagal menyiapkan kartu: '+(e.message||e),false));
 }
-function form(t,f,cb){window._fver={};f.forEach(x=>{if(x.ver)_fver[x.k]=x.ver});$('#ms').textContent='Simpan';$('#ms').style.display='';$('#mt').textContent=t;$('#mbd').innerHTML='<div class="fg">'+f.map(x=>`<div class="fd"><label class="l">${x.l}</label>${x.o?`<select id="f_${x.k}" class="select">${x.o.map(o=>`<option ${o===x.v?'selected':''}>${esc(o)}</option>`).join('')}</select>`:x.t==='date'?`<label class="input dt"><span>${x.v?fmt(x.v):'Pilih tanggal'}</span><input type="date" id="f_${x.k}" value="${x.v||''}" ${x.min?`min="${x.min}"`:'min="2000-01-01"'} max="2099-12-31" onclick="try{this.showPicker()}catch(e){}" onchange="if(this.value)this.previousElementSibling.textContent=fmt(this.value)"></label>`:x.ver?`<div style="display:flex;gap:8px"><input id="f_${x.k}" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="flex:1" value="${esc(x.v||'')}"><button type="button" class="btn soft" onclick="formVer('${x.k}')">Verifikasi</button></div><div id="fv_${x.k}" class="mu" style="margin-top:4px"></div>`:`<input id="f_${x.k}" class="input" type="${x.t||'text'}" value="${esc(x.v||'')}">`}</div>`).join('')+'</div>';
+function form(t,f,cb){window._fver={};f.forEach(x=>{if(x.ver)_fver[x.k]=x.ver});$('#ms').textContent='Simpan';$('#ms').style.display='';$('#mt').textContent=t;$('#mbd').innerHTML='<div class="fg">'+f.map(x=>`<div class="fd"><label class="l">${x.l}</label>${x.ro?`<input id="f_${x.k}" class="input" value="${esc(x.v||'')}" readonly style="background:#f1f5f2;color:var(--mu)">`:x.o?`<select id="f_${x.k}" class="select">${x.o.map(o=>`<option ${o===x.v?'selected':''}>${esc(o)}</option>`).join('')}</select>`:x.t==='date'?`<label class="input dt"><span>${x.v?fmt(x.v):'Pilih tanggal'}</span><input type="date" id="f_${x.k}" value="${x.v||''}" ${x.min?`min="${x.min}"`:'min="2000-01-01"'} max="2099-12-31" onclick="try{this.showPicker()}catch(e){}" onchange="if(this.value)this.previousElementSibling.textContent=fmt(this.value)"></label>`:x.ver?`<div style="display:flex;gap:8px"><input id="f_${x.k}" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="flex:1" value="${esc(x.v||'')}"><button type="button" class="btn soft" onclick="formVer('${x.k}')">Verifikasi</button></div><div id="fv_${x.k}" class="mu" style="margin-top:4px"></div>`:`<input id="f_${x.k}" class="input" type="${x.t||'text'}" value="${esc(x.v||'')}">`}</div>`).join('')+'</div>';
  enhanceCustomSelects($('#mbd'));enhanceSecretInputs($('#mbd'));
  $('#ms').onclick=()=>{const v={};f.forEach(x=>v[x.k]=$('#f_'+x.k).value.trim());Promise.resolve().then(()=>cb(v)).then(()=>closeM()).catch(e=>toast(e.message||String(e),false))};$('#md').classList.add('show')}
 async function formVer(k){const el=$('#f_'+k),o=$('#fv_'+k),fn=window._fver&&_fver[k];if(!el||!fn||!o)return;const kode=el.value.trim();
@@ -797,7 +821,7 @@ async function verifikasiDaftar(){const wa=normWA($('#dfWa').value),kode=$('#dfK
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
  try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
-function closeM(){$('#md').classList.remove('show')}
+function closeM(){$('#md').classList.remove('show');resetTutup()}
 function konfirmasi(pesan,o){o=o||{};return new Promise(res=>{const m=$('#cf'),y=$('#cfy'),n=$('#cfn');$('#cfi').textContent=o.ikon||(o.bahaya?'🗑️':'❓');$('#cft').textContent=o.judul||'Konfirmasi';$('#cfm').textContent=pesan;y.textContent=o.ya||'Ya';y.className='btn '+(o.bahaya?'danger':'success');
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
  document.addEventListener('keydown',kd);y.onclick=()=>fin(true);n.onclick=()=>fin(false);m.onclick=e=>{if(e.target===m)fin(false)};m.classList.add('show');y.focus()})}
@@ -824,8 +848,27 @@ function notifProfil(){if(role==='Developer'||MB()||!PROFIL)return '';const m=[]
  if(S.nomor&&!String(S.nomor[me]||'').trim())m.push('nomor WhatsApp');
  if(PK_OK&&Array.isArray(S.pk)&&!S.pk.length)m.push('passkey (masuk dengan sidik jari)');
  if(!m.length)return '';
- return `<div><b>👤 Profil belum lengkap.</b><div class="mu">Belum diisi: ${m.join(', ')}. Lengkapi di menu Profil Saya agar akun Anda aman dan mudah dipakai masuk.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="go('profil')">Atur sekarang</button></div></div>`}
-function notifGabung(){const a=[bannerKonfigIsi(),notifProfil()].filter(Boolean);if(!a.length)return '';
+ return `<div><b>👤 Profil belum lengkap.</b><div class="mu">Belum diisi: ${m.join(', ')}. Lengkapi di menu Profil Saya agar akun Anda aman dan mudah dipakai masuk.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="lompatKe('profil','${(String(PROFIL.nip||'').trim()&&S.nomor&&String(S.nomor[me]||'').trim())?'pnPasskey':'pnProfil'}')">Atur sekarang</button></div></div>`}
+/* ---------- notifikasi fitur belum aktif (alpa otomatis, libur mingguan, tabungan) ---------- */
+const fiturBelum=()=>{const L=[];if(!S.set)return L;
+ if(!S.set.alpa_aktif)L.push({n:'⏰ Alpa otomatis',t:'alpa otomatis',f:"lompatPengaturan('pnAlpa','cbAlpa')"});
+ if(!S.set.notif_libur_aktif||!S.set.notif_libur_mingguan){const b=[];if(!S.set.notif_libur_aktif)b.push('notifikasi libur');if(!S.set.notif_libur_mingguan)b.push('libur mingguan');L.push({n:'🔔 Notifikasi libur ('+b.join(' dan ')+')',t:'notifikasi libur ('+b.join(' dan ')+')',f:"lompatPengaturan('pnNotifLibur','"+(!S.set.notif_libur_aktif?'cbNotifLibur':'cbNotifMingguan')+"')"})}
+ if(!S.set.tabungan_aktif)L.push({n:'💰 Tabungan siswa',t:'tabungan siswa',f:"lompatPengaturan('pnTabungan','cbTabungan')"});
+ return L};
+function notifFitur(){if(role==='Developer'||!me)return '';const L=fiturBelum();if(!L.length)return '';
+ if(adalahKepala())return `<div><b>🔔 Fitur belum aktif.</b><div class="mu">Fitur berikut belum diaktifkan. Tekan Atur untuk langsung membuka pengaturannya.</div>${L.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px"><span>${x.n}</span><button class="btn sm success" onclick="${x.f}">Atur</button></div>`).join('')}</div>`;
+ return `<div><b>🔔 Fitur belum aktif.</b><div class="mu">Belum aktif: ${L.map(x=>x.t).join(', ')}. Silakan informasikan kepada Kepala Sekolah agar fitur ini diaktifkan di Pengaturan.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="hubungiKepala()">💬 Hubungi Kepala Sekolah</button></div></div>`}
+function hubungiKepala(){
+ const G=S.guru||[],N=S.nomor||{},ada=g=>g.aktif&&String(N[g.id]||'').trim();
+ const kp=G.filter(g=>g.role==='kepala_sekolah').find(ada)||G.filter(g=>g.role==='wakil_kepala').find(ada);
+ if(!kp)return toast('Nomor WhatsApp Kepala Sekolah belum tersedia. Silakan sampaikan langsung kepada Kepala Sekolah',false);
+ let d=String(N[kp.id]).replace(/\D/g,'');if(d.startsWith('0'))d='62'+d.slice(1);else if(d.startsWith('8'))d='62'+d;
+ const L=fiturBelum().map(x=>x.t),teks='Assalamualaikum, saya '+meNama+' (guru '+ns()+'). Mohon fitur '+(L.length?L.join(', '):'yang belum aktif')+' diaktifkan di menu Pengaturan. Terima kasih.';
+ let pergi=false;const tandai=()=>{pergi=true},vis=()=>{if(document.hidden)pergi=true};
+ document.addEventListener('visibilitychange',vis);window.addEventListener('pagehide',tandai);window.addEventListener('blur',tandai);
+ setTimeout(()=>{document.removeEventListener('visibilitychange',vis);window.removeEventListener('pagehide',tandai);window.removeEventListener('blur',tandai);if(!pergi)toast('Anda tidak memiliki aplikasi WhatsApp',false)},2200);
+ const a=document.createElement('a');a.href='whatsapp://send?phone='+d+'&text='+encodeURIComponent(teks);a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),500)}
+function notifGabung(){const a=[bannerKonfigIsi(),notifProfil(),notifFitur()].filter(Boolean);if(!a.length)return '';
  return `<div class="note" style="border-left:4px solid #d7a72f">${a.map((x,i)=>i?`<div style="border-top:1px solid #dfeadc;margin-top:12px;padding-top:12px">${x}</div>`:x).join('')}</div>`}
 V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
  const wa=(S.nomor&&S.nomor[me])||'',sk=(typeof MEMB!=='undefined'&&MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||'';
@@ -845,15 +888,28 @@ V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
    +(L.length?'<div class="tw"><table><tbody>'+L.map(x=>`<tr><td><b>${esc(x.friendly_name||'Passkey')}</b><div class="mu">Dibuat ${x.created_at?esc(waktuId(x.created_at)):'-'}${x.last_used_at?' · terakhir dipakai '+esc(waktuId(x.last_used_at)):''}</div></td><td style="white-space:nowrap"><button class="btn sm soft" onclick="renamePasskey('${x.id}')">Ubah nama</button> <button class="btn sm danger" onclick="hapusPasskey('${x.id}')">Hapus</button></td></tr>`).join('')+'</tbody></table></div>':'<div class="mu" style="margin:10px 0">Belum ada passkey di akun ini.</div>')
    +'<button class="btn success" style="width:100%;margin-top:10px" onclick="daftarPasskey()">+ Aktifkan passkey di perangkat ini</button>'
    +(L.length&&!pkAkunList().some(x=>x.u===p.username)?'<button class="btn soft" style="width:100%;margin-top:8px" onclick="pkIngatAkun()">🔗 Tambahkan akun ini ke pilihan login</button><div class="mu" style="margin-top:4px">Cukup sekali per browser agar akun muncul di daftar pilihan masuk sidik jari. Bila muncul beberapa akun, pilih akun Anda sendiri.</div>':'')}
- return `<div class="panel"><div class="ph">👤 Profil Saya</div><div class="pb"><div style="display:grid;grid-template-columns:110px 1fr;gap:10px 12px;align-items:start">${data}</div>${aksi}</div></div><div class="panel"><div class="ph">🔐 Passkey (sidik jari / wajah)</div><div class="pb">${pk}</div></div>`};
+ return `<div class="panel" id="pnProfil"><div class="ph">👤 Profil Saya</div><div class="pb"><div style="display:grid;grid-template-columns:110px 1fr;gap:10px 12px;align-items:start">${data}</div>${aksi}</div></div><div class="panel" id="pnPasskey"><div class="ph">🔐 Passkey (sidik jari / wajah)</div><div class="pb">${pk}</div></div>`};
 
 /* ---------- panduan awal kepala sekolah ---------- */
 let KONFIG_NANTI=false;
 const langkahWajib=()=>[
- {ok:S.kelas.length>0,t:'Tambah kelas',d:'Belum ada kelas. Siswa tidak bisa ditambahkan tanpa kelas.',b:'Tambah Kelas',f:"addKelas()"},
+ {ok:S.kelas.length>0,t:'Tambah kelas',d:'Belum ada kelas. Siswa tidak bisa ditambahkan tanpa kelas.',b:'Atur Kelas',f:"lompatPengaturan('pnKelas','btnTambahKelas')"},
  {ok:!!String((S.set&&S.set.nama_sekolah)||'').trim(),t:'Isi nama sekolah',d:'Tampil di menu, kartu pelajar, rekap, dan pesan ke orang tua.',b:'Atur Nama',f:"lompatPengaturan('pnNama','nsInp')"},
  {ok:!!String((S.set&&S.set.kota)||'').trim(),t:'Isi kota / kabupaten',d:'Dipakai pada tanda tangan Kepala Sekolah di rekap.',b:'Isi Kota',f:"lompatPengaturan('pnAlamat','ktInp')"}];
-async function lompatPengaturan(id,fokus){closeM();await go('pengaturan');setTimeout(()=>{const p=$('#'+id);if(!p)return;p.scrollIntoView({behavior:'smooth',block:'start'});p.classList.add('sorot');setTimeout(()=>p.classList.remove('sorot'),2200);const f=fokus&&$('#'+fokus);if(f)setTimeout(()=>f.focus({preventScroll:true}),450)},80)}
+/* arahkan ke kartu: judul tidak tertutup header, kartu panjang langsung ke kotak/tombol tujuan, lalu berkedip 5 detik */
+const KEDIP_MS=5200;
+function kedip(el){if(!el)return;el.classList.remove('sorot');void el.offsetWidth;el.classList.add('sorot');clearTimeout(el._kd);el._kd=setTimeout(()=>el.classList.remove('sorot'),KEDIP_MS)}
+function sorotKe(id,fokus,ulang){const p=$('#'+id);if(!p)return;
+ const f=fokus?$('#'+fokus):null,top=($('.top')||{offsetHeight:0}).offsetHeight,bn=$('#bn'),bw=(bn&&getComputedStyle(bn).display!=='none')?bn.offsetHeight:0;
+ const atas=top+10,ruang=innerHeight-atas-bw-10,r=p.getBoundingClientRect();let dy;
+ if(r.height<=ruang||!f)dy=r.top-atas;
+ else{const fr=f.getBoundingClientRect();dy=fr.top-atas-Math.max(0,(ruang-fr.height)/2)}
+ if(Math.abs(dy)>2)window.scrollBy({top:dy,behavior:ulang?'auto':'smooth'});
+ if(!ulang){kedip(p);if(f&&r.height>ruang)kedip(f.closest('.fd,label,.tb')||f);if(f&&/^(checkbox|radio)$/.test(f.type||''))setTimeout(()=>{try{f.focus({preventScroll:true})}catch(e){}},500)}
+ else if(!p.classList.contains('sorot'))kedip(p)}
+async function lompatKe(v,id,fokus){closeM();await go(v);setTimeout(()=>sorotKe(id,fokus),150);setTimeout(()=>sorotKe(id,fokus,true),1100)}
+function lompatPengaturan(id,fokus){return lompatKe('pengaturan',id,fokus)}
+function kedipHalaman(){setTimeout(()=>kedip($('#v .panel')),200)}
 function panduanAwal(){if(!adalahKepala())return '';const L=langkahWajib(),n=L.filter(x=>x.ok).length;if(n===L.length)return '';
  return `<div class="panel" style="border:2px solid #d7a72f"><div class="ph">🚀 Panduan Awal <span class="mu">${n} dari ${L.length} selesai</span></div><div class="pb"><div class="note">Lengkapi data sekolah berikut agar aplikasi siap dipakai. Tombol akan langsung membawa Anda ke bagian yang tepat.</div>${L.map(x=>`<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0"><div><b>${x.ok?'✅':'⬜'} ${x.t}</b><div class="mu">${x.d}</div></div>${x.ok?'':`<button class="btn sm success" onclick="${x.f}">${x.b}</button>`}</div>`).join('')}</div></div>`}
 function konfigKurang(){const k='kf_'+SEK;
@@ -861,7 +917,7 @@ function konfigKurang(){const k='kf_'+SEK;
  if(RHS===null){try{const c=JSON.parse(localStorage.getItem(k)||'null');if(Array.isArray(c))return c}catch(e){}return ['Nomor Kepala Sekolah','Token Fonnte']}
  return null}
 function bannerKonfigIsi(){if(!adalahKepala()||KONFIG_NANTI)return '';const m=konfigKurang();if(!m||!m.length)return '';
- return `<div><b>⚙ Konfigurasi belum diatur.</b><div class="mu">Belum diisi: ${m.join(', ')}. Notifikasi WhatsApp belum bisa berjalan. Isi nomor dulu, tambah token, lalu tekan Tes. (ID Group dan Kunci AI) bersifat opsional karena 2 hal ini mencakup izin lewat WhatsApp dengan bahasa bebas sehari-hari.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="lompatPengaturan('pnKonfig','rhNK')">Atur sekarang</button><button class="btn sm soft" onclick="KONFIG_NANTI=true;renderV()">Atur nanti</button></div></div>`}
+ return `<div><b>⚙ Konfigurasi belum diatur.</b><div class="mu">Belum diisi: ${m.join(', ')}. Notifikasi WhatsApp belum bisa berjalan. Isi nomor dulu, tambah token, lalu tekan Tes. (ID Group dan Kunci AI) bersifat opsional karena 2 hal ini mencakup izin lewat WhatsApp dengan bahasa bebas sehari-hari.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="lompatPengaturan('pnKonfig','${m.includes('Nomor Kepala Sekolah')?'rhNK':'btnTambahToken'}')">Atur sekarang</button><button class="btn sm soft" onclick="KONFIG_NANTI=true;renderV()">Atur nanti</button></div></div>`}
 function sapaAwal(){if(!adalahKepala())return;const L=langkahWajib().filter(x=>!x.ok);if(!L.length)return;const k='sapa_'+SEK;try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1')}catch(e){}
  info('Selamat Datang 👋','<div style="text-align:center;padding:6px 4px"><div style="font-size:42px">🏫</div><p>Sekolah Anda belum siap dipakai. Masih ada <b>'+L.length+' hal</b> yang perlu diisi: '+L.map(x=>x.t.toLowerCase()).join(', ')+'.</p><button class="btn success" style="width:100%" onclick="closeM();'+L[0].f.replace(/"/g,'&quot;')+'">Mulai atur: '+L[0].b+'</button><button class="btn soft" style="width:100%;margin-top:8px" onclick="closeM()">Nanti</button></div>')}
 const tglHero=d=>{const t=String(d||'').split('-');return t.length===3?t[2]+'/'+t[1]+'/'+t[0]:''};
@@ -902,7 +958,7 @@ V.siswa=()=>{
 };
 function siswaRows(){if(!sk)return '<tr><td colspan="12" class="mu">'+PK+'</td></tr>';return S.siswa.filter(s=>(sk==='*'||s.kelas===sk)&&(s.nama.toLowerCase().includes(q.toLowerCase())||String(s.nisn||'').includes(q.trim()))).map((s,i)=>{
  const pilih=sHapusMode?`<td><input type="checkbox" ${ssel.has(s.id)?'checked':''} onchange="pilihSiswa(${s.id},this.checked)"></td>`:'';
- return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan)}</div></td><td>${esc(s.nisn||'-')}</td><td>${esc(s.kelas)}</td><td>${tglDMY(s.tgl)||'-'}</td><td>${jkNama(s.jk)||'-'}</td><td>${esc(s.alamat||'-')}</td><td>${s.masuk||'-'}</td><td>${esc(s.wa)}</td><td>${s.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td><button class="btn sm soft" onclick="ubahSiswa(${s.id})">Ubah</button> <button class="btn sm ${s.aktif?'danger':'success'}" onclick="togSiswa(${s.id})">${s.aktif?'Nonaktifkan':'Aktifkan'}</button> <button class="btn sm danger" onclick="hapusSiswa(${s.id})">Hapus</button></td></tr>`;
+ return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan)}</div></td><td>${esc(s.nisn||'-')}</td><td>${esc(s.kelas)}</td><td>${tglDMY(s.tgl)||'-'}</td><td>${jkNama(s.jk)||'-'}</td><td>${esc(s.alamat||'-')}</td><td>${s.masuk||'-'}</td><td>${esc(s.wa)}</td><td>${s.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td><button class="btn sm soft aksi-btn" aria-label="Aksi" onclick="aksiSiswa(${s.id},this)">✏️</button></td></tr>`;
 }).join('')}
 function cariSiswaInput(el){q=el.value;const tb=$('#sb');if(tb)tb.innerHTML=siswaRows();}
 function pilihSiswa(id,on){on?ssel.add(id):ssel.delete(id);renderV()}
@@ -913,9 +969,9 @@ function belumAdaKelas(){if(!kelola())return toast('Belum ada kelas. Minta Kepal
 function addSiswa(){if(!S.kelas.length)return belumAdaKelas();form('Tambah Siswa',[{k:'nama',l:'Nama lengkap'},{k:'pan',l:'Nama panggilan'},{k:'nisn',l:'NISN (opsional)',t:'tel'},{k:'kelas',l:'Kelas',o:S.kelas.map(k=>k.nama)},{k:'wa',l:'WhatsApp orang tua (08...)',t:'tel'},{k:'tgl',l:'Tanggal lahir (opsional)',t:'date'},{k:'jk',l:'Jenis kelamin',o:['-','Laki-laki','Perempuan']},{k:'alamat',l:'Alamat (opsional)'},{k:'masuk',l:'Tahun masuk',t:'tel',v:TODAY.slice(0,4)}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
  const dup=nisn?S.siswa.find(x=>x.nisn===nisn):null;if(dup)throw new Error('NISN sudah digunakan oleh '+dup.nama);
  const s=await dbq(db.from('siswa').insert({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas),...siswaExtra(v)}).select().single());await setWali(s.id,normWA(v.wa));await muatDasar();toast('Siswa tersimpan');renderV()})}
-function ubahSiswa(id){const s=S.siswa.find(x=>x.id===id);form('Ubah Siswa',[{k:'nama',l:'Nama lengkap',v:s.nama},{k:'pan',l:'Nama panggilan',v:s.pan},{k:'nisn',l:'NISN (opsional)',t:'tel',v:s.nisn},{k:'kelas',l:'Kelas',o:S.kelas.map(k=>k.nama),v:s.kelas},{k:'wa',l:'WhatsApp orang tua',t:'tel',v:s.wa},{k:'tgl',l:'Tanggal lahir (opsional)',t:'date',v:s.tgl},{k:'jk',l:'Jenis kelamin',o:['-','Laki-laki','Perempuan'],v:jkNama(s.jk)||'-'},{k:'alamat',l:'Alamat (opsional)',v:s.alamat},{k:'masuk',l:'Tahun masuk',t:'tel',v:String(s.masuk||'')}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
+function ubahSiswa(id){const s=S.siswa.find(x=>x.id===id);form('Ubah Siswa',[{k:'nama',l:'Nama lengkap',v:s.nama},{k:'pan',l:'Nama panggilan',v:s.pan},{k:'nisn',l:'NISN (opsional)',t:'tel',v:s.nisn},{k:'kelas',l:'Kelas (hanya dibaca, pindah kelas lewat menu Kelola Siswa)',ro:1,v:s.kelas||'-'},{k:'wa',l:'WhatsApp orang tua',t:'tel',v:s.wa},{k:'tgl',l:'Tanggal lahir (opsional)',t:'date',v:s.tgl},{k:'jk',l:'Jenis kelamin',o:['-','Laki-laki','Perempuan'],v:jkNama(s.jk)||'-'},{k:'alamat',l:'Alamat (opsional)',v:s.alamat},{k:'masuk',l:'Tahun masuk',t:'tel',v:String(s.masuk||'')}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
  const dup=nisn?S.siswa.find(x=>x.id!==id&&x.nisn===nisn):null;if(dup)throw new Error('NISN sudah digunakan oleh '+dup.nama);
- await dbq(db.from('siswa').update({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas),...siswaExtra(v)}).eq('id',id));if(normWA(v.wa)!==s.wa)await setWali(id,normWA(v.wa));await muatDasar();toast('Data siswa diperbarui');renderV()})}
+ await dbq(db.from('siswa').update({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,...siswaExtra(v)}).eq('id',id));if(normWA(v.wa)!==s.wa)await setWali(id,normWA(v.wa));await muatDasar();toast('Data siswa diperbarui');renderV()})}
 function togSiswa(id){guard(async()=>{const s=S.siswa.find(x=>x.id===id);await dbq(db.from('siswa').update({aktif:!s.aktif}).eq('id',id));s.aktif=!s.aktif;renderV()})}
 /* ---------- guru ---------- */
 let gsel=new Set();
@@ -978,14 +1034,15 @@ V.guru=()=>{
 };
 async function apiGuru(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/guru',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/guru tidak ditemukan (404). Pastikan file api/guru.js sudah di-deploy pada project yang sama dengan Index.');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
 function editGuru(id){if(MB())return toast('Tidak tersedia di mode bantuan',false);const g=S.guru.find(x=>x.id===id);if(!g||id!==me)return toast('Anda hanya bisa mengubah akun sendiri',false);
+ setTimeout(()=>pasangPkForm('lama'),0);
  form('Ubah profil saya',[{k:'nama',l:'Nama',v:g.nama},{k:'nip',l:'NIP (opsional)',v:g.nip||''},{k:'user',l:'Username',v:g.username},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak diganti)',t:'password'},{k:'lama',l:'Kata sandi saat ini (wajib bila mengganti username atau kata sandi)',t:'password'}],async v=>{
   const user=(v.user||'').trim().toLowerCase();
   if(!v.nama||!user)throw new Error('Nama dan username wajib diisi');
   if(v.sandi&&v.sandi.length<6)throw new Error('Kata sandi minimal 6 karakter');
   if(!/^[a-z0-9._-]{3,20}$/.test(user))throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah');
   const ubahAkun=user!==g.username||!!v.sandi;
-  if(ubahAkun&&!v.lama)throw new Error('Isi kata sandi saat ini untuk mengganti username atau kata sandi');
-  if(ubahAkun)await apiGuru({aksi:'akun_sendiri',username:user,sandi_baru:v.sandi||'',sandi_sekarang:v.lama});
+  if(ubahAkun&&!v.lama&&!pkFresh())throw new Error('Isi kata sandi saat ini atau verifikasi dengan passkey untuk mengganti username atau kata sandi');
+  if(ubahAkun)await apiGuru({aksi:'akun_sendiri',username:user,sandi_baru:v.sandi||'',...bodySandi(v.lama)});
   await dbq(db.from('profil').update({nama:v.nama,nip:(v.nip||'').trim()||null}).eq('id',id));
   meNama=v.nama;PROFIL.nama=v.nama;await muatProfil();toast(ubahAkun?'Profil dan akun diperbarui':'Profil diperbarui');renderAll()})}
 function fmtWA(n){const d=String(n||'').replace(/\D/g,'');return d.startsWith('62')?'0'+d.slice(2):d}
@@ -1011,12 +1068,16 @@ function addGuru(){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Ke
   if(c.ada){if(!await konfirmasi('Nomor ini sudah punya akun atas nama '+c.nama+'. Tautkan ke sekolah ini?',{judul:'Tautkan guru',ya:'Tautkan'}))return;
    await apiGuru({aksi:'tautkan',no_wa:wa,izin});await muatProfil();toast(c.nama+' ditautkan ke sekolah ini');renderV();return}
   setTimeout(()=>formGuruBaru(wa,izin),150)}))}
-function gantiNomor(){if(MB())return toast('Tidak tersedia di mode bantuan',false);
- form('Nomor WhatsApp saya',[{k:'wa',l:'Nomor WhatsApp baru (contoh 08123456789)'},{k:'sandi',l:'Kata sandi saat ini',t:'password'}],async v=>{
-  const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp tidak valid');if(!v.sandi)throw new Error('Isi kata sandi saat ini');
-  const j=await apiGuru({aksi:'nomor_otp_kirim',no_wa_baru:wa,sandi_sekarang:v.sandi});
+function gantiNomor(op){if(MB())return toast('Tidak tersedia di mode bantuan',false);
+ const tetap=op&&op.wa?normWA(op.wa):'';
+ setTimeout(()=>pasangPkForm('sandi'),0);
+ form('Nomor WhatsApp saya',[tetap?{k:'wa',l:'Nomor WhatsApp baru (dari Pengaturan)',ro:1,v:fmtWA(tetap)}:{k:'wa',l:'Nomor WhatsApp baru (contoh 08123456789)'},{k:'sandi',l:'Kata sandi saat ini',t:'password'}],async v=>{
+  const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp tidak valid');if(!v.sandi&&!pkFresh())throw new Error('Isi kata sandi saat ini atau verifikasi dengan passkey');
+  const j=await apiGuru({aksi:'nomor_otp_kirim',no_wa_baru:wa,...bodySandi(v.sandi)});
   setTimeout(()=>{const f=[{k:'kb',l:'Kode yang dikirim ke nomor BARU ('+fmtWA(wa)+')',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'ganti_baru',no_wa_baru:wa,kode:kd})}];if(j.perlu_kode_lama)f.push({k:'kl',l:'Kode yang dikirim ke nomor LAMA',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'ganti_lama',kode:kd})});
-   form('Verifikasi nomor WhatsApp',f,async z=>{await apiGuru({aksi:'nomor_simpan',no_wa_baru:wa,kode_baru:z.kb,kode_lama:z.kl||''});await muatProfil();toast('Nomor WhatsApp diperbarui');renderV()});
+   form('Verifikasi nomor WhatsApp',f,async z=>{await apiGuru({aksi:'nomor_simpan',no_wa_baru:wa,kode_baru:z.kb,kode_lama:z.kl||''});await muatProfil();
+    if(role==='Kepala Sekolah'){try{await apiPengaturan({aksi:'simpan',nomor_kepala:fmtWA(wa)});await muatRahasia()}catch(e){}}
+    toast(role==='Kepala Sekolah'?'Nomor WhatsApp diperbarui di Profil dan Pengaturan':'Nomor WhatsApp diperbarui');renderV()});
    $('#ms').textContent='Verifikasi'},150)});$('#ms').textContent='Kirim kode'}
 function setGuruRole(id,r){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, atau Developer yang dapat mengubah peran guru',false);
  const g=S.guru.find(x=>x.id===id)||{};
@@ -1381,7 +1442,7 @@ function panelKelasHtml(){
  if(!adalahKepala()){
   const wn=id=>{const g=S.guru.find(x=>x.id===id);return g?g.nama:'-'};
   return `<div class="panel" id="pnKelas"><div class="ph">🏫 Kelas dan Jam Masuk</div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Urutan kelas menentukan arah naik kelas. Data ini hanya dapat diubah oleh Kepala Sekolah atau Wakil Kepala Sekolah.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <b>${esc(k.jam)}</b></span><span>Wali kelas <b>${esc(wn(k.wali))}</b></span><span>Urutan <b>${k.urutan==null?'-':k.urutan}</b></span>${k.akhir?'<span><b>✓ Kelas akhir (kelulusan)</b></span>':''}</div>`).join('')||'<div class="mu">Belum ada kelas.</div>'}</div></div></div>`}
- return `<div class="panel" id="pnKelas"><div class="ph">🏫 Kelas dan Jam Masuk <button class="btn success" onclick="addKelas()">+ Tambah Kelas</button></div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Urutan kelas (1, 2, 3, ...) menentukan arah naik kelas: siswa hanya boleh naik ke kelas dengan urutan lebih tinggi. Centang Kelas akhir pada kelas yang menjadi kelas kelulusan. Batas masuk, wali kelas, dan Kelas akhir tersimpan otomatis. Urutan kelas disimpan dengan tombol Simpan.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <input type="time" class="input" value="${k.jam}" onchange="setJam(${k.id},this.value)"></span><span>Wali kelas <select class="select" onchange="setWaliKelas(${k.id},this.value)">${woptGuru(k.wali)}</select></span><span>Urutan <input type="number" min="1" max="99" class="input" style="width:76px" inputmode="numeric" enterkeyhint="done" value="${k.urutan==null?'':k.urutan}" onkeydown="if(event.key==='Enter'){event.preventDefault();simpanKelas(${k.id},this)}"></span><span><label class="cbl"><input type="checkbox" ${k.akhir?'checked':''} onchange="setKelasAkhir(${k.id},this.checked)"> Kelas akhir (kelulusan)</label></span><div class="ci-act"><button class="btn sm soft" onclick="ubahKelas(${k.id})">Ubah nama kelas</button><button class="btn sm success" onclick="simpanKelas(${k.id},this)">Simpan</button><button class="btn sm danger" onclick="delKelas(${k.id})">Hapus</button></div></div>`).join('')}</div></div></div>`}
+ return `<div class="panel" id="pnKelas"><div class="ph">🏫 Kelas dan Jam Masuk <button id="btnTambahKelas" class="btn success" onclick="addKelas()">+ Tambah Kelas</button></div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Urutan kelas (1, 2, 3, ...) menentukan arah naik kelas: siswa hanya boleh naik ke kelas dengan urutan lebih tinggi. Centang Kelas akhir pada kelas yang menjadi kelas kelulusan. Batas masuk, wali kelas, dan Kelas akhir tersimpan otomatis. Urutan kelas disimpan dengan tombol Simpan.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <input type="time" class="input" value="${k.jam}" onchange="setJam(${k.id},this.value)"></span><span>Wali kelas <select class="select" onchange="setWaliKelas(${k.id},this.value)">${woptGuru(k.wali)}</select></span><span>Urutan <input type="number" min="1" max="99" class="input" style="width:76px" inputmode="numeric" enterkeyhint="done" value="${k.urutan==null?'':k.urutan}" onkeydown="if(event.key==='Enter'){event.preventDefault();simpanKelas(${k.id},this)}"></span><span><label class="cbl"><input type="checkbox" ${k.akhir?'checked':''} onchange="setKelasAkhir(${k.id},this.checked)"> Kelas akhir (kelulusan)</label></span><div class="ci-act"><button class="btn sm soft" onclick="ubahKelas(${k.id})">Ubah nama kelas</button><button class="btn sm success" onclick="simpanKelas(${k.id},this)">Simpan</button><button class="btn sm danger" onclick="delKelas(${k.id})">Hapus</button></div></div>`).join('')}</div></div></div>`}
 V.kelasjam=()=>panelKelasHtml();
 V.pengaturan=()=>`${taInit()}<div class="panel"><div class="ph">🎓 Tahun Ajaran <span class="mu">Sekarang: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="note">Tahun ajaran baru hanya bisa dimulai setelah keputusan akhir tahun (naik kelas, tinggal kelas, lulus) disahkan di menu Kelola Siswa. Siswa naik dan tinggal kelas tetap tersimpan; siswa lulus, siswa nonaktif, dan wali yang tidak lagi punya anak di sekolah akan dihapus. Seluruh absensi lama, laporan orang tua, dan pesan WhatsApp juga dihapus. Data guru dan kelas tetap ada. Unduh rekap total tahun ajaran di bawah ini sebelum menghapus. Bila Tabungan Siswa aktif, Anda juga memilih apakah saldo dibawa atau ditutup, dan sebaiknya unduh Rekap saldo di menu Tabungan lebih dulu.</div>
 <div class="tb"><span class="mu">Dari</span>${dt('month',taA,"taA=this.value")}<span class="mu">Sampai</span>${dt('month',taB,"taB=this.value")}<select class="select" onchange="taK=this.value">${kopt(taK,1)}</select></div>
@@ -1391,11 +1452,11 @@ V.pengaturan=()=>`${taInit()}<div class="panel"><div class="ph">🎓 Tahun Ajara
 <div class="panel" id="pnNama"><div class="ph">🏫 Nama Sekolah</div><div class="pb"><div class="note">Nama ini tampil di menu samping, dashboard, kartu pelajar, riwayat/rekap absensi (PDF dan XLSX), serta pesan laporan orang tua. Setelah disimpan, halaman dimuat ulang otomatis.</div><div class="tb"><input id="nsInp" class="input grow" maxlength="80" value="${esc(ns())}" placeholder="Nama sekolah" onkeydown="if(event.key==='Enter')simpanNamaSekolah($('#nsBtn'))"><button id="nsBtn" class="btn success" onclick="simpanNamaSekolah(this)">💾 Simpan</button></div></div></div>
 <div class="panel" id="pnAlamat"><div class="ph">📍 Alamat Sekolah</div><div class="pb"><div class="note">Kota dipakai pada tanda tangan Kepala Sekolah di rekap (contoh: Jember, Minggu 4 Oktober 2026).</div><div class="fg"><div class="fd"><label class="l">Alamat sekolah</label><input id="alInp" class="input" maxlength="150" value="${esc(S.set.alamat||'')}" placeholder="Jl. Contoh No. 1"></div><div class="fd"><label class="l">Kota / kabupaten (untuk tanda tangan rekap)</label><input id="ktInp" class="input" maxlength="60" value="${esc(S.set.kota||'')}" placeholder="contoh Jember"></div></div><button class="btn success" onclick="simpanAlamat(this)">💾 Simpan alamat</button></div></div>
 ${panelKelasHtml()}
-<div class="panel"><div class="ph">⏰ Alpa Otomatis</div><div class="pb"><div class="note">Anak yang belum tercatat sampai jam ini otomatis berstatus Alpa (tidak berlaku di hari libur). Server menjalankannya tepat pada jam yang diatur. Bila orang tua mengabari izin sesudahnya, statusnya diubah.</div>
-<div class="tb cbrow"><label class="cbl"><input type="checkbox" ${S.set.alpa_aktif?'checked':''} onchange="setAlpa({alpa_aktif:this.checked})"> Aktifkan alpa otomatis</label><input type="time" class="input" value="${S.set.jam}" onchange="setAlpa({alpa_jam:this.value})"></div></div></div>
-<div class="panel"><div class="ph">🔔 Notifikasi Libur</div><div class="pb"><div class="note">Kepala Sekolah menerima WhatsApp bila hari ini ada libur nasional atau libur tanggal yang meliburkan kelas atau sekolah. Libur mingguan hanya diberitahukan bila opsi di bawah dicentang, sesuai hari libur yang Anda atur di Jadwal Libur. Atur jam kirim setelah pukul 00.30 agar libur hari itu sudah tercatat. Bila jam baru hari ini sudah lewat, pesan dikirim mulai besok. Nomor Kepala Sekolah dan token Fonnte diatur di Pengaturan > Koneksi.</div>
-<div class="tb cbrow"><label class="cbl"><input type="checkbox" ${S.set.notif_libur_aktif?'checked':''} onchange="setNotifLibur({notif_libur_aktif:this.checked})"> Aktifkan notifikasi libur</label><input type="time" class="input" min="00:30" value="${S.set.njam}" onchange="setNotifLibur({notif_libur_jam:this.value})"></div><div class="tb cbrow"><label class="cbl"><input type="checkbox" ${S.set.notif_libur_mingguan?'checked':''} onchange="setNotifLibur({notif_libur_mingguan:this.checked})"> Beritahu juga libur mingguan</label></div></div></div>
-<div class="panel"><div class="ph">💰 Tabungan Siswa</div><div class="pb"><div class="note">Aktifkan bila sekolah mengelola tabungan siswa. Menu Tabungan tersedia untuk guru dan kepala sekolah. Transaksi setoran manual dapat diedit oleh guru yang mencatat transaksi tersebut selama maksimal 7 hari; Kepala Sekolah juga dapat mengubah transaksi setoran. Penarikan mengikuti aturan wali kelas. Pembatalan tetap tersedia untuk koreksi dan data tabungan tidak ikut pembersihan otomatis.</div><div class="tb cbrow"><label class="cbl"><input type="checkbox" ${S.set.tabungan_aktif?'checked':''} onchange="setTabungan(this.checked)"> Aktifkan tabungan siswa</label></div></div></div>
+<div class="panel" id="pnAlpa"><div class="ph">⏰ Alpa Otomatis</div><div class="pb"><div class="note">Anak yang belum tercatat sampai jam ini otomatis berstatus Alpa (tidak berlaku di hari libur). Server menjalankannya tepat pada jam yang diatur. Bila orang tua mengabari izin sesudahnya, statusnya diubah.</div>
+<div class="tb cbrow"><label class="cbl"><input id="cbAlpa" type="checkbox" ${S.set.alpa_aktif?'checked':''} onchange="setAlpa({alpa_aktif:this.checked})"> Aktifkan alpa otomatis</label><input type="time" class="input" value="${S.set.jam}" onchange="setAlpa({alpa_jam:this.value})"></div></div></div>
+<div class="panel" id="pnNotifLibur"><div class="ph">🔔 Notifikasi Libur</div><div class="pb"><div class="note">Kepala Sekolah menerima WhatsApp bila hari ini ada libur nasional atau libur tanggal yang meliburkan kelas atau sekolah. Libur mingguan hanya diberitahukan bila opsi di bawah dicentang, sesuai hari libur yang Anda atur di Jadwal Libur. Atur jam kirim setelah pukul 00.30 agar libur hari itu sudah tercatat. Bila jam baru hari ini sudah lewat, pesan dikirim mulai besok. Nomor Kepala Sekolah dan token Fonnte diatur di Pengaturan > Koneksi.</div>
+<div class="tb cbrow"><label class="cbl"><input id="cbNotifLibur" type="checkbox" ${S.set.notif_libur_aktif?'checked':''} onchange="setNotifLibur({notif_libur_aktif:this.checked})"> Aktifkan notifikasi libur</label><input type="time" class="input" min="00:30" value="${S.set.njam}" onchange="setNotifLibur({notif_libur_jam:this.value})"></div><div class="tb cbrow"><label class="cbl"><input id="cbNotifMingguan" type="checkbox" ${S.set.notif_libur_mingguan?'checked':''} onchange="setNotifLibur({notif_libur_mingguan:this.checked})"> Beritahu juga libur mingguan</label></div></div></div>
+<div class="panel" id="pnTabungan"><div class="ph">💰 Tabungan Siswa</div><div class="pb"><div class="note">Aktifkan bila sekolah mengelola tabungan siswa. Menu Tabungan tersedia untuk guru dan kepala sekolah. Transaksi setoran manual dapat diedit oleh guru yang mencatat transaksi tersebut selama maksimal 7 hari; Kepala Sekolah juga dapat mengubah transaksi setoran. Penarikan mengikuti aturan wali kelas. Pembatalan tetap tersedia untuk koreksi dan data tabungan tidak ikut pembersihan otomatis.</div><div class="tb cbrow"><label class="cbl"><input id="cbTabungan" type="checkbox" ${S.set.tabungan_aktif?'checked':''} onchange="setTabungan(this.checked)"> Aktifkan tabungan siswa</label></div></div></div>
 ${panelWebhook()}${panelKonfigurasi()}`;
 let CFG_SID=null;
 function panelWebhook(){return `<div class="panel"><div class="ph">🔗 Alamat Webhook</div><div class="pb"><div class="note">Satu alamat Webhook untuk semua akun Fonnte sekolah Anda: pasang alamat yang sama di setiap perangkat Fonnte. Alamat ini rahasia dan unik untuk sekolah Anda, jadi disembunyikan. Untuk melihatnya, masukkan kata sandi akun Anda.</div><div class="tb"><button class="btn success" onclick="mintaWebhook(false)">🔓 Tampilkan alamat</button><button class="btn danger" onclick="mintaWebhook(true)">♻ Buat ulang kunci</button></div></div></div>`}
@@ -1407,16 +1468,23 @@ function cfgIsi(){const R=RHS||{},tks=R.tokens||[],grp=R.grup||[],ai=R.kunci_ai|
  const barisG=grp.length?grp.map(g=>`<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0"><div><b>${esc(g.label||'Grup')}</b><div class="mu" style="word-break:break-all">${esc(g.grup_id)} · ${esc(namaT(g.token_id))}</div></div><button class="btn sm danger" onclick="hapusGrup(${g.id})">🗑</button></div>`).join(''):'<div class="mu">Belum ada ID grup.</div>';
  return `<div class="note">Kunci dan token tidak ditampilkan lagi setelah disimpan. Satu sekolah boleh memakai beberapa akun Fonnte dan beberapa grup WhatsApp (misalnya satu grup per kelas), semuanya lewat satu alamat Webhook. Tombol Tes mengirim pesan percobaan ke nomor Kepala Sekolah di bawah.</div>${mm}${err}
 <div class="fd"><label class="l">Kunci API AI (Gemini) ${aiSt}</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="rhAI" class="input" type="password" autocomplete="off" placeholder="Tempel kunci baru di sini" style="flex:1;min-width:160px"><button class="btn sm soft" ${ai.ada?'':'disabled'} onclick="tesAI(this)">🧪 Tes AI</button>${ai.ada?`<button class="btn sm danger" onclick="hapusRahasia('kunci_ai')">Hapus</button>`:''}</div></div>
-<div class="fd" style="margin-top:10px"><label class="l">Nomor Kepala Sekolah (tujuan pesan tes dan notifikasi)</label><input id="rhNK" class="input" value="${esc(R.nomor_kepala||'')}" placeholder="contoh 08123456789"></div>
+${(()=>{const own=!CFG_SID&&adalahKepala(),nv=own?(nomorKepalaProfil()||R.nomor_kepala||''):(R.nomor_kepala||''),ro=own&&role!=='Kepala Sekolah';
+ return `<div class="fd" style="margin-top:10px"><label class="l">Nomor Kepala Sekolah (tujuan pesan tes dan notifikasi)</label><input id="rhNK" class="input" value="${esc(own?fmtWA(nv):nv)}" placeholder="contoh 08123456789" ${ro?'readonly style="background:#f1f5f2;color:var(--mu)"':''}>${own?`<div class="mu" style="margin-top:4px">${ro?'Nomor ini sama dengan nomor di Profil Saya Kepala Sekolah dan hanya dapat diubah oleh Kepala Sekolah.':'Nomor ini satu dengan nomor di Profil Saya. Bila diubah di sini, kode verifikasi dikirim ke nomor baru, lalu Profil dan Pengaturan ikut berubah.'}</div>`:''}</div>`})()}
 <button class="btn success" style="margin-top:10px" onclick="simpanKoneksi(this)">💾 Simpan kunci AI dan nomor</button>
-<div class="fd" style="margin-top:16px"><label class="l">Token Fonnte</label>${barisT}<button class="btn sm success" onclick="tambahToken()">+ Token Fonnte</button></div>
+<div class="fd" style="margin-top:16px"><label class="l">Token Fonnte</label>${barisT}<button id="btnTambahToken" class="btn sm success" onclick="tambahToken()">+ Token Fonnte</button></div>
 <div class="fd" style="margin-top:16px"><label class="l">ID Group WhatsApp</label>${barisG}<button class="btn sm success" ${tks.length?'':'disabled'} onclick="tambahGrup()">+ ID Group</button>${tks.length?'':'<div class="mu">Tambahkan token Fonnte dulu.</div>'}</div>`}
 function panelKonfigurasi(){return `<div class="panel" id="pnKonfig"><div class="ph">⚙ Konfigurasi</div><div class="pb">${cfgIsi()}</div></div>`}
 async function segarCfg(){await muatRahasia();if(CFG_SID)setTimeout(tampilCfgModal,250);else renderV()}
 function tampilCfgModal(){const sk=(S.devSek||[]).find(x=>x.id===CFG_SID)||{};info('Konfigurasi - '+(sk.nama||''),cfgIsi()+`<div class="tb" style="margin-top:14px;flex-wrap:wrap"><button class="btn soft" onclick="closeM();setTimeout(()=>mintaWebhook(false,${CFG_SID}),150)">🔓 Alamat Webhook</button><button class="btn danger" onclick="closeM();setTimeout(()=>mintaWebhook(true,${CFG_SID}),150)">♻ Buat ulang kunci</button></div>`)}
 function konfigSekolah(sid){CFG_SID=sid;RHS=null;tampilCfgModal();muatRahasia().then(()=>{if(CFG_SID===sid)tampilCfgModal()})}
-function simpanKoneksi(btn){const ai=$('#rhAI').value.trim(),nk=$('#rhNK').value.trim();const b={aksi:'simpan',nomor_kepala:nk};if(ai)b.kunci_ai=ai;
- guard(async()=>{await apiPengaturan(b);await segarCfg();toast('Konfigurasi disimpan')})}
+function simpanKoneksi(btn){const ai=$('#rhAI').value.trim(),nk=$('#rhNK').value.trim();const b={aksi:'simpan'};if(ai)b.kunci_ai=ai;
+ const own=!CFG_SID&&adalahKepala();if(!own)b.nomor_kepala=nk;
+ const cur=own?(nomorKepalaProfil()||(RHS||{}).nomor_kepala||''):'';
+ const ubah=own&&role==='Kepala Sekolah'&&!!nk&&normWA(nk)!==normWA(cur);
+ if(ubah&&!/^628\d{8,12}$/.test(normWA(nk)))return toast('Nomor WhatsApp tidak valid',false);
+ if(own&&!ubah&&!ai)return toast('Tidak ada perubahan untuk disimpan',false);
+ guard(async()=>{if(Object.keys(b).length>1){await apiPengaturan(b);await segarCfg();toast('Konfigurasi disimpan')}
+  if(ubah)setTimeout(()=>gantiNomor({wa:normWA(nk)}),400)})}
 async function hapusRahasia(f){if(!await konfirmasi('Hapus kunci API AI sekolah ini? Fitur AI berhenti sampai diisi lagi.',{judul:'Hapus kunci AI',ya:'Hapus',bahaya:1}))return;
  guard(async()=>{await apiPengaturan({aksi:'simpan',hapus:[f]});await segarCfg();toast('Kunci AI dihapus')})}
 function tambahToken(){form('Tambah token Fonnte',[{k:'label',l:'Nama (contoh Kelas A)'},{k:'token',l:'Token Fonnte',t:'password'},{k:'perangkat',l:'Nomor WhatsApp perangkat (opsional, contoh 08123456789)'}],async v=>{
@@ -1492,7 +1560,7 @@ const klInfo=d=>kb(KJC[d.jenis],KJ[d.jenis])+(d.jenis==='naik'&&d.kelas_tujuan_n
 const klListHtml=()=>tab(['','Nama','NISN','Keputusan'],klSiswa().map(s=>{const d=KL.map.get(s.id);return `<tr><td><input type="checkbox" ${KL.sel.has(s.id)?'checked':''} ${klKunci(s)?'disabled':''} onchange="klPilih(${s.id},this.checked)"></td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan||'')}</div></td><td>${esc(s.nisn||'-')}</td><td>${d?klInfo(d):'<span class="mu">Belum diputuskan</span>'}</td></tr>`}).join(''),KL.asal?'Tidak ada siswa aktif yang cocok di kelas ini.':'Pilih kelas asal terlebih dahulu.');
 const klRingkasHtml=()=>{const n=KL.sel.size,nm=[...KL.sel].map(id=>(S.siswa.find(s=>s.id===id)||{}).nama).filter(Boolean);return `<b>${n} siswa dipilih</b>`+(n?'<div class="mu" style="margin-top:4px">'+nm.slice(0,10).map(esc).join(', ')+(nm.length>10?', dan '+(nm.length-10)+' lainnya':'')+'</div>':'')};
 const klRefresh=()=>{const a=$('#klList'),b=$('#klRingkas');if(a)a.innerHTML=klListHtml();if(b)b.innerHTML=klRingkasHtml()};
-function klTab(t){KL.tab=t;KL.asal='';KL.tujuan='';KL.q='';KL.sel.clear();renderV();const e=document.querySelector('.utab.on');if(e)e.scrollIntoView({inline:'center',block:'nearest'})}
+function klTab(t){KL.tab=t;KL.asal='';KL.tujuan='';KL.q='';KL.sel.clear();renderV()}
 function klAsal(v){KL.asal=v;KL.tujuan='';KL.sel.clear();renderV()}
 function klTujuan(v){KL.tujuan=v}
 function klPilih(id,on){on?KL.sel.add(id):KL.sel.delete(id);const b=$('#klRingkas');if(b)b.innerHTML=klRingkasHtml()}
@@ -1534,7 +1602,7 @@ async function klProses(){
  });
 }
 /* ----- Pengesahan ----- */
-const klDaftarHtml=()=>{const z=KL.dq.toLowerCase().trim(),l=(KL.data||[]).filter(d=>!z||d.nama_siswa.toLowerCase().includes(z)||String(d.kelas_asal_nama||'').toLowerCase().includes(z));
+const klDaftarHtml=()=>{const z=KL.dq.toLowerCase().trim(),l=(KL.data||[]).filter(d=>(!KL.dk||d.kelas_asal_nama===KL.dk)&&(!z||d.nama_siswa.toLowerCase().includes(z)||String(d.kelas_asal_nama||'').toLowerCase().includes(z)));
  return tab(['Siswa','Kelas asal','Keputusan','Aksi'],l.map(d=>`<tr><td><b>${esc(d.nama_siswa)}</b></td><td>${esc(d.kelas_asal_nama||'-')}</td><td>${klInfo(d)}</td><td>${d.status==='sementara'?`<button class="btn sm danger" onclick="klHapus(${d.id})">Hapus</button>`:d.status==='disahkan'?`<button class="btn sm soft" onclick="klKoreksi(${d.id})">Koreksi</button>`:''}</td></tr>`).join(''),'Belum ada keputusan yang diproses.')};
 async function klHapus(id){const d=(KL.data||[]).find(x=>x.id===id);if(!d)return;
  if(!await konfirmasi('Hapus keputusan sementara untuk '+d.nama_siswa+'? Siswa kembali berstatus belum diputuskan.',{judul:'Hapus keputusan',ya:'Hapus',bahaya:1}))return;
@@ -1601,7 +1669,7 @@ function klPengesahanHtml(){
  const lain=m.filter(x=>x.kelas_id==null);
  const tanpa=lain.length?`<div class="note" style="border-color:#d99a27;background:#fff8df"><b>⚠ Siswa tanpa kelas yang valid (${lain.length}):</b>`+tab(['Siswa','Masalah'],lain.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${esc(x.masalah)}</td></tr>`).join(''))+'</div>':'';
  return `<div class="note">Pengesahan dilakukan <b>per kelas oleh wali kelasnya</b>. Kelas yang belum punya wali kelas dapat disahkan oleh semua guru. Pengesahan hanya menetapkan keputusan sebagai resmi. Siswa baru dipindahkan, tinggal kelas, atau lulus ketika Kepala Sekolah memulai tahun ajaran baru, setelah SEMUA kelas disahkan.</div>${ringkas}${ks||'<div class="note">Belum ada kelas aktif.</div>'}${tanpa}
-<div class="tb" style="margin-top:12px"><input class="input grow" placeholder="Cari nama atau kelas" value="${esc(KL.dq)}" oninput="klCariDaftar(this)"></div><div id="klDaftar">${klDaftarHtml()}</div>`;
+<div class="tb" style="margin-top:12px"><input class="input grow" placeholder="Cari nama atau kelas" value="${esc(KL.dq)}" oninput="klCariDaftar(this)"><select class="select" onchange="klKelasDaftar(this.value)"><option value="">Semua kelas</option>${S.kelas.map(k=>`<option value="${esc(k.nama)}" ${KL.dk===k.nama?'selected':''}>${esc(k.nama)}</option>`).join('')}</select></div><div id="klDaftar">${klDaftarHtml()}</div>`;
 }
 async function klSahkan(kid){
  await guard(muatKelola);renderV();
@@ -1615,25 +1683,74 @@ async function klSahkan(kid){
 }
 
 /* ---------- Alumni ---------- */
-let AL={data:null,q:'',th:''};
+/* ---------- menu aksi siswa (ikon pensil) ---------- */
+function aksiSiswa(id,btn){
+ const ada=document.getElementById('aksiMenu'),sama=ada&&ada.dataset.id===String(id);tutupAksi();if(sama)return;
+ const s=S.siswa.find(x=>x.id===id);if(!s)return;
+ const m=document.createElement('div');m.id='aksiMenu';m.className='aksi-menu';m.dataset.id=String(id);
+ m.innerHTML=`<button onclick="tutupAksi();ubahSiswa(${id})">✏️ Ubah</button><button onclick="tutupAksi();togSiswa(${id})">${s.aktif?'⏸ Nonaktifkan':'▶ Aktifkan'}</button><button class="rd" onclick="tutupAksi();hapusSiswa(${id})">🗑 Hapus</button>`;
+ document.body.appendChild(m);
+ const r=btn.getBoundingClientRect(),w=m.offsetWidth,h=m.offsetHeight;
+ const x=Math.min(Math.max(8,r.right-w),window.innerWidth-w-8);let y=r.bottom+6;if(y+h>window.innerHeight-8)y=Math.max(8,r.top-h-6);
+ m.style.left=x+'px';m.style.top=y+'px';
+ setTimeout(()=>{document.addEventListener('click',aksiLuar,true);window.addEventListener('scroll',tutupAksi,true)},0);
+}
+function aksiLuar(e){const m=document.getElementById('aksiMenu');if(m&&!m.contains(e.target))tutupAksi()}
+function tutupAksi(){const m=document.getElementById('aksiMenu');if(m)m.remove();document.removeEventListener('click',aksiLuar,true);window.removeEventListener('scroll',tutupAksi,true)}
+/* ---------- tab bergulir ke tengah ---------- */
+function utabTengah(sl){const c=document.querySelector('#v .utabs');if(!c)return;if(sl)c.scrollLeft=sl;const a=c.querySelector('.utab.on');if(!a)return;requestAnimationFrame(()=>{c.scrollTo({left:Math.max(0,a.offsetLeft-(c.clientWidth-a.offsetWidth)/2),behavior:'smooth'})})}
+function klKelasDaftar(v){KL.dk=v;const a=$('#klDaftar');if(a)a.innerHTML=klDaftarHtml()}
+
+/* ---------- Alumni (dilipat sebelum tahun dipilih, hapus terpilih) ---------- */
+let AL={data:null,q:'',th:'',mode:false,sel:new Set()};
 async function muatAlumni(){AL.data=(await dbq(db.from('alumni').select('*').eq('sekolah_id',SEK).order('tahun_lulus',{ascending:false}).order('nama')))||[]}
-const alFilter=()=>{const z=AL.q.toLowerCase().trim();return(AL.data||[]).filter(a=>(!z||String(a.nama).toLowerCase().includes(z))&&(!AL.th||String(a.tahun_lulus)===AL.th))};
-const alListHtml=()=>{const l=alFilter();return tab(['No','Nama','Tgl Lahir','JK','Alamat','Tahun Masuk','Tahun Lulus','Kepala Sekolah'],l.map((a,i)=>`<tr><td>${i+1}</td><td><b>${esc(a.nama)}</b></td><td>${tglDMY(a.tgl_lahir)||'-'}</td><td>${jkNama(a.jenis_kelamin)||'-'}</td><td>${esc(a.alamat||'-')}</td><td>${a.tahun_masuk||'-'}</td><td>${a.tahun_lulus}</td><td>${esc(a.kepala_sekolah||'-')}</td></tr>`).join(''),'Belum ada data alumni.')};
-const alRefresh=()=>{const a=$('#alList'),b=$('#alJml');if(a)a.innerHTML=alListHtml();if(b)b.textContent=alFilter().length+' alumni'};
+const alTerbuka=()=>AL.th!=='';
+const alFilter=semua=>{const z=AL.q.toLowerCase().trim();return(AL.data||[]).filter(a=>(semua||alTerbuka())&&(!z||String(a.nama).toLowerCase().includes(z))&&(AL.th===''||AL.th==='*'||String(a.tahun_lulus)===AL.th))};
+const alListHtml=()=>{
+ if(!alTerbuka())return `<div class="note">📂 Daftar alumni dilipat. Pilih tahun lulus untuk menampilkannya (${(AL.data||[]).length} alumni tersimpan).</div>`;
+ const l=alFilter(),m=AL.mode;
+ return tab((m?['']:[]).concat(['No','Nama','Tgl Lahir','JK','Alamat','Tahun Masuk','Tahun Lulus','Kepala Sekolah']),l.map((a,i)=>`<tr>${m?`<td><input type="checkbox" ${AL.sel.has(a.id)?'checked':''} onchange="alPilih(${a.id},this.checked)"></td>`:''}<td>${i+1}</td><td><b>${esc(a.nama)}</b></td><td>${tglDMY(a.tgl_lahir)||'-'}</td><td>${jkNama(a.jenis_kelamin)||'-'}</td><td>${esc(a.alamat||'-')}</td><td>${a.tahun_masuk||'-'}</td><td>${a.tahun_lulus}</td><td>${esc(a.kepala_sekolah||'-')}</td></tr>`).join(''),'Tidak ada alumni yang cocok.')};
+const alHapusBtn=()=>{if(AL.mode||!adalahKepala()||!alTerbuka()||!alFilter().length)return '';return `<button class="btn danger sm" onclick="alMode(true)">🗑 Hapus</button>`};
+const alBarHtml=()=>{if(!adalahKepala()||!alTerbuka())return '';const l=alFilter();if(!l.length)return '';
+ if(!AL.mode)return '';
+ const semua=l.every(a=>AL.sel.has(a.id));
+ return `<div class="tb"><label class="mu" style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${semua?'checked':''} onchange="alSemua(this.checked)"> Pilih semua (${l.length})</label><button class="btn danger sm" onclick="alHapusTerpilih()">🗑 Hapus terpilih (<span id="alSel">${AL.sel.size}</span>)</button><button class="btn soft sm" onclick="alMode(false)">Batal</button></div>`};
+const alJmlText=()=>alTerbuka()?alFilter().length+' dari '+(AL.data||[]).length+' alumni':(AL.data||[]).length+' alumni tersimpan';
+const alRefresh=()=>{const a=$('#alList'),b=$('#alJml'),c=$('#alBar'),h=$('#alHapusSlot');if(h)h.innerHTML=alHapusBtn();if(a)a.innerHTML=alListHtml();if(b)b.textContent=alJmlText();if(c)c.innerHTML=alBarHtml()};
 function alCari(el){AL.q=el.value;alRefresh()}
-function alTahun(v){AL.th=v;alRefresh()}
+function alTahun(v){AL.th=v;AL.sel.clear();renderV()}
+function alMode(on){AL.mode=on;AL.sel.clear();renderV()}
+function alPilih(id,on){on?AL.sel.add(id):AL.sel.delete(id);const c=$('#alSel');if(c)c.textContent=AL.sel.size}
+function alSemua(on){alFilter().forEach(a=>on?AL.sel.add(a.id):AL.sel.delete(a.id));renderV()}
+async function alHapusTerpilih(){
+ if(!adalahKepala())return toast('Hanya Kepala Sekolah atau Wakil yang dapat menghapus data alumni',false);
+ const ids=[...AL.sel];if(!ids.length)return toast('Belum ada alumni yang dipilih',false);
+ const nm=ids.map(id=>(AL.data.find(a=>a.id===id)||{}).nama).filter(Boolean);
+ if(!await konfirmasi('Hapus PERMANEN '+ids.length+' data alumni?\n\n'+nm.slice(0,10).join('\n')+(nm.length>10?'\n... dan '+(nm.length-10)+' lainnya':'')+'\n\nData tidak bisa dikembalikan. Unduh dulu bila masih diperlukan.',{judul:'Hapus data alumni',ya:'Hapus permanen',bahaya:1}))return;
+ guard(async()=>{const n=await dbq(db.rpc('alumni_hapus',{p_sekolah:SEK,p_ids:ids}));AL.sel.clear();await muatAlumni();renderV();toast(n+' data alumni dihapus')});
+}
 V.alumni=()=>{
  if(!AL.data)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat data alumni...</div></div></div>';
  const ths=[...new Set(AL.data.map(a=>a.tahun_lulus))].sort((a,b)=>b-a);
- return `<div class="panel"><div class="ph">🏅 Data Alumni <span class="mu" id="alJml">${alFilter().length} alumni</span></div><div class="pb">
+ return `<div class="panel"><div class="ph">🏅 Data Alumni <span class="mu" id="alJml">${alJmlText()}</span></div><div class="pb">
 <div class="note" style="border-color:#d99a27;background:#fff8df">⚠ Data alumni hanya disimpan <b>2 tahun</b> sejak siswa dinyatakan lulus, setelah itu dihapus otomatis oleh sistem. Silakan <b>unduh data terbaru</b> sebelum dihapus.</div>
-<div class="tb"><input class="input grow" placeholder="Cari nama alumni..." value="${esc(AL.q)}" oninput="alCari(this)"><select class="select" onchange="alTahun(this.value)"><option value="">Semua tahun lulus</option>${ths.map(t=>`<option value="${t}" ${String(t)===AL.th?'selected':''}>Lulus ${t}</option>`).join('')}</select></div>
-<div class="tb"><button class="btn success sm dl" onclick="unduhAlumni('pdf',this)">⬇ PDF</button><button class="btn sm dl pdf" onclick="unduhAlumni('xlsx',this)">⬇ XLSX</button></div>
-<div id="alList">${alListHtml()}</div></div></div>`;
+<div class="tb"><input class="input grow" placeholder="Cari nama alumni..." value="${esc(AL.q)}" oninput="alCari(this)"><select class="select" onchange="alTahun(this.value)"><option value="">- Pilih tahun lulus -</option><option value="*" ${AL.th==='*'?'selected':''}>Semua tahun lulus</option>${ths.map(t=>`<option value="${t}" ${String(t)===AL.th?'selected':''}>Lulus ${t}</option>`).join('')}</select></div>
+<div class="tb"><button class="btn success sm dl" onclick="unduhAlumni('pdf',this)">⬇ PDF</button><button class="btn sm dl pdf" onclick="unduhAlumni('xlsx',this)">⬇ XLSX</button><span id="alHapusSlot" style="display:contents">${alHapusBtn()}</span></div>
+<div id="alBar">${alBarHtml()}</div><div id="alList">${alListHtml()}</div></div></div>`;
 };
+/* ---------- Developer: hapus alumni per tahun ---------- */
+function devAlumniPanel(){const r=S.devAlRing,sel=S.devAlTh||'',list=S.devAlList||[];
+ const opt='<option value="">- Pilih tahun alumni -</option>'+(r||[]).map(x=>`<option value="${x.tahun_lulus}" ${String(x.tahun_lulus)===sel?'selected':''}>Lulus ${x.tahun_lulus} (${x.jumlah} alumni, ${x.sekolah_jml} sekolah)</option>`).join('');
+ return `<div class="panel"><div class="ph">🏅 5. Hapus data alumni</div><div class="pb"><div class="note" style="color:var(--rd)">Menghapus PERMANEN data alumni dari SEMUA sekolah untuk tahun lulus yang dipilih dan tidak bisa dikembalikan. Data alumni juga terhapus otomatis setelah 2 tahun.</div>${r?(r.length?`<div class="tb"><select class="select grow" onchange="devAlPilih(this.value)">${opt}</select></div>`:'<div class="note">Belum ada data alumni.</div>'):'<div class="note">Data alumni belum bisa dimuat. Pastikan SQL langkah 8 sudah dijalankan.</div>'}${sel?`<details style="margin:8px 0"><summary><b>Lihat daftar nama (${list.length} orang)</b></summary>${tab(['No','Sekolah','Nama'],list.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.sekolah)}</td><td><b>${esc(x.nama)}</b></td></tr>`).join(''),'Tidak ada data')}</details><button class="btn danger" onclick="devHapusAlumni()">🗑 Hapus alumni lulus ${esc(sel)} (${list.length} orang)</button>`:''}</div></div>`}
+function devAlPilih(v){guard(async()=>{S.devAlTh=v;S.devAlList=v?(await dbq(db.rpc('developer_alumni_daftar',{p_tahun:Number(v)})))||[]:[];renderV()})}
+function devHapusAlumni(){const th=S.devAlTh;if(!th)return toast('Pilih tahun alumni terlebih dahulu',false);
+ form('Hapus data alumni lulus '+th,[{k:'kf',l:'Ketik HAPUS ALUMNI untuk menghapus permanen '+(S.devAlList||[]).length+' data alumni lulus '+th}],async v=>{
+  if(v.kf!=='HAPUS ALUMNI')throw new Error('Ketik persis: HAPUS ALUMNI');
+  const n=await dbq(db.rpc('developer_hapus_alumni',{p_tahun:Number(th)}));await muatDev();toast(n+' data alumni dihapus');renderV()});$('#ms').textContent='Hapus permanen'}
+
 async function unduhAlumni(t,btn){
  if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat XLSX alumni...':'Membuat PDF alumni...'))return;
- try{await jedaUnduh();const l=alFilter();if(!l.length)throw new Error('Tidak ada data alumni untuk diunduh');
+ try{await jedaUnduh();const l=alFilter(true);if(!l.length)throw new Error('Tidak ada data alumni untuk diunduh');
   const H=['No','Nama','Tanggal Lahir','Jenis Kelamin','Alamat','Tahun Masuk','Tahun Lulus','Kepala Sekolah'],rows=l.map((a,i)=>[i+1,a.nama,tglDMY(a.tgl_lahir),jkNama(a.jenis_kelamin),a.alamat||'',a.tahun_masuk||'',a.tahun_lulus,a.kepala_sekolah||'']);
   if(t==='xlsx'){if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
    const wb=new ExcelJS.Workbook();wb.creator=ns();const ws=wb.addWorksheet('Alumni'),ln={style:'thin',color:{argb:'FFCFD9D3'}};
@@ -1796,12 +1913,12 @@ const LV={ok:['Hadir','✓ Baik'],warn:['Terlambat','⚠ Perhatian'],err:['Sakit
 let devTab='ringkas';
 const MB=()=>{try{return !!sessionStorage.getItem('mode_bantuan')}catch(e){return false}};
 async function apiDev(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/developer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/developer tidak ditemukan (404). Pastikan file api/developer.js sudah di-deploy');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
-async function muatDev(){const [g,sk,pd,pn,lg,sm,al,nl]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100})),dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_alpa')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_libur')).catch(e=>({error:(e&&e.message)||String(e)}))]);S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg;S.devSimpan=sm;S.devAlpa=al;S.devNL=nl;await muatKalNas().catch(()=>{})}
+async function muatDev(){const [g,sk,pd,pn,lg,sm,al,nl]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100})),dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_alpa')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_libur')).catch(e=>({error:(e&&e.message)||String(e)}))]);S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg;S.devSimpan=sm;S.devAlpa=al;S.devNL=nl;S.devAlRing=await dbq(db.rpc('developer_alumni_ringkas')).catch(()=>null);S.devAlTh='';S.devAlList=[];await muatKalNas().catch(()=>{})}
 const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['hapus','🗑 Hapus Data'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
-function devBuka(k){drw(0);kalReset();devTab=k;if(view==='developer'){renderAll();scrollTo(0,0)}else go('developer')}
+function devBuka(k){drw(0);kalReset();devTab=k;if(view==='developer'){renderAll();scrollTo(0,0);kedipHalaman()}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
-function bukaKalenderNas(){drw(0);kalReset();devTab='kalender';if(view!=='developer')return go('developer');guard(async()=>{await muatKalNas();renderAll();scrollTo(0,0)})}
+function bukaKalenderNas(){drw(0);kalReset();devTab='kalender';if(view!=='developer')return go('developer').then(kedipHalaman);guard(async()=>{await muatKalNas();renderAll();scrollTo(0,0);kedipHalaman()})}
 let kalMode=false,kalSel=new Set();
 function kalReset(){kalMode=false;kalSel.clear()}
 function kalRender(){const y=window.scrollY;renderV();window.scrollTo(0,y)}
@@ -2008,6 +2125,7 @@ function devHapus(){const last=(S.devLog||[]).find(x=>x.aksi==='beritahu_kepala'
 <div class="panel"><div class="ph">🗑 2. Hapus seluruh isi tabel absensi</div><div class="pb"><div class="note" style="color:var(--rd)">Menghapus SELURUH data absensi dari SEMUA sekolah dan tidak bisa dikembalikan. Data siswa, wali, guru, dan kelas tidak ikut terhapus. Lakukan setelah Kepala Sekolah diberi tahu dan sempat mengunduh rekap. Dibutuhkan kata sandi Developer.</div><button class="btn danger" onclick="hapusAbsensi()">🗑 Hapus seluruh data absensi</button></div></div>
 <div class="panel"><div class="ph">🗑 3. Hapus seluruh isi tabel tabungan</div><div class="pb"><div class="note">Kirim WhatsApp ke semua Kepala Sekolah aktif (${nk} sekolah) agar mengunduh rekap saldo tabungan di menu Tabungan > Rekap & Laporan sebelum data dihapus.</div><div class="fd"><label class="l">Batas waktu mengunduh (opsional)</label><input id="bkBatasT" type="date" class="input" min="${TODAY}" value="" onkeydown="return false" onpaste="return false"></div><div class="mu" style="margin:8px 0">${(()=>{const l=(S.devLog||[]).find(x=>x.aksi==='beritahu_kepala_tabungan');return l?'Terakhir dikirim: '+waktuId(l.waktu)+' ('+esc(l.rincian||'')+')':'Belum pernah dikirim.'})()}</div><div class="tb"><button class="btn success" onclick="beritahuKepalaTabungan()">📢 Kirim pemberitahuan tabungan</button></div><div class="note" style="color:var(--rd)">Menghapus SELURUH isi tabel tabungan_transaksi dan tabungan_bawaan dari SEMUA sekolah dan tidak bisa dikembalikan. Data siswa, wali, guru, kelas, dan absensi tidak ikut terhapus. Lakukan setelah Kepala Sekolah sempat mengunduh rekap tabungan. Dibutuhkan kata sandi Developer.</div><button class="btn danger" onclick="hapusTabungan()">🗑 Hapus seluruh data tabungan</button></div></div>
 <div class="panel"><div class="ph">🧹 4. Pembersihan otomatis harian</div><div class="pb"><div class="note">Berjalan otomatis setiap hari pukul 00.05 WIB lewat pg_cron Supabase (cleanup-data-harian, fungsi bersihkan_data_lama). Batas dihitung dari awal hari ini pukul 00.00 WIB, jadi 1 hari berarti hanya data hari ini yang disimpan dan data kemarin terhapus pukul 00.05.</div>${tab(['Tabel','Disimpan','Aturan'],ret.map(r=>`<tr><td><b>${esc(r[0])}</b></td><td>${r[1]}</td><td>${esc(r[2])}</td></tr>`).join(''))}<div class="note" style="margin-top:8px">Tidak dibersihkan otomatis: absensi, tabungan_transaksi, tabungan_bawaan, serta data inti (siswa, wali, guru, kelas, libur mingguan, pengaturan). Libur tanggal dan libur nasional hanya dihapus setelah tanggalnya lewat, jadi libur hari ini tetap tersimpan sampai tengah malam. Absensi dan tabungan hanya terhapus lewat bagian 2 dan 3 di atas.</div></div></div>
+${devAlumniPanel()}
 <div class="panel"><div class="ph">⏱ Jadwal otomatis harian (WIB)</div><div class="pb">${tab(['Jam','Tugas','Fungsi'],[['00.05','Pembersihan data lama','bersihkan_data_lama'],['00.10','Menyegarkan data libur','segarkan_libur_data'],['00.20','Memperbarui data penyimpanan','perbarui_pemakaian'],['Sesuai jam tiap sekolah (bawaan 06.00)','Notifikasi libur ke Kepala Sekolah','kirim_notifikasi_libur (Pengaturan > Notifikasi Libur)'],['Sesuai jam alpa tiap sekolah','Alpa otomatis per sekolah','proses_alpa_untuk (lihat tab Alpa Otomatis)']].map(r=>`<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join(''))}</div></div>`}
 function batasId(id){const v=($('#'+id)||{}).value||'';return v?fmt(v):''}
 function beritahuKepala(){const nk=(S.devSek||[]).filter(x=>x.status==='aktif'&&x.kepala_nama).length,batas=batasId('bkBatas');
