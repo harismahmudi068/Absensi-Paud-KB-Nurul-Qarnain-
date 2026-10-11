@@ -1,5 +1,8 @@
 {
   "crons": [
     { "path": "/api/libur-sync", "schedule": "15 17 * * *" }
-  ]
+  ],
+  "functions": {
+    "api/guru.js": { "maxDuration": 60 }
+  }
 }
