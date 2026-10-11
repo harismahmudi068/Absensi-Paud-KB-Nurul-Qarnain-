@@ -990,9 +990,11 @@ async function hapusGuruTerpilih(){
  const nama=ids.map(id=>S.guru.find(g=>g.id===id)?.nama).filter(Boolean);
  if(!await konfirmasi('Keluarkan '+ids.length+' guru terpilih dari sekolah ini?\n\n'+nama.join('\n')+'\n\nAkun tetap ada bila guru juga mengajar di sekolah lain.',{judul:'Keluarkan guru terpilih',ya:'Keluarkan',bahaya:1}))return;
  guard(async()=>{
-   for(const id of ids)await apiGuru({aksi:'hapus',id});
+   const r=await apiGuru({aksi:'hapus_batch',ids});
+   const ok=new Set(r.dihapus||[]),gl=r.gagal||[];
+   S.guru=S.guru.filter(g=>!ok.has(g.id));
    gsel.clear();gHapusMode=false;
-   await muatProfil();toast(ids.length+' guru dikeluarkan dari sekolah');renderV();
+   toast(ok.size+' guru dikeluarkan dari sekolah'+(gl.length?', '+gl.length+' gagal: '+gl[0].error:''),!gl.length);renderV();
  })
 }
 function guruRows(shown,bh,kel,dev,kunci){
@@ -1090,7 +1092,7 @@ function setGuruRole(id,r){if(!adalahKepala()&&role!=='Developer')return toast('
   konfirmasi('Jadikan '+(g.nama||'guru ini')+' Kepala Sekolah?'+(lama?'\n\nKepala Sekolah saat ini ('+lama.nama+') otomatis menjadi Guru.':''),{judul:'Ganti Kepala Sekolah',ya:'Ya, ganti',ikon:'👑'}).then(ok=>{if(!ok){renderV();return}guard(jalan)});return}
  guard(jalan)}
 function togGuru(id){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, atau Developer yang dapat mengaktifkan/nonaktifkan guru',false);if(id===me)return toast('Tidak bisa menonaktifkan akun sendiri',false);const g=S.guru.find(x=>x.id===id),n=!g.aktif;guard(async()=>{await apiGuru({aksi:'aktif',id,aktif:n});await muatProfil();toast(g.nama+(n?' diaktifkan':' dinonaktifkan'));renderV()})}
-async function hapusGuru(id){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, atau Developer yang dapat mengeluarkan guru',false);const g=S.guru.find(x=>x.id===id);if(!g||g.id===me)return toast('Akun guru tidak dapat dikeluarkan',false);if(!await konfirmasi('Keluarkan '+g.nama+' dari sekolah ini? Akun tetap ada bila guru juga mengajar di sekolah lain. Bila hanya sementara tidak mengajar, lebih baik Nonaktifkan.',{judul:'Keluarkan guru',ya:'Keluarkan',bahaya:1}))return;guard(async()=>{await apiGuru({aksi:'hapus',id});await muatProfil();toast('Guru dikeluarkan dari sekolah');renderV()})}
+async function hapusGuru(id){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, atau Developer yang dapat mengeluarkan guru',false);const g=S.guru.find(x=>x.id===id);if(!g||g.id===me)return toast('Akun guru tidak dapat dikeluarkan',false);if(!await konfirmasi('Keluarkan '+g.nama+' dari sekolah ini? Akun tetap ada bila guru juga mengajar di sekolah lain. Bila hanya sementara tidak mengajar, lebih baik Nonaktifkan.',{judul:'Keluarkan guru',ya:'Keluarkan',bahaya:1}))return;guard(async()=>{await apiGuru({aksi:'hapus',id});S.guru=S.guru.filter(g=>g.id!==id);toast('Guru dikeluarkan dari sekolah');renderV()})}
 /* ---------- panel Developer: guru di semua sekolah ---------- */
 let devHanyaNonaktif=false;
 async function muatDevGuru(){S.devGuru=await dbq(db.rpc('developer_guru'))}
@@ -1748,7 +1750,7 @@ function devAlPilih(v){guard(async()=>{S.devAlTh=v;S.devAlList=v?(await dbq(db.r
 function devHapusAlumni(){const th=S.devAlTh;if(!th)return toast('Pilih tahun alumni terlebih dahulu',false);
  form('Hapus data alumni lulus '+th,[{k:'kf',l:'Ketik HAPUS ALUMNI untuk menghapus permanen '+(S.devAlList||[]).length+' data alumni lulus '+th}],async v=>{
   if(v.kf!=='HAPUS ALUMNI')throw new Error('Ketik persis: HAPUS ALUMNI');
-  const n=await dbq(db.rpc('developer_hapus_alumni',{p_tahun:Number(th)}));await muatDev();toast(n+' data alumni dihapus');renderV()});$('#ms').textContent='Hapus permanen'}
+  const n=await dbq(db.rpc('developer_hapus_alumni',{p_tahun:Number(th)}));S.devAlRing=await dbq(db.rpc('developer_alumni_ringkas')).catch(()=>null);S.devAlTh='';S.devAlList=[];toast(n+' data alumni dihapus');renderV()});$('#ms').textContent='Hapus permanen'}
 
 async function unduhAlumni(t,btn){
  if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat XLSX alumni...':'Membuat PDF alumni...'))return;
