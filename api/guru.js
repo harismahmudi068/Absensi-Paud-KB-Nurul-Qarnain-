@@ -4,7 +4,7 @@
 // Aksi untuk Kepala Sekolah / Wakil Kepala Sekolah sekolah itu atau Developer (wajib kirim sekolah_id):
 //   otp_kelola_kirim, otp_kelola_verifikasi (bukti kepemilikan: OTP ke nomor pengelola sendiri)
 //   cek_nomor, tautkan, tambah, tambah_batch (wajib izin dari OTP, kecuali Developer)
-//   ubah_role, aktif, hapus
+//   ubah_role, aktif, hapus, hapus_batch (keluarkan banyak guru sekaligus)
 // Aksi untuk pemilik akun sendiri: akun_sendiri, nomor_otp_kirim, nomor_simpan, otp_cek
 // Ganti Kepala Sekolah: Kepala Sekolah lama, Wakil, atau Developer; kepala lama otomatis menjadi Guru
 // (fungsi database ganti_kepala_sekolah, satu transaksi).
@@ -25,6 +25,22 @@ const RE_WA = /^628\d{8,12}$/;
 const ROLE_SEKOLAH = ['guru', 'wakil_kepala', 'kepala_sekolah'];
 const ROLE_PENGELOLA = ['kepala_sekolah', 'wakil_kepala'];
 const IZIN_MENIT = 15;
+// Batas permintaan paralel ke Supabase Auth saat impor (hash sandi dikerjakan di sana).
+// Naikkan bila Auth masih santai, turunkan bila muncul error 429/timeout.
+const BATAS_PARALEL = Math.max(1, Number(process.env.IMPOR_PARALEL) || 8);
+
+// Jalankan fn(item, index) untuk semua item dengan paling banyak `batas` berjalan bersamaan.
+// fn tidak boleh melempar error (tangkap sendiri).
+async function paralel(items, batas, fn) {
+  let n = 0;
+  const kerja = async () => {
+    while (n < items.length) {
+      const i = n++;
+      await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(batas, items.length) }, kerja));
+}
 
 // Izin singkat setelah OTP pengelola benar (dipakai tambah guru dan impor)
 function tandaTangan(teks) {
@@ -485,6 +501,10 @@ module.exports = async (req, res) => {
     }
 
     // ---------- tambah batch (impor XLSX) ----------
+    // Alur: validasi di memori -> cek WA dan username sekaligus (1 query tiap jenis)
+    // -> buat akun Auth (hash sandi) paralel terbatas -> insert profil dan keanggotaan
+    // masing-masing SATU query untuk seluruh batch. Bila insert massal gagal, jatuh ke
+    // jalur per baris agar baris yang bermasalah saja yang gagal.
     if (b.aksi === 'tambah_batch') {
       if (!isDev) izinCek(b.izin, user.id, sekolahId);
       const data = Array.isArray(b.data) ? b.data : [];
@@ -492,34 +512,218 @@ module.exports = async (req, res) => {
       if (data.length > 50)
         return res.status(400).json({ error: 'Maksimal 50 guru per batch' });
 
-      const hasil = [];
-      for (let i = 0; i < data.length; i++) {
+      const hasil = new Array(data.length).fill(null);
+      const gagal = (i, msg) => {
+        hasil[i] = { index: i, ok: false, error: msg };
+      };
+      const berhasil = (i) => {
+        hasil[i] = { index: i, ok: true };
+      };
+      const pesanGagal = (e) => {
+        const m = e.message || String(e);
+        if (/no_wa/i.test(m) && pesanDuplikat(e)) return 'Nomor WhatsApp sudah dipakai akun lain';
+        return pesanDuplikat(e) ? 'Username sudah dipakai' : m;
+      };
+
+      // 1. Validasi di memori (tanpa query)
+      let calon = [];
+      const userDlm = new Set();
+      const waDlm = new Set();
+      data.forEach((raw, i) => {
         try {
-          const d = periksaDataAkun(data[i] || {}, { wajibWA: false });
+          const d = periksaDataAkun(raw || {}, { wajibWA: false });
           if (d.role === 'developer' && !isDev)
             throw new Error('Hanya Developer yang boleh membuat akun Developer');
           if (d.role === 'kepala_sekolah' && !isDev)
             throw new Error('Role Kepala Sekolah hanya bisa ditetapkan Developer');
-          if (d.no_wa && (await cariProfilByWA(d.no_wa)))
+          if (userDlm.has(d.username)) throw new Error('Username sudah dipakai');
+          if (d.no_wa && waDlm.has(d.no_wa))
             throw new Error('Nomor WhatsApp sudah punya akun');
-          if (d.role === 'kepala_sekolah' && (await adaKepalaLain(sekolahId, null)))
-            throw new Error('Sekolah ini sudah punya Kepala Sekolah aktif');
-          await buatAkun({ ...d, sekolahId });
-          hasil.push({ index: i, ok: true });
+          userDlm.add(d.username);
+          if (d.no_wa) waDlm.add(d.no_wa);
+          calon.push({ i, d });
         } catch (e) {
-          hasil.push({
-            index: i,
-            ok: false,
-            error: pesanDuplikat(e) ? 'Username sudah dipakai' : e.message || String(e)
-          });
+          gagal(i, e.message || String(e));
         }
+      });
+
+      // 2. Kepala Sekolah: cek sekali saja, dan hanya satu yang boleh dalam batch
+      if (calon.some((x) => x.d.role === 'kepala_sekolah')) {
+        let terpakai = await adaKepalaLain(sekolahId, null);
+        calon = calon.filter((x) => {
+          if (x.d.role !== 'kepala_sekolah') return true;
+          if (terpakai) {
+            gagal(x.i, 'Sekolah ini sudah punya Kepala Sekolah aktif');
+            return false;
+          }
+          terpakai = true;
+          return true;
+        });
       }
+
+      // 3. Cek WA dan username yang sudah ada, sekaligus (hindari hash yang percuma)
+      if (calon.length) {
+        const daftarWA = calon.map((x) => x.d.no_wa).filter(Boolean);
+        const [adaWA, adaUser] = await Promise.all([
+          daftarWA.length
+            ? panggil(`/rest/v1/profil?no_wa=in.(${daftarWA.join(',')})&select=no_wa`, 'GET')
+            : [],
+          panggil(
+            `/rest/v1/profil?username=in.(${calon.map((x) => x.d.username).join(',')})&select=username`,
+            'GET'
+          )
+        ]);
+        const waAda = new Set((adaWA || []).map((r) => r.no_wa));
+        const userAda = new Set((adaUser || []).map((r) => r.username));
+        calon = calon.filter((x) => {
+          if (x.d.no_wa && waAda.has(x.d.no_wa)) {
+            gagal(x.i, 'Nomor WhatsApp sudah punya akun');
+            return false;
+          }
+          if (userAda.has(x.d.username)) {
+            gagal(x.i, 'Username sudah dipakai');
+            return false;
+          }
+          return true;
+        });
+      }
+
+      // 4. Buat akun Auth paralel terbatas (bagian yang memang butuh waktu: hash sandi)
+      const dibuat = [];
+      await paralel(calon, BATAS_PARALEL, async (x) => {
+        try {
+          const baru = await panggil('/auth/v1/admin/users', 'POST', {
+            email: x.d.username + '@absensi.local',
+            password: x.d.sandi,
+            email_confirm: true,
+            user_metadata: { nama: x.d.nama }
+          });
+          x.id = baru.id;
+          dibuat.push(x);
+        } catch (e) {
+          gagal(x.i, pesanGagal(e));
+        }
+      });
+
+      // 5. Simpan profil dan keanggotaan: satu query per tabel
+      const barisProfil = (x) => ({
+        id: x.id,
+        nama: x.d.nama,
+        username: x.d.username,
+        role: x.d.role,
+        aktif: true,
+        no_wa: x.d.no_wa || null,
+        nip: x.d.nip || null
+      });
+      const barisAnggota = (x) => ({
+        profil_id: x.id,
+        sekolah_id: sekolahId,
+        role: x.d.role,
+        aktif: true
+      });
+      const anggota = dibuat.filter((x) => x.d.role !== 'developer');
+
+      // Jalur per baris (cadangan): hanya baris bermasalah yang gagal dan akunnya dibersihkan
+      const simpanSatu = async (x) => {
+        let profilAda = false;
+        try {
+          await panggil('/rest/v1/profil', 'POST', barisProfil(x), { Prefer: 'return=minimal' });
+          profilAda = true;
+          if (x.d.role !== 'developer') await tambahKeanggotaan(x.id, sekolahId, x.d.role);
+          berhasil(x.i);
+        } catch (e) {
+          if (profilAda) {
+            try {
+              await panggil(`/rest/v1/profil?id=eq.${x.id}`, 'DELETE');
+            } catch (_) {}
+          }
+          try {
+            await panggil('/auth/v1/admin/users/' + x.id, 'DELETE');
+          } catch (_) {}
+          gagal(x.i, pesanGagal(e));
+        }
+      };
+
+      if (dibuat.length) {
+        let cepat = false;
+        try {
+          await panggil('/rest/v1/profil', 'POST', dibuat.map(barisProfil), {
+            Prefer: 'return=minimal'
+          });
+          try {
+            if (anggota.length)
+              await panggil('/rest/v1/keanggotaan', 'POST', anggota.map(barisAnggota), {
+                Prefer: 'return=minimal'
+              });
+            cepat = true;
+          } catch (e) {
+            // profil sudah masuk tetapi keanggotaan gagal: bersihkan lalu coba per baris
+            try {
+              await panggil(
+                `/rest/v1/profil?id=in.(${dibuat.map((x) => x.id).join(',')})`,
+                'DELETE'
+              );
+            } catch (_) {}
+          }
+        } catch (e) {
+          /* jatuh ke jalur per baris */
+        }
+        if (cepat) dibuat.forEach((x) => berhasil(x.i));
+        else await paralel(dibuat, BATAS_PARALEL, simpanSatu);
+      }
+
+      const results = hasil.map((x, i) => x || { index: i, ok: false, error: 'Tidak diproses' });
       return res.status(200).json({
         ok: true,
-        success: hasil.filter((x) => x.ok).length,
-        failed: hasil.filter((x) => !x.ok).length,
-        results: hasil
+        success: results.filter((x) => x.ok).length,
+        failed: results.filter((x) => !x.ok).length,
+        results
       });
+    }
+
+    // ---------- hapus batch = keluarkan banyak guru dari sekolah ini (akun tetap ada) ----------
+    if (b.aksi === 'hapus_batch') {
+      const ids = [...new Set((Array.isArray(b.ids) ? b.ids : []).map(String))];
+      if (!ids.length) return res.status(400).json({ error: 'Belum ada guru yang dipilih' });
+      if (ids.length > 200)
+        return res.status(400).json({ error: 'Maksimal 200 guru per permintaan' });
+      if (ids.some((id) => !RE_UUID.test(id)))
+        return res.status(400).json({ error: 'ID tidak valid' });
+
+      const gagal = [];
+      const calon = ids.filter((id) => {
+        if (id === user.id) {
+          gagal.push({ id, error: 'Tidak bisa mengubah akun sendiri' });
+          return false;
+        }
+        return true;
+      });
+      const ada = new Map();
+      if (calon.length) {
+        const r =
+          (await panggil(
+            `/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&profil_id=in.(${calon.join(',')})&select=profil_id,role`,
+            'GET'
+          )) || [];
+        r.forEach((x) => ada.set(x.profil_id, x.role));
+      }
+      const hapus = calon.filter((id) => {
+        if (!ada.has(id)) {
+          gagal.push({ id, error: 'Guru tidak ditemukan di sekolah ini' });
+          return false;
+        }
+        if (!isDev && ada.get(id) === 'kepala_sekolah') {
+          gagal.push({ id, error: 'Data Kepala Sekolah hanya bisa diubah oleh Developer' });
+          return false;
+        }
+        return true;
+      });
+      if (hapus.length)
+        await panggil(
+          `/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&profil_id=in.(${hapus.join(',')})`,
+          'DELETE'
+        );
+      return res.status(200).json({ ok: true, dihapus: hapus, gagal });
     }
 
     // ---------- aksi atas anggota yang sudah ada ----------
