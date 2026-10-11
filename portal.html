@@ -68,6 +68,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .cal .d.e{background:none}.cal .d.sun{color:var(--su)}
 .cal .d.lib{background:var(--pu);color:#fff;box-shadow:0 4px 10px rgba(118,80,184,.4)}.cal .d.now{outline:2px solid #4dff8f;outline-offset:1px}
 .leg{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--mu)}.leg i{width:14px;height:14px;border-radius:5px;background:var(--pu);display:inline-block}
+.lr{display:flex;align-items:baseline;gap:8px;text-align:left;padding:8px 0;border-top:1px solid var(--ln)}.lr:first-child{border-top:0}.lr i{flex:0 0 9px;height:9px;border-radius:3px;background:var(--pu);align-self:center}.lr b{flex:0 0 auto;color:var(--tx)}.lr span{flex:1;color:var(--tx);word-break:break-word}
 .sk{height:90px;margin-top:14px;border-radius:16px;background:linear-gradient(90deg,rgba(255,255,255,.18) 25%,rgba(255,255,255,.34) 50%,rgba(255,255,255,.18) 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
 </style>
@@ -183,7 +184,7 @@ function calRender(ym){const d={libur:S.libur,hari_ini:S.hari},p=ym.split('-'),y
  for(let i=1;i<=len;i++){const k=ym+'-'+String(i).padStart(2,'0'),dow=(first+i-1)%7;if(lib[k]&&lib[k].jenis!=='mingguan')dl.push([k,lib[k].ket]);
   h+='<div class="d'+(lib[k]?' lib':'')+(dow===0?' sun':'')+(k===d.hari_ini?' now':'')+'" style="animation-delay:'+(i*8)+'ms">'+i+'</div>'}
  $('#cal').innerHTML='<div class="cal">'+h+'</div><div class="leg"><i></i> Hari libur</div>'+
- (dl.length?'<div style="margin-top:6px">'+dl.map(x=>'<div class="li"><div><b>'+tgl(x[0])+'</b><small>'+hari(x[0])+'</small></div><span class="bd" style="background:var(--pb);color:var(--pt)">'+esc(x[1])+'</span></div>').join('')+'</div>':'<div class="mu" style="margin-top:8px">Tidak ada hari libur bulan ini.</div>')}
+ (dl.length?'<div style="margin-top:6px">'+dl.map(x=>'<div class="lr"><i></i><b>'+hari(x[0])+', '+tgl(x[0]).replace(/ (\w{3})\w*/,' $1')+'</b><span>'+esc(x[1])+'</span></div>').join('')+'</div>':'<div class="mu" style="margin-top:8px;text-align:left">Tidak ada hari libur bulan ini.</div>')}
 
 
 /* ---------- jam, tanggal, latar pantai ---------- */
