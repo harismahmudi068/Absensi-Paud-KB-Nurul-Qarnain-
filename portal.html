@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>Portal Orang Tua</title>
+<style>
+:root{--g:#159447;--p:#7650b8;--cr:#fff8df;--bg:#f6fbf5;--tx:#20352a;--mu:#6d7d73;--bd:#dce9dc;--sh:0 8px 24px rgba(37,88,52,.09)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom,0)}
+.top{background:linear-gradient(90deg,#6d43a8,#8057bf);color:#fff;padding:calc(14px + env(safe-area-inset-top,0)) 16px 14px}
+.top small{display:block;opacity:.85;font-size:12px}.top b{font-size:17px}
+.wrap{max-width:720px;margin:auto;padding:14px}
+.panel{background:#fff;border:1px solid var(--bd);border-radius:16px;box-shadow:var(--sh);margin-top:14px;overflow:hidden}
+.ph{padding:13px 16px;font-weight:800}.pb{padding:0 14px 14px}
+.hero{padding:16px;background:linear-gradient(100deg,#e4f6e8,#fff8df 62%,#eee5fb)}
+.hero h1{margin:0;font-size:20px}.hero p{margin:4px 0 0;color:var(--mu)}
+.kimg{width:100%;height:auto;display:block;border-radius:14px}
+.btn{border:0;background:var(--g);color:#fff;border-radius:12px;padding:11px 14px;font-weight:800;width:100%;margin-top:10px;font:inherit;font-weight:800;cursor:pointer}
+.row{display:flex;gap:10px;padding:9px 0;border-top:1px solid #edf2ee}.row:first-child{border-top:0}.row span{flex:0 0 120px;color:var(--mu)}.row b{flex:1;word-break:break-word}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.chip{border-radius:12px;padding:8px 4px;text-align:center;font-size:12px;font-weight:700}.chip b{display:block;font-size:20px}
+select{width:100%;padding:10px;border:1px solid var(--bd);border-radius:10px;font:inherit;background:#fff;margin-bottom:8px}
+.li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid #edf2ee}.li:first-child{border-top:0}
+.li small{display:block;color:var(--mu)}.bd{border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800;white-space:nowrap}
+.saldo{font-size:28px;font-weight:900;color:#176b3a;padding:4px 0 8px}
+.mu{color:var(--mu);font-size:13px}.msg{text-align:center;padding:60px 20px}.msg h2{margin:8px 0}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="/kartu.js"></script>
+</head><body>
+<div class="top"><small>Portal Orang Tua</small><b id="sk">&nbsp;</b></div>
+<div class="wrap" id="isi"><div class="msg mu">Memuat data...</div></div>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],HR=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+const ST={hadir:['Hadir','#d9f7e8','#14965c'],terlambat:['Terlambat','#fff0c2','#9a6a00'],izin:['Izin','#dcefff','#1673bd'],sakit:['Sakit','#ffe0e4','#d83d4d'],alpa:['Alpa','#eadfff','#6840c6'],libur:['Libur','#e5edf4','#526b84']};
+const tgl=d=>{const p=String(d).split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]},hari=d=>HR[new Date(d+'T00:00:00').getDay()];
+const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jakarta'}):'';
+const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
+const m=location.pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);
+let D=null;
+function pesan(j,t){$('#isi').innerHTML='<div class="msg"><div style="font-size:44px">'+j+'</div><h2>'+esc(t[0])+'</h2><div class="mu">'+esc(t[1])+'</div></div>'}
+async function muat(){
+ if(!m)return pesan('🔎',['Kartu tidak ditemukan','Pindai ulang QR pada kartu anak Anda.']);
+ try{const r=await fetch('/api/portal?k='+m[1],{cache:'no-store'});
+  if(r.status===404)return pesan('🔎',['Kartu tidak ditemukan','Kartu tidak aktif atau QR tidak dikenal. Hubungi pihak sekolah.']);
+  if(!r.ok)throw 0;D=await r.json();tampil()}
+ catch(e){pesan('⚠️',['Gagal memuat','Periksa koneksi internet lalu muat ulang halaman.'])}}
+function kartu(){const s=D.siswa;return Kartu.buatKartu({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:D.sekolah.nama,tahun:D.sekolah.tahun_ajaran,hari:new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}),qr:Kartu.urlQR(s.kode_qr)})}
+function tampil(){
+ const s=D.siswa,k=D.sekolah;$('#sk').textContent=k.nama||'';document.title=(k.nama?k.nama+' - ':'')+'Portal Orang Tua';
+ const wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
+ const bul=[...new Set(D.absensi.map(a=>a.tanggal.slice(0,7)))];
+ $('#isi').innerHTML=
+ '<div class="panel"><div class="hero"><h1>'+esc(s.nama)+'</h1><p>'+(s.kelas?'Kelas '+esc(s.kelas):'')+(s.pan?' · '+esc(s.pan):'')+'</p></div></div>'+
+ '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><img class="kimg" id="kimg" alt="Kartu anak"><button class="btn" onclick="unduh()">⬇ Unduh kartu</button></div></div>'+
+ '<div class="panel"><div class="ph">👤 Profil</div><div class="pb">'+
+  [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tanggal lahir',s.tgl?tgl(s.tgl):'-'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-'],['Alamat',s.alamat||'-'],['WA orang tua',wa],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
+ '<div class="panel"><div class="ph">📚 Riwayat Absensi</div><div class="pb">'+
+  (D.absensi.length?'<select id="bln" onchange="absensi()"><option value="">Semua bulan</option>'+bul.map(b=>'<option value="'+b+'">'+BLN[+b.slice(5)-1]+' '+b.slice(0,4)+'</option>').join('')+'</select><div id="abs"></div>':'<div class="mu">Belum ada riwayat absensi.</div>')+'</div></div>'+
+ (D.tabungan.aktif?'<div class="panel"><div class="ph">💰 Tabungan</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(D.tabungan.saldo)+'</div>'+
+  (D.tabungan.riwayat.length?D.tabungan.riwayat.map(t=>'<div class="li"><div><b>'+(t.jenis==='setor'?'Setoran':'Penarikan')+'</b><small>'+tgl(t.tanggal)+' · saldo '+rp(t.saldo)+'</small></div><b style="color:'+(t.jenis==='setor'?'#14965c':'#d83d4d')+'">'+(t.jenis==='setor'?'+':'-')+rp(t.jumlah)+'</b></div>').join(''):'<div class="mu">Belum ada transaksi.</div>')+'</div></div>':'');
+ try{$('#kimg').src=kartu()}catch(e){const p=$('#kimg');if(p)p.parentNode.parentNode.remove()}
+ if(D.absensi.length){$('#bln').value=bul[0];absensi()}}
+function absensi(){
+ const b=$('#bln').value,l=D.absensi.filter(a=>!b||a.tanggal.slice(0,7)===b),c={};l.forEach(a=>c[a.status]=(c[a.status]||0)+1);
+ $('#abs').innerHTML='<div class="chips">'+Object.keys(ST).map(x=>'<div class="chip" style="background:'+ST[x][1]+';color:'+ST[x][2]+'"><b>'+(c[x]||0)+'</b>'+ST[x][0]+'</div>').join('')+'</div>'+
+ l.map(a=>{const t=ST[a.status]||[a.status,'#eee','#333'];return '<div class="li"><div><b>'+hari(a.tanggal)+', '+tgl(a.tanggal)+'</b><small>'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</small></div><span class="bd" style="background:'+t[1]+';color:'+t[2]+'">'+esc(t[0])+'</span></div>'}).join('')}
+function unduh(){const a=document.createElement('a');a.href=$('#kimg').src;a.download='kartu-'+D.siswa.nama.replace(/[^\w]+/g,'-')+'.png';document.body.appendChild(a);a.click();a.remove()}
+muat();
+</script></body></html>
