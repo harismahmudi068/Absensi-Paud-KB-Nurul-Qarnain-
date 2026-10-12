@@ -570,7 +570,7 @@ const muatGuruData=async()=>{const k=await dbq(db.from('keanggotaan').select('ro
 async function muatNomor(){const r=await dbq(db.rpc('nomor_wa_guru',{p_sekolah:SEK}));const m={};(r||[]).forEach(x=>{m[x.profil_id]=x.no_wa||''});return m}
 const muatProfil=async()=>{const [g,n]=await Promise.all([muatGuruData(),muatNomor()]);S.guru=g;S.nomor=n};
 let RHS=null,izinKelola=null,izinExp=0;
-async function apiPengaturan(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/pengaturan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:CFG_SID||SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/pengaturan tidak ditemukan (404). Pastikan file api/pengaturan.js sudah di-deploy');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
+async function apiPengaturan(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/pengaturan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,...hBT()},body:JSON.stringify({sekolah_id:CFG_SID||SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/pengaturan tidak ditemukan (404). Pastikan file api/pengaturan.js sudah di-deploy');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
 async function muatRahasia(){try{RHS=await apiPengaturan({aksi:'baca'})}catch(e){RHS={error:e.message||String(e)}}sinkronNomorKepala()}
 /* nomor Kepala Sekolah di Pengaturan = nomor di Profil Saya Kepala Sekolah */
 const nomorKepalaProfil=()=>{const k=(S.guru||[]).find(g=>g.role==='kepala_sekolah'&&g.aktif);const n=k&&(S.nomor||{})[k.id];return String(n||'').trim()?n:''};
@@ -800,6 +800,16 @@ function pkSadapBuat(o){const asli=navigator.credentials.create;
 /* verifikasi dengan passkey sebagai pengganti "kata sandi saat ini" (hanya bila passkey sudah aktif) */
 let PKOK=0;const pkFresh=()=>Date.now()-PKOK<240000;
 const bodySandi=sd=>(!sd&&pkFresh())?{verifikasi:'passkey'}:{sandi_sekarang:sd};
+/* bukti passkey terpisah: sesi utama (termasuk verifikasi 2 langkah Developer) tidak diganti */
+let PKB=null;const pkBuktiFresh=()=>!!PKB&&Date.now()-PKB.w<240000;
+const bodyBukti=sd=>(!sd&&pkBuktiFresh())?{verifikasi:'passkey',bukti_passkey:PKB.t}:{sandi:sd};
+async function pkBukti(){const {data:{session:lama}}=await db.auth.getSession();const a=pkAkunList().find(x=>PROFIL&&x.u===PROFIL.username),o={allowId:a?a.c:null,hasil:null},pulih=pkSadap(o);
+ try{const x=await db.auth.signInWithPasskey();if(x.error)throw x.error;const u=x.data&&x.data.user,sn=x.data&&x.data.session;
+  if(!u||!sn)throw new Error('Passkey tidak menghasilkan sesi');
+  if(u.id!==me)throw new Error('Passkey milik akun lain. Silakan masuk kembali');
+  PKB={t:sn.access_token,w:Date.now()}}
+ catch(e){throw new Error(pkPesan(e))}
+ finally{pulih();if(lama){try{await db.auth.setSession({access_token:lama.access_token,refresh_token:lama.refresh_token})}catch(e){}}}}
 const pkTersedia=()=>PK_OK&&!MB()&&!!PROFIL&&(pkAda()||(Array.isArray(S.pk)&&S.pk.length>0));
 async function pkVerifikasi(){const a=pkAkunList().find(x=>PROFIL&&x.u===PROFIL.username),o={allowId:a?a.c:null,hasil:null},pulih=pkSadap(o);
  try{const x=await db.auth.signInWithPasskey();if(x.error)throw x.error;const u=x.data&&x.data.user;
@@ -807,9 +817,9 @@ async function pkVerifikasi(){const a=pkAkunList().find(x=>PROFIL&&x.u===PROFIL.
   if(u.id!==me){try{await db.auth.signOut()}catch(e){}setTimeout(()=>location.reload(),600);throw new Error('Passkey milik akun lain. Silakan masuk kembali')}
   PKOK=Date.now()}
  catch(e){throw new Error(pkPesan(e))}finally{pulih()}}
-function pasangPkForm(k){PKOK=0;if(!pkTersedia())return;const el=$('#f_'+k),fd=el&&el.closest('.fd');if(!fd||fd.querySelector('.pkv'))return;
+function pasangPkForm(k,bukti){PKOK=0;PKB=null;if(!pkTersedia())return;const el=$('#f_'+k),fd=el&&el.closest('.fd');if(!fd||fd.querySelector('.pkv'))return;
  const b=document.createElement('button');b.type='button';b.className='btn soft sm pkv';b.style.marginTop='8px';b.textContent='🔑 Atau verifikasi dengan passkey';
- b.onclick=()=>guard(async()=>{await pkVerifikasi();el.value='';el.disabled=true;el.placeholder='Terverifikasi dengan passkey';b.textContent='✓ Terverifikasi dengan passkey';b.disabled=true;toast('Passkey terverifikasi')},1);
+ b.onclick=()=>guard(async()=>{await(bukti?pkBukti():pkVerifikasi());el.value='';el.disabled=true;el.placeholder='Terverifikasi dengan passkey';b.textContent='✓ Terverifikasi dengan passkey';b.disabled=true;toast('Passkey terverifikasi')},1);
  fd.appendChild(b)}
 function masukPasskey(){const b=$('#lpk');if(!b||b.disabled)return;$('#lerr').textContent='';
  if(pkAkunList().length)return pilihAkunPasskey();pkMasuk(null)}
@@ -1045,7 +1055,7 @@ function renderV(){
  if(view==='kartu')muatGambarKartu().catch(e=>toast('Gagal menyiapkan kartu: '+(e.message||e),false));
 }
 function form(t,f,cb){window._fver={};f.forEach(x=>{if(x.ver)_fver[x.k]=x.ver});$('#ms').textContent='Simpan';$('#ms').style.display='';$('#mt').textContent=t;$('#mbd').innerHTML='<div class="fg">'+f.map(x=>`<div class="fd"><label class="l">${x.l}</label>${x.ro?`<input id="f_${x.k}" class="input" value="${esc(x.v||'')}" readonly style="background:#f1f5f2;color:var(--mu)">`:x.o?`<select id="f_${x.k}" class="select">${x.o.map(o=>`<option ${o===x.v?'selected':''}>${esc(o)}</option>`).join('')}</select>`:x.t==='date'?`<label class="input dt"><span>${x.v?fmt(x.v):'Pilih tanggal'}</span><input type="date" id="f_${x.k}" value="${x.v||''}" ${x.min?`min="${x.min}"`:'min="2000-01-01"'} max="2099-12-31" onclick="try{this.showPicker()}catch(e){}" onchange="if(this.value)this.previousElementSibling.textContent=fmt(this.value)"></label>`:x.ver?`<div style="display:flex;gap:8px"><input id="f_${x.k}" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="flex:1" value="${esc(x.v||'')}"><button type="button" class="btn soft" onclick="formVer('${x.k}')">Verifikasi</button></div><div id="fv_${x.k}" class="mu" style="margin-top:4px"></div>`:`<input id="f_${x.k}" class="input" type="${x.t||'text'}" value="${esc(x.v||'')}">`}</div>`).join('')+'</div>';
- enhanceCustomSelects($('#mbd'));enhanceSecretInputs($('#mbd'));
+ enhanceCustomSelects($('#mbd'));enhanceSecretInputs($('#mbd'));f.forEach(x=>{if(x.pkb)setTimeout(()=>pasangPkForm(x.k,1),0)});
  $('#ms').onclick=()=>{const v={};f.forEach(x=>v[x.k]=$('#f_'+x.k).value.trim());Promise.resolve().then(()=>cb(v)).then(()=>closeM()).catch(e=>toast(e.message||String(e),false))};$('#md').classList.add('show')}
 async function formVer(k){const el=$('#f_'+k),o=$('#fv_'+k),fn=window._fver&&_fver[k];if(!el||!fn||!o)return;const kode=el.value.trim();
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
@@ -1282,7 +1292,7 @@ V.guru=()=>{
  const emptyCol=gHapusMode&&bh?9:8;
  return `<div class="panel"><div class="ph">👨‍🏫 Data Guru ${kel?`<span class="tb tbgrid" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('guru')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('guru')">⬆ Impor XLSX</button><button class="btn success sm add" onclick="addGuru()">+ Guru</button></span>`:''}</div><div class="pb"><div class="tb"><input id="guruCari" class="input grow search-smooth" placeholder="Cari nama atau NIP guru..." value="${esc(gQ)}" oninput="cariGuruInput(this)"></div><div class="note">${kel?'Kepala Sekolah, Wakil Kepala Sekolah, atau Developer dapat menambah guru, mengubah peran, dan mengaktifkan atau menonaktifkan guru di sekolah ini. Menambah atau mengimpor guru meminta kode yang dikirim ke WhatsApp Anda sebagai bukti kepemilikan. Mengganti Kepala Sekolah: pilih peran Kepala Sekolah pada guru yang dituju, maka Kepala Sekolah lama otomatis menjadi Guru. Tombol Keluarkan hanya mengeluarkan guru dari sekolah ini. Username, kata sandi, nomor WhatsApp, dan passkey diubah oleh pemilik akunnya sendiri lewat menu Profil Saya.':'Profil, kata sandi, nomor WhatsApp, dan passkey Anda diubah lewat menu Profil Saya. Nomor WhatsApp guru lain tidak ditampilkan.'}</div><div class="tw"><table><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody id="guruBody">${guruRows(shown,bh,kel,dev,kunci)||`<tr><td colspan="${emptyCol}" class="mu">Guru tidak ditemukan.</td></tr>`}</tbody></table></div></div></div>`;
 };
-async function apiGuru(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/guru',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify({sekolah_id:SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/guru tidak ditemukan (404). Pastikan file api/guru.js sudah di-deploy pada project yang sama dengan Index.');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
+async function apiGuru(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/guru',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,...hBT()},body:JSON.stringify({sekolah_id:SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/guru tidak ditemukan (404). Pastikan file api/guru.js sudah di-deploy pada project yang sama dengan Index.');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
 function editGuru(id){if(MB())return toast('Tidak tersedia di mode bantuan',false);const g=S.guru.find(x=>x.id===id);if(!g||id!==me)return toast('Anda hanya bisa mengubah akun sendiri',false);
  setTimeout(()=>pasangPkForm('lama'),0);
  form('Ubah profil saya',[{k:'nama',l:'Nama',v:g.nama},{k:'nip',l:'NIP (opsional)',v:g.nip||''},{k:'user',l:'Username',v:g.username},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak diganti)',t:'password'},{k:'lama',l:'Kata sandi saat ini (wajib bila mengganti username atau kata sandi)',t:'password'}],async v=>{
@@ -1296,7 +1306,7 @@ function editGuru(id){if(MB())return toast('Tidak tersedia di mode bantuan',fals
   await dbq(db.from('profil').update({nama:v.nama,nip:(v.nip||'').trim()||null}).eq('id',id));
   meNama=v.nama;PROFIL.nama=v.nama;await muatProfil();toast(ubahAkun?'Profil dan akun diperbarui':'Profil diperbarui');renderAll()})}
 function fmtWA(n){const d=String(n||'').replace(/\D/g,'');return d.startsWith('62')?'0'+d.slice(2):d}
-function mintaIzin(lanjut){if(MB())return toast('Tidak tersedia di mode bantuan',false);
+function mintaIzin(lanjut){if(MB())return lanjut(null);
  if(role==='Developer')return lanjut(null);
  if(izinKelola&&Date.now()<izinExp)return lanjut(izinKelola);
  guard(async()=>{const j=await apiGuru({aksi:'otp_kelola_kirim'});toast('Kode dikirim ke WhatsApp '+(j.nomor||'Anda'));
@@ -1586,7 +1596,7 @@ async function hapusSiswa(id){const s=S.siswa.find(x=>x.id===id);if(!s)return;if
 async function hapusSiswaTerpilih(){const ids=[...ssel].filter(id=>S.siswa.some(s=>s.id===id));if(!ids.length)return toast('Belum ada siswa yang dipilih',false);if(!await konfirmasi('Hapus '+ids.length+' siswa terpilih? Seluruh riwayat absensi dan wali yang sudah tidak dipakai akan ikut terhapus dan tidak bisa dikembalikan.',{judul:'Hapus siswa terpilih',ya:'Hapus semua',bahaya:1}))return;guard(async()=>{const tw=[...new Set((await dbq(db.from('siswa_wali').select('wali_id').in('siswa_id',ids))).map(x=>x.wali_id))];await dbq(db.from('absensi').delete().in('siswa_id',ids));await dbq(db.from('siswa_wali').delete().in('siswa_id',ids));await dbq(db.from('siswa').delete().in('id',ids));let n=0,err='';try{n=await hapusWaliYatim(tw)}catch(e){err=e.message||String(e)}ssel.clear();S.absen={};await muatDasar();err?toast(ids.length+' anak dihapus, tetapi sebagian data wali gagal dihapus: '+err,false):toast(ids.length+' anak dihapus'+(n?' dan '+n+' data wali yang tidak terpakai ikut dihapus':''));renderV()})}
 let impK='';
 function bukaPilihFile(k){impK=k;const f=$('#fx');f.value='';f.click()}
-function pilihXlsx(k){if(k!=='guru'||role==='Developer'||(izinKelola&&Date.now()<izinExp))return bukaPilihFile(k);
+function pilihXlsx(k){if(k!=='guru'||role==='Developer'||MB()||(izinKelola&&Date.now()<izinExp))return bukaPilihFile(k);
  mintaIzin(()=>info('Pilih file Excel guru','<div class="note">Verifikasi berhasil dan berlaku 15 menit. Pilih file Excel yang berisi data guru sesuai template terbaru.</div><button class="btn success" style="width:100%" onclick="closeM();bukaPilihFile(\'guru\')">📂 Pilih file Excel</button>'))}
 async function templat(k){try{if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
  const sis=k==='siswa',wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Data'),N=500,cn=S.kelas.map(x=>x.nama),ln={style:'thin',color:{argb:'FFCFD9D3'}},
@@ -1765,10 +1775,12 @@ async function hapusGrup(id){if(!await konfirmasi('Hapus ID grup ini? Pesan dari
  guard(async()=>{await apiPengaturan({aksi:'grup_hapus',id});await segarCfg();toast('ID grup dihapus')})}
 function tesToken(id){guard(async()=>{const j=await apiPengaturan({aksi:'tes_fonnte',id});toast(j.pesan||'Pesan tes terkirim ke nomor Kepala Sekolah')})}
 function tesAI(btn){guard(async()=>{const j=await apiPengaturan({aksi:'tes_ai'});toast(j.pesan||'API AI berfungsi')})}
-function mintaWebhook(baru,sid){form(baru?'Buat ulang kunci Webhook':'Tampilkan alamat Webhook',[{k:'sandi',l:'Kata sandi akun Anda',t:'password'}],async v=>{
- if(!v.sandi)throw new Error('Isi kata sandi akun Anda');
+function webhookBantuan(baru,sid){(baru?konfirmasi('Kunci lama langsung berhenti berlaku. Alamat baru harus dipasang ulang di Fonnte. Lanjutkan?',{judul:'Buat ulang kunci',ya:'Buat ulang',bahaya:1}):Promise.resolve(true)).then(ok=>{if(!ok)return;
+ guard(async()=>{const j=await apiPengaturan({aksi:baru?'buat_ulang_webhook':'webhook',...(sid?{sekolah_id:sid}:{})});setTimeout(()=>tampilWebhook(j.url,baru),200)})})}
+function mintaWebhook(baru,sid){if(MB())return webhookBantuan(baru,sid);form(baru?'Buat ulang kunci Webhook':'Tampilkan alamat Webhook',[{k:'sandi',l:'Kata sandi akun Anda',t:'password',pkb:1}],async v=>{
+ if(!v.sandi&&!pkBuktiFresh())throw new Error('Isi kata sandi akun Anda atau verifikasi dengan passkey');
  if(baru&&!await konfirmasi('Kunci lama langsung berhenti berlaku. Alamat baru harus dipasang ulang di Fonnte. Lanjutkan?',{judul:'Buat ulang kunci',ya:'Buat ulang',bahaya:1}))return;
- const j=await apiPengaturan({aksi:baru?'buat_ulang_webhook':'webhook',sandi:v.sandi,...(sid?{sekolah_id:sid}:{})});setTimeout(()=>tampilWebhook(j.url,baru),200)})}
+ const j=await apiPengaturan({aksi:baru?'buat_ulang_webhook':'webhook',...bodyBukti(v.sandi),...(sid?{sekolah_id:sid}:{})});setTimeout(()=>tampilWebhook(j.url,baru),200)})}
 function tampilWebhook(url,baru){info('Alamat Webhook sekolah Anda','<div class="note">'+(baru?'Kunci baru sudah aktif. Pasang ulang alamat ini di Fonnte.':'Salin alamat ini lalu tempel di pengaturan Webhook Fonnte.')+'</div><input class="input" id="whUrl" readonly value="'+esc(url)+'" onclick="this.select()"><div class="tb" style="margin-top:10px"><button class="btn success" onclick="salinTeks($(\'#whUrl\').value)">📋 Salin</button></div>')}
 async function salinTeks(t){try{await navigator.clipboard.writeText(t);toast('Tersalin')}catch(e){const i=$('#whUrl');if(i){i.select();try{document.execCommand('copy');toast('Tersalin')}catch(_){toast('Gagal menyalin, salin manual',false)}}}}
 function woptGuru(sel){return '<option value="">- Belum ada -</option>'+S.guru.filter(g=>g.aktif||g.id===sel).map(g=>`<option value="${g.id}" ${g.id===sel?'selected':''}>${esc(g.nama)}</option>`).join('')}
@@ -2208,6 +2220,7 @@ async function runChecksDev(){const R=[],add=(l,n,d)=>R.push([l,n,d]);
 const LV={ok:['Hadir','✓ Baik'],warn:['Terlambat','⚠ Perhatian'],err:['Sakit','✗ Masalah'],info:['Izin','ℹ Info']};
 let devTab='ringkas';
 const MB=()=>{try{return !!sessionStorage.getItem('mode_bantuan')}catch(e){return false}};
+const hBT=()=>{try{const m=JSON.parse(sessionStorage.getItem('mode_bantuan')||'null'),t=m&&m.bantuan;return t?{'X-Bantuan':t}:{}}catch(e){return {}}};
 async function apiDev(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/developer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/developer tidak ditemukan (404). Pastikan file api/developer.js sudah di-deploy');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
 async function muatDev(){const [g,sk,pd,pn,lg,sm,al,nl]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100})),dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_alpa')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_libur')).catch(e=>({error:(e&&e.message)||String(e)}))]);S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg;S.devSimpan=sm;S.devAlpa=al;S.devNL=nl;S.devAlRing=await dbq(db.rpc('developer_alumni_ringkas')).catch(()=>null);S.devAlTh='';S.devAlList=[];await muatKalNas().catch(()=>{})}
 const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['hapus','🗑 Hapus Data'],['log','📜 Log'],['sistem','🩺 Sistem']];
@@ -2307,11 +2320,11 @@ function beritahuHapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if
    catch(e){toast((e&&e.message)||String(e),false)}
    finally{ld(0)}},150)});$('#ms').textContent='Kirim'}
 function hapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if(!x)return;
- form('Hapus permanen: '+x.nama,[{k:'nm',l:'Ketik nama sekolah persis <b>'+esc(x.nama)+'</b> untuk melanjutkan'},{k:'sandi',l:'Kata sandi akun Developer',t:'password'}],async v=>{
+ form('Hapus permanen: '+x.nama,[{k:'nm',l:'Ketik nama sekolah persis <b>'+esc(x.nama)+'</b> untuk melanjutkan'},{k:'sandi',l:'Kata sandi akun Developer',t:'password',pkb:1}],async v=>{
   if(String(v.nm||'').trim()!==String(x.nama).trim())throw new Error('Nama sekolah yang diketik tidak sama');
-  if(!v.sandi)throw new Error('Kata sandi Developer wajib diisi');
+  if(!v.sandi&&!pkBuktiFresh())throw new Error('Isi kata sandi Developer atau verifikasi dengan passkey');
   if(!await konfirmasi('SELURUH data '+x.nama+' ('+(x.jml_guru||0)+' guru, '+(x.jml_siswa||0)+' siswa) beserta absensi, tabungan, pesan, dan pengaturannya akan dihapus PERMANEN dan TIDAK BISA dikembalikan. Lanjutkan?',{judul:'Hapus sekolah permanen',ya:'Ya, hapus permanen',bahaya:1}))return;
-  const kirim=l=>apiDev({aksi:'hapus_sekolah',sekolah_id:sid,konfirmasi:v.nm.trim(),sandi:v.sandi,lanjut_tanpa_pemberitahuan:!!l});
+  const kirim=l=>apiDev({aksi:'hapus_sekolah',sekolah_id:sid,konfirmasi:v.nm.trim(),...bodyBukti(v.sandi),lanjut_tanpa_pemberitahuan:!!l});
   let j,tanya=false;
   ld(1,'Menghapus data sekolah...');
   try{j=await kirim(false)}catch(e){if(e.message!=='BELUM_ADA_PEMBERITAHUAN')throw e;tanya=true}finally{ld(0)}
@@ -2327,7 +2340,7 @@ function masukSebagai(pid,sid){const g=(S.devGuru||[]).find(x=>x.id===pid),sk=(S
  konfirmasi('Masuk sebagai '+(g?g.nama:'pengguna ini')+' di '+(sk?sk.nama:'sekolah ini')+'? Semua yang Anda lakukan terjadi atas nama akun tersebut. Awal dan akhir mode bantuan tercatat di log audit.',{judul:'Masuk sebagai',ya:'Masuk',ikon:'🔑'}).then(ok=>{if(!ok)return;
  guard(async()=>{const {data:{session}}=await db.auth.getSession();const j=await apiDev({aksi:'masuk_sebagai',profil_id:pid,sekolah_id:sid});
   sessionStorage.setItem('dev_sesi',JSON.stringify({a:session.access_token,r:session.refresh_token}));
-  sessionStorage.setItem('mode_bantuan',JSON.stringify({nama:j.nama,sekolah:j.sekolah,profil_id:pid,sekolah_id:sid}));
+  sessionStorage.setItem('mode_bantuan',JSON.stringify({nama:j.nama,sekolah:j.sekolah,profil_id:pid,sekolah_id:sid,bantuan:j.bantuan||''}));
   let er=(await db.auth.verifyOtp({token_hash:j.token_hash,type:'magiclink'})).error;
   if(er)er=(await db.auth.verifyOtp({token_hash:j.token_hash,type:'email'})).error;
   if(er){sessionStorage.removeItem('dev_sesi');sessionStorage.removeItem('mode_bantuan');try{await db.auth.setSession({access_token:session.access_token,refresh_token:session.refresh_token})}catch(e){}throw new Error('Gagal masuk sebagai: '+(er.message||er))}
@@ -2427,8 +2440,8 @@ function batasId(id){const v=($('#'+id)||{}).value||'';return v?fmt(v):''}
 function beritahuKepala(){const nk=(S.devSek||[]).filter(x=>x.status==='aktif'&&x.kepala_nama).length,batas=batasId('bkBatas');
  konfirmasi('Kirim pemberitahuan WhatsApp ke Kepala Sekolah dari '+nk+' sekolah aktif?'+(batas?'\n\nBatas waktu: '+batas:''),{judul:'Kirim pemberitahuan',ya:'Kirim',ikon:'📢'}).then(ok=>{if(!ok)return;
   guard(async()=>{const j=await apiDev({aksi:'beritahu_kepala',batas});await muatDev();toast('Terkirim '+j.terkirim+' dari '+j.total+(j.gagal?', gagal '+j.gagal:'')+(j.tanpa_nomor?', tanpa nomor '+j.tanpa_nomor:''));renderV()})})}
-function hapusAbsensi(){form('Hapus seluruh data absensi',[{k:'kf',l:'Ketik HAPUS ABSENSI untuk melanjutkan'},{k:'sandi',l:'Kata sandi akun Developer',t:'password'}],async v=>{
-  const kirim=l=>apiDev({aksi:'hapus_absensi',konfirmasi:v.kf,sandi:v.sandi,lanjut_tanpa_pemberitahuan:!!l});
+function hapusAbsensi(){form('Hapus seluruh data absensi',[{k:'kf',l:'Ketik HAPUS ABSENSI untuk melanjutkan'},{k:'sandi',l:'Kata sandi akun Developer',t:'password',pkb:1}],async v=>{
+  const kirim=l=>apiDev({aksi:'hapus_absensi',konfirmasi:v.kf,...bodyBukti(v.sandi),lanjut_tanpa_pemberitahuan:!!l});
   let j;try{j=await kirim(false)}catch(e){
    if(e.message!=='BELUM_ADA_PEMBERITAHUAN')throw e;
    const ok=await konfirmasi('Anda belum mengirim pemberitahuan kepada Kepala Sekolah dalam 3 hari terakhir, jadi mereka mungkin belum sempat mengunduh rekap. Tetap hapus sekarang?',{judul:'Belum ada pemberitahuan',ya:'Tetap hapus',bahaya:1});if(!ok)return;j=await kirim(true)}
@@ -2436,8 +2449,8 @@ function hapusAbsensi(){form('Hapus seluruh data absensi',[{k:'kf',l:'Ketik HAPU
 function beritahuKepalaTabungan(){const nk=(S.devSek||[]).filter(x=>x.status==='aktif'&&x.kepala_nama).length,batas=batasId('bkBatasT');
  konfirmasi('Kirim pemberitahuan tabungan lewat WhatsApp ke Kepala Sekolah dari '+nk+' sekolah aktif?'+(batas?'\n\nBatas waktu: '+batas:''),{judul:'Kirim pemberitahuan',ya:'Kirim',ikon:'📢'}).then(ok=>{if(!ok)return;
   guard(async()=>{const j=await apiDev({aksi:'beritahu_kepala',batas,jenis:'tabungan'});await muatDev();toast('Terkirim '+j.terkirim+' dari '+j.total+(j.gagal?', gagal '+j.gagal:'')+(j.tanpa_nomor?', tanpa nomor '+j.tanpa_nomor:''));renderV()})})}
-function hapusTabungan(){form('Hapus seluruh data tabungan',[{k:'kf',l:'Ketik HAPUS TABUNGAN untuk melanjutkan'},{k:'sandi',l:'Kata sandi akun Developer',t:'password'}],async v=>{
-  const kirim=l=>apiDev({aksi:'hapus_tabungan',konfirmasi:v.kf,sandi:v.sandi,lanjut_tanpa_pemberitahuan:!!l});
+function hapusTabungan(){form('Hapus seluruh data tabungan',[{k:'kf',l:'Ketik HAPUS TABUNGAN untuk melanjutkan'},{k:'sandi',l:'Kata sandi akun Developer',t:'password',pkb:1}],async v=>{
+  const kirim=l=>apiDev({aksi:'hapus_tabungan',konfirmasi:v.kf,...bodyBukti(v.sandi),lanjut_tanpa_pemberitahuan:!!l});
   let j;try{j=await kirim(false)}catch(e){
    if(e.message!=='BELUM_ADA_PEMBERITAHUAN')throw e;
    const ok=await konfirmasi('Anda belum mengirim pemberitahuan tabungan kepada Kepala Sekolah dalam 3 hari terakhir, jadi mereka mungkin belum sempat mengunduh rekap tabungan. Tetap hapus sekarang?',{judul:'Belum ada pemberitahuan',ya:'Tetap hapus',bahaya:1});if(!ok)return;j=await kirim(true)}
