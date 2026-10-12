@@ -9,7 +9,8 @@
 // Ganti Kepala Sekolah: Kepala Sekolah lama, Wakil, atau Developer; kepala lama otomatis menjadi Guru
 // (fungsi database ganti_kepala_sekolah, satu transaksi).
 // Aksi khusus Developer:
-//   reset (atur sandi baru), hapus_akun (hapus akun seluruhnya)
+//   reset (atur sandi baru), hapus_akun (hapus akun seluruhnya),
+//   hapus_akun_batch (hapus banyak akun yang tidak aktif di sekolah mana pun sekaligus)
 // Aksi untuk pemilik akun sendiri (semua pengguna aktif):
 //   akun_sendiri (ganti username dan/atau sandi, wajib sandi saat ini atau verifikasi passkey)
 
@@ -380,6 +381,89 @@ module.exports = async (req, res) => {
         throw new Error(pesanDuplikat(e) ? 'Nomor WhatsApp sudah dipakai akun lain' : e.message);
       }
       return res.status(200).json({ ok: true });
+    }
+
+    // =============================================================
+    // HAPUS AKUN BATCH (Developer): akun yang tidak aktif di sekolah mana pun
+    // Dicek ulang di server, jadi akun yang masih aktif tidak mungkin ikut terhapus.
+    // =============================================================
+    if (b.aksi === 'hapus_akun_batch') {
+      if (!isDev)
+        return res.status(403).json({ error: 'Hanya Developer yang boleh' });
+      const ids = [...new Set((Array.isArray(b.ids) ? b.ids : []).map(String))];
+      if (!ids.length) return res.status(400).json({ error: 'Belum ada akun yang dipilih' });
+      if (ids.length > 100)
+        return res.status(400).json({ error: 'Maksimal 100 akun per permintaan' });
+      if (ids.some((id) => !RE_UUID.test(id)))
+        return res.status(400).json({ error: 'ID tidak valid' });
+
+      const gagal = [];
+      const tolak = (id, error) => gagal.push({ id, error });
+
+      // 1. Buang akun sendiri, lalu ambil profilnya (tolak Developer dan yang tidak ditemukan)
+      const awal = ids.filter((id) => {
+        if (id === user.id) {
+          tolak(id, 'Tidak bisa menghapus akun sendiri');
+          return false;
+        }
+        return true;
+      });
+      const profilAda = new Map();
+      if (awal.length) {
+        const r = (await panggil(`/rest/v1/profil?id=in.(${awal.join(',')})&select=id,role`, 'GET')) || [];
+        r.forEach((x) => profilAda.set(x.id, x.role));
+      }
+      const lolosProfil = awal.filter((id) => {
+        if (!profilAda.has(id)) return tolak(id, 'Akun tidak ditemukan'), false;
+        if (profilAda.get(id) === 'developer') return tolak(id, 'Akun Developer tidak dapat dihapus dari sini'), false;
+        return true;
+      });
+
+      // 2. Tolak yang masih aktif di sekolah mana pun (satu query)
+      const masihAktif = new Set();
+      if (lolosProfil.length) {
+        const r =
+          (await panggil(
+            `/rest/v1/keanggotaan?profil_id=in.(${lolosProfil.join(',')})&aktif=eq.true&select=profil_id`,
+            'GET'
+          )) || [];
+        r.forEach((x) => masihAktif.add(x.profil_id));
+      }
+      const hapus = lolosProfil.filter((id) => {
+        if (masihAktif.has(id)) return tolak(id, 'Masih aktif di sekolah'), false;
+        return true;
+      });
+
+      // 3. Hapus profil: satu query untuk semua; bila gagal, jatuh ke per akun
+      let profilTerhapus = [];
+      if (hapus.length) {
+        try {
+          await panggil(`/rest/v1/profil?id=in.(${hapus.join(',')})`, 'DELETE');
+          profilTerhapus = hapus.slice();
+        } catch (e) {
+          await paralel(hapus, BATAS_PARALEL, async (id) => {
+            try {
+              await panggil(`/rest/v1/profil?id=eq.${id}`, 'DELETE');
+              profilTerhapus.push(id);
+            } catch (e2) {
+              tolak(id, e2.message || String(e2));
+            }
+          });
+        }
+      }
+
+      // 4. Hapus akun login (Auth) paralel terbatas
+      const dihapus = [];
+      await paralel(profilTerhapus, BATAS_PARALEL, async (id) => {
+        try {
+          await panggil('/auth/v1/admin/users/' + id, 'DELETE');
+          dihapus.push(id);
+        } catch (e) {
+          tolak(id, 'Profil terhapus tetapi akun login gagal dihapus: ' + (e.message || e));
+        }
+      });
+
+      return res.status(200).json({ ok: true, dihapus, gagal });
     }
 
     // =============================================================
