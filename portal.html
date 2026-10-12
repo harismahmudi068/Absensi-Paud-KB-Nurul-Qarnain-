@@ -70,17 +70,26 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .leg{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--mu)}.leg i{width:14px;height:14px;border-radius:5px;background:var(--pu);display:inline-block}
 .lr{display:flex;align-items:baseline;gap:8px;text-align:left;padding:8px 0;border-top:1px solid var(--ln)}.lr:first-child{border-top:0}.lr i{flex:0 0 9px;height:9px;border-radius:3px;background:var(--pu);align-self:center}.lr b{flex:0 0 auto;color:var(--tx)}.lr span{flex:1;color:var(--tx);word-break:break-word}
 .lap{margin-top:14px;padding-top:12px;border-top:1px solid var(--ln)}.lap .lt{font-weight:800;color:var(--tt);font-size:13.5px;margin-bottom:8px}
-.pil{display:flex;gap:8px}.pil button{flex:1;border:2px solid var(--ln);border-radius:12px;padding:10px 6px;font:inherit;font-weight:800;color:var(--tx);background:var(--cell);cursor:pointer}
-.pil button.on.izin{background:#dcefff;color:#1673bd;border-color:#1673bd}.pil button.on.sakit{background:#ffe0e4;color:#d83d4d;border-color:#d83d4d}
+.pil{display:flex;gap:8px}.pil button{flex:1;border:2px solid transparent;border-radius:12px;padding:10px 6px;font:inherit;font-weight:800;cursor:pointer;transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
+.pil button.izin{background:#dcefff;color:#1673bd;border-color:#b7dcf8}.pil button.sakit{background:#ffe0e4;color:#d83d4d;border-color:#f8bcc4}
+.pil button.on.izin{background:#1673bd;color:#fff;border-color:#1673bd;box-shadow:0 4px 12px rgba(22,115,189,.4)}.pil button.on.sakit{background:#d83d4d;color:#fff;border-color:#d83d4d;box-shadow:0 4px 12px rgba(216,61,77,.4)}
+.kr[data-s=izin] .btn{background:#1673bd}.kr[data-s=sakit] .btn{background:#d83d4d}
 .kr{display:flex;gap:8px;align-items:stretch;margin-top:8px}.kr textarea{flex:1;min-width:0;resize:none;border:1.5px solid var(--cbd);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;line-height:1.35;text-align:left;background:var(--c2);color:var(--tx)}
 .kr textarea:focus{outline:none;border-color:var(--pu)}.kr .btn{width:auto;margin:0;padding:0 16px;flex:0 0 auto}.btn[disabled]{opacity:.5;cursor:default}
-.lm{margin-top:8px;font-size:13px;font-weight:700}.lm:empty{display:none}
+.ov{position:fixed;inset:0;z-index:90;background:rgba(5,15,30,.55);display:grid;place-items:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}.ov.on{opacity:1;pointer-events:auto}
+.dlg{width:100%;max-width:340px;background:var(--c2);color:var(--tx);border-radius:20px;padding:20px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.4);text-align:center;transform:translateY(12px) scale(.96);transition:transform .2s}.ov.on .dlg{transform:none}
+.dlg .di{font-size:34px}.dlg h3{margin:6px 0 4px;font-size:17px;color:var(--tt)}.dlg p{margin:0 0 14px;color:var(--mu);font-size:14px;word-break:break-word}
+.dlg .da{display:flex;gap:8px}.dlg .da button{flex:1;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer}
+.dlg .da .bt{background:transparent;color:var(--tx);border:1.5px solid var(--ln)}.dlg .da .ya{background:var(--g);color:#fff}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:100;max-width:calc(100% - 28px);padding:12px 16px;border-radius:14px;color:#fff;font-weight:800;font-size:14px;text-align:center;box-shadow:0 12px 30px rgba(0,0,0,.35);transform:translate(-50%,-160%);opacity:0;transition:transform .3s cubic-bezier(.2,.9,.3,1.2),opacity .25s;pointer-events:none}
+.toast.on{transform:translate(-50%,0);opacity:1}.toast.ok{background:#14965c}.toast.err{background:#d83d4d}.toast.info{background:#1673bd}
 .sk{height:90px;margin-top:14px;border-radius:16px;background:linear-gradient(90deg,rgba(255,255,255,.18) 25%,rgba(255,255,255,.34) 50%,rgba(255,255,255,.18) 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="/kartu.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet"></noscript>
+<script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script defer src="/kartu.js"></script>
 </head><body>
 <div class="scene" id="scene"></div>
 <div class="top"><div class="as">Assalamualaikum</div><div class="nm" id="nm">&nbsp;</div><div class="gt" id="gt">&nbsp;</div></div>
@@ -92,6 +101,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
  </div></div>
  <div id="isi"></div>
 </div>
+<div class="ov" id="ov"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],HR=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
@@ -101,7 +111,7 @@ const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minu
 const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
 const m=location.pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);
 const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['libur','🎉','Kalender Hari Libur']];
-const C={},S={},LAP={st:'',busy:0,info:'',err:0};let cur='',tok=0;
+const C={},S={},LAP={st:'',busy:0};let cur='',tok=0;
 const segar=v=>C[v];
 
 /* ---------- efek ripple ---------- */
@@ -144,33 +154,43 @@ const R={},A={};
 /* A. Dashboard */
 R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
  return '<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
- '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'<div class="lm" id="lapm"></div></div></div>'+
+ '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'</div></div>'+
  (tb.aktif?'<div class="panel ct"><div class="ph">💰 Tabungan Hari Ini</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(tb.saldo)+'</div>'+(tb.hari_ini.length?tb.hari_ini.map(trx).join(''):'<div class="mu">Tidak ada transaksi hari ini.</div>')+'</div></div>':'')+
  calPanel(d)};
 const SAP={hadir:'Selamat beraktivitas 😊',alpa:'Semangat yah sekolahnya 💪',terlambat:'Belajar disiplin lagi yah, semangat terus 🙂',sakit:'Semoga cepat sembuh dan bisa beraktivitas kembali 🤒',izin:'Semoga dilancarkan segala urusannya 🤲',libur:'Selamat menikmati momen bersama keluarga, sampai jumpa kembali 👨‍👩‍👧'};
 function sapa(d){const a=d.absen_hari_ini,k=a?a.status:(d.libur.some(x=>x.tanggal===d.hari_ini)?'libur':'');$('#gt').textContent=SAP[k]||'Semoga harimu menyenangkan 🌤️'}
 
 /* A2. Lapor izin / sakit hari ini */
+const LW={izin:'#1673bd',sakit:'#d83d4d'};
 function lapForm(d){const a=d.absen_hari_ini;
  if(d.libur.some(x=>x.tanggal===d.hari_ini)||(a&&(a.status==='hadir'||a.status==='terlambat')))return '';
  const ada=!!a&&(a.status==='izin'||a.status==='sakit');LAP.st=ada?a.status:'';
  const ket=ada?String(a.catatan||'').replace(/\s*\|\s*sakit otomatis.*$/i,''):'';
  return '<div class="lap"><div class="lt">'+(ada?'Ubah laporan hari ini':'Anak tidak masuk hari ini?')+'</div><div class="pil">'+
   ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
-  '<div class="kr"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
-function lapMsg(t,ok){const e=$('#lapm');if(!e)return;e.textContent=t;e.style.color=ok?'var(--tt)':'var(--su)'}
-function lapPilih(s){LAP.st=s;document.querySelectorAll('.pil button').forEach(x=>x.classList.toggle('on',x.dataset.s===s));$('#lapkirim').disabled=false}
+  '<div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
+function lapPilih(s){LAP.st=s;document.querySelectorAll('.pil button').forEach(x=>x.classList.toggle('on',x.dataset.s===s));$('.kr').dataset.s=s;$('#lapkirim').disabled=false}
+
+/* Notifikasi (toast) dan kotak konfirmasi buatan sendiri */
+let tT;
+function toast(t,tp){const e=$('#toast');tp=tp||'ok';e.className='toast '+tp;e.textContent=(tp==='err'?'⚠️ ':tp==='info'?'⏳ ':'✅ ')+t;void e.offsetWidth;e.classList.add('on');clearTimeout(tT);if(tp!=='info')tT=setTimeout(()=>e.classList.remove('on'),tp==='err'?5000:3500)}
+function konfirm(o){return new Promise(ok=>{const ov=$('#ov');
+ ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true"><div class="di">'+o.ikon+'</div><h3>'+esc(o.judul)+'</h3><p>'+esc(o.isi)+'</p><div class="da"><button type="button" class="bt fx">Batal</button><button type="button" class="ya fx" style="background:'+o.warna+'">'+esc(o.ya)+'</button></div></div>';
+ const tutup=v=>{ov.classList.remove('on');document.removeEventListener('keydown',kd);setTimeout(()=>{ov.innerHTML=''},220);ok(v)},kd=e=>{if(e.key==='Escape')tutup(false)};
+ ov.onclick=e=>{if(e.target===ov)tutup(false)};ov.querySelector('.bt').onclick=()=>tutup(false);const y=ov.querySelector('.ya');y.onclick=()=>tutup(true);
+ document.addEventListener('keydown',kd);ov.classList.add('on');y.focus()})}
+
 async function lapKirim(){if(!LAP.st||LAP.busy)return;
  const st=LAP.st,b=$('#lapkirim'),nm=S.siswa.pan||S.siswa.nama;
- if(!confirm('Kirim laporan '+st+' hari ini untuk '+nm+'?'))return;
- LAP.busy=1;b.disabled=true;lapMsg('Mengirim...',1);
+ if(!await konfirm({ikon:st==='izin'?'📝':'🤒',judul:'Kirim laporan '+st+'?',isi:'Laporan '+st+' hari ini untuk '+nm+' akan dikirim ke sekolah.',ya:'Kirim',warna:LW[st]}))return;
+ LAP.busy=1;b.disabled=true;toast('Mengirim laporan...','info');
  try{const r=await fetch('/api/portal',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({k:m[1],status:st,catatan:($('#lapk').value||'').trim()})});
   const j=await r.json().catch(()=>({}));
-  if(r.ok){LAP.info='Laporan '+st+' sudah terkirim. Terima kasih 🙏';LAP.err=0}
-  else if(r.status===409){LAP.info=j.error||'Laporan tidak dapat diubah.';LAP.err=1}
-  else{LAP.busy=0;b.disabled=false;return lapMsg(j.error||'Gagal mengirim, coba lagi.',0)}
+  if(r.ok)toast('Laporan '+st+' untuk '+nm+' sudah terkirim. Terima kasih 🙏','ok');
+  else if(r.status===409)toast(j.error||'Laporan tidak dapat diubah.','err');
+  else{LAP.busy=0;b.disabled=false;return toast(j.error||'Gagal mengirim, coba lagi.','err')}
   delete C.dashboard;delete C.absensi;LAP.busy=0;go('dashboard')}
- catch(e){LAP.busy=0;b.disabled=false;lapMsg('Gagal mengirim. Periksa koneksi internet lalu coba lagi.',0)}}
+ catch(e){LAP.busy=0;b.disabled=false;toast('Gagal mengirim. Periksa koneksi internet lalu coba lagi.','err')}}
 
 /* B1. Data Siswa */
 function kartu(){const s=S.siswa,k=S.sekolah;return Kartu.buatKartu({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr)})}
@@ -206,7 +226,7 @@ const calPanel=d=>{const y=+d.hari_ini.slice(0,4),op=[];
  for(let yy=y-1;yy<=y+1;yy++)for(let mm=0;mm<12;mm++)op.push({v:yy+'-'+String(mm+1).padStart(2,'0'),t:BLN[mm]+' '+yy});
  return '<div class="panel ct"><div class="ph">🗓️ Kalender Hari Libur</div><div class="pb">'+dd('cal',op,d.hari_ini.slice(0,7),calRender)+'<div id="cal"></div></div></div>'};
 R.libur=d=>calPanel(d);
-A.libur=()=>calRender(DD.cal.val);A.dashboard=()=>{calRender(DD.cal.val);if(LAP.info){lapMsg(LAP.info,!LAP.err);LAP.info=''}};
+A.libur=A.dashboard=()=>calRender(DD.cal.val);
 function calRender(ym){const d={libur:S.libur,hari_ini:S.hari},p=ym.split('-'),y=+p[0],mo=+p[1]-1,first=new Date(y,mo,1).getDay(),len=new Date(y,mo+1,0).getDate(),lib={};
  d.libur.forEach(x=>lib[x.tanggal]=x);
  let h=HR.map(x=>'<div class="h">'+x+'</div>').join('')+'<div class="d e"></div>'.repeat(first),dl=[];
