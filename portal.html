@@ -46,6 +46,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .big{display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0}.big .bd{font-size:15px;padding:7px 18px}
 .sch{font-size:17px;font-weight:800;color:var(--tt)}
 .hero{padding:16px}.hero h2{margin:0;font-size:20px;color:var(--tt)}.hero p{margin:4px 0 0;color:var(--mu)}
+.hero.c{text-align:center;padding:18px 16px}.hero.c h2{font-family:'Pacifico',cursive;font-weight:400;font-size:32px;line-height:1.3;margin:0;word-break:break-word}.hero.c p{margin:4px 0 0;font-size:19px;font-weight:800;letter-spacing:.5px}
 .kimg{width:100%;height:auto;display:block;border-radius:14px}
 .btn{border:0;background:var(--g);color:#fff;border-radius:12px;padding:11px 14px;width:100%;margin-top:10px;font:inherit;font-weight:800;cursor:pointer}
 .row{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--ln)}.row:first-child{border-top:0}.row span{flex:0 0 120px;color:var(--mu)}.row b{flex:1;word-break:break-word}
@@ -195,7 +196,7 @@ async function lapKirim(){if(!LAP.st||LAP.busy)return;
 /* B1. Data Siswa */
 function kartu(){const s=S.siswa,k=S.sekolah;return Kartu.buatKartu({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr)})}
 R.siswa=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
- return '<div class="panel"><div class="hero"><h2>'+esc(s.nama)+'</h2><p>'+(s.kelas?'Kelas '+esc(s.kelas):'')+(s.pan?' · '+esc(s.pan):'')+'</p></div></div>'+
+ return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
  '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><img class="kimg" id="kimg" alt="Kartu anak"><button class="btn fx" onclick="unduh()">⬇ Unduh kartu</button></div></div>'+
  '<div class="panel"><div class="ph">👤 Profil</div><div class="pb">'+
  [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tanggal lahir',s.tgl?tgl(s.tgl):'-'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-'],['Alamat',s.alamat||'-'],['WA orang tua',wa],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'};
