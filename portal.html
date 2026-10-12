@@ -129,6 +129,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .fd .fe{color:#d83d4d;font-size:13px;font-weight:700;min-height:18px;margin-top:10px;line-height:1.35}
 .fd .fa{display:flex;gap:8px;margin-top:6px}.fd .fa button{flex:1;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer}
 .fd .fa .bt{background:transparent;color:var(--tx);border:1.5px solid var(--ln)}.fd .fa .ya{background:var(--g);color:#fff}.fd .fa button[disabled]{opacity:.6;cursor:default}
+.pk{background:#fff4d6;border-color:#f0c36d}.pk .pkt{font-weight:800;color:#8a5a00}.pk .mu{color:#7a5a1a;margin:4px 0 0}.pk .btn{background:#d99a27;margin-top:10px}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet"></noscript>
@@ -196,8 +197,12 @@ const trx=t=>'<div class="li"><div><b>'+(t.jenis==='setor'?'Setoran':'Penarikan'
 const R={},A={};
 
 /* A. Dashboard */
+/* Notifikasi profil anak belum lengkap (hanya data yang bisa diisi orang tua) */
+function profilKurang(s){const k=[];if(!s.pan)k.push('Nama panggilan');if(!s.tgl)k.push('Tanggal lahir');if(!s.jk)k.push('Jenis kelamin');if(!s.alamat)k.push('Alamat');if(!s.wa)k.push('WhatsApp orang tua');return k}
+function profilNotif(s){const k=profilKurang(s);if(!k.length)return '';
+ return '<div class="panel ct pk" role="alert"><div class="pb" style="padding-top:14px"><div class="pkt">⚠️ Profil anak belum lengkap</div><div class="mu">Belum diisi: '+esc(k.join(', '))+'.</div><button type="button" class="btn fx" onclick="go(\'siswa\')">Lengkapi</button></div></div>'}
 R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
- return '<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
+ return profilNotif(s)+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
  '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'</div></div>'+
  (tb.aktif?'<div class="panel ct"><div class="ph">💰 Tabungan Hari Ini</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(tb.saldo)+'</div>'+(tb.hari_ini.length?tb.hari_ini.map(trx).join(''):'<div class="mu">Tidak ada transaksi hari ini.</div>')+'</div></div>':'')+
  calPanel(d)};
