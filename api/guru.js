@@ -3,7 +3,7 @@
 //
 // Aksi untuk Kepala Sekolah / Wakil Kepala Sekolah sekolah itu atau Developer (wajib kirim sekolah_id):
 //   otp_kelola_kirim, otp_kelola_verifikasi (bukti kepemilikan: OTP ke nomor pengelola sendiri)
-//   cek_nomor, tautkan, tambah, tambah_batch (wajib izin dari OTP, kecuali Developer)
+//   cek_nomor, tautkan, tambah, tambah_batch (wajib izin dari OTP, kecuali Developer atau Developer di mode bantuan)
 //   ubah_role, aktif, hapus, hapus_batch (keluarkan banyak guru sekaligus)
 // Aksi untuk pemilik akun sendiri: akun_sendiri, nomor_otp_kirim, nomor_simpan, otp_cek
 // Ganti Kepala Sekolah: Kepala Sekolah lama, Wakil, atau Developer; kepala lama otomatis menjadi Guru
@@ -18,7 +18,7 @@ const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const crypto = require('crypto');
-const { kirimOtp, cekOtp, lihatOtp, ipDari } = require('./_lib');
+const { kirimOtp, cekOtp, lihatOtp, ipDari, verifPasskey, bantuanCek, catatLog } = require('./_lib');
 
 const RE_UUID = /^[0-9a-f-]{36}$/i;
 const RE_USER = /^[a-z0-9._-]{3,20}$/;
@@ -233,17 +233,7 @@ function jwtAmr(token) {
 }
 async function verifIdentitas(user, token, b) {
   if (b.verifikasi === 'passkey') {
-    const amr = jwtAmr(token);
-    const batas = Date.now() / 1000 - PASSKEY_MENIT * 60;
-    const ok = amr.some((x) => {
-      const m = String((x && (x.method || x)) || '');
-      const t = Number(x && x.timestamp);
-      return /passkey|webauthn/i.test(m) && t >= batas;
-    });
-    if (!ok) {
-      const dilihat = amr.map((x) => String((x && x.method) || x)).join(',') || '-';
-      throw new Error('Verifikasi passkey tidak valid atau sudah lewat 5 menit. Ulangi, atau pakai kata sandi (metode sesi: ' + dilihat + ')');
-    }
+    await verifPasskey(token, b, user.id);
     return;
   }
   try {
@@ -506,6 +496,18 @@ module.exports = async (req, res) => {
     if (!Number.isInteger(sekolahId) || sekolahId <= 0)
       return res.status(400).json({ error: 'Sekolah tidak valid' });
 
+    // Developer di mode bantuan: tidak diminta kode OTP pemilik akun
+    const bantuan = !isDev && bantuanCek(String(req.headers['x-bantuan'] || ''), user.id, sekolahId);
+    const catatBantuan = () =>
+      bantuan
+        ? catatLog({
+            pelaku: user.id,
+            sekolah_id: sekolahId,
+            aksi: 'mode_bantuan_' + b.aksi,
+            rincian: 'Dilakukan Developer lewat mode bantuan, tanpa kode OTP pemilik akun'
+          })
+        : null;
+
     if (!isDev) {
       const k = await ambilKeanggotaan(user.id, sekolahId);
       if (!k || !k.aktif || !ROLE_PENGELOLA.includes(k.role))
@@ -551,7 +553,8 @@ module.exports = async (req, res) => {
     if (b.aksi === 'tautkan') {
       const wa = normWA(b.no_wa);
       if (!RE_WA.test(wa)) throw new Error('Nomor WhatsApp tidak valid');
-      if (!isDev) izinCek(b.izin, user.id, sekolahId);
+      if (!isDev && !bantuan) izinCek(b.izin, user.id, sekolahId);
+      await catatBantuan();
       const role = ROLE_SEKOLAH.includes(b.role) ? b.role : 'guru';
       const t = await cariProfilByWA(wa);
       if (!t || !t.aktif) throw new Error('Akun dengan nomor ini tidak ditemukan');
@@ -565,7 +568,8 @@ module.exports = async (req, res) => {
 
     // ---------- tambah akun baru ----------
     if (b.aksi === 'tambah') {
-      if (!isDev) izinCek(b.izin, user.id, sekolahId);
+      if (!isDev && !bantuan) izinCek(b.izin, user.id, sekolahId);
+      await catatBantuan();
       const d = periksaDataAkun(b, { wajibWA: b.role !== 'developer' });
       if (d.role === 'developer' && !isDev)
         throw new Error('Hanya Developer yang boleh membuat akun Developer');
@@ -590,7 +594,8 @@ module.exports = async (req, res) => {
     // masing-masing SATU query untuk seluruh batch. Bila insert massal gagal, jatuh ke
     // jalur per baris agar baris yang bermasalah saja yang gagal.
     if (b.aksi === 'tambah_batch') {
-      if (!isDev) izinCek(b.izin, user.id, sekolahId);
+      if (!isDev && !bantuan) izinCek(b.izin, user.id, sekolahId);
+      await catatBantuan();
       const data = Array.isArray(b.data) ? b.data : [];
       if (!data.length) return res.status(400).json({ error: 'Data batch kosong' });
       if (data.length > 50)
