@@ -69,6 +69,12 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .cal .d.lib{background:var(--pu);color:#fff;box-shadow:0 4px 10px rgba(118,80,184,.4)}.cal .d.now{outline:2px solid #4dff8f;outline-offset:1px}
 .leg{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--mu)}.leg i{width:14px;height:14px;border-radius:5px;background:var(--pu);display:inline-block}
 .lr{display:flex;align-items:baseline;gap:8px;text-align:left;padding:8px 0;border-top:1px solid var(--ln)}.lr:first-child{border-top:0}.lr i{flex:0 0 9px;height:9px;border-radius:3px;background:var(--pu);align-self:center}.lr b{flex:0 0 auto;color:var(--tx)}.lr span{flex:1;color:var(--tx);word-break:break-word}
+.lap{margin-top:14px;padding-top:12px;border-top:1px solid var(--ln)}.lap .lt{font-weight:800;color:var(--tt);font-size:13.5px;margin-bottom:8px}
+.pil{display:flex;gap:8px}.pil button{flex:1;border:2px solid var(--ln);border-radius:12px;padding:10px 6px;font:inherit;font-weight:800;color:var(--tx);background:var(--cell);cursor:pointer}
+.pil button.on.izin{background:#dcefff;color:#1673bd;border-color:#1673bd}.pil button.on.sakit{background:#ffe0e4;color:#d83d4d;border-color:#d83d4d}
+.kr{display:flex;gap:8px;align-items:stretch;margin-top:8px}.kr textarea{flex:1;min-width:0;resize:none;border:1.5px solid var(--cbd);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;line-height:1.35;text-align:left;background:var(--c2);color:var(--tx)}
+.kr textarea:focus{outline:none;border-color:var(--pu)}.kr .btn{width:auto;margin:0;padding:0 16px;flex:0 0 auto}.btn[disabled]{opacity:.5;cursor:default}
+.lm{margin-top:8px;font-size:13px;font-weight:700}.lm:empty{display:none}
 .sk{height:90px;margin-top:14px;border-radius:16px;background:linear-gradient(90deg,rgba(255,255,255,.18) 25%,rgba(255,255,255,.34) 50%,rgba(255,255,255,.18) 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
 </style>
@@ -95,7 +101,8 @@ const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minu
 const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
 const m=location.pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);
 const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['libur','🎉','Kalender Hari Libur']];
-const C={},S={};let cur='',tok=0;
+const C={},S={},LAP={st:'',busy:0,info:'',err:0};let cur='',tok=0;
+const segar=v=>C[v];
 
 /* ---------- efek ripple ---------- */
 document.addEventListener('pointerdown',e=>{const el=e.target.closest('.fx');if(!el)return;const r=el.getBoundingClientRect(),d=Math.max(r.width,r.height)*2,s=document.createElement('span');s.className='rp';s.style.cssText='width:'+d+'px;height:'+d+'px;left:'+(e.clientX-r.left-d/2)+'px;top:'+(e.clientY-r.top-d/2)+'px';el.appendChild(s);setTimeout(()=>s.remove(),600)});
@@ -118,7 +125,7 @@ document.addEventListener('click',()=>{ddTutup();mTutup()});
 function pesan(j,t){$('#isi').innerHTML='<div class="msg"><div style="font-size:44px">'+j+'</div><h2>'+esc(t[0])+'</h2><div class="mu">'+esc(t[1])+'</div></div>'}
 function loading(){$('#isi').innerHTML='<div class="sk"></div><div class="sk" style="height:140px"></div><div class="sk"></div>'}
 async function ambil(v){
- if(C[v])return C[v];
+ if(segar(v))return C[v];
  const r=await fetch('/api/portal?k='+m[1]+'&v='+v,{cache:'no-store'});
  if(r.status===404){const e=new Error('404');e.nf=1;throw e}
  if(!r.ok)throw 0;const d=await r.json();C[v]=d;S.siswa=d.siswa;S.sekolah=d.sekolah;S.hari=d.hari_ini;if(d.libur)S.libur=d.libur;
@@ -127,7 +134,7 @@ async function go(v){
  mTutup();ddTutup();
  if(!m)return pesan('🔎',['Kartu tidak ditemukan','Pindai ulang QR pada kartu anak Anda.']);
  const t=++tok;cur=v;const mi=MENU.find(x=>x[0]===v);$('#mic').textContent=mi[1];$('#mt').textContent=mi[2];bangunMenu();
- if(!C[v])loading();scrollTo({top:0,behavior:'smooth'});
+ if(!segar(v))loading();scrollTo({top:0,behavior:'smooth'});
  try{const d=await ambil(v);if(t!==tok)return;$('#isi').innerHTML='<div class="pg">'+R[v](d)+'</div>';if(A[v])A[v](d)}
  catch(e){if(t!==tok)return;e&&e.nf?pesan('🔎',['Kartu tidak ditemukan','Kartu tidak aktif atau QR tidak dikenal. Hubungi pihak sekolah.']):pesan('⚠️',['Gagal memuat','Periksa koneksi internet lalu muat ulang halaman.'])}}
 const badge=a=>{const t=ST[a.status]||[a.status,'#eee','#333'];return '<span class="bd" style="background:'+t[1]+';color:'+t[2]+'">'+esc(t[0])+'</span>'};
@@ -137,11 +144,33 @@ const R={},A={};
 /* A. Dashboard */
 R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
  return '<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
- '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+'</div></div>'+
+ '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'<div class="lm" id="lapm"></div></div></div>'+
  (tb.aktif?'<div class="panel ct"><div class="ph">💰 Tabungan Hari Ini</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(tb.saldo)+'</div>'+(tb.hari_ini.length?tb.hari_ini.map(trx).join(''):'<div class="mu">Tidak ada transaksi hari ini.</div>')+'</div></div>':'')+
  calPanel(d)};
 const SAP={hadir:'Selamat beraktivitas 😊',alpa:'Semangat yah sekolahnya 💪',terlambat:'Belajar disiplin lagi yah, semangat terus 🙂',sakit:'Semoga cepat sembuh dan bisa beraktivitas kembali 🤒',izin:'Semoga dilancarkan segala urusannya 🤲',libur:'Selamat menikmati momen bersama keluarga, sampai jumpa kembali 👨‍👩‍👧'};
 function sapa(d){const a=d.absen_hari_ini,k=a?a.status:(d.libur.some(x=>x.tanggal===d.hari_ini)?'libur':'');$('#gt').textContent=SAP[k]||'Semoga harimu menyenangkan 🌤️'}
+
+/* A2. Lapor izin / sakit hari ini */
+function lapForm(d){const a=d.absen_hari_ini;
+ if(d.libur.some(x=>x.tanggal===d.hari_ini)||(a&&(a.status==='hadir'||a.status==='terlambat')))return '';
+ const ada=!!a&&(a.status==='izin'||a.status==='sakit');LAP.st=ada?a.status:'';
+ const ket=ada?String(a.catatan||'').replace(/\s*\|\s*sakit otomatis.*$/i,''):'';
+ return '<div class="lap"><div class="lt">'+(ada?'Ubah laporan hari ini':'Anak tidak masuk hari ini?')+'</div><div class="pil">'+
+  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
+  '<div class="kr"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
+function lapMsg(t,ok){const e=$('#lapm');if(!e)return;e.textContent=t;e.style.color=ok?'var(--tt)':'var(--su)'}
+function lapPilih(s){LAP.st=s;document.querySelectorAll('.pil button').forEach(x=>x.classList.toggle('on',x.dataset.s===s));$('#lapkirim').disabled=false}
+async function lapKirim(){if(!LAP.st||LAP.busy)return;
+ const st=LAP.st,b=$('#lapkirim'),nm=S.siswa.pan||S.siswa.nama;
+ if(!confirm('Kirim laporan '+st+' hari ini untuk '+nm+'?'))return;
+ LAP.busy=1;b.disabled=true;lapMsg('Mengirim...',1);
+ try{const r=await fetch('/api/portal',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({k:m[1],status:st,catatan:($('#lapk').value||'').trim()})});
+  const j=await r.json().catch(()=>({}));
+  if(r.ok){LAP.info='Laporan '+st+' sudah terkirim. Terima kasih 🙏';LAP.err=0}
+  else if(r.status===409){LAP.info=j.error||'Laporan tidak dapat diubah.';LAP.err=1}
+  else{LAP.busy=0;b.disabled=false;return lapMsg(j.error||'Gagal mengirim, coba lagi.',0)}
+  delete C.dashboard;delete C.absensi;LAP.busy=0;go('dashboard')}
+ catch(e){LAP.busy=0;b.disabled=false;lapMsg('Gagal mengirim. Periksa koneksi internet lalu coba lagi.',0)}}
 
 /* B1. Data Siswa */
 function kartu(){const s=S.siswa,k=S.sekolah;return Kartu.buatKartu({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr)})}
@@ -157,7 +186,7 @@ function unduh(){const a=document.createElement('a');a.href=$('#kimg').src;a.dow
 R.absensi=d=>{if(!d.absensi.length)return '<div class="panel"><div class="ph">📅 Rekap Absensi</div><div class="pb mu">Belum ada riwayat absensi.</div></div>';
  const bul=[...new Set(d.absensi.map(a=>a.tanggal.slice(0,7)))];
  return '<div class="panel"><div class="ph">📅 Rekap Absensi Bulanan</div><div class="pb">'+dd('abs',[{v:'',t:'Semua bulan'}].concat(bul.map(b=>({v:b,t:BLN[+b.slice(5)-1]+' '+b.slice(0,4)}))),bul[0],absRender)+'<div id="abs"></div></div></div>'};
-A.absensi=()=>absRender(DD.abs.val);
+A.absensi=d=>{if(d.absensi.length)absRender(DD.abs.val)};
 function absRender(b){const l=C.absensi.absensi.filter(a=>!b||a.tanggal.slice(0,7)===b),c={};l.forEach(a=>c[a.status]=(c[a.status]||0)+1);
  $('#abs').innerHTML='<div class="chips">'+Object.keys(ST).map(x=>'<div class="chip" style="background:'+ST[x][1]+';color:'+ST[x][2]+'"><b>'+(c[x]||0)+'</b>'+ST[x][0]+'</div>').join('')+'</div>'+
  l.map(a=>'<div class="li"><div><b>'+hari(a.tanggal)+', '+tgl(a.tanggal)+'</b><small>'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</small></div>'+badge(a)+'</div>').join('')}
@@ -177,7 +206,7 @@ const calPanel=d=>{const y=+d.hari_ini.slice(0,4),op=[];
  for(let yy=y-1;yy<=y+1;yy++)for(let mm=0;mm<12;mm++)op.push({v:yy+'-'+String(mm+1).padStart(2,'0'),t:BLN[mm]+' '+yy});
  return '<div class="panel ct"><div class="ph">🗓️ Kalender Hari Libur</div><div class="pb">'+dd('cal',op,d.hari_ini.slice(0,7),calRender)+'<div id="cal"></div></div></div>'};
 R.libur=d=>calPanel(d);
-A.libur=A.dashboard=()=>calRender(DD.cal.val);
+A.libur=()=>calRender(DD.cal.val);A.dashboard=()=>{calRender(DD.cal.val);if(LAP.info){lapMsg(LAP.info,!LAP.err);LAP.info=''}};
 function calRender(ym){const d={libur:S.libur,hari_ini:S.hari},p=ym.split('-'),y=+p[0],mo=+p[1]-1,first=new Date(y,mo,1).getDay(),len=new Date(y,mo+1,0).getDate(),lib={};
  d.libur.forEach(x=>lib[x.tanggal]=x);
  let h=HR.map(x=>'<div class="h">'+x+'</div>').join('')+'<div class="d e"></div>'.repeat(first),dl=[];
