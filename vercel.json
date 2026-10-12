@@ -1,20 +1,40 @@
 {
+  "regions": [
+    "sin1"
+  ],
   "crons": [
-    { "path": "/api/libur-sync", "schedule": "15 17 * * *" }
+    {
+      "path": "/api/libur-sync",
+      "schedule": "15 17 * * *"
+    }
   ],
   "functions": {
-    "api/guru.js": { "maxDuration": 60 }
+    "api/guru.js": {
+      "maxDuration": 60
+    }
   },
   "rewrites": [
-    { "source": "/p/:kode", "destination": "/portal.html" }
+    {
+      "source": "/p/:kode",
+      "destination": "/portal.html"
+    }
   ],
   "headers": [
     {
       "source": "/p/:kode",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store" },
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
-        { "key": "Referrer-Policy", "value": "no-referrer" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
       ]
     }
   ]
