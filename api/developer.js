@@ -7,16 +7,33 @@
 //   nomor_setujui     {id, profil_id}       -> setujui permintaan nomor hilang untuk akun terpilih
 //   nomor_tolak       {id, alasan}          -> tolak permintaan nomor hilang
 //   sekolah_status    {sekolah_id, status}  -> aktifkan / nonaktifkan sekolah
-//   masuk_sebagai     {profil_id, sekolah_id} -> izin masuk sebagai pengguna lain (mode bantuan)
+//   masuk_sebagai     {profil_id, sekolah_id} -> izin masuk sebagai pengguna lain (mode bantuan);
+//                                               hasilnya memuat token "bantuan" agar di mode ini sandi/passkey/OTP pemilik akun tidak diminta
 //   catat_keluar      {profil_id, sekolah_id} -> catat akhir mode bantuan
 //   beritahu_kepala   {batas, jenis}        -> WhatsApp ke semua Kepala Sekolah: unduh rekap sebelum data dihapus (jenis 'tabungan' = rekap tabungan)
-//   hapus_absensi     {sandi, konfirmasi}   -> kosongkan seluruh tabel absensi (butuh sandi dan ketikan HAPUS ABSENSI)
-//   hapus_tabungan    {sandi, konfirmasi}   -> kosongkan tabel tabungan_transaksi dan tabungan_bawaan (butuh sandi dan ketikan HAPUS TABUNGAN)
+//   hapus_absensi     {sandi | verifikasi:'passkey', konfirmasi} -> kosongkan seluruh tabel absensi (butuh sandi atau passkey dan ketikan HAPUS ABSENSI)
+//   hapus_tabungan    {sandi | verifikasi:'passkey', konfirmasi} -> kosongkan tabel tabungan_transaksi dan tabungan_bawaan (butuh sandi atau passkey dan ketikan HAPUS TABUNGAN)
 //   beritahu_hapus_sekolah {sekolah_id, batas} -> WhatsApp ke Kepala Sekolah satu sekolah: data sekolah akan dihapus permanen
-//   hapus_sekolah     {sekolah_id, konfirmasi, sandi} -> HAPUS PERMANEN seluruh data satu sekolah (konfirmasi = nama sekolah persis, butuh sandi)
+//   hapus_sekolah     {sekolah_id, konfirmasi, sandi | verifikasi:'passkey'} -> HAPUS PERMANEN seluruh data satu sekolah (konfirmasi = nama sekolah persis, butuh sandi atau passkey)
 //   sinkron_alpa                            -> sinkronkan ulang jadwal cron Alpa Otomatis semua sekolah
 
 const L = require('./_lib');
+
+// Sandi akun Developer ATAU passkey yang baru dipakai (bukti_passkey dari klien)
+async function verifSandiDev(user, token, b) {
+  if (b.verifikasi === 'passkey') {
+    await L.verifPasskey(token, b, user.id);
+    return;
+  }
+  try {
+    await L.panggil('/auth/v1/token?grant_type=password', 'POST', {
+      email: user.email,
+      password: String(b.sandi || '')
+    });
+  } catch (e) {
+    throw new Error('Kata sandi salah');
+  }
+}
 
 function teks(v, maks) {
   return String(v || '').replace(/\s+/g, ' ').trim().slice(0, maks);
@@ -345,6 +362,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         ok: true,
         token_hash: hash,
+        bantuan: L.bantuanBuat(user.id, t.id, sid),
         nama: t.nama,
         sekolah: sk.nama,
         role: k.role
@@ -402,14 +420,7 @@ module.exports = async (req, res) => {
     if (b.aksi === 'hapus_absensi') {
       if (String(b.konfirmasi || '').trim() !== 'HAPUS ABSENSI')
         throw new Error('Ketik HAPUS ABSENSI persis seperti contoh untuk melanjutkan');
-      try {
-        await L.panggil('/auth/v1/token?grant_type=password', 'POST', {
-          email: user.email,
-          password: String(b.sandi || '')
-        });
-      } catch (e) {
-        throw new Error('Kata sandi salah');
-      }
+      await verifSandiDev(user, token, b);
       // Pengaman: sebaiknya Kepala Sekolah sudah diberi tahu dalam 7 hari terakhir
       if (!b.lanjut_tanpa_pemberitahuan) {
         const tujuhHari = new Date(Date.now() - 7 * 24 * 3600000).toISOString();
@@ -437,14 +448,7 @@ module.exports = async (req, res) => {
     if (b.aksi === 'hapus_tabungan') {
       if (String(b.konfirmasi || '').trim() !== 'HAPUS TABUNGAN')
         throw new Error('Ketik HAPUS TABUNGAN persis seperti contoh untuk melanjutkan');
-      try {
-        await L.panggil('/auth/v1/token?grant_type=password', 'POST', {
-          email: user.email,
-          password: String(b.sandi || '')
-        });
-      } catch (e) {
-        throw new Error('Kata sandi salah');
-      }
+      await verifSandiDev(user, token, b);
       // Pengaman: sebaiknya Kepala Sekolah sudah diberi tahu (pemberitahuan tabungan) dalam 7 hari terakhir
       if (!b.lanjut_tanpa_pemberitahuan) {
         const tujuhHari = new Date(Date.now() - 7 * 24 * 3600000).toISOString();
@@ -520,14 +524,7 @@ module.exports = async (req, res) => {
       if (!sk) throw new Error('Sekolah tidak ditemukan');
       if (String(b.konfirmasi || '').trim() !== String(sk.nama || '').trim())
         throw new Error('Nama sekolah yang diketik tidak sama');
-      try {
-        await L.panggil('/auth/v1/token?grant_type=password', 'POST', {
-          email: user.email,
-          password: String(b.sandi || '')
-        });
-      } catch (e) {
-        throw new Error('Kata sandi salah');
-      }
+      await verifSandiDev(user, token, b);
 
       // Pengaman: sebaiknya Kepala Sekolah sudah diberi tahu dalam 7 hari terakhir
       if (!b.lanjut_tanpa_pemberitahuan) {
