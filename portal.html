@@ -86,6 +86,38 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .toast.on{transform:translate(-50%,0);opacity:1}.toast.ok{background:#14965c}.toast.err{background:#d83d4d}.toast.info{background:#1673bd}
 .sk{height:90px;margin-top:14px;border-radius:16px;background:linear-gradient(90deg,rgba(255,255,255,.18) 25%,rgba(255,255,255,.34) 50%,rgba(255,255,255,.18) 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
+
+.eo{position:fixed;inset:0;z-index:95;background:rgba(5,15,30,.74);display:grid;place-items:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s;overflow:hidden}.eo.on{opacity:1;pointer-events:auto}
+.ea{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:320px}
+.est{position:relative;width:200px;height:150px}
+.eenv{position:absolute;left:30px;top:40px;width:140px;height:96px;opacity:0;transform:scale(.6);transition:transform .3s cubic-bezier(.2,.9,.3,1.2),opacity .2s}
+.eenv.in{opacity:1;transform:scale(1)}.eenv.in.hide{opacity:0;transition:opacity .1s}
+.ew{position:relative;width:100%;height:100%}
+.ew.wob{animation:ewob .8s ease-in-out infinite}.ew.shk{animation:eshk .45s ease-in-out 1}
+@keyframes ewob{0%,100%{transform:rotate(-2deg) translateY(0)}50%{transform:rotate(2deg) translateY(-3px)}}
+@keyframes eshk{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+.eb{position:absolute;inset:0;background:#e2d2a6;border-radius:4px;transition:background .25s}
+.ep{position:absolute;left:14px;top:8px;width:112px;height:80px;background:#fff;border-radius:3px;transform:translateY(-58px);transition:transform .4s cubic-bezier(.4,0,.2,1);z-index:2;overflow:hidden}.ep.in{transform:none}
+.ebar{height:16px;background:var(--ec,#1673bd)}.eln{height:5px;background:#d3d1c7;border-radius:2px;margin:7px 8px 0}
+.efr{position:absolute;inset:0;background:#f1e5c4;clip-path:polygon(0 0,50% 58%,100% 0,100% 100%,0 100%);z-index:3;transition:background .25s}
+.efl{position:absolute;left:0;top:0;width:100%;height:58px;background:#e8d9b0;clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:top;transform:scaleY(-1);transition:transform .3s ease,background .25s;z-index:1}.efl.cl{transform:scaleY(1);z-index:4}
+.ew.bad .eb{background:#e9a9a5}.ew.bad .efr{background:#f6cdca}.ew.bad .efl{background:#e99a95}
+.epl{position:absolute;left:30px;top:40px;width:140px;height:96px;opacity:0;transition:opacity .1s}.epl.show{opacity:1}
+.epa,.eps{position:absolute;inset:0;transition:clip-path .45s cubic-bezier(.5,0,.2,1)}
+.epa{background:#f1e5c4;clip-path:polygon(0 0,50% 0,100% 0,100% 50%,100% 100%,50% 100%,0 100%,0 50%)}
+.eps{background:#d6c48f;clip-path:polygon(0 0,50% 0,100% 0,100% 50%,100% 50%,50% 50%,0 50%,0 50%)}
+.epl.fold .epa{clip-path:polygon(2% 4%,51% 27%,100% 50%,100% 50%,100% 50%,51% 73%,2% 96%,22% 50%)}
+.epl.fold .eps{clip-path:polygon(2% 4%,51% 27%,100% 50%,100% 50%,100% 50%,60% 50%,22% 50%,22% 50%)}
+.epl.fly{animation:efp .7s cubic-bezier(.5,0,.85,.5) forwards}
+@keyframes efp{0%{transform:translate(0,0) rotate(0) scale(1);opacity:1}20%{transform:translate(18px,-4px) rotate(-10deg) scale(1.05);opacity:1}100%{transform:translate(260px,-300px) rotate(-38deg) scale(.3);opacity:0}}
+.eres{position:absolute;left:72px;top:60px;width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;transform:scale(0);opacity:0;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),opacity .2s;z-index:10}
+.eres.ok{background:#14965c;transform:scale(1);opacity:1}.eres.bad{background:#d83d4d;transform:scale(1);opacity:1}
+.eres svg{display:none}.eres.ok .ec{display:block}.eres.bad .ex{display:block}
+.emsg{color:#fff;font-weight:800;font-size:17px;text-align:center;min-height:24px}
+.esub{color:rgba(255,255,255,.8);font-size:14px;text-align:center;min-height:20px;line-height:1.4;word-break:break-word}
+.eact{display:none;gap:8px;margin-top:6px}
+.eact button{border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer;background:rgba(255,255,255,.18);color:#fff}.eact .ery{background:#fff;color:#16301f}
+@media (prefers-reduced-motion:reduce){.ew.wob,.ew.shk{animation:none}}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet"></noscript>
@@ -102,7 +134,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
  </div></div>
  <div id="isi"></div>
 </div>
-<div class="ov" id="ov"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="ov" id="ov"></div><div class="eo" id="eo" role="dialog" aria-modal="true" aria-live="polite"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],HR=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
@@ -181,17 +213,52 @@ function konfirm(o){return new Promise(ok=>{const ov=$('#ov');
  ov.onclick=e=>{if(e.target===ov)tutup(false)};ov.querySelector('.bt').onclick=()=>tutup(false);const y=ov.querySelector('.ya');y.onclick=()=>tutup(true);
  document.addEventListener('keydown',kd);ov.classList.add('on');y.focus()})}
 
+/* Animasi amplop: terbuka, dokumen masuk, tertutup; sukses jadi pesawat kertas terbang, gagal tetap + tanda X */
+const slp=ms=>new Promise(r=>setTimeout(r,ms)),RM=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
+function ampBuka(st){const o=$('#eo');
+ o.style.setProperty('--ec',LW[st]);
+ o.innerHTML='<div class="ea"><div class="est"><div class="eenv"><div class="ew"><div class="eb"></div><div class="efl"></div><div class="ep"><div class="ebar"></div><div class="eln"></div><div class="eln" style="width:70%"></div><div class="eln"></div><div class="eln" style="width:50%"></div></div><div class="efr"></div></div></div>'+
+  '<div class="epl"><div class="epa"></div><div class="eps"></div></div>'+
+  '<div class="eres"><svg class="ec" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg><svg class="ex" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div></div>'+
+  '<div class="emsg">Mengirim laporan…</div><div class="esub"></div><div class="eact"><button type="button" class="ery fx">Coba lagi</button><button type="button" class="ect fx">Tutup</button></div></div>';
+ void o.offsetWidth;o.classList.add('on');return o}
+function ampTutup(o){o.classList.remove('on');setTimeout(()=>{if(!o.classList.contains('on'))o.innerHTML=''},260)}
+async function ampSiap(o){const q=s=>o.querySelector(s);
+ if(RM){q('.eenv').classList.add('in');q('.ep').classList.add('in');q('.efl').classList.add('cl');return slp(300)}
+ await slp(40);q('.eenv').classList.add('in');await slp(280);
+ q('.ep').classList.add('in');await slp(380);
+ q('.efl').classList.add('cl');await slp(320);
+ q('.ew').classList.add('wob')}
+async function ampSukses(o,sub){const q=s=>o.querySelector(s);q('.ew').classList.remove('wob');
+ if(!RM){q('.epl').classList.add('show');q('.eenv').classList.add('hide');await slp(70);
+  q('.epl').classList.add('fold');await slp(480);
+  q('.epl').classList.add('fly');await slp(700)}
+ else q('.eenv').classList.add('hide');
+ q('.eres').classList.add('ok');q('.emsg').textContent='Laporan terkirim';q('.esub').textContent=sub;await slp(1100)}
+function ampGagal(o,pesan,ulang){const q=s=>o.querySelector(s);q('.ew').classList.remove('wob');
+ q('.ew').classList.add('bad','shk');q('.eres').classList.add('bad');
+ q('.emsg').textContent='Gagal terkirim';q('.esub').textContent=pesan;
+ q('.eact').style.display='flex';if(!ulang)q('.ery').style.display='none';
+ return new Promise(res=>{q('.ery').onclick=()=>res('ulang');q('.ect').onclick=()=>res('tutup');q('.ect').focus()})}
+
 async function lapKirim(){if(!LAP.st||LAP.busy)return;
  const st=LAP.st,b=$('#lapkirim'),nm=S.siswa.pan||S.siswa.nama;
  if(!await konfirm({ikon:st==='izin'?'📝':'🤒',judul:'Kirim laporan '+st+'?',isi:'Laporan '+st+' hari ini untuk '+nm+' akan dikirim ke sekolah.',ya:'Kirim',warna:LW[st]}))return;
- LAP.busy=1;b.disabled=true;toast('Mengirim laporan...','info');
- try{const r=await fetch('/api/portal',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({k:m[1],status:st,catatan:($('#lapk').value||'').trim()})});
-  const j=await r.json().catch(()=>({}));
-  if(r.ok)toast('Laporan '+st+' untuk '+nm+' sudah terkirim. Terima kasih 🙏','ok');
-  else if(r.status===409)toast(j.error||'Laporan tidak dapat diubah.','err');
-  else{LAP.busy=0;b.disabled=false;return toast(j.error||'Gagal mengirim, coba lagi.','err')}
-  delete C.dashboard;delete C.absensi;LAP.busy=0;go('dashboard')}
- catch(e){LAP.busy=0;b.disabled=false;toast('Gagal mengirim. Periksa koneksi internet lalu coba lagi.','err')}}
+ LAP.busy=1;b.disabled=true;
+ for(;;){
+  const o=ampBuka(st),cat=($('#lapk').value||'').trim();
+  const pr=fetch('/api/portal',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({k:m[1],status:st,catatan:cat})})
+   .then(async r=>({r,j:await r.json().catch(()=>({}))})).catch(()=>null);
+  await ampSiap(o);
+  const x=await pr;
+  if(x&&x.r.ok){await ampSukses(o,'Laporan '+st+' untuk '+nm+' sudah diterima sekolah.');ampTutup(o);delete C.dashboard;delete C.absensi;LAP.busy=0;return go('dashboard')}
+  const k=!!x&&x.r.status===409;
+  const pesan=!x?'Periksa koneksi internet, lalu coba lagi.':(x.j.error||(k?'Laporan tidak dapat diubah.':'Gagal mengirim, coba lagi.'));
+  const a=await ampGagal(o,pesan,!k);
+  if(a==='ulang')continue;
+  ampTutup(o);
+  if(k){delete C.dashboard;delete C.absensi;LAP.busy=0;return go('dashboard')}
+  LAP.busy=0;b.disabled=false;return}}
 
 /* B1. Data Siswa */
 function kartu(){const s=S.siswa,k=S.sekolah;return Kartu.buatKartu({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr)})}
