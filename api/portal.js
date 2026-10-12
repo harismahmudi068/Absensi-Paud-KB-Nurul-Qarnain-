@@ -1,5 +1,7 @@
-// Fungsi server: data Portal Orang Tua (tanpa login). HANYA BACA.
-// Dipanggil dari portal.html:  GET /api/portal?k=<kode_qr siswa>
+// Fungsi server: data Portal Orang Tua (tanpa login).
+// GET  /api/portal?k=<kode_qr siswa>&v=<halaman>  : baca data (tidak mengubah apa pun).
+// POST /api/portal  {k, status: izin|sakit, catatan}  : orang tua melaporkan izin/sakit HARI INI
+//      (satu-satunya penulisan; cara = 'Dashboard Siswa').
 // Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (lihat api/_lib.js)
 //
 // Aturan pemisahan sekolah:
@@ -25,11 +27,78 @@ async function semua(path) {
   return hasil;
 }
 
+const CARA = 'Dashboard Siswa';
+
+// Apakah hari ini libur untuk kelas anak (mingguan + nasional + tanggal, dikurangi libur_batal)?
+async function liburHariIni(sid, kid, hariIni) {
+  const dow = new Date(hariIni + 'T00:00:00Z').getUTCDay();
+  const [mg, nas, tg, bt] = await Promise.all([
+    L.panggil(`/rest/v1/libur_mingguan?sekolah_id=eq.${sid}&select=hari`, 'GET'),
+    L.panggil(`/rest/v1/libur_nasional?tanggal=eq.${hariIni}&select=tanggal&limit=1`, 'GET'),
+    L.panggil(`/rest/v1/libur_tanggal?sekolah_id=eq.${sid}&mulai=lte.${hariIni}&or=(sampai.gte.${hariIni},sampai.is.null)&select=kelas_id`, 'GET'),
+    L.panggil(`/rest/v1/libur_batal?sekolah_id=eq.${sid}&tanggal=eq.${hariIni}&select=kelas_id`, 'GET')
+  ]);
+  const semuaAtauKelas = (x) => x.kelas_id == null || Number(x.kelas_id) === 0 || Number(x.kelas_id) === kid;
+  if ((bt || []).some(semuaAtauKelas)) return false;
+  return (
+    (mg || []).some((x) => Number(x.hari) === dow) ||
+    (nas || []).length > 0 ||
+    (tg || []).some((x) => x.kelas_id == null || Number(x.kelas_id) === kid)
+  );
+}
+
+// Orang tua melaporkan izin/sakit hari ini. Tanggal, sekolah, dan siswa ditentukan server.
+async function kirimLaporan(req, res) {
+  if (!/^application\/json/i.test(String(req.headers['content-type'] || '')))
+    return res.status(415).json({ error: 'Format permintaan tidak didukung' });
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const k = String(b.k || '').trim();
+  if (!RE_KODE.test(k)) return res.status(404).json(TIDAK_ADA);
+  const status = b.status;
+  if (status !== 'izin' && status !== 'sakit') return res.status(400).json({ error: 'Pilih Izin atau Sakit' });
+  const catatan = String(b.catatan || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (catatan.length > 200) return res.status(400).json({ error: 'Keterangan maksimal 200 karakter' });
+
+  try {
+    const cari = (await L.panggil(`/rest/v1/siswa?kode_qr=eq.${encodeURIComponent(k)}&select=id,sekolah_id,kelas_id,aktif&limit=2`, 'GET')) || [];
+    if (cari.length !== 1 || !cari[0].aktif) return res.status(404).json(TIDAK_ADA);
+    const sid = Number(cari[0].sekolah_id), id = Number(cari[0].id);
+    const kid = cari[0].kelas_id ? Number(cari[0].kelas_id) : null;
+    if (!Number.isInteger(sid) || !Number.isInteger(id)) return res.status(404).json(TIDAK_ADA);
+    const sek = ((await L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=status&limit=1`, 'GET')) || [])[0];
+    if (!sek || sek.status !== 'aktif') return res.status(404).json(TIDAK_ADA);
+
+    const hariIni = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+    if (await liburHariIni(sid, kid, hariIni))
+      return res.status(409).json({ error: 'Hari ini libur, tidak perlu mengirim izin atau sakit.' });
+
+    const isi = { status, cara: CARA, jam_datang: null, catatan: catatan || null, diubah: new Date().toISOString(), diubah_oleh: null };
+    // 1) Belum ada baris hari ini: tambah. Sudah ada: dilewati (tidak menimpa).
+    let hasil = await L.panggil('/rest/v1/absensi?on_conflict=siswa_id,tanggal', 'POST',
+      { sekolah_id: sid, siswa_id: id, tanggal: hariIni, ...isi },
+      { Prefer: 'resolution=ignore-duplicates,return=representation' });
+    // 2) Sudah ada: hanya alpa/izin/sakit (dan libur usang) yang boleh diganti. Hadir/terlambat tidak.
+    if (!Array.isArray(hasil) || !hasil.length) {
+      hasil = await L.panggil(
+        `/rest/v1/absensi?siswa_id=eq.${id}&sekolah_id=eq.${sid}&tanggal=eq.${hariIni}&status=in.(alpa,izin,sakit,libur)`,
+        'PATCH', isi, { Prefer: 'return=representation' });
+      if (!Array.isArray(hasil) || !hasil.length)
+        return res.status(409).json({ error: 'Anak sudah tercatat hadir hari ini, laporan tidak dapat diubah.' });
+    }
+    await L.catatLog({ pelaku: null, sekolah_id: sid, aksi: 'laporan_dashboard_siswa', rincian: `${status} siswa ${id} ${hariIni}` });
+    return res.status(200).json({ ok: true, absen_hari_ini: { tanggal: hariIni, status, jam: null, catatan } });
+  } catch (e) {
+    console.error('portal.js POST', e.message);
+    return res.status(500).json({ error: 'Terjadi kendala, coba lagi beberapa saat' });
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.setHeader('Referrer-Policy', 'no-referrer');
 
+  if (req.method === 'POST') return kirimLaporan(req, res);
   if (req.method !== 'GET') return res.status(405).json({ error: 'Metode tidak diizinkan' });
 
   const k = String((req.query && req.query.k) || '').trim();
@@ -145,7 +214,7 @@ module.exports = async (req, res) => {
           lib[new Date(t).toISOString().slice(0, 10)] = { ket: x.keterangan || 'Libur', jenis: 'tanggal' };
         }
       });
-      bt.filter((x) => x.kelas_id == null || Number(x.kelas_id) === kid).forEach((x) => { delete lib[x.tanggal]; });
+      bt.filter((x) => x.kelas_id == null || Number(x.kelas_id) === 0 || Number(x.kelas_id) === kid).forEach((x) => { delete lib[x.tanggal]; });
       return Object.keys(lib).sort().map((t) => ({ tanggal: t, ket: lib[t].ket, jenis: lib[t].jenis }));
     };
 
