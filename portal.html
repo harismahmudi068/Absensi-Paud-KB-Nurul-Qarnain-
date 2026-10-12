@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="id"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14693a">
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>Halaman Siswa</title>
 <style>
@@ -16,10 +17,17 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 @keyframes sw{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}@keyframes bob{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(3px) rotate(3deg)}}
 @keyframes drift{to{transform:translateX(70px)}}@keyframes fl{from{transform:translateX(-30px)}to{transform:translateX(300px)}}
 @keyframes eb{from{transform:translateY(0)}to{transform:translateY(7px)}}@keyframes tw{from{opacity:.15}to{opacity:1}}@keyframes bk{50%{opacity:0}}
-.top{background:linear-gradient(165deg,#8fe3a6,#2fa35b 55%,#14693a);border-radius:0 0 30px 30px;color:#fff;text-align:center;padding:calc(20px + env(safe-area-inset-top,0)) 16px 22px;box-shadow:0 8px 24px rgba(0,30,15,.3);text-shadow:0 1px 4px rgba(10,60,30,.45)}
-.top .as{font-size:15px;letter-spacing:.5px;color:#eafff0}
+.top{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(180deg,#14693a 0%,#1f8a4d 35%,#2fa35b 65%,#8fe3a6 100%);border-radius:0 0 30px 30px;color:#fff;text-align:center;padding:calc(20px + env(safe-area-inset-top,0)) 16px 22px;box-shadow:0 8px 24px rgba(0,30,15,.3);text-shadow:0 1px 4px rgba(10,60,30,.45);transition:background .8s ease}
+.top>div{position:relative;z-index:2}
+.top:before{content:"";position:absolute;z-index:0;right:9%;top:clamp(24px,5vw,42px);width:clamp(46px,10vw,72px);height:clamp(46px,10vw,72px);border-radius:50%;background:#ffe99a;box-shadow:0 0 0 9px rgba(255,233,154,.16),0 0 0 18px rgba(255,233,154,.10),0 0 32px rgba(255,233,154,.32);pointer-events:none}
+.top:after{content:"";position:absolute;z-index:0;inset:0;pointer-events:none;background:radial-gradient(circle at 8% 20%,rgba(255,255,255,.16) 0 1px,transparent 2px),radial-gradient(circle at 17% 63%,rgba(255,255,255,.28) 0 3px,transparent 4px),radial-gradient(circle at 72% 72%,rgba(255,255,255,.24) 0 4px,transparent 5px),radial-gradient(circle at 90% 48%,rgba(255,255,255,.22) 0 2px,transparent 3px),radial-gradient(ellipse at 5% 13%,rgba(190,239,202,.26) 0 9%,transparent 9.3%),radial-gradient(ellipse at 96% 58%,rgba(190,239,202,.22) 0 10%,transparent 10.3%)}
+.top.day{background:linear-gradient(180deg,#147744 0%,#219957 42%,#42bd75 72%,#9aebae 100%)}
+.top.night{background:linear-gradient(180deg,#082b35 0%,#0c6549 43%,#17875a 72%,#80dca0 100%)}
+.top.night:before{right:10%;background:transparent;box-shadow:inset -13px -4px 0 0 #ffe99a,0 0 0 0 transparent;width:clamp(46px,10vw,72px);height:clamp(46px,10vw,72px);transform:rotate(-25deg)}
+.top.night:after{background:radial-gradient(circle at 78% 20%,#ffe99a 0 2px,transparent 3px),radial-gradient(circle at 88% 34%,#fff0b5 0 1.5px,transparent 2.5px),radial-gradient(circle at 68% 43%,#ffe99a 0 1.5px,transparent 2.5px),radial-gradient(circle at 14% 30%,#ffe99a 0 2px,transparent 3px),radial-gradient(circle at 24% 70%,rgba(255,255,255,.25) 0 3px,transparent 4px),radial-gradient(circle at 91% 73%,rgba(255,255,255,.2) 0 4px,transparent 5px),radial-gradient(ellipse at 5% 13%,rgba(190,239,202,.18) 0 9%,transparent 9.3%),radial-gradient(ellipse at 96% 58%,rgba(190,239,202,.16) 0 10%,transparent 10.3%)}
+.top .as{font-size:15px;letter-spacing:.5px;color:#eafff0;font-style:italic}
 .top .nm{font-family:'Pacifico',cursive;font-size:29px;line-height:1.35;margin:2px 0 9px;word-break:break-word}
-.top .gt{display:inline-block;background:rgba(255,255,255,.2);border-radius:999px;padding:6px 15px;font-size:13.5px;min-height:28px}
+.top .gt{display:inline-block;background:rgba(6,40,20,.5);color:#ffe9a0;font-weight:700;border-radius:999px;padding:6px 15px;font-size:13.5px;min-height:28px}
 .wrap{max-width:720px;margin:auto;padding:0 14px 24px}
 .clk{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px}
 .pill{background:rgba(8,40,22,.62);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px 13px;font-weight:800;color:#4dff8f;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
@@ -370,7 +378,7 @@ const TM={
  sore:{sk:['#39478f','#d97848'],sea:['#cf8058','#234a78'],sand:['#c2a06e','#a38152'],isl:'#393266',sun:'#ff8a3d'},
  malam:{sk:['#050c24','#1a2a5a'],sea:['#183160','#061429'],sand:['#8a7d5e','#706449'],isl:'#0e1a37',sun:'#f7f3d2'}};
 const TL={card:'rgba(255,255,255,.74)',cbd:'rgba(255,255,255,.8)',tx:'#16301f',mu:'#3d5a48',tt:'#14683a',sal:'#146a38',ln:'rgba(20,60,35,.12)',c2:'rgba(255,255,255,.96)',cell:'rgba(255,255,255,.55)',su:'#d83d4d',pb:'#efe8fb',pt:'#6840c6',pu:'#7650b8'},
- TD={card:'rgba(10,20,48,.64)',cbd:'rgba(255,255,255,.2)',tx:'#ffffff',mu:'#cfd8f2',tt:'#ffe9a0',sal:'#ffffff',ln:'rgba(255,255,255,.14)',c2:'rgba(14,26,60,.97)',cell:'rgba(255,255,255,.08)',su:'#ff8d97',pb:'rgba(165,139,224,.28)',pt:'#e0d6ff',pu:'#9a7fe0'};
+ TD={card:'rgba(10,20,48,.64)',cbd:'rgba(255,255,255,.6)',tx:'#ffffff',mu:'#cfd8f2',tt:'#ffe9a0',sal:'#ffffff',ln:'rgba(255,255,255,.42)',c2:'rgba(14,26,60,.97)',cell:'rgba(255,255,255,.08)',su:'#ff8d97',pb:'rgba(165,139,224,.28)',pt:'#e0d6ff',pu:'#9a7fe0'};
 (function(){
  const W=(t,o,d)=>'<div class="wb" style="top:'+t+'%"><div style="animation-duration:'+d+'s"><svg viewBox="0 0 200 20" preserveAspectRatio="none" width="100%" height="100%"><path d="M0 10 Q12.5 0 25 10 T50 10 T75 10 T100 10 T125 10 T150 10 T175 10 T200 10 V20 H0Z" fill="'+o+'"/></svg></div></div>';
  const LV=[-70,-35,0,28].map((a,i)=>'<use href="#lf" fill="'+(i%2?'#35a352':'#2a8f46')+'" transform="rotate('+a+')"/><use href="#lf" fill="'+(i%2?'#2a8f46':'#35a352')+'" transform="scale(-1 1) rotate('+a+')"/>').join('');
@@ -391,7 +399,7 @@ function tema(){
  const p=new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Asia/Jakarta'}).format(new Date()).split(':'),h=+p[0]+p[1]/60;
  const k=h>=5&&h<10?'pagi':h>=10&&h<15?'siang':h>=15&&h<18?'sore':'malam',t=TM[k],V=(k==='sore'||k==='malam')?TD:TL;
  const pr=h>=6&&h<18?(h-6)/12:((h>=18?h-18:h+6)/12);
- const sc=$('#scene');sc.style.background='linear-gradient('+t.sk[0]+','+t.sk[1]+' 46%)';
+ const sc=$('#scene');sc.style.background='linear-gradient('+t.sk[0]+','+t.sk[1]+' 46%)';const header=$('.top');if(header)header.classList.toggle('night',k==='sore'||k==='malam'),header.classList.toggle('day',k==='pagi'||k==='siang');
  const sn=$('#sn');sn.style.left='calc('+(8+pr*84)+'% - 22px)';sn.style.top=(41-Math.sin(Math.PI*pr)*34)+'%';sn.style.background=t.sun;sn.style.boxShadow='0 0 0 14px '+t.sun+'55';
  $('#se').style.background='linear-gradient('+t.sea[0]+','+t.sea[1]+')';$('#sd').style.background='linear-gradient('+t.sand[0]+','+t.sand[1]+')';
  $('#is').style.color=t.isl;$('#st').style.opacity=k==='malam'?1:0;
