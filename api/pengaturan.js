@@ -6,9 +6,11 @@
 // Aksi: baca, simpan (kunci AI dan nomor kepala sekolah),
 //       token_tambah, token_hapus, grup_tambah, grup_hapus (banyak token Fonnte dan ID grup per sekolah),
 //       tes_fonnte, tes_ai (kirim pesan tes ke nomor Kepala Sekolah),
-//       webhook (butuh sandi), buat_ulang_webhook (butuh sandi)
+//       webhook (butuh sandi atau passkey), buat_ulang_webhook (butuh sandi atau passkey);
+//       Developer di mode bantuan tidak diminta sandi/passkey
 
 const crypto = require('crypto');
+const LIB = require('./_lib');
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -386,11 +388,18 @@ module.exports = async (req, res) => {
     }
 
     // ---------------------------------------------------------
-    // WEBHOOK (butuh sandi akun)
+    // WEBHOOK (butuh sandi akun atau passkey; Developer di mode bantuan tanpa keduanya)
     // ---------------------------------------------------------
     if (b.aksi === 'webhook' || b.aksi === 'buat_ulang_webhook') {
-      if (!(await sandiBenar(user.email, b.sandi)))
+      const bantuan =
+        !isDev && LIB.bantuanCek(String(req.headers['x-bantuan'] || ''), user.id, sekolahId);
+      if (bantuan) {
+        await catat(user.id, sekolahId, 'mode_bantuan_' + b.aksi, 'Dilakukan Developer lewat mode bantuan, tanpa sandi pemilik akun');
+      } else if (b.verifikasi === 'passkey') {
+        await LIB.verifPasskey(token, b, user.id);
+      } else if (!(await sandiBenar(user.email, b.sandi))) {
         return res.status(403).json({ error: 'Kata sandi salah' });
+      }
 
       if (b.aksi === 'buat_ulang_webhook') {
         const baru = crypto.randomBytes(32).toString('hex');
