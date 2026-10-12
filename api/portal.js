@@ -1,7 +1,10 @@
 // Fungsi server: data Portal Orang Tua (tanpa login).
 // GET  /api/portal?k=<kode_qr siswa>&v=<halaman>  : baca data (tidak mengubah apa pun).
 // POST /api/portal  {k, status: izin|sakit, catatan}  : orang tua melaporkan izin/sakit HARI INI
-//      (satu-satunya penulisan; cara = 'Dashboard Siswa').
+//      (cara = 'Dashboard Siswa').
+// PATCH /api/portal  {k, nama, pan, tgl, jk, alamat, wa}  : orang tua mengubah profil anak.
+//      Kelas, NISN, dan tahun masuk TIDAK PERNAH diubah lewat jalur ini. Nomor WA berlaku per anak
+//      (satu nomor boleh dipakai beberapa anak, atau tiap anak memakai nomor berbeda).
 // Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (lihat api/_lib.js)
 //
 // Aturan pemisahan sekolah:
@@ -93,12 +96,103 @@ async function kirimLaporan(req, res) {
   }
 }
 
+// ---- Ubah profil oleh orang tua (kecuali kelas, NISN, tahun masuk) ----
+const normWA = (n) => {
+  let d = String(n || '').replace(/\D/g, '');
+  if (d[0] === '0') d = '62' + d.slice(1);
+  else if (d[0] === '8') d = '62' + d;
+  return d;
+};
+const bersih = (x) => String(x == null ? '' : x).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+const tglValid = (t) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (!m) return false;
+  const y = +m[1], mo = +m[2], d = +m[3], x = new Date(Date.UTC(y, mo - 1, d));
+  return x.getUTCFullYear() === y && x.getUTCMonth() === mo - 1 && x.getUTCDate() === d;
+};
+
+async function ubahProfil(req, res) {
+  if (!/^application\/json/i.test(String(req.headers['content-type'] || '')))
+    return res.status(415).json({ error: 'Format permintaan tidak didukung' });
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const k = String(b.k || '').trim();
+  if (!RE_KODE.test(k)) return res.status(404).json(TIDAK_ADA);
+
+  const nama = bersih(b.nama), pan = bersih(b.pan), alamat = bersih(b.alamat);
+  const tgl = String(b.tgl || '').trim(), jk = String(b.jk || '').trim();
+  const waMasuk = String(b.wa == null ? '' : b.wa).trim();
+  const wa = waMasuk ? normWA(waMasuk) : '';
+  const hariIni = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+
+  if (nama.length < 2 || nama.length > 100) return res.status(400).json({ error: 'Nama lengkap wajib diisi (maksimal 100 karakter)' });
+  if (!pan || pan.length > 30) return res.status(400).json({ error: 'Nama panggilan wajib diisi (maksimal 30 karakter)' });
+  if (alamat.length > 200) return res.status(400).json({ error: 'Alamat maksimal 200 karakter' });
+  if (jk !== '' && jk !== 'L' && jk !== 'P') return res.status(400).json({ error: 'Jenis kelamin tidak valid' });
+  if (tgl && (!tglValid(tgl) || tgl < '1990-01-01' || tgl > hariIni)) return res.status(400).json({ error: 'Tanggal lahir tidak valid' });
+  if (waMasuk && !/^62\d{8,13}$/.test(wa)) return res.status(400).json({ error: 'Nomor WhatsApp tidak valid. Contoh: 081234567890' });
+
+  try {
+    const cari = (await L.panggil(
+      `/rest/v1/siswa?kode_qr=eq.${encodeURIComponent(k)}` +
+        '&select=id,sekolah_id,aktif,nama,nama_panggilan,tgl_lahir,jenis_kelamin,alamat,siswa_wali(wali_id,wali(no_wa))&limit=2',
+      'GET')) || [];
+    if (cari.length !== 1 || !cari[0].aktif) return res.status(404).json(TIDAK_ADA);
+    const s = cari[0];
+    const sid = Number(s.sekolah_id), id = Number(s.id);
+    if (!Number.isInteger(sid) || !Number.isInteger(id)) return res.status(404).json(TIDAK_ADA);
+    const sek = ((await L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=status&limit=1`, 'GET')) || [])[0];
+    if (!sek || sek.status !== 'aktif') return res.status(404).json(TIDAK_ADA);
+
+    const links = s.siswa_wali || [];
+    const lama = (links.map((w) => w.wali && w.wali.no_wa).filter(Boolean))[0] || '';
+    if (!wa && lama) return res.status(400).json({ error: 'Nomor WhatsApp tidak boleh dikosongkan' });
+
+    const hasilSiswa = { nama, pan, tgl, jk, alamat, wa };
+    const ubah = [];
+    if (nama !== s.nama) ubah.push('nama');
+    if (pan !== (s.nama_panggilan || '')) ubah.push('panggilan');
+    if (tgl !== (s.tgl_lahir || '')) ubah.push('tgl_lahir');
+    if (jk !== (s.jenis_kelamin || '')) ubah.push('jenis_kelamin');
+    if (alamat !== (s.alamat || '')) ubah.push('alamat');
+    const dataBerubah = ubah.length > 0;
+    if (wa !== lama) ubah.push(`wa ${lama || '-'} ke ${wa}`);
+    if (!ubah.length) return res.status(200).json({ ok: true, tidak_berubah: true, siswa: hasilSiswa });
+
+    // 1) Data anak. Kelas, NISN, dan tahun masuk sengaja tidak ada di sini.
+    if (dataBerubah) {
+      const r = await L.panggil(`/rest/v1/siswa?id=eq.${id}&sekolah_id=eq.${sid}`, 'PATCH',
+        { nama, nama_panggilan: pan, tgl_lahir: tgl || null, jenis_kelamin: jk || null, alamat: alamat || null },
+        { Prefer: 'return=representation' });
+      if (!Array.isArray(r) || !r.length) return res.status(404).json(TIDAK_ADA);
+    }
+
+    // 2) Nomor WA per anak: nomor yang sama boleh dipakai beberapa anak (baris wali dipakai bersama),
+    //    nomor berbeda membuat/memakai baris wali lain. Baris wali milik anak lain tidak diubah.
+    if (wa !== lama) {
+      const w = await L.panggil('/rest/v1/wali?on_conflict=sekolah_id,no_wa', 'POST',
+        { sekolah_id: sid, no_wa: wa }, { Prefer: 'resolution=merge-duplicates,return=representation' });
+      const wid = Array.isArray(w) && w[0] ? w[0].id : null;
+      if (wid == null) throw new Error('wali tidak tersimpan');
+      if (!links.some((x) => String(x.wali_id) === String(wid)))
+        await L.panggil('/rest/v1/siswa_wali', 'POST', { siswa_id: id, wali_id: wid }, { Prefer: 'return=representation' });
+      await L.panggil(`/rest/v1/siswa_wali?siswa_id=eq.${id}&wali_id=neq.${encodeURIComponent(wid)}`, 'DELETE');
+    }
+
+    await L.catatLog({ pelaku: null, sekolah_id: sid, aksi: 'ubah_profil_dashboard_siswa', rincian: `siswa ${id} ubah: ${ubah.join(', ')}` });
+    return res.status(200).json({ ok: true, siswa: hasilSiswa });
+  } catch (e) {
+    console.error('portal.js PATCH', e.message);
+    return res.status(500).json({ error: 'Terjadi kendala, coba lagi beberapa saat' });
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.setHeader('Referrer-Policy', 'no-referrer');
 
   if (req.method === 'POST') return kirimLaporan(req, res);
+  if (req.method === 'PATCH') return ubahProfil(req, res);
   if (req.method !== 'GET') return res.status(405).json({ error: 'Metode tidak diizinkan' });
 
   const k = String((req.query && req.query.k) || '').trim();
