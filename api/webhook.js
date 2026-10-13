@@ -37,9 +37,10 @@ const BATAS_JUMLAH_HARI_IZIN = 30; // izin lebih dari ini tidak dicatat otomatis
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Status absensi yang sudah diisi guru/scan dan TIDAK boleh ditimpa oleh pesan izin/sakit wali.
-const STATUS_DILINDUNGI = new Set(['hadir', 'terlambat', 'alpa', 'libur']);
-const LABEL_STATUS = { hadir: 'Hadir', terlambat: 'Terlambat', alpa: 'Alpa', libur: 'Libur' };
+// Status yang TIDAK boleh ditimpa pesan izin/sakit wali, lalu dibalas "sudah tercatat".
+// Alpa boleh ditimpa. Libur juga tidak ditimpa, tetapi dibalas seperti hari libur biasa (lihat simpan()).
+const STATUS_DILINDUNGI = new Set(['hadir', 'terlambat']);
+const LABEL_STATUS = { hadir: 'Hadir', terlambat: 'Terlambat' };
 
 // Konteks per permintaan (aman untuk permintaan bersamaan): sekolahId, tokens, grup, tokenFonnte, kunciAi, nomorKepala
 const { AsyncLocalStorage } = require('async_hooks');
@@ -168,7 +169,7 @@ function isiIzin(nama, tgl, tidakAktif = [], terlindung = []) {
 }
 
 function isiSudahTercatat(nama, label) {
-  return `⚠️ *${nama}* sudah tercatat *${label}* di sekolah, jadi data tidak diubah. Guru akan mengecek.`;
+  return `⚠️ *${nama}* sudah tercatat *${label}* di sekolah, jadi data tidak diubah. Silahkan laporkan kepada ( *wali kelas/kepala sekolah* ) untuk mengkoreksi.`;
 }
 
 function isiBukanHariSekolah(tidakAktif) {
@@ -653,13 +654,16 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
 
     for (const p of aktif) {
       // Hanya tanggal yang memang akan ditulis untuk anak ini yang diperiksa.
-      const lindung = new Map(ada
-        .filter(a => a.siswa_id === p.s.id && STATUS_DILINDUNGI.has(a.status) && p.tanggal.includes(a.tanggal))
-        .map(a => [a.tanggal, a.status]));
-      let tulis = p.tanggal.filter(d => !lindung.has(d));
+      const adaAnak = ada.filter(a => a.siswa_id === p.s.id && p.tanggal.includes(a.tanggal));
+      const lindung = new Map(adaAnak.filter(a => STATUS_DILINDUNGI.has(a.status)).map(a => [a.tanggal, a.status]));
+      // Libur yang diisi guru: tidak ditimpa, dibalas seperti hari libur biasa.
+      const liburManual = adaAnak.filter(a => a.status === 'libur').map(a => a.tanggal);
+      const tidakAktif = [...new Set([...p.tidakAktif, ...liburManual])].sort();
+      let tulis = p.tanggal.filter(d => !lindung.has(d) && !liburManual.includes(d));
       if (status === 'sakit' && lindung.size) tulis = []; // sakit tidak dicatat bila ada tanggal yang terlindungi
       if (!tulis.length) {
-        sudahTercatat.push({ s: p.s, labels: [...new Set(lindung.values())].map(x => LABEL_STATUS[x] || x) });
+        if (lindung.size) sudahTercatat.push({ s: p.s, labels: [...new Set(lindung.values())].map(x => LABEL_STATUS[x] || x) });
+        else liburSaja.push({ s: p.s, tidakAktif });
         continue;
       }
       const terlindung = [...lindung.entries()].sort().map(([tgl, st]) => ({ tgl, label: LABEL_STATUS[st] || st }));
@@ -669,8 +673,8 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
         sekolah_id: K().sekolahId, siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
         catatan: catatanDb, diubah
       }));
-      const k = `${tulis.join(',')}|${p.tidakAktif.join(',')}|${p.lanjut || ''}|${terlindung.map(t => t.tgl + t.label).join(',')}`;
-      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif: p.tidakAktif, lanjut: p.lanjut || null, terlindung });
+      const k = `${tulis.join(',')}|${tidakAktif.join(',')}|${p.lanjut || ''}|${terlindung.map(t => t.tgl + t.label).join(',')}`;
+      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif, lanjut: p.lanjut || null, terlindung });
       kelompok.get(k).anak.push(p.s);
     }
 
@@ -685,7 +689,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
     dari,
     pesan,
     (ubah.length || sudahTercatat.length
-      ? `${status}: ${daftarNama(ubah.length ? ubah : sudahTercatat.map(x => x.s))} [${semuaDicatat.join(', ')}]${sudahTercatat.length || sebagianTerlindung ? ' (sebagian sudah tercatat hadir/terlambat/alpa/libur, tidak diubah)' : ''}`
+      ? `${status}: ${daftarNama(ubah.length ? ubah : sudahTercatat.map(x => x.s))} [${semuaDicatat.join(', ')}]${sudahTercatat.length || sebagianTerlindung ? ' (sebagian sudah tercatat hadir/terlambat, tidak diubah)' : ''}`
       : `${status}: ${daftarNama(anak)} - tanggal bukan hari sekolah`).slice(0, 300),
     sudahTercatat.length > 0 || sebagianTerlindung
   );
