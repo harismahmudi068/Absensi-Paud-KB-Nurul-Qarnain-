@@ -9,8 +9,6 @@
 // Satu sekolah boleh punya BANYAK token Fonnte (tabel fonnte_token) dan BANYAK ID grup (tabel grup_wa),
 // semuanya memakai satu alamat Webhook. Token balasan dipilih dari: token milik grup, lalu nomor
 // perangkat pada pesan masuk (field device), lalu token pertama (utama).
-// Masa transisi: FONNTE_TOKEN, GEMINI_API_KEY, WEBHOOK_SECRET lama hanya dipakai sebagai
-// cadangan untuk sekolah pertama sampai kolomnya diisi di Pengaturan.
 
 const crypto = require('crypto');
 const { analisisPesan } = require('./_AI');
@@ -38,10 +36,10 @@ const BATAS_JUMLAH_HARI_IZIN = 30; // izin lebih dari ini tidak dicatat otomatis
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const SEKOLAH_PERTAMA = 1;
-const ENV_FONNTE = process.env.FONNTE_TOKEN || '';
-const ENV_GEMINI = (process.env.GEMINI_API_KEY || '').trim();
-const WEBHOOK_SECRET = (process.env.WEBHOOK_SECRET || '').trim();
+
+// Status absensi yang sudah diisi guru/scan dan TIDAK boleh ditimpa oleh pesan izin/sakit wali.
+const STATUS_DILINDUNGI = new Set(['hadir', 'terlambat', 'alpa', 'libur']);
+const LABEL_STATUS = { hadir: 'Hadir', terlambat: 'Terlambat', alpa: 'Alpa', libur: 'Libur' };
 
 // Konteks per permintaan (aman untuk permintaan bersamaan): sekolahId, tokens, grup, tokenFonnte, kunciAi, nomorKepala
 const { AsyncLocalStorage } = require('async_hooks');
@@ -153,7 +151,7 @@ function isiSakit(nama, tgl, lanjut = null) {
   ].join('\n');
 }
 
-function isiIzin(nama, tgl, tidakAktif = []) {
+function isiIzin(nama, tgl, tidakAktif = [], terlindung = []) {
   const T = tanggal();
   const kalimat = tgl.length === 1
     ? `Baik, Bunda. Laporan izin untuk *${nama}* pada hari *${formatTanggal(tgl[0])}*${tgl[0] === T ? ' (hari ini)' : ''} sudah kami terima dan telah dicatat. 📝`
@@ -162,12 +160,15 @@ function isiIzin(nama, tgl, tidakAktif = []) {
   if (tidakAktif.length) {
     baris.push('', `ℹ️ *Catatan:* ${tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak dicatat.`);
   }
+  if (terlindung.length) {
+    baris.push('', `ℹ️ *Catatan:* ${terlindung.map(t => `${formatTanggal(t.tgl)} sudah tercatat ${t.label}`).join('; ')}, sehingga data tidak diubah.`);
+  }
   baris.push('', `Semoga segala keperluan Bunda dan *${nama}* diberikan kelancaran, kemudahan, dan keberkahan. 🤲`);
   return baris.join('\n');
 }
 
-function isiSudahHadir(nama) {
-  return `⚠️ *${nama}* sudah tercatat hadir di sekolah, jadi data tidak diubah. Guru akan mengecek.`;
+function isiSudahTercatat(nama, label) {
+  return `⚠️ *${nama}* sudah tercatat *${label}* di sekolah, jadi data tidak diubah. Guru akan mengecek.`;
 }
 
 function isiBukanHariSekolah(tidakAktif) {
@@ -636,7 +637,8 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
   const liburSaja = per.filter(p => !p.tanggal.length);
 
   const bagian = [];
-  const sudahHadir = [];
+  const sudahTercatat = []; // { s, labels } : seluruh tanggal sudah terisi status terlindungi
+  let sebagianTerlindung = false;
   const rows = [];
   const kelompok = new Map();
   const diubah = new Date().toISOString();
@@ -650,17 +652,25 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
     const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&sekolah_id=eq.${K().sekolahId}&select=siswa_id,tanggal,status`);
 
     for (const p of aktif) {
-      const hadirDi = new Set(ada.filter(a => a.siswa_id === p.s.id && a.status === 'hadir').map(a => a.tanggal));
-      let tulis = p.tanggal.filter(d => !hadirDi.has(d));
-      if (status === 'sakit' && hadirDi.size) tulis = []; // sudah hadir: sakit tidak dicatat
-      if (!tulis.length) { sudahHadir.push(p.s); continue; }
+      // Hanya tanggal yang memang akan ditulis untuk anak ini yang diperiksa.
+      const lindung = new Map(ada
+        .filter(a => a.siswa_id === p.s.id && STATUS_DILINDUNGI.has(a.status) && p.tanggal.includes(a.tanggal))
+        .map(a => [a.tanggal, a.status]));
+      let tulis = p.tanggal.filter(d => !lindung.has(d));
+      if (status === 'sakit' && lindung.size) tulis = []; // sakit tidak dicatat bila ada tanggal yang terlindungi
+      if (!tulis.length) {
+        sudahTercatat.push({ s: p.s, labels: [...new Set(lindung.values())].map(x => LABEL_STATUS[x] || x) });
+        continue;
+      }
+      const terlindung = [...lindung.entries()].sort().map(([tgl, st]) => ({ tgl, label: LABEL_STATUS[st] || st }));
+      if (terlindung.length) sebagianTerlindung = true;
 
       tulis.forEach(d => rows.push({
         sekolah_id: K().sekolahId, siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
         catatan: catatanDb, diubah
       }));
-      const k = `${tulis.join(',')}|${p.tidakAktif.join(',')}|${p.lanjut || ''}`;
-      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif: p.tidakAktif, lanjut: p.lanjut || null });
+      const k = `${tulis.join(',')}|${p.tidakAktif.join(',')}|${p.lanjut || ''}|${terlindung.map(t => t.tgl + t.label).join(',')}`;
+      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif: p.tidakAktif, lanjut: p.lanjut || null, terlindung });
       kelompok.get(k).anak.push(p.s);
     }
 
@@ -674,15 +684,15 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
   await catatPesan(
     dari,
     pesan,
-    (ubah.length || sudahHadir.length
-      ? `${status}: ${daftarNama(ubah.length ? ubah : sudahHadir)} [${semuaDicatat.join(', ')}]${sudahHadir.length ? ' (sebagian sudah hadir)' : ''}`
+    (ubah.length || sudahTercatat.length
+      ? `${status}: ${daftarNama(ubah.length ? ubah : sudahTercatat.map(x => x.s))} [${semuaDicatat.join(', ')}]${sudahTercatat.length || sebagianTerlindung ? ' (sebagian sudah tercatat hadir/terlambat/alpa/libur, tidak diubah)' : ''}`
       : `${status}: ${daftarNama(anak)} - tanggal bukan hari sekolah`).slice(0, 300),
-    sudahHadir.length > 0
+    sudahTercatat.length > 0 || sebagianTerlindung
   );
 
   for (const g of kelompok.values()) {
     const nm = daftarNama(g.anak);
-    bagian.push(status === 'sakit' ? isiSakit(nm, g.tanggal, g.lanjut) : isiIzin(nm, g.tanggal, g.tidakAktif));
+    bagian.push(status === 'sakit' ? isiSakit(nm, g.tanggal, g.lanjut) : isiIzin(nm, g.tanggal, g.tidakAktif, g.terlindung));
   }
 
   // Anak yang tanggal izinnya jatuh seluruhnya pada hari libur.
@@ -696,8 +706,14 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
     bagian.push(`Baik, Bunda. Pesan untuk *${daftarNama(g.anak)}* sudah kami terima. Namun ${g.tidakAktif.map(formatTanggal).join('; ')} bukan hari sekolah (libur), sehingga tidak perlu dicatat izin. 🙏`);
   }
 
-  const namaHadir = daftarNama(sudahHadir);
-  if (namaHadir) bagian.push(isiSudahHadir(namaHadir));
+  // Anak yang seluruh tanggalnya sudah terisi status terlindungi: dikelompokkan per status agar pesannya akurat.
+  const tercatatKelompok = new Map();
+  for (const x of sudahTercatat) {
+    const label = x.labels.join(' / ');
+    if (!tercatatKelompok.has(label)) tercatatKelompok.set(label, []);
+    tercatatKelompok.get(label).push(x.s);
+  }
+  for (const [label, daftar] of tercatatKelompok) bagian.push(isiSudahTercatat(daftarNama(daftar), label));
 
   // Satu salam pembuka dan satu salam penutup untuk seluruh balasan.
   return { balasan: bungkusBalasan(bagian) };
@@ -997,31 +1013,23 @@ async function cariSekolah(kunci) {
   let id = null, r = null;
   const rows = await sb(`pengaturan_rahasia?webhook_kunci=eq.${encodeURIComponent(kunci)}&select=*`);
   if (Array.isArray(rows) && rows[0]) { r = rows[0]; id = r.sekolah_id; }
-  else if (WEBHOOK_SECRET && kunci === WEBHOOK_SECRET) {
-    // Masa transisi: kunci lama milik sekolah pertama
-    id = SEKOLAH_PERTAMA;
-    const x = await sb(`pengaturan_rahasia?sekolah_id=eq.${id}&select=*`);
-    r = (Array.isArray(x) && x[0]) || {};
-  }
   if (!id) return null;
 
   const sk = await sb(`sekolah?id=eq.${id}&select=status`);
   if (!Array.isArray(sk) || !sk[0] || sk[0].status !== 'aktif') return { nonaktif: true, sekolahId: id };
 
-  const cadangan = id === SEKOLAH_PERTAMA;
   const [tk, gp] = await Promise.all([
     sb(`fonnte_token?sekolah_id=eq.${id}&select=id,label,token,perangkat&order=id.asc`),
     sb(`grup_wa?sekolah_id=eq.${id}&select=grup_id,token_id`)
   ]);
   const tokens = Array.isArray(tk) ? tk : [];
-  let grup = Array.isArray(gp) ? gp : [];
-  if (!grup.length && r.id_grup) grup = [{ grup_id: r.id_grup, token_id: null }];
+  const grup = Array.isArray(gp) ? gp : [];
   return {
     sekolahId: id,
     tokens,
     grup,
-    tokenFonnte: (tokens[0] && tokens[0].token) || (cadangan ? ENV_FONNTE : '') || '',
-    kunciAi: r.kunci_ai || (cadangan ? ENV_GEMINI : '') || '',
+    tokenFonnte: (tokens[0] && tokens[0].token) || '',
+    kunciAi: r.kunci_ai || '',
     nomorKepala: r.nomor_kepala || ''
   };
 }
