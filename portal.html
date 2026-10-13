@@ -54,9 +54,9 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .kimg{width:100%;height:auto;display:block;border-radius:14px}
 .btn{border:0;background:var(--g);color:#fff;border-radius:12px;padding:11px 14px;width:100%;margin-top:10px;font:inherit;font-weight:800;cursor:pointer}
 .row{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--ln)}.row:first-child{border-top:0}.row span{flex:0 0 120px;color:var(--mu)}.row b{flex:1;word-break:break-word}
-.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.chip{border-radius:12px;padding:8px 4px;text-align:center;font-size:12px;font-weight:700}.chip b{display:block;font-size:20px}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.chip{border-radius:12px;padding:8px 4px;text-align:center;font-size:12px;font-weight:800;box-shadow:inset 0 0 0 1px rgba(0,0,0,.07)}.chip b{display:block;font-size:20px}
 .li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--ln)}.li:first-child{border-top:0}
-.li small{display:block;color:var(--mu)}.bd{border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800;white-space:nowrap}
+.li small{display:block;color:var(--mu)}.bd{border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(0,0,0,.07)}
 .saldo{font-size:28px;font-weight:900;color:var(--sal);padding:4px 0 8px}
 .mu{color:var(--mu);font-size:13px}.msg{text-align:center;padding:60px 20px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4)}.msg .mu{color:#eef6f0}.msg h2{margin:8px 0}
 .sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.sum div{border-radius:12px;padding:10px;font-size:12px;font-weight:700}.sum b{display:block;font-size:16px}
@@ -76,9 +76,9 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .lr{display:flex;align-items:baseline;gap:8px;text-align:left;padding:8px 0;border-top:1px solid var(--ln)}.lr:first-child{border-top:0}.lr i{flex:0 0 9px;height:9px;border-radius:3px;background:var(--pu);align-self:center}.lr b{flex:0 0 auto;color:var(--tx)}.lr span{flex:1;color:var(--tx);word-break:break-word}
 .lap{margin-top:14px;padding-top:12px;border-top:1px solid var(--ln)}.lap .lt{font-weight:800;color:var(--tt);font-size:13.5px;margin-bottom:8px}
 .pil{display:flex;gap:8px}.pil button{flex:1;border:2px solid transparent;border-radius:12px;padding:10px 6px;font:inherit;font-weight:800;cursor:pointer;transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
-.pil button.izin{background:#dcefff;color:#1673bd;border-color:#b7dcf8}.pil button.sakit{background:#ffe0e4;color:#d83d4d;border-color:#f8bcc4}
-.pil button.on.izin{background:#1673bd;color:#fff;border-color:#1673bd;box-shadow:0 4px 12px rgba(22,115,189,.4)}.pil button.on.sakit{background:#d83d4d;color:#fff;border-color:#d83d4d;box-shadow:0 4px 12px rgba(216,61,77,.4)}
-.kr[data-s=izin] .btn{background:#1673bd}.kr[data-s=sakit] .btn{background:#d83d4d}
+.pil button.izin{background:#dcefff;color:#0b63d1;border-color:#b7dcf8}.pil button.sakit{background:#ffe0e4;color:#c80f2d;border-color:#f8bcc4}
+.pil button.on.izin{background:#1b73e8;color:#fff;border-color:#1b73e8;box-shadow:0 4px 12px rgba(27,115,232,.5)}.pil button.on.sakit{background:#e62d4a;color:#fff;border-color:#e62d4a;box-shadow:0 4px 12px rgba(230,45,74,.5)}
+.kr[data-s=izin] .btn{background:#1b73e8}.kr[data-s=sakit] .btn{background:#e62d4a}
 .kr{display:flex;gap:8px;align-items:stretch;margin-top:8px}.kr textarea{flex:1;min-width:0;resize:none;border:1.5px solid var(--cbd);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;line-height:1.35;text-align:left;background:var(--c2);color:var(--tx)}
 .kr textarea:focus{outline:none;border-color:var(--pu)}.kr .btn{width:auto;margin:0;padding:0 16px;flex:0 0 auto}.btn[disabled]{opacity:.5;cursor:default}
 .ov{position:fixed;inset:0;z-index:90;background:rgba(5,15,30,.55);display:grid;place-items:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}.ov.on{opacity:1;pointer-events:auto}
@@ -152,8 +152,9 @@ html[data-tm=n] .po{--pg:#4ee38a;--pgt:rgba(255,255,255,.22)}
 .eact button{border:0;border-radius:12px;padding:11px 18px;font:inherit;font-weight:800;cursor:pointer;background:rgba(255,255,255,.18);color:#fff}.eact .ery{background:#fff;color:#16301f}
 @media (prefers-reduced-motion:reduce){.ew.wob,.ew.shk{animation:none}}
 
-.fo{position:fixed;inset:0;z-index:85;background:rgba(5,15,30,.55);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}.fo.on{opacity:1;pointer-events:auto}
-.fd{width:100%;max-width:440px;max-height:92vh;overflow:auto;background:var(--c2);color:var(--tx);color-scheme:var(--cs);border:1.5px solid var(--cbd);border-bottom:0;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.35);transform:translateY(30px);transition:transform .25s cubic-bezier(.2,.9,.3,1)}.fo.on .fd{transform:none}
+.fo{position:fixed;inset:0;z-index:85;background:rgba(5,15,30,.55);display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .35s}.fo.on{opacity:1;pointer-events:auto}
+.fd{width:100%;max-width:440px;max-height:92vh;overflow:auto;background:var(--c2);color:var(--tx);color-scheme:var(--cs);border:1.5px solid var(--cbd);border-bottom:0;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.35);transform:translateY(108%);transition:transform .45s cubic-bezier(.22,1,.36,1)}.fo.on .fd{transform:none}
+@media (prefers-reduced-motion:reduce){.fd{transition:none}.fo{transition:none}}
 .fd h3{margin:0 0 4px;font-size:18px;color:var(--tt)}.fd .fs{color:var(--mu);font-size:13px;margin:0 0 6px;line-height:1.4}
 .fd label{display:block;font-weight:800;font-size:13px;color:var(--mu);margin:12px 0 4px}
 .fd input,.fd select{width:100%;box-sizing:border-box;border:1.5px solid var(--ln);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;background:var(--inp);color:var(--tx);-webkit-text-fill-color:var(--tx)}
@@ -164,7 +165,7 @@ html[data-tm=n] .po{--pg:#4ee38a;--pgt:rgba(255,255,255,.22)}
 .fd .fe{color:#d83d4d;font-size:13px;font-weight:700;min-height:18px;margin-top:10px;line-height:1.35}
 .fd .fa{display:flex;gap:8px;margin-top:6px}.fd .fa button{flex:1;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer}
 .fd .fa .bt{background:transparent;color:var(--tx);border:1.5px solid var(--ln)}.fd .fa .ya{background:var(--g);color:#fff}.fd .fa button[disabled]{opacity:.6;cursor:default}
-.kr[data-s=izin]{--kb:22,115,189}.kr[data-s=sakit]{--kb:216,61,77}
+.kr[data-s=izin]{--kb:27,115,232}.kr[data-s=sakit]{--kb:230,45,74}
 .kr .btn.blink{animation:kb 1.3s ease-in-out infinite}.kr .btn.blink[disabled]{animation:none}
 @keyframes kb{0%,100%{box-shadow:inset 0 0 0 2px rgba(255,255,255,.18),0 0 0 0 rgba(var(--kb),.6)}50%{box-shadow:inset 0 0 0 2px rgba(255,255,255,.95),0 0 0 6px rgba(var(--kb),0)}}
 @media(prefers-reduced-motion:reduce){.kr .btn.blink{animation:none;box-shadow:inset 0 0 0 2px #fff}}
@@ -229,7 +230,7 @@ html[data-tm=d] .fd .fa .ya{background:linear-gradient(135deg,#2fa35b,#14693a);b
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],HR=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
-const ST={hadir:['Hadir','#d9f7e8','#14965c'],terlambat:['Terlambat','#fff0c2','#9a6a00'],izin:['Izin','#dcefff','#1673bd'],sakit:['Sakit','#ffe0e4','#d83d4d'],alpa:['Alpa','#eadfff','#6840c6'],libur:['Libur','#e5edf4','#526b84']};
+const ST={hadir:['Hadir','#d9f7e8','#007a38'],terlambat:['Terlambat','#fff0c2','#9a5400'],izin:['Izin','#dcefff','#0b63d1'],sakit:['Sakit','#ffe0e4','#c80f2d'],alpa:['Alpa','#eadfff','#7430dc'],libur:['Libur','#e5edf4','#42668a']};
 const tgl=d=>{const p=String(d).split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]},hari=d=>HR[new Date(d+'T00:00:00').getDay()];
 const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jakarta'}):'';
 const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
@@ -297,15 +298,17 @@ const SAP={hadir:'Selamat beraktivitas 😊',alpa:'Semangat yah sekolahnya 💪'
 function sapa(d){const a=d.absen_hari_ini,k=a?a.status:(d.libur.some(x=>x.tanggal===d.hari_ini)?'libur':'');$('#gt').textContent=SAP[k]||'Semoga harimu menyenangkan 🌤️'}
 
 /* A2. Lapor izin / sakit hari ini */
-const LW={izin:'#1673bd',sakit:'#d83d4d'};
+const LW={izin:'#1b73e8',sakit:'#e62d4a'};
 function lapForm(d){const a=d.absen_hari_ini;
  if(d.libur.some(x=>x.tanggal===d.hari_ini)||(a&&(a.status==='hadir'||a.status==='terlambat')))return '';
  const ada=!!a&&(a.status==='izin'||a.status==='sakit');LAP.st=ada?a.status:'';
  const ket=ada?String(a.catatan||'').replace(/\s*\|\s*sakit otomatis.*$/i,''):'';
  return '<div class="lap"><div class="lt">'+(ada?'Ubah laporan hari ini':'Anak tidak masuk hari ini?')+'</div><div class="pil">'+
-  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
+  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
   '<div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
-function lapPilih(s){LAP.st=s;document.querySelectorAll('.pil button').forEach(x=>x.classList.toggle('on',x.dataset.s===s));$('.kr').dataset.s=s;$('#lapkirim').disabled=false;lapCek()}
+function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;
+ document.querySelectorAll('.pil button').forEach(x=>{const on=x.dataset.s===LAP.st;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});
+ $('.kr').dataset.s=LAP.st;b.classList.remove('blink');b.disabled=!LAP.st;if(LAP.st)lapCek()}
 function lapCek(){const b=$('#lapkirim');if(b&&LAP.st&&!b.disabled){b.classList.remove('blink');void b.offsetWidth;b.classList.add('blink')}}
 
 /* Notifikasi (toast) dan kotak konfirmasi buatan sendiri */
@@ -411,7 +414,7 @@ function profilBuka(){const s=S.siswa,o=$('#fo');
   '<div class="fe" id="ffe" role="alert"></div><div class="fa"><button type="button" class="bt fx" id="fbt">Batal</button><button type="button" class="ya fx" id="fya">Simpan</button></div></div>';
  $('#dd-jk .ddb').addEventListener('click',()=>$('#tgbox').classList.remove('open'));o.onclick=e=>{if(e.target===o&&!PF.busy)profilTutup()};$('#fbt').onclick=()=>{if(!PF.busy)profilTutup()};$('#fya').onclick=profilSimpan;
  void o.offsetWidth;o.classList.add('on')}
-function profilTutup(){const o=$('#fo');o.classList.remove('on');setTimeout(()=>{if(!o.classList.contains('on'))o.innerHTML=''},260)}
+function profilTutup(){const o=$('#fo');o.classList.remove('on');setTimeout(()=>{if(!o.classList.contains('on'))o.innerHTML=''},500)}
 async function profilSimpan(){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$('#fya'),bt=$('#fbt'),v=id=>$('#'+id).value.trim().replace(/\s+/g,' ');
  const nama=v('fnm'),pan=v('fpn'),tg=$('#ftg').value,jk=DD.jk.val||'',alamat=v('fal'),raw=$('#fwa').value.trim(),wa=raw?normWA(raw):'',lama=String(s.wa||'');
  fe.textContent='';const salah=t=>{fe.textContent=t};
@@ -420,7 +423,8 @@ async function profilSimpan(){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$
  if(tg&&(tg<'1990-01-01'||tg>S.hari))return salah('Tanggal lahir tidak valid');
  if(raw&&!/^62\d{8,13}$/.test(wa))return salah('Nomor WhatsApp tidak valid. Contoh: 081234567890');
  if(!wa&&lama)return salah('Nomor WhatsApp tidak boleh dikosongkan');
- if(!await konfirm({ikon:'📝',judul:'Simpan perubahan profil?',isi:'Pastikan data anak Anda sudah benar sebelum disimpan dan diperbarui.',batal:'Cek lagi',ya:'Ya, simpan',warna:'#159447',cat:wa!==lama?['Nomor WhatsApp diganti','Nomor '+waLokal(wa)+' harus terdaftar di grup WhatsApp sekolah supaya izin lewat WhatsApp tetap bisa dilakukan. Pastikan nomor ini sudah terdaftar.']:null}))return;
+ PF.busy=1;const fo=$('#fo');fo.classList.remove('on');await slp(RM?0:450);
+ if(!await konfirm({ikon:'📝',judul:'Simpan perubahan profil?',isi:'Pastikan data anak Anda sudah benar sebelum disimpan dan diperbarui.',batal:'Cek lagi',ya:'Ya, simpan',warna:'#159447',cat:wa!==lama?['Nomor WhatsApp diganti','Nomor '+waLokal(wa)+' harus terdaftar di grup WhatsApp sekolah supaya izin lewat WhatsApp tetap bisa dilakukan. Pastikan nomor ini sudah terdaftar.']:null})){fo.classList.add('on');PF.busy=0;return}
  PF.busy=1;y.disabled=true;bt.disabled=true;
  const body=JSON.stringify({k:m[1],nama,pan,tgl:tg,jk,alamat,wa});
  try{for(;;){
@@ -434,7 +438,7 @@ async function profilSimpan(){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$
   pc.classList.add('bad','shk');q('.pm').textContent='Gagal menyimpan';q('.ps').textContent=pesan;
   const a=await new Promise(res=>{q('.pry').onclick=()=>res(1);q('.pct').onclick=()=>res(0);q('.pct').focus()});
   if(a)continue;
-  poTutup(o);salah(pesan);return}}
+  poTutup(o);fo.classList.add('on');salah(pesan);return}}
  finally{PF.busy=0;y.disabled=false;bt.disabled=false;y.textContent='Simpan'}}
 function poBuka(){const o=$('#po');
  o.innerHTML='<div class="pc"><div class="pst"><div class="pe">📝</div><div class="pdots"><i></i><i></i><i></i></div>'+
