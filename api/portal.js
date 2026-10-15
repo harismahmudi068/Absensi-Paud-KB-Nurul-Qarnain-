@@ -11,7 +11,7 @@
 //  - Satu-satunya masukan dari pengunjung adalah kode QR (UUID).
 //  - sekolah_id DIAMBIL dari baris siswa hasil pencarian kode, tidak pernah dari input.
 //  - Setiap query lanjutan memakai siswa_id DAN sekolah_id dari baris itu.
-//  - Parameter v (dashboard|siswa|absensi|tabungan|libur) membatasi data yang dimuat per menu.
+//  - Parameter v (dashboard|siswa|absensi|tabungan|piket|hafalan|libur) membatasi data yang dimuat per menu.
 //  - Kode tidak dikenal, siswa nonaktif, atau sekolah nonaktif dijawab 404 yang sama.
 
 const L = require('./_lib');
@@ -31,6 +31,10 @@ async function semua(path) {
 }
 
 const CARA = 'Dashboard Siswa';
+
+const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const dowOf = (t) => new Date(t + 'T00:00:00Z').getUTCDay();
+const tglPlus = (t, n) => new Date(Date.parse(t + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 
 // Apakah hari ini libur untuk kelas anak (mingguan + nasional + tanggal, dikurangi libur_batal)?
 async function liburHariIni(sid, kid, hariIni) {
@@ -197,8 +201,8 @@ module.exports = async (req, res) => {
 
   const k = String((req.query && req.query.k) || '').trim();
   if (!RE_KODE.test(k)) return res.status(404).json(TIDAK_ADA);
-  // Halaman yang diminta: dashboard | siswa | absensi | tabungan | libur
-  const HALAMAN = ['dashboard', 'siswa', 'absensi', 'tabungan', 'libur'];
+  // Halaman yang diminta: dashboard | siswa | absensi | tabungan | piket | hafalan | libur
+  const HALAMAN = ['dashboard', 'siswa', 'absensi', 'tabungan', 'piket', 'hafalan', 'libur'];
   const v = HALAMAN.includes(String((req.query && req.query.v) || '')) ? String(req.query.v) : 'dashboard';
 
   try {
@@ -249,11 +253,24 @@ module.exports = async (req, res) => {
       return Object.keys(lib).sort().map((t) => ({ tanggal: t, ket: lib[t].ket, jenis: lib[t].jenis }));
     };
 
+    // Filter jadwal piket dan daftar hafalan: kelas anak ATAU seluruh kelas (kelas_id kosong).
+    const kidS = s.kelas_id ? Number(s.kelas_id) : null;
+    const fKelas = kidS ? `or=(kelas_id.is.null,kelas_id.eq.${kidS})` : 'kelas_id=is.null';
+    // Dashboard hanya perlu baris milik anak ini + piket seluruh kelas; halaman Piket memuat satu kelas penuh.
+    const fPiket = v === 'piket'
+      ? fKelas
+      : (kidS
+        ? `and=(or(kelas_id.is.null,kelas_id.eq.${kidS}),or(siswa_id.is.null,siswa_id.eq.${id}))`
+        : `and=(kelas_id.is.null,or(siswa_id.is.null,siswa_id.eq.${id}))`);
+    const kolPiket = v === 'piket'
+      ? 'id,hari,catatan,siswa_id,kelas_id,siswa:siswa(nama,nama_panggilan),jenis:piket_jenis(id,nama,cakupan,urutan)'
+      : 'hari,catatan,siswa_id,jenis:piket_jenis(nama,cakupan)';
+
     // 2-3. Sekolah, pengaturan, kelas, dan data halaman diambil BERSAMAAN (satu putaran ke database).
-    const [sekRows, pengRows, kelasRows, trxData, absData, liburData] = await Promise.all([
+    const [sekRows, pengRows, kelasRows, trxData, absData, liburData, pkRows, mgData, jnData, itemData, setData] = await Promise.all([
       L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=id,nama,status&limit=1`, 'GET'),
       L.panggil(
-        `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif&limit=1`,
+        `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif&limit=1`,
         'GET'
       ),
       s.kelas_id
@@ -267,7 +284,18 @@ module.exports = async (req, res) => {
         : v === 'absensi'
           ? semua(`/rest/v1/absensi?siswa_id=eq.${id}&sekolah_id=eq.${sid}&select=tanggal,status,jam_datang,catatan&order=tanggal.desc,id.desc`)
           : null,
-      v === 'dashboard' || v === 'libur' ? muatLibur() : null
+      v === 'dashboard' || v === 'libur' ? muatLibur() : null,
+      v === 'dashboard' || v === 'piket'
+        ? semua(`/rest/v1/piket_jadwal?sekolah_id=eq.${sid}&${fPiket}&select=${kolPiket}&order=id.asc`)
+        : null,
+      v === 'piket' ? L.panggil(`/rest/v1/libur_mingguan?sekolah_id=eq.${sid}&select=hari`, 'GET') : null,
+      v === 'hafalan' ? L.panggil(`/rest/v1/hafalan_jenis?sekolah_id=eq.${sid}&select=id,nama,cakupan,urutan&order=urutan.asc,id.asc`, 'GET') : null,
+      v === 'dashboard' || v === 'hafalan'
+        ? semua(`/rest/v1/hafalan_item?sekolah_id=eq.${sid}&${fKelas}&select=id,jenis_id,judul,target&order=urutan.asc,id.asc`)
+        : null,
+      v === 'dashboard' || v === 'hafalan'
+        ? semua(`/rest/v1/hafalan_setoran?siswa_id=eq.${id}&sekolah_id=eq.${sid}&hafalan_id=not.is.null&select=hafalan_id,hasil,tanggal&order=id.asc`)
+        : null
     ]);
     const sek = (sekRows || [])[0];
     if (!sek || sek.status !== 'aktif') return res.status(404).json(TIDAK_ADA);
@@ -295,7 +323,9 @@ module.exports = async (req, res) => {
         alamat: peng.alamat || '',
         kota: peng.kota || '',
         tahun_ajaran: peng.tahun_ajaran || ''
-      }
+      },
+      // Fitur yang aktif di sekolah ini (menentukan menu Piket dan Hafalan di halaman siswa)
+      fitur: { piket: !!peng.piket_aktif, hafalan: !!peng.hafalan_aktif, notif_piket: !!peng.notif_piket_aktif }
     };
 
     const petaAbs = (a) => ({
@@ -318,6 +348,73 @@ module.exports = async (req, res) => {
       return { aktif: true, saldo, riwayat: riwayat.reverse() };
     };
 
+    // Piket: ringkasan dashboard (hari ini + giliran berikutnya milik anak ini)
+    const butirPiket = (r) => ({ jenis: (r.jenis && r.jenis.nama) || 'Piket', semua: !r.siswa_id, catatan: r.catatan || '' });
+    const muatPiketRingkas = () => {
+      if (!peng.piket_aktif) return { aktif: false };
+      const rows = pkRows || [];
+      const lib = new Set((liburData || []).map((x) => x.tanggal));
+      const pada = (t) => rows.filter((r) => Number(r.hari) === dowOf(t)).map(butirPiket);
+      const libur = lib.has(hariIni);
+      let berikut = null;
+      for (let n = 1; n <= 14 && !berikut; n++) {
+        const t = tglPlus(hariIni, n);
+        if (lib.has(t)) continue;
+        const item = pada(t);
+        if (item.length) berikut = { tanggal: t, hari: dowOf(t), item };
+      }
+      return { aktif: true, libur, hari_ini: libur ? [] : pada(hariIni), berikut, ada: rows.length > 0 };
+    };
+    // Piket: jadwal satu minggu untuk kelas anak (nama anak memakai nama panggilan)
+    const muatPiketHalaman = () => {
+      if (!peng.piket_aktif) return { aktif: false };
+      const rows = pkRows || [];
+      const libMg = new Set((mgData || []).map((x) => Number(x.hari)));
+      const dowNow = dowOf(hariIni);
+      const hari = [1, 2, 3, 4, 5, 6, 0].filter((d) => !libMg.has(d)).map((d) => {
+        const grup = new Map();
+        rows.filter((r) => Number(r.hari) === d).forEach((r) => {
+          const jn = r.jenis || {};
+          const key = jn.id == null ? 'x' : String(jn.id);
+          if (!grup.has(key)) grup.set(key, { jenis: jn.nama || 'Piket', urut: Number(jn.urutan) || 0, semua: jn.cakupan === 'semua', anak: [], entri: [] });
+          const g = grup.get(key);
+          if (r.siswa_id) {
+            const sw = r.siswa || {};
+            const nm = String(sw.nama_panggilan || '').trim() || String(sw.nama || '').trim().split(' ')[0] || '-';
+            g.anak.push({ nama: nm, saya: Number(r.siswa_id) === id });
+            if (r.catatan && !g.entri.some((e) => e.catatan === r.catatan)) g.entri.push({ kelas: null, catatan: r.catatan });
+          } else {
+            g.entri.push({ kelas: r.kelas_id == null ? null : (kelas.nama || ''), catatan: r.catatan || '' });
+          }
+        });
+        const item = [...grup.values()].sort((a, b) => a.urut - b.urut || a.jenis.localeCompare(b.jenis, 'id')).map((g) => {
+          g.anak.sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
+          return g;
+        });
+        return { hari: d, nama: NAMA_HARI[d], hari_ini: d === dowNow, item };
+      });
+      return { aktif: true, hari };
+    };
+    // Hafalan: hafalan wajib semua kelas + hafalan kelas anak, lengkap dengan status tiap hafalan
+    const muatHafalanData = (rinci) => {
+      if (!peng.hafalan_aktif) return { aktif: false };
+      const items = itemData || [];
+      const st = new Map((setData || []).map((x) => [Number(x.hafalan_id), x]));
+      let lancar = 0, ulang = 0;
+      items.forEach((i) => { const x = st.get(Number(i.id)); if (x) { if (x.hasil === 'lancar') lancar++; else ulang++; } });
+      const hasil = { aktif: true, lancar, ulang, total: items.length };
+      if (!rinci) return hasil;
+      hasil.jenis = (jnData || []).map((j) => ({
+        nama: j.nama,
+        cakupan: j.cakupan,
+        item: items.filter((i) => Number(i.jenis_id) === Number(j.id)).map((i) => {
+          const x = st.get(Number(i.id));
+          return { judul: i.judul, target: i.target || '', status: x ? x.hasil : 'belum', tanggal: x ? x.tanggal : null };
+        })
+      })).filter((g) => g.item.length);
+      return hasil;
+    };
+
     // 4. Data per halaman: hanya yang diminta menu yang dimuat
     if (v === 'dashboard') {
       const abs = absData || [];
@@ -329,10 +426,16 @@ module.exports = async (req, res) => {
         delete tb.riwayat;
       }
       out.tabungan = tb;
+      out.piket = muatPiketRingkas();
+      out.hafalan = muatHafalanData(false);
     } else if (v === 'absensi') {
       out.absensi = (absData || []).map(petaAbs);
     } else if (v === 'tabungan') {
       out.tabungan = await muatTabungan();
+    } else if (v === 'piket') {
+      out.piket = muatPiketHalaman();
+    } else if (v === 'hafalan') {
+      out.hafalan = muatHafalanData(true);
     } else if (v === 'libur') {
       out.libur = liburData;
     }
