@@ -2,6 +2,8 @@
 <html lang="id"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#14693a">
+<link rel="apple-touch-icon" href="/ikon-180.png"><link rel="icon" type="image/png" href="/ikon-192.png">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Halaman Siswa">
 <meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>Halaman Siswa</title>
 <style>
@@ -206,7 +208,7 @@ html[data-tm=d] .fsep{display:flex;align-items:center;gap:8px;margin:20px 0 0;fo
 html[data-tm=d] .fsep::after{content:'';flex:1;height:1px;background:#cde8d6}
 html[data-tm=d] .fd .fa .bt{background:#fff;border-color:#bfe0cb;color:#2a6a45}
 html[data-tm=d] .fd .fa .ya{background:linear-gradient(135deg,#2fa35b,#14693a);box-shadow:0 6px 16px rgba(20,105,58,.35)}
-.hbar{height:10px;border-radius:99px;background:var(--ln);overflow:hidden;margin:2px 0 10px}.hbar i{display:block;height:100%;background:var(--g);border-radius:99px}.hs{font-size:15px;font-weight:700;color:var(--mu)}.pkh{padding:10px 0;border-top:1px solid var(--ln)}.pkh:first-child{border-top:0}.pkd{font-weight:800;color:var(--tt);margin-bottom:4px}.pkh.now .pkd{color:#9a5400}.pki{margin:4px 0 8px}.pki>b{display:block;margin-bottom:2px}.pkn{padding:2px 0 2px 10px;border-left:3px solid var(--ln)}.pkn.me{border-left-color:var(--g);font-weight:800;color:var(--sal)}
+.hbar{height:10px;border-radius:99px;background:var(--ln);overflow:hidden;margin:2px 0 10px}.hbar i{display:block;height:100%;background:var(--g);border-radius:99px}.hs{font-size:15px;font-weight:700;color:var(--mu)}.pkh{padding:10px 0;border-top:1px solid var(--ln)}.pkh:first-child{border-top:0}.pkd{font-weight:800;color:var(--tt);margin-bottom:4px}.pkh.now .pkd{color:#9a5400}.pkh.lb .pki{opacity:.55}.pki{margin:4px 0 8px}.pki>b{display:block;margin-bottom:2px}.pkn{padding:2px 0 2px 10px;border-left:3px solid var(--ln)}.pkn.me{border-left-color:var(--g);font-weight:800;color:var(--sal)}
 .pk{background:#fff4d6;border-color:#f0c36d}.pk .pkt{font-weight:800;color:#8a5a00}.pk .mu{color:#7a5a1a;margin:4px 0 0}.pk .btn{background:#d99a27;margin-top:10px}
 .row.kd{animation:kdb .5s ease-in-out 10;border-radius:10px;padding-left:8px;padding-right:8px;margin:0 -8px}
 @keyframes kdb{0%,100%{box-shadow:0 0 0 3px rgba(217,154,39,0);background:transparent}50%{box-shadow:0 0 0 3px #d99a27;background:rgba(217,154,39,.18)}}
@@ -264,7 +266,7 @@ async function ambil(v){
  if(segar(v))return C[v];
  const r=await fetch('/api/portal?k='+m[1]+'&v='+v,{cache:'no-store'});
  if(r.status===404){const e=new Error('404');e.nf=1;throw e}
- if(!r.ok)throw 0;const d=await r.json();C[v]=d;S.siswa=d.siswa;S.sekolah=d.sekolah;S.hari=d.hari_ini;if(d.fitur)S.fitur=d.fitur;if(d.libur)S.libur=d.libur;
+ if(!r.ok)throw 0;const d=await r.json();C[v]=d;S.siswa=d.siswa;S.sekolah=d.sekolah;S.hari=d.hari_ini;if(d.fitur)S.fitur=d.fitur;if(d.push&&d.push.vapid)S.vapid=d.push.vapid;if(d.libur)S.libur=d.libur;
  $('#nm').textContent=d.siswa.nama||'';if(d.v==='dashboard')sapa(d);document.title=(d.sekolah.nama?d.sekolah.nama+' - ':'')+'Halaman Siswa';return d}
 async function go(v){
  mTutup();ddTutup();
@@ -294,7 +296,7 @@ R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
  return profilNotif(s)+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
  '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'</div></div>'+
  (tb.aktif?'<div class="panel ct"><div class="ph">💰 Tabungan Hari Ini</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(tb.saldo)+'</div>'+(tb.hari_ini.length?tb.hari_ini.map(trx).join(''):'<div class="mu">Tidak ada transaksi hari ini.</div>')+'</div></div>':'')+
- piketPanel(d)+hafalanPanel(d)+calPanel(d)};
+ piketPanel(d)+(d.push&&d.push.aktif?'<div id="pushBox"></div>':'')+hafalanPanel(d)+calPanel(d)};
 const SAP={hadir:'Selamat beraktivitas 😊',alpa:'Semangat yah sekolahnya 💪',terlambat:'Belajar disiplin lagi yah, semangat terus 🙂',sakit:'Semoga cepat sembuh dan bisa beraktivitas kembali 🤒',izin:'Semoga dilancarkan segala urusannya 🤲',libur:'Selamat menikmati momen bersama keluarga, sampai jumpa kembali 👨‍👩‍👧'};
 function sapa(d){const a=d.absen_hari_ini,k=a?a.status:(d.libur.some(x=>x.tanggal===d.hari_ini)?'libur':'');$('#gt').textContent=SAP[k]||'Semoga harimu menyenangkan 🌤️'}
 
@@ -491,18 +493,49 @@ function hafalanPanel(d){const h=d.hafalan;if(!h||!h.aktif)return '';
  const pct=Math.round(h.lancar*100/h.total);
  return '<div class="panel ct"><div class="ph">📖 Hafalan</div><div class="pb"><div class="saldo">'+h.lancar+' <span class="hs">dari '+h.total+' hafalan lancar</span></div><div class="hbar"><i style="width:'+pct+'%"></i></div>'+(h.ulang?'<div class="mu">'+h.ulang+' hafalan perlu diulang</div>':'')+'<button type="button" class="btn fx" onclick="go(\'hafalan\')">Lihat daftar hafalan</button></div></div>'}
 R.piket=d=>{const p=d.piket;if(!p||!p.aktif)return pesanFitur('🧹','Jadwal piket tidak aktif','Sekolah belum mengaktifkan fitur jadwal piket.');
- const kls=d.siswa.kelas?' · Kelas '+esc(d.siswa.kelas):'';
- if(!p.hari.some(x=>x.item.length))return '<div class="panel"><div class="ph">🧹 Jadwal Piket'+kls+'</div><div class="pb mu">Belum ada jadwal piket untuk kelas ini.</div></div>';
- return '<div class="panel"><div class="ph">🧹 Jadwal Piket Seminggu'+kls+'</div><div class="pb">'+p.hari.map(h=>'<div class="pkh'+(h.hari_ini?' now':'')+'"><div class="pkd">'+esc(h.nama)+(h.hari_ini?' <span class="bd" style="background:#fff0c2;color:#9a5400">Hari ini</span>':'')+'</div>'+
+ const kls=d.siswa.kelas?' · Kelas '+esc(d.siswa.kelas):'',kotak=d.push&&d.push.aktif?'<div id="pushBox"></div>':'';
+ if(!p.hari.some(x=>x.item.length))return kotak+'<div class="panel"><div class="ph">🧹 Jadwal Piket'+kls+'</div><div class="pb mu">Belum ada jadwal piket untuk kelas ini.</div></div>'+liburDepan(p);
+ return kotak+'<div class="panel"><div class="ph">🧹 Jadwal Piket Pekan Ini'+kls+'</div><div class="pb">'+p.hari.map(h=>'<div class="pkh'+(h.hari_ini?' now':'')+(h.libur?' lb':'')+'"><div class="pkd">'+esc(h.nama)+' <span class="mu">'+tgl(h.tanggal)+'</span>'+(h.hari_ini?' <span class="bd" style="background:#fff0c2;color:#9a5400">Hari ini</span>':'')+(h.libur?' <span class="bd" style="background:#e5edf4;color:#42668a">Libur · '+esc(h.libur.ket)+'</span>':'')+'</div>'+
   (h.item.length?h.item.map(i=>'<div class="pki"><b>'+esc(i.jenis)+'</b>'+i.anak.map(a=>'<div class="pkn'+(a.saya?' me':'')+'">'+esc(a.nama)+(a.saya?' · anak Anda':'')+'</div>').join('')+
-   i.entri.map(e=>{const t=[i.semua?(e.kelas==null?'Seluruh kelas':'Kelas '+e.kelas):'',e.catatan].filter(Boolean).join(' · ');return t?'<div class="mu">'+esc(t)+'</div>':''}).join('')+'</div>').join(''):'<div class="mu">Tidak ada piket</div>')+'</div>').join('')+'</div></div>'};
+   i.entri.map(e=>{const t=[i.semua?(e.kelas==null?'Seluruh kelas':'Kelas '+e.kelas):'',e.catatan].filter(Boolean).join(' · ');return t?'<div class="mu">'+esc(t)+'</div>':''}).join('')+'</div>').join('')+(h.libur?'<div class="mu">Piket tidak berlaku karena libur.</div>':''):(h.libur?'<div class="mu">Libur, tidak ada piket.</div>':'<div class="mu">Tidak ada piket</div>'))+'</div>').join('')+'</div></div>'+liburDepan(p)};
+function liburDepan(p){return p.libur_depan&&p.libur_depan.length?'<div class="panel"><div class="ph">🎉 Libur 30 hari ke depan</div><div class="pb">'+p.libur_depan.map(x=>'<div class="li"><div><b>'+esc(x.ket)+'</b></div><span class="bd" style="background:#e5edf4;color:#42668a">'+tgl(x.tanggal)+'</span></div>').join('')+'</div></div>':''}
 R.hafalan=d=>{const h=d.hafalan;if(!h||!h.aktif)return pesanFitur('📖','Hafalan tidak aktif','Sekolah belum mengaktifkan fitur hafalan.');
  if(!h.total)return '<div class="panel"><div class="ph">📖 Hafalan</div><div class="pb mu">Belum ada daftar hafalan untuk kelas ini.</div></div>';
  const pct=Math.round(h.lancar*100/h.total),nm=esc(d.siswa.pan||d.siswa.nama);
  return '<div class="panel ct"><div class="ph">📖 Hafalan '+nm+'</div><div class="pb"><div class="saldo">'+h.lancar+' <span class="hs">dari '+h.total+' hafalan lancar</span></div><div class="hbar"><i style="width:'+pct+'%"></i></div>'+(h.ulang?'<div class="mu">'+h.ulang+' hafalan perlu diulang</div>':'')+'<div class="mu">'+(h.total-h.lancar-h.ulang)+' hafalan belum disetor</div></div></div>'+
   h.jenis.map(g=>'<div class="panel"><div class="ph">'+esc(g.nama)+' <span class="mu">· '+(g.cakupan==='wajib'?'Wajib semua kelas':(d.siswa.kelas?'Kelas '+esc(d.siswa.kelas):'Per kelas'))+'</span></div><div class="pb">'+g.item.map(i=>{const t=HST[i.status]||HST.belum;return '<div class="li"><div><b>'+esc(i.judul)+'</b>'+(i.target?'<small>'+esc(i.target)+'</small>':'')+'</div><span class="bd" style="background:'+t[1]+';color:'+t[2]+'">'+t[0]+(i.tanggal?' · '+tgl(i.tanggal):'')+'</span></div>'}).join('')+'</div></div>').join('')};
+/* ---------- Pengingat piket (push) ---------- */
+const PK_OFF='pk_off_'+(m?m[1]:'');
+const pushDidukung=()=>('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window);
+const iosBelumPasang=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)&&!(navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches));
+const b64ke8=b=>{const p='='.repeat((4-b.length%4)%4),r=(b+p).replace(/-/g,'+').replace(/_/g,'/'),s=atob(r),o=new Uint8Array(s.length);for(let i=0;i<s.length;i++)o[i]=s.charCodeAt(i);return o};
+async function pushPost(body){const r=await fetch('/api/portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({k:m[1]},body))});if(!r.ok){let e='';try{e=(await r.json()).error}catch(_){}throw new Error(e||'Gagal ('+r.status+')')}}
+async function pushSub(){if(!pushDidukung())return null;const reg=await navigator.serviceWorker.getRegistration('/');return reg?await reg.pushManager.getSubscription():null}
+async function pushRender(d,galat){const box=$('#pushBox');if(!box||!d||!d.push||!d.push.aktif)return;let h='';
+ if(!pushDidukung()){h=iosBelumPasang()?'<div class="mu">Di iPhone, pengingat hanya bisa diaktifkan dari aplikasi di Layar Utama. Ketuk tombol Bagikan, pilih <b>Tambahkan ke Layar Utama</b>, buka Halaman Siswa dari ikon itu, lalu aktifkan pengingat di sini.</div>':'<div class="mu">Browser ini belum mendukung pengingat. Gunakan Chrome di Android, atau pasang ke Layar Utama di iPhone.</div>'}
+ else if(Notification.permission==='denied'){h='<div class="mu">Izin notifikasi diblokir di browser. Buka pengaturan situs, izinkan notifikasi, lalu muat ulang halaman ini.</div>'}
+ else{const sub=await pushSub().catch(()=>null),off=localStorage.getItem(PK_OFF)==='1';
+  if(sub&&Notification.permission==='granted'&&!off){
+   if(!sessionStorage.getItem('pk_ok_'+m[1])){try{await pushPost({aksi:'push_daftar',langganan:sub.toJSON(),agen:navigator.userAgent.slice(0,120)});sessionStorage.setItem('pk_ok_'+m[1],'1')}catch(e){galat=e.message}}
+   h='<div class="mu">✅ Pengingat aktif di HP ini: pukul 18.00 WIB untuk piket besok dan 05.00 WIB untuk piket hari ini.</div><button type="button" class="btn fx" onclick="pushMatikan()">Matikan pengingat</button>'}
+  else h='<div class="mu">Dapatkan pengingat otomatis bila anak piket: pukul 18.00 WIB untuk piket besok dan 05.00 WIB untuk piket hari ini.</div><button type="button" class="btn fx" onclick="pushAktifkan()">🔔 Aktifkan pengingat piket</button>'}
+ if(galat)h+='<div class="mu" style="color:#c0342b;margin-top:6px">'+esc(galat)+'</div>';
+ box.innerHTML='<div class="panel ct"><div class="ph">🔔 Pengingat Piket</div><div class="pb">'+h+'</div></div>'}
+async function pushAktifkan(){try{
+  if(!S.vapid)throw new Error('Pengingat belum siap dari sisi sekolah');
+  const izin=await Notification.requestPermission();
+  if(izin!=='granted')throw new Error(izin==='denied'?'Izin notifikasi ditolak. Izinkan lewat pengaturan situs lalu coba lagi.':'Izin notifikasi belum diberikan');
+  const reg=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;
+  let sub=await reg.pushManager.getSubscription();
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ke8(S.vapid)});
+  await pushPost({aksi:'push_daftar',langganan:sub.toJSON(),agen:navigator.userAgent.slice(0,120)});
+  localStorage.removeItem(PK_OFF);sessionStorage.setItem('pk_ok_'+m[1],'1');await pushRender(S.pd)
+ }catch(e){await pushRender(S.pd,(e&&e.message)||'Gagal mengaktifkan pengingat')}}
+async function pushMatikan(){try{const sub=await pushSub();if(sub)await pushPost({aksi:'push_cabut',endpoint:sub.endpoint});localStorage.setItem(PK_OFF,'1');sessionStorage.removeItem('pk_ok_'+m[1]);await pushRender(S.pd)}catch(e){await pushRender(S.pd,(e&&e.message)||'Gagal mematikan pengingat')}}
 R.libur=d=>calPanel(d);
-A.libur=A.dashboard=()=>calRender(DD.cal.val);
+A.libur=()=>calRender(DD.cal.val);
+A.dashboard=d=>{calRender(DD.cal.val);S.pd=d;pushRender(d)};
+A.piket=d=>{S.pd=d;pushRender(d)};
 function calRender(ym){const d={libur:S.libur,hari_ini:S.hari},p=ym.split('-'),y=+p[0],mo=+p[1]-1,first=new Date(y,mo,1).getDay(),len=new Date(y,mo+1,0).getDate(),lib={};
  d.libur.forEach(x=>lib[x.tanggal]=x);
  let h=HR.map(x=>'<div class="h">'+x+'</div>').join('')+'<div class="d e"></div>'.repeat(first),dl=[];
@@ -568,5 +601,6 @@ function jamTgl(){const n=new Date(),p=new Intl.DateTimeFormat('en-GB',{hour:'2-
  $('#jm').innerHTML=p[0]+'<i> : </i>'+p[1]+' <small>WIB</small>';
  $('#tg').textContent=n.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Jakarta'})}
 tema();jamTgl();setInterval(jamTgl,1000);setInterval(tema,60000);
-go('dashboard');
+(function(){if(m){const lk=document.createElement('link');lk.rel='manifest';lk.href='/api/portal?k='+m[1]+'&v=manifest';document.head.appendChild(lk)}})();
+go(MENU.some(x=>x[0]===location.hash.slice(1))?location.hash.slice(1):'dashboard');
 </script></body></html>
