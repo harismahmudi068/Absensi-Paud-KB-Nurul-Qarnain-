@@ -36,6 +36,28 @@ const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu
 const dowOf = (t) => new Date(t + 'T00:00:00Z').getUTCDay();
 const tglPlus = (t, n) => new Date(Date.parse(t + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 
+// Kunci publik VAPID untuk pengingat piket (push). Kunci privat hanya dipakai api/piket-notif.js
+const VAPID_PUB = String(process.env.VAPID_PUBLIC_KEY || '').trim();
+const RE_B64URL = /^[A-Za-z0-9_-]{16,200}$/;
+// Alamat tujuan push hanya boleh milik layanan push resmi browser (mencegah server dipakai menembak alamat lain)
+function endpointAman(u) {
+  try {
+    const x = new URL(String(u));
+    if (x.protocol !== 'https:' || x.username || x.password || x.port) return false;
+    const h = x.hostname.toLowerCase();
+    return (
+      h === 'fcm.googleapis.com' ||
+      h === 'android.googleapis.com' ||
+      h.endsWith('.push.services.mozilla.com') ||
+      h === 'updates.push.services.mozilla.com' ||
+      h.endsWith('.push.apple.com') ||
+      h.endsWith('.notify.windows.com')
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
 // Apakah hari ini libur untuk kelas anak (mingguan + nasional + tanggal, dikurangi libur_batal)?
 async function liburHariIni(sid, kid, hariIni) {
   const dow = new Date(hariIni + 'T00:00:00Z').getUTCDay();
@@ -114,6 +136,48 @@ const tglValid = (t) => {
   const y = +m[1], mo = +m[2], d = +m[3], x = new Date(Date.UTC(y, mo - 1, d));
   return x.getUTCFullYear() === y && x.getUTCMonth() === mo - 1 && x.getUTCDate() === d;
 };
+
+// Pendaftaran dan pencabutan HP untuk pengingat piket (push). Satu HP boleh terdaftar untuk beberapa anak.
+async function aksiPush(req, res) {
+  if (!/^application\/json/i.test(String(req.headers['content-type'] || '')))
+    return res.status(415).json({ error: 'Format permintaan tidak didukung' });
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const k = String(b.k || '').trim();
+  if (!RE_KODE.test(k)) return res.status(404).json(TIDAK_ADA);
+  try {
+    const cari = (await L.panggil(`/rest/v1/siswa?kode_qr=eq.${encodeURIComponent(k)}&select=id,sekolah_id,aktif&limit=2`, 'GET')) || [];
+    if (cari.length !== 1 || !cari[0].aktif) return res.status(404).json(TIDAK_ADA);
+    const sid = Number(cari[0].sekolah_id), id = Number(cari[0].id);
+    if (!Number.isInteger(sid) || !Number.isInteger(id)) return res.status(404).json(TIDAK_ADA);
+    const sek = ((await L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=status&limit=1`, 'GET')) || [])[0];
+    if (!sek || sek.status !== 'aktif') return res.status(404).json(TIDAK_ADA);
+
+    if (b.aksi === 'push_cabut') {
+      const ep = String(b.endpoint || '');
+      if (!ep || ep.length > 600) return res.status(400).json({ error: 'Data tidak valid' });
+      await L.panggil(`/rest/v1/push_langganan?siswa_id=eq.${id}&sekolah_id=eq.${sid}&endpoint=eq.${encodeURIComponent(ep)}`, 'DELETE');
+      return res.status(200).json({ ok: true });
+    }
+
+    const peng = ((await L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=piket_aktif,notif_piket_aktif&limit=1`, 'GET')) || [])[0] || {};
+    if (!peng.piket_aktif || !peng.notif_piket_aktif)
+      return res.status(409).json({ error: 'Pengingat piket belum diaktifkan oleh sekolah' });
+    const lg = b.langganan && typeof b.langganan === 'object' ? b.langganan : {};
+    const ep = String(lg.endpoint || '');
+    const kk = lg.keys && typeof lg.keys === 'object' ? lg.keys : {};
+    const p256dh = String(kk.p256dh || ''), auth = String(kk.auth || '');
+    if (!ep || ep.length > 600 || !endpointAman(ep) || !RE_B64URL.test(p256dh) || !RE_B64URL.test(auth))
+      return res.status(400).json({ error: 'Data pengingat dari browser tidak valid' });
+    const agen = String(b.agen || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 120);
+    await L.panggil('/rest/v1/push_langganan?on_conflict=siswa_id,endpoint', 'POST',
+      { sekolah_id: sid, siswa_id: id, endpoint: ep, p256dh, auth, agen: agen || null, gagal: 0 },
+      { Prefer: 'resolution=merge-duplicates,return=minimal' });
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('portal push:', e && e.message);
+    return res.status(500).json({ error: 'Gagal memproses pengingat. Coba lagi' });
+  }
+}
 
 async function ubahProfil(req, res) {
   if (!/^application\/json/i.test(String(req.headers['content-type'] || '')))
@@ -195,12 +259,36 @@ module.exports = async (req, res) => {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.setHeader('Referrer-Policy', 'no-referrer');
 
-  if (req.method === 'POST') return kirimLaporan(req, res);
+  if (req.method === 'POST') {
+    const a = req.body && typeof req.body === 'object' ? req.body.aksi : '';
+    if (a === 'push_daftar' || a === 'push_cabut') return aksiPush(req, res);
+    return kirimLaporan(req, res);
+  }
   if (req.method === 'PATCH') return ubahProfil(req, res);
   if (req.method !== 'GET') return res.status(405).json({ error: 'Metode tidak diizinkan' });
 
   const k = String((req.query && req.query.k) || '').trim();
   if (!RE_KODE.test(k)) return res.status(404).json(TIDAK_ADA);
+  // Manifest aplikasi (agar halaman ini bisa dipasang di Layar Utama, syarat push di iPhone). Tanpa data siswa.
+  if (String((req.query && req.query.v) || '') === 'manifest') {
+    res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.status(200).send(JSON.stringify({
+      name: 'Halaman Siswa',
+      short_name: 'Halaman Siswa',
+      lang: 'id',
+      start_url: '/p/' + k,
+      scope: '/p/',
+      display: 'standalone',
+      background_color: '#eaf6ee',
+      theme_color: '#14693a',
+      icons: [
+        { src: '/ikon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/ikon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/ikon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+      ]
+    }));
+  }
   // Halaman yang diminta: dashboard | siswa | absensi | tabungan | piket | hafalan | libur
   const HALAMAN = ['dashboard', 'siswa', 'absensi', 'tabungan', 'piket', 'hafalan', 'libur'];
   const v = HALAMAN.includes(String((req.query && req.query.v) || '')) ? String(req.query.v) : 'dashboard';
@@ -267,7 +355,7 @@ module.exports = async (req, res) => {
       : 'hari,catatan,siswa_id,jenis:piket_jenis(nama,cakupan)';
 
     // 2-3. Sekolah, pengaturan, kelas, dan data halaman diambil BERSAMAAN (satu putaran ke database).
-    const [sekRows, pengRows, kelasRows, trxData, absData, liburData, pkRows, mgData, jnData, itemData, setData] = await Promise.all([
+    const [sekRows, pengRows, kelasRows, trxData, absData, liburData, pkRows, jnData, itemData, setData] = await Promise.all([
       L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=id,nama,status&limit=1`, 'GET'),
       L.panggil(
         `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif&limit=1`,
@@ -284,11 +372,10 @@ module.exports = async (req, res) => {
         : v === 'absensi'
           ? semua(`/rest/v1/absensi?siswa_id=eq.${id}&sekolah_id=eq.${sid}&select=tanggal,status,jam_datang,catatan&order=tanggal.desc,id.desc`)
           : null,
-      v === 'dashboard' || v === 'libur' ? muatLibur() : null,
+      v === 'dashboard' || v === 'libur' || v === 'piket' ? muatLibur() : null,
       v === 'dashboard' || v === 'piket'
         ? semua(`/rest/v1/piket_jadwal?sekolah_id=eq.${sid}&${fPiket}&select=${kolPiket}&order=id.asc`)
         : null,
-      v === 'piket' ? L.panggil(`/rest/v1/libur_mingguan?sekolah_id=eq.${sid}&select=hari`, 'GET') : null,
       v === 'hafalan' ? L.panggil(`/rest/v1/hafalan_jenis?sekolah_id=eq.${sid}&select=id,nama,cakupan,urutan&order=urutan.asc,id.asc`, 'GET') : null,
       v === 'dashboard' || v === 'hafalan'
         ? semua(`/rest/v1/hafalan_item?sekolah_id=eq.${sid}&${fKelas}&select=id,jenis_id,judul,target&order=urutan.asc,id.asc`)
@@ -324,6 +411,10 @@ module.exports = async (req, res) => {
         kota: peng.kota || '',
         tahun_ajaran: peng.tahun_ajaran || ''
       },
+      // Pengingat push piket: kunci publik hanya dikirim bila sekolah mengaktifkannya
+      push: v === 'dashboard' || v === 'piket'
+        ? (peng.piket_aktif && peng.notif_piket_aktif && VAPID_PUB ? { aktif: true, vapid: VAPID_PUB } : { aktif: false })
+        : undefined,
       // Fitur yang aktif di sekolah ini (menentukan menu Piket dan Hafalan di halaman siswa)
       fitur: { piket: !!peng.piket_aktif, hafalan: !!peng.hafalan_aktif, notif_piket: !!peng.notif_piket_aktif }
     };
@@ -365,13 +456,16 @@ module.exports = async (req, res) => {
       }
       return { aktif: true, libur, hari_ini: libur ? [] : pada(hariIni), berikut, ada: rows.length > 0 };
     };
-    // Piket: jadwal satu minggu untuk kelas anak (nama anak memakai nama panggilan)
+    // Piket: jadwal satu pekan (Senin sampai Minggu) untuk kelas anak, lengkap dengan hari libur pekan ini
+    // dan libur 30 hari ke depan. Nama anak memakai nama panggilan.
     const muatPiketHalaman = () => {
       if (!peng.piket_aktif) return { aktif: false };
       const rows = pkRows || [];
-      const libMg = new Set((mgData || []).map((x) => Number(x.hari)));
-      const dowNow = dowOf(hariIni);
-      const hari = [1, 2, 3, 4, 5, 6, 0].filter((d) => !libMg.has(d)).map((d) => {
+      const lib = new Map((liburData || []).map((x) => [x.tanggal, x]));
+      const senin = tglPlus(hariIni, -((dowOf(hariIni) + 6) % 7));
+      const hari = [1, 2, 3, 4, 5, 6, 0].map((d, ix) => {
+        const tanggal = tglPlus(senin, ix);
+        const lb = lib.get(tanggal) || null;
         const grup = new Map();
         rows.filter((r) => Number(r.hari) === d).forEach((r) => {
           const jn = r.jenis || {};
@@ -391,9 +485,14 @@ module.exports = async (req, res) => {
           g.anak.sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
           return g;
         });
-        return { hari: d, nama: NAMA_HARI[d], hari_ini: d === dowNow, item };
+        return { hari: d, nama: NAMA_HARI[d], tanggal, hari_ini: tanggal === hariIni, libur: lb ? { ket: lb.ket, jenis: lb.jenis } : null, item };
       });
-      return { aktif: true, hari };
+      const batas = tglPlus(hariIni, 30);
+      const libur_depan = (liburData || [])
+        .filter((x) => x.jenis !== 'mingguan' && x.tanggal > hariIni && x.tanggal <= batas)
+        .slice(0, 8)
+        .map((x) => ({ tanggal: x.tanggal, ket: x.ket }));
+      return { aktif: true, hari, libur_depan };
     };
     // Hafalan: hafalan wajib semua kelas + hafalan kelas anak, lengkap dengan status tiap hafalan
     const muatHafalanData = (rinci) => {
