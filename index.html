@@ -56,6 +56,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 .modal{width:min(520px,100%);background:#fff;border-radius:18px;overflow:hidden;max-height:90vh;display:flex;flex-direction:column}
 .mh{padding:14px 16px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between}.mh button{border:0;background:none;font-size:18px}
 .mbody{padding:16px;overflow:auto}.mf{padding:12px 16px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:8px}
+#md.besar{padding:8px}#md.besar .modal{width:min(1100px,100%);height:100%;max-height:100%;border-radius:14px}#md.besar .mbody{flex:1;min-height:0}.tbbox{border:1px solid var(--bd);border-radius:12px;padding:12px;margin:12px 0}.tbop{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--bd);border-radius:10px;margin:8px 0;cursor:pointer}.tbop input{margin-top:3px}.tbkh{font-weight:800;margin:14px 0 4px}.hfkh{display:flex;align-items:center;justify-content:space-between;gap:8px}.hfkh .hfdel{flex:0 0 auto;margin-left:auto;padding:4px 12px}.hfak2{display:flex;flex-wrap:nowrap;gap:8px;margin:0;white-space:nowrap}.hfak2 .btn{margin:0;flex:0 0 auto}.hfaks{display:flex;flex-direction:column;gap:6px;width:136px;margin:0}.hfaks .btn{width:100%;margin:0;justify-content:center;text-align:center;white-space:nowrap}.hfsw{overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}.hfsw table{min-width:700px}.hfsw td:first-child,.hfsw th:first-child{min-width:130px}.hfsw td:nth-child(2),.hfsw th:nth-child(2){min-width:150px}.hfsw .hfn{white-space:nowrap}.hfcb{width:22px;height:22px;accent-color:#1f7a3a;vertical-align:middle;cursor:pointer;touch-action:manipulation;transition:none}.hfcl{display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin:-8px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.pk-x{border:1px solid var(--bd);background:transparent;color:inherit;font-weight:800;cursor:pointer;width:30px;height:30px;flex:0 0 30px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;padding:0}.chips.kecil{margin:4px 0 14px;gap:6px}.chips.kecil .chip{padding:5px 12px!important;font-size:13px!important;line-height:1.25;font-weight:700}.pkrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)}.pkrow:last-child{border-bottom:0}.pkday{border:1px solid var(--bd);border-radius:12px;padding:10px;margin:10px 0}
 .fg{display:grid;gap:10px}.fd label.l{display:block;font-size:12px;font-weight:800;margin-bottom:4px}.fd .input,.fd .select{width:100%}.fd .dt{display:flex}
 #drw .modal{position:absolute;left:0;top:0;bottom:0;width:min(300px,88%);border-radius:0 18px 18px 0;max-height:none;background:#fffdf5}
 #drw .nav button{color:#284737;background:#f2f8ef;border:1px solid #dcebdc}#drw .nav button.on{color:#fff;background:linear-gradient(90deg,#188b49,#6e4aa8)}
@@ -214,6 +215,8 @@ button[onclick="go('libur')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://
 button[onclick="go('profil')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Ccircle cx=%2212%22 cy=%2210%22 r=%223%22/%3E%3Cpath d=%22M6 19c1.2-2.6 3.2-3.8 6-3.8s4.8 1.2 6 3.8%22/%3E%3C/svg%3E")}
 button[onclick="go('pengaturan')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M4 7h10M18 7h2M4 17h2M10 17h10%22/%3E%3Ccircle cx=%2216%22 cy=%227%22 r=%222%22/%3E%3Ccircle cx=%228%22 cy=%2217%22 r=%222%22/%3E%3C/svg%3E")}
 button[onclick="go('developer')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14%22/%3E%3C/svg%3E")}
+button[onclick="go('piket')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M12 3v8%22/%3E%3Cpath d=%22M7.5 11h9l3 10h-15z%22/%3E%3Cpath d=%22M10 16v5M14 16v5%22/%3E%3C/svg%3E")}
+button[onclick="go('hafalan')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%225%22 y=%223.5%22 width=%2214%22 height=%224.5%22 rx=%221%22/%3E%3Crect x=%223%22 y=%229.5%22 width=%2217%22 height=%224.5%22 rx=%221%22/%3E%3Crect x=%225.5%22 y=%2215.5%22 width=%2214.5%22 height=%224.5%22 rx=%221%22/%3E%3C/svg%3E")}
 
 /* mode gelap otomatis */
 html[data-tema=gelap] .hero{background:#1c3622!important;background-image:none!important;border:1px solid #2d522f!important}
@@ -449,7 +452,7 @@ html[data-tema=gelap] .input:focus,html[data-tema=gelap] .select:focus,html[data
 <section class="content" id="v"></section></main></div>
 <nav class="bottom hid" id="bn"></nav>
 <div class="mb" id="drw" onclick="if(event.target===this)drw(0)"><div class="modal"><div class="mh"><b>Menu</b><button onclick="drw(0)">✕</button></div><div class="mbody"><div id="dn" class="nav"></div></div></div></div>
-<div class="mb" id="md" onclick="if(event.target===this)closeM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="closeM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" id="mtp" onclick="closeM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
+<div class="mb" id="md" onclick="if(event.target===this&&!this.classList.contains('besar'))closeM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="closeM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" id="mtp" onclick="closeM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
 <div class="mb" id="cf" style="z-index:150"><div class="modal" style="width:min(400px,100%)"><div class="mbody" style="text-align:center;padding:24px 20px 14px"><div id="cfi" style="font-size:42px;line-height:1"></div><h3 id="cft" style="margin:10px 0 6px"></h3><div id="cfm" class="mu" style="font-size:14px;white-space:pre-line"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" id="cfn">Batal</button><button class="btn success" id="cfy">Ya</button></div></div></div>
 <div class="toast" id="ts"></div><div id="ld"><div class="spin"></div><div id="ldt">Memuat...</div></div><input type="file" id="fx" accept=".xlsx,.xls" class="hid" onchange="impor(this)">
 <script>
@@ -467,7 +470,7 @@ const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j
 const db=supabase.createClient(URL_SB,KEY_SB,{auth:{experimental:{passkey:true}}});
 /* ---------- multi-sekolah: sekolah aktif + pembungkus tabel ---------- */
 let SEK=null,MEMB=[],PROFIL=null;
-const TENANT=new Set(['absensi','kelas','laporan_ortu','libur_batal','libur_mingguan','libur_tanggal','pengaturan','percakapan_tertunda','pesan_masuk','siswa','wali','tabungan_transaksi','tabungan_bawaan']);
+const TENANT=new Set(['absensi','kelas','laporan_ortu','libur_batal','libur_mingguan','libur_tanggal','pengaturan','percakapan_tertunda','pesan_masuk','siswa','wali','tabungan_transaksi','piket_jenis','piket_jadwal','hafalan_jenis','hafalan_item','hafalan_setoran']);
 const _dbFrom=db.from.bind(db);
 db.from=t=>{const q=_dbFrom(t);if(!TENANT.has(t))return q;
  const tambah=r=>Array.isArray(r)?r.map(x=>({...x,sekolah_id:SEK})):{...r,sekolah_id:SEK};
@@ -570,7 +573,7 @@ function tpPilih(v){const T=TP;if(!T)return;const ada=document.body.contains(T.w
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TP)tpTutup()});
 window.addEventListener('resize',()=>{if(TP)tpPos()});
 window.addEventListener('scroll',e=>{if(TP&&innerWidth>640&&!(e.target&&e.target.nodeType===1&&e.target.closest('#tpop')))tpTutup()},true);
-const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['kartu','Kartu','🪪','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['alumni','Alumni','🏅','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
+const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['piket','Jadwal Piket','🧹','KG'],['hafalan','Hafalan','📖','KG'],['kartu','Kartu','🪪','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['alumni','Alumni','🏅','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah';
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
@@ -580,7 +583,7 @@ const guard=(fn,q)=>{if(!q)ld(1);return fn().catch(e=>toast((e&&e.message)||Stri
 function resetTutup(){const b=$('#mtp');if(!b)return;b.textContent='Tutup';b.className='btn soft';b.onclick=()=>closeM()}
 function info(t,h){resetTutup();$('#mt').textContent=t;$('#mbd').innerHTML=h;$('#ms').style.display='none';$('#md').classList.add('show')}
 function toast(m,ok=true){const t=$('#ts');if(!ok)m=idErr(m);t.textContent=(ok?'✓ ':'⚠ ')+m;t.className='toast '+(ok?'ok':'err');t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200)}
-const A=d=>S.absen[d]||{},act=()=>S.siswa.filter(s=>s.aktif),kelola=()=>role!=='Guru',allowed=id=>MENUS.find(m=>m[0]===id)[3].includes(RC[role])&&(id!=='tabungan'||!!(S.set&&S.set.tabungan_aktif));
+const A=d=>S.absen[d]||{},act=()=>S.siswa.filter(s=>s.aktif),kelola=()=>role!=='Guru',allowed=id=>MENUS.find(m=>m[0]===id)[3].includes(RC[role])&&(id!=='tabungan'||!!(S.set&&S.set.tabungan_aktif))&&(id!=='piket'||!!(S.set&&S.set.piket_aktif))&&(id!=='hafalan'||!!(S.set&&S.set.hafalan_aktif));
 const badge=s=>`<span class="badge ${s}">${s}</span>`,ini=s=>esc((s||'?')[0]);
 const tab=(h,r,m)=>`<div class="tw"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${r||`<tr><td colspan="${h.length}" class="mu" style="text-align:center">${m||'Belum ada data.'}</td></tr>`}</tbody></table></div>`;
 const PK='⚠️ Pilih kelas terlebih dahulu',PKM=`<span class="pk-warn">${PK}</span>`,PKH=`<div class="note" style="text-align:center">${PKM}</div>`;
@@ -683,7 +686,7 @@ const _sinkNK={};
 async function sinkronNomorKepala(){try{if(!adalahKepala()||CFG_SID||!RHS||RHS.error)return;const n=nomorKepalaProfil();if(!n)return;
  if(normWA(RHS.nomor_kepala||'')===normWA(n)||_sinkNK[SEK]===n)return;_sinkNK[SEK]=n;
  await apiPengaturan({aksi:'simpan',nomor_kepala:fmtWA(n)});RHS=await apiPengaturan({aksi:'baca'});if(view==='pengaturan'||view==='dashboard')renderV()}catch(e){}}
-const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>role==='Developer'?Promise.all([muatDev(),muatProfilSaya()]):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil(),muatRingDash()]),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan,kelola:()=>muatKelola(),alumni:()=>muatAlumni()};
+const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>role==='Developer'?Promise.all([muatDev(),muatProfilSaya()]):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil(),muatRingDash()]),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan,kelola:()=>muatKelola(),alumni:()=>muatAlumni(),piket:()=>muatPiket(),hafalan:()=>muatHafalan()};
 /* ---------- libur ---------- */
 const batalAda=(d,k)=>{const b=S.batal;if(!b||!b.size)return false;if(b.has(d+'|0'))return true;const kl=S.kelas.find(x=>x.nama===k);return !!kl&&b.has(d+'|'+kl.id)};
 async function muatBatal(){S.batal=new Set();try{const r=await dbq(db.from('libur_batal').select('tanggal,kelas_id'));(r||[]).forEach(x=>S.batal.add(x.tanggal+'|'+x.kelas_id))}catch(e){}}
@@ -1155,7 +1158,7 @@ async function muatGambarKartu(){
  }
 }
 function renderV(){
- tutupAksi();const _tb=view==='kelola'||view==='tabungan',_sl=_tb?(document.querySelector('#v .utabs')||{}).scrollLeft:0;
+ tutupAksi();const _tb=view==='kelola'||view==='tabungan'||view==='piket'||view==='hafalan',_sl=_tb?(document.querySelector('#v .utabs')||{}).scrollLeft:0;
  $('#v').innerHTML=V[view]();
  if(role==='Developer')renderNavDev();
  enhanceCustomSelects($('#v'));
@@ -1174,7 +1177,7 @@ async function verifikasiDaftar(){const wa=normWA($('#dfWa').value),kode=$('#dfK
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
  try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
-function closeM(){$('#md').classList.remove('show');resetTutup()}
+function closeM(){$('#md').classList.remove('show','besar');const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
 function konfirmasi(pesan,o){o=o||{};return new Promise(res=>{const m=$('#cf'),y=$('#cfy'),n=$('#cfn');$('#cfi').textContent=o.ikon||(o.bahaya?'🗑️':'❓');$('#cft').textContent=o.judul||'Konfirmasi';$('#cfm').textContent=pesan;y.textContent=o.ya||'Ya';y.className='btn '+(o.bahaya?'danger':'success');
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
  document.addEventListener('keydown',kd);y.onclick=()=>fin(true);n.onclick=()=>fin(false);m.onclick=e=>{if(e.target===m)fin(false)};m.classList.add('show');y.focus()})}
@@ -1207,6 +1210,8 @@ const fiturBelum=()=>{const L=[];if(!S.set)return L;
  if(!S.set.alpa_aktif)L.push({n:'⏰ Alpa otomatis',t:'alpa otomatis',f:"lompatPengaturan('pnAlpa','cbAlpa')"});
  if(!S.set.notif_libur_aktif||!S.set.notif_libur_mingguan){const b=[];if(!S.set.notif_libur_aktif)b.push('notifikasi libur');if(!S.set.notif_libur_mingguan)b.push('libur mingguan');L.push({n:'🔔 Notifikasi libur ('+b.join(' dan ')+')',t:'notifikasi libur ('+b.join(' dan ')+')',f:"lompatPengaturan('pnNotifLibur','"+(!S.set.notif_libur_aktif?'cbNotifLibur':'cbNotifMingguan')+"')"})}
  if(!S.set.tabungan_aktif)L.push({n:'💰 Tabungan siswa',t:'tabungan siswa',f:"lompatPengaturan('pnTabungan','cbTabungan')"});
+  if(!S.set.piket_aktif)L.push({n:'🧹 Jadwal piket',t:'jadwal piket',f:"lompatPengaturan('pnPiket','cbPiket')"});
+  if(!S.set.hafalan_aktif)L.push({n:'📖 Hafalan',t:'hafalan',f:"lompatPengaturan('pnHafalan','cbHafalan')"});
  return L};
 function notifFitur(){if(role==='Developer'||!me)return '';const L=fiturBelum();if(!L.length)return '';
  if(adalahKepala())return `<div><b>🔔 Fitur belum aktif.</b><div class="mu">Fitur berikut belum diaktifkan. Tekan Atur untuk langsung membuka pengaturannya.</div>${L.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px"><span>${x.n}</span><button class="btn sm success" onclick="${x.f}">Atur</button></div>`).join('')}</div>`;
@@ -1888,19 +1893,21 @@ function panelKelasHtml(){
   return `<div class="panel" id="pnKelas"><div class="ph">🏫 Kelas dan Jam Masuk</div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Urutan kelas menentukan arah naik kelas. Data ini hanya dapat diubah oleh Kepala Sekolah atau Wakil Kepala Sekolah.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <b>${esc(k.jam)}</b></span><span>Wali kelas <b>${esc(wn(k.wali))}</b></span><span>Urutan <b>${k.urutan==null?'-':k.urutan}</b></span>${k.akhir?'<span><b>✓ Kelas akhir (kelulusan)</b></span>':''}</div>`).join('')||'<div class="mu">Belum ada kelas.</div>'}</div></div></div>`}
  return `<div class="panel" id="pnKelas"><div class="ph">🏫 Kelas dan Jam Masuk <button id="btnTambahKelas" class="btn success" onclick="addKelas()">+ Tambah Kelas</button></div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Urutan kelas (1, 2, 3, ...) menentukan arah naik kelas: siswa hanya boleh naik ke kelas dengan urutan lebih tinggi. Centang Kelas akhir pada kelas yang menjadi kelas kelulusan. Batas masuk, wali kelas, dan Kelas akhir tersimpan otomatis. Urutan kelas disimpan dengan tombol Simpan.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <input type="time" class="input" value="${k.jam}" onchange="setJam(${k.id},this.value)"></span><span>Wali kelas <select class="select" onchange="setWaliKelas(${k.id},this.value)">${woptGuru(k.wali)}</select></span><span>Urutan <select class="select urutan-sel" data-urutan="1">${urutanOpt(k.urutan)}</select></span><span><label class="cbl"><input type="checkbox" ${k.akhir?'checked':''} onchange="setKelasAkhir(${k.id},this.checked)"> Kelas akhir (kelulusan)</label></span><div class="ci-act"><button class="btn sm soft" onclick="ubahKelas(${k.id})">Ubah nama kelas</button><button class="btn sm success" onclick="simpanKelas(${k.id},this)">Simpan</button><button class="btn sm danger" onclick="delKelas(${k.id})">Hapus</button></div></div>`).join('')}</div></div></div>`}
 V.kelasjam=()=>panelKelasHtml();
-V.pengaturan=()=>`${taInit()}<div class="panel" id="pnTahunAjaran"><div class="ph">🎓 Tahun Ajaran <span class="mu">Sekarang: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="note">Tahun ajaran baru hanya bisa dimulai setelah keputusan akhir tahun (naik kelas, tinggal kelas, lulus) disahkan di menu Kelola Siswa. Siswa naik dan tinggal kelas tetap tersimpan; siswa lulus, siswa nonaktif, dan wali yang tidak lagi punya anak di sekolah akan dihapus. Seluruh absensi lama, laporan orang tua, dan pesan WhatsApp juga dihapus. Data guru dan kelas tetap ada. Unduh rekap total tahun ajaran di bawah ini sebelum menghapus. Bila Tabungan Siswa aktif, Anda juga memilih apakah saldo dibawa atau ditutup, dan sebaiknya unduh Rekap saldo di menu Tabungan lebih dulu.</div>
+V.pengaturan=()=>`${taInit()}<div class="panel" id="pnTahunAjaran"><div class="ph">🎓 Tahun Ajaran <span class="mu">Sekarang: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="note">Tahun ajaran baru hanya bisa dimulai setelah keputusan akhir tahun (naik kelas, tinggal kelas, lulus) disahkan di menu Kelola Siswa. Siswa naik dan tinggal kelas tetap tersimpan; siswa lulus, siswa nonaktif, dan wali yang tidak lagi punya anak di sekolah akan dihapus. Seluruh absensi lama, laporan orang tua, dan pesan WhatsApp juga dihapus. Data guru dan kelas tetap ada. Unduh rekap total tahun ajaran di bawah ini sebelum menghapus. Bila masih ada saldo Tabungan Siswa, Anda memilih apakah saldo siswa yang naik atau tinggal kelas dibawa (riwayat diringkas jadi satu saldo awal) atau seluruh tabungan ditutup. Saldo dan riwayat siswa lulus dan nonaktif selalu dihapus. PDF rekap tabungan per kelas wajib diunduh di halaman konfirmasi.</div>
 <div class="tb"><span class="mu">Dari</span>${dt('month',taA,"taA=this.value")}<span class="mu">Sampai</span>${dt('month',taB,"taB=this.value")}<select class="select" onchange="taK=this.value">${kopt(taK,1)}</select></div>
 <div class="tb dlgrid"><button class="btn success sm dl" onclick="unduhTA('pdf',this)">⬇ Rekap TA (PDF)</button><button class="btn sm dl pdf" onclick="unduhTA('xlsx',this)">⬇ Rekap TA (XLSX)</button><button class="btn success sm dl" onclick="unduhSiswa('pdf',this,taK||'*')">⬇ Data Siswa (PDF)</button><button class="btn sm dl pdf" onclick="unduhSiswa('xlsx',this,taK||'*')">⬇ Data Siswa (XLSX)</button></div>
 <div class="note">Pilih kelas tertentu atau semua kelas. Setiap bulan tampil di halaman (PDF) atau sheet (XLSX) tersendiri, lengkap dengan tanda tangan Kepala Sekolah.</div>
 <button id="btnTahunBaru" class="btn danger" onclick="tahunBaru()">Mulai tahun ajaran baru</button></div></div>
 <div class="panel" id="pnNama"><div class="ph">🏫 Nama Sekolah</div><div class="pb"><div class="note">Nama ini tampil di menu samping, dashboard, kartu pelajar, riwayat/rekap absensi (PDF dan XLSX), serta pesan laporan orang tua. Setelah disimpan, halaman dimuat ulang otomatis.</div><div class="tb"><input id="nsInp" class="input grow" maxlength="80" value="${esc(ns())}" placeholder="Nama sekolah" onkeydown="if(event.key==='Enter')simpanNamaSekolah($('#nsBtn'))"><button id="nsBtn" class="btn success" onclick="simpanNamaSekolah(this)">💾 Simpan</button></div></div></div>
-<div class="panel" id="pnAlamat"><div class="ph">📍 Alamat Sekolah</div><div class="pb"><div class="note">Kota dipakai pada tanda tangan Kepala Sekolah di rekap (contoh: Jember, Minggu 4 Oktober 2026).</div><div class="fg"><div class="fd"><label class="l">Alamat sekolah</label><input id="alInp" class="input" maxlength="150" value="${esc(S.set.alamat||'')}" placeholder="Jl. Contoh No. 1"></div><div class="fd"><label class="l">Kota / kabupaten (untuk tanda tangan rekap)</label><input id="ktInp" class="input" maxlength="60" value="${esc(S.set.kota||'')}" placeholder="contoh Jember"></div></div><button class="btn success" onclick="simpanAlamat(this)">💾 Simpan alamat</button></div></div>
+<div class="panel" id="pnAlamat"><div class="ph">📍 Alamat Sekolah</div><div class="pb"><div class="note">Kota dipakai pada tanda tangan Kepala Sekolah di rekap (contoh: Jember, Minggu 4 Oktober 2026).</div><div class="fg"><div class="fd"><label class="l">Alamat sekolah</label><input id="alInp" class="input" maxlength="150" value="${esc(S.set.alamat||'')}" placeholder="Jl. Contoh No. 1"></div><div class="fd"><label class="l">Kota / kabupaten (untuk tanda tangan rekap)</label><input id="ktInp" class="input" maxlength="60" value="${esc(S.set.kota||'')}" placeholder="contoh Jember"></div></div><button class="btn success" style="margin-top:14px" onclick="simpanAlamat(this)">💾 Simpan alamat</button></div></div>
 ${panelKelasHtml()}
 <div class="panel" id="pnAlpa"><div class="ph">⏰ Alpa Otomatis</div><div class="pb"><div class="note">Anak yang belum tercatat sampai jam ini otomatis berstatus Alpa (tidak berlaku di hari libur). Server menjalankannya tepat pada jam yang diatur. Bila orang tua mengabari izin sesudahnya, statusnya diubah.</div>
 <div class="tb cbrow"><label class="cbl"><input id="cbAlpa" type="checkbox" ${S.set.alpa_aktif?'checked':''} onchange="setAlpa({alpa_aktif:this.checked})"> Aktifkan alpa otomatis</label><input type="time" class="input" value="${S.set.jam}" onchange="setAlpa({alpa_jam:this.value})"></div></div></div>
 <div class="panel" id="pnNotifLibur"><div class="ph">🔔 Notifikasi Libur</div><div class="pb"><div class="note">Kepala Sekolah menerima WhatsApp bila hari ini ada libur nasional atau libur tanggal yang meliburkan kelas atau sekolah. Libur mingguan hanya diberitahukan bila opsi di bawah dicentang, sesuai hari libur yang Anda atur di Jadwal Libur. Atur jam kirim setelah pukul 00.30 agar libur hari itu sudah tercatat. Bila jam baru hari ini sudah lewat, pesan dikirim mulai besok. Nomor Kepala Sekolah dan token Fonnte diatur di Pengaturan > Koneksi.</div>
 <div class="tb cbrow"><label class="cbl"><input id="cbNotifLibur" type="checkbox" ${S.set.notif_libur_aktif?'checked':''} onchange="setNotifLibur({notif_libur_aktif:this.checked})"> Aktifkan notifikasi libur</label><input type="time" class="input" min="00:30" value="${S.set.njam}" onchange="setNotifLibur({notif_libur_jam:this.value})"></div><div class="tb cbrow"><label class="cbl"><input id="cbNotifMingguan" type="checkbox" ${S.set.notif_libur_mingguan?'checked':''} onchange="setNotifLibur({notif_libur_mingguan:this.checked})"> Beritahu juga libur mingguan</label></div></div></div>
-<div class="panel" id="pnTabungan"><div class="ph">💰 Tabungan Siswa</div><div class="pb"><div class="note">Aktifkan bila sekolah mengelola tabungan siswa. Menu Tabungan tersedia untuk guru dan kepala sekolah. Transaksi setoran manual dapat diedit oleh guru yang mencatat transaksi tersebut selama maksimal 7 hari; Kepala Sekolah juga dapat mengubah transaksi setoran. Penarikan mengikuti aturan wali kelas. Pembatalan tetap tersedia untuk koreksi dan data tabungan tidak ikut pembersihan otomatis.</div><div class="tb cbrow"><label class="cbl"><input id="cbTabungan" type="checkbox" ${S.set.tabungan_aktif?'checked':''} onchange="setTabungan(this.checked)"> Aktifkan tabungan siswa</label></div></div></div>
+<div class="panel" id="pnTabungan"><div class="ph">💰 Tabungan Siswa</div><div class="pb"><div class="note">Aktifkan bila sekolah mengelola tabungan siswa. Menu Tabungan tersedia untuk guru dan kepala sekolah. Transaksi setoran manual dapat diedit oleh guru yang mencatat transaksi tersebut selama maksimal 7 hari; Kepala Sekolah juga dapat mengubah transaksi setoran. Penarikan mengikuti aturan wali kelas. Pembatalan tetap tersedia untuk koreksi. Data tabungan tidak ikut pembersihan harian otomatis, hanya dibersihkan saat tahun ajaran baru dimulai.</div><div class="tb cbrow"><label class="cbl"><input id="cbTabungan" type="checkbox" ${S.set.tabungan_aktif?'checked':''} onchange="setTabungan(this.checked)"> Aktifkan tabungan siswa</label></div></div></div>
+<div class="panel" id="pnPiket"><div class="ph">🧹 Jadwal Piket</div><div class="pb"><div class="note">Aktifkan bila sekolah memakai jadwal piket. Menu Jadwal Piket tersedia untuk guru dan kepala sekolah, dan semua guru boleh mengubah jenis serta jadwalnya. Pengingat ke orang tua memakai notifikasi push (tanpa kuota WhatsApp): pukul 18.00 WIB untuk piket besok dan pukul 05.00 WIB untuk piket hari ini, hanya untuk orang tua yang sudah mengaktifkan pengingat di Halaman Siswa. Hanya Kepala Sekolah dan Wakil yang dapat mengaktifkan atau menonaktifkan.</div><div class="tb cbrow"><label class="cbl"><input id="cbPiket" type="checkbox" ${S.set.piket_aktif?'checked':''} onchange="setPiket(this.checked)"> Aktifkan jadwal piket</label></div><div class="tb cbrow"><label class="cbl"><input id="cbNotifPiket" type="checkbox" ${S.set.notif_piket_aktif?'checked':''} ${S.set.piket_aktif?'':'disabled'} onchange="setNotifPiket(this.checked)"> Kirim pengingat piket ke orang tua (push)</label></div></div></div>
+<div class="panel" id="pnHafalan"><div class="ph">📖 Hafalan</div><div class="pb"><div class="note">Aktifkan bila sekolah mencatat hafalan siswa. Menu Hafalan tersedia untuk guru dan kepala sekolah. Semua guru boleh menambah, mengubah, dan menghapus jenis, daftar hafalan, serta mencatat setoran (Lancar atau Mengulang). Hafalan wajib semua kelas berlaku untuk seluruh kelas, hafalan per kelas diisi per kelas. Catatan setoran dihapus saat tahun ajaran baru dimulai, sedangkan daftar hafalan tetap. Hanya Kepala Sekolah dan Wakil yang dapat mengaktifkan atau menonaktifkan.</div><div class="tb cbrow"><label class="cbl"><input id="cbHafalan" type="checkbox" ${S.set.hafalan_aktif?'checked':''} onchange="setHafalan(this.checked)"> Aktifkan hafalan</label></div></div></div>
 ${panelWebhook()}${panelKonfigurasi()}`;
 let CFG_SID=null;
 function panelWebhook(){return `<div class="panel"><div class="ph">🔗 Alamat Webhook</div><div class="pb"><div class="note">Satu alamat Webhook untuk semua akun Fonnte sekolah Anda: pasang alamat yang sama di setiap perangkat Fonnte. Alamat ini rahasia dan unik untuk sekolah Anda, jadi disembunyikan. Untuk melihatnya, masukkan kata sandi akun Anda.</div><div class="tb"><button class="btn success" onclick="mintaWebhook(false)">🔓 Tampilkan alamat</button><button class="btn danger" onclick="mintaWebhook(true)">♻ Buat ulang kunci</button></div></div></div>`}
@@ -1971,20 +1978,60 @@ const setAlpa=o=>guard(async()=>{await dbq(db.from('pengaturan').update(o));awai
 const setNotifLibur=o=>guard(async()=>{if(o.notif_libur_jam&&o.notif_libur_jam<'00:30')throw new Error('Jam notifikasi libur minimal 00.30');await dbq(db.from('pengaturan').update(o));await muatDasar();toast('Pengaturan disimpan');renderV()});
 const rp=n=>'Rp '+(Number(n)||0).toLocaleString('id-ID');
 const setTabungan=on=>guard(async()=>{await dbq(db.from('pengaturan').update({tabungan_aktif:!!on}));await muatDasar();S.tab=null;toast(on?'Tabungan siswa diaktifkan. Menu Tabungan sekarang tersedia':'Tabungan siswa dinonaktifkan. Data tetap tersimpan');renderAll()});
+let TB={rg:null,mode:null,pdf:false,rows:[]};
+const tbLanjut=x=>x.status!=='Lulus'&&x.status!=='Nonaktif';
+const tbPerlakuan=x=>!tbLanjut(x)?'Dihapus':TB.mode==='bawa'?'Dibawa':TB.mode==='tutup'?'Dihapus':'-';
+function tbGrup(){const m=new Map();TB.rows.forEach(x=>{const k=x.kelas||'-';if(!m.has(k))m.set(k,[]);m.get(k).push(x)});
+ const ord=n=>{const i=S.kelas.findIndex(c=>c.nama===n);return i<0?999:i};
+ return [...m.entries()].sort((p,q)=>ord(p[0])-ord(q[0])||String(p[0]).localeCompare(String(q[0]),'id'))}
+function tbTabelHtml(){const G=tbGrup();
+ const jl=TB.rows.filter(x=>!tbLanjut(x)).reduce((a,x)=>a+Number(x.saldo),0),jn=TB.rows.filter(tbLanjut).reduce((a,x)=>a+Number(x.saldo),0);
+ const nasib=TB.mode==='bawa'?'dibawa ke tahun ajaran baru':TB.mode==='tutup'?'dihapus (tutup buku)':'menunggu pilihan Anda';
+ let h=`<div class="note"><b>Saldo siswa lulus dan nonaktif: ${rp(jl)}</b> (dihapus bersama riwayatnya)<br><b>Saldo siswa naik kelas dan tinggal kelas: ${rp(jn)}</b> (${nasib})<br><b>Total: ${rp(jl+jn)}</b> dari ${TB.rows.length} siswa</div>`;
+ G.forEach(([k,list])=>{const w=ttdWali(k),tot=list.reduce((a,x)=>a+Number(x.saldo),0);
+  const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nama)}</td><td>${esc(x.status)}</td><td style="text-align:right">${rp(x.saldo)}</td><td>${tbPerlakuan(x)}</td></tr>`).join('')+`<tr><td colspan="3"><b>Jumlah kelas ${esc(k)}</b></td><td style="text-align:right"><b>${rp(tot)}</b></td><td></td></tr>`;
+  h+=`<div class="tbkh">Kelas ${esc(k)} <span class="mu">· Wali kelas: ${esc(w?w.nama:'-')} · ${list.length} siswa</span></div>`+tab(['No','Nama','Status','Saldo','Perlakuan'],rows)});
+ return h}
+function tbPilih(m){TB.mode=m;TB.pdf=false;const e=$('#tbTabel');if(e)e.innerHTML=tbTabelHtml();tbCek()}
+function tbCek(){const lb=($('#tbLabel')||{}).value||'',ok=($('#tbOk')||{}).value||'',s=[];
+ if(TB.rows.length){s.push([!!TB.mode,'Pilih perlakuan saldo tabungan']);s.push([TB.pdf,'Unduh rekap tabungan per kelas (PDF)'])}
+ s.push([lb.trim().length>0,'Isi tahun ajaran baru']);s.push([ok.trim()==='MULAI','Ketik MULAI']);
+ const e=$('#tbSyarat');if(e)e.innerHTML=s.map(x=>`<div style="color:${x[0]?'#159447':'var(--mu)'};font-weight:${x[0]?800:600}">${x[0]?'✓':'○'} ${x[1]}</div>`).join('');
+ const b=$('#ms');if(b)b.disabled=!s.every(x=>x[0])}
+async function tbUnduhPdf(btn){if(!TB.mode)return toast('Pilih dulu perlakuan saldo (bawa atau tutup buku)',false);
+ if(!setUnduhBusy(btn,true,'Membuat PDF...'))return;
+ try{await jedaUnduh();const G=tbGrup(),tg=ttdKepsek(),d=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+  G.forEach(([k,list],gi)=>{if(gi)d.addPage();const wl=ttdWali(k),tot=list.reduce((a,x)=>a+Number(x.saldo),0);
+   d.setFont('helvetica','bold');d.setFontSize(13);d.setTextColor(0,0,0);d.text('REKAP TABUNGAN AKHIR TAHUN AJARAN - '+ns().toUpperCase(),105,14,{align:'center'});
+   d.setFont('helvetica','normal');d.setFontSize(8.5);d.text(d.splitTextToSize('Tahun ajaran '+(TB.rg.tahun_ajaran||'-')+'  |  Kelas '+k+'  |  Wali kelas: '+(wl?wl.nama:'-')+'  |  Saldo siswa naik/tinggal kelas: '+(TB.mode==='bawa'?'dibawa ke tahun ajaran baru':'dihapus (tutup buku)'),180),105,20,{align:'center'});
+   const body=list.map((x,i)=>[i+1,x.nama,x.nisn||'-',x.status,Number(x.saldo).toLocaleString('id-ID'),tbPerlakuan(x)]).concat([['','JUMLAH','','',tot.toLocaleString('id-ID'),'']]);
+   d.autoTable({startY:28,head:[['No','Nama','NISN','Status','Saldo (Rp)','Perlakuan']],body,columnStyles:{4:{halign:'right'}},theme:'grid',styles:{fontSize:8,cellPadding:1.6},headStyles:{fillColor:[118,80,184],halign:'center'}});
+   let y=d.lastAutoTable.finalY+10;if(y+42>285){d.addPage();y=20}
+   pdfTtd(d,164,y,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);if(wl)pdfTtd(d,46,y,'Mengetahui,',' Wali kelas',wl.kelas,wl.nama,wl.nip)});
+  d.save('rekap-tabungan-akhir-tahun-'+ns().replace(/[^\w]+/g,'-')+'-'+TODAY+'.pdf');TB.pdf=true;tbCek();toast('PDF rekap tabungan per kelas berhasil diunduh')}
+ catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
+async function tbMulai(){const lb=($('#tbLabel')||{}).value.trim(),ok=($('#tbOk')||{}).value.trim();
+ if(!lb||ok!=='MULAI')return toast('Isi tahun ajaran dan ketik MULAI',false);
+ if(TB.rows.length&&(!TB.mode||!TB.pdf))return toast('Pilih perlakuan saldo dan unduh PDF rekap tabungan dulu',false);
+ const rg=TB.rg,pt=TB.rows.length?TB.mode:null,b=$('#ms');b.disabled=true;
+ try{ld(1);await dbq(db.rpc('mulai_tahun_ajaran',{label:lb,p_sekolah:SEK,p_tabungan:pt}));closeM();
+  S.absen={};S.tab=null;KL.data=null;AL.data=null;KL.sel.clear();await muatDasar();
+  toast('Tahun ajaran baru dimulai. Keputusan diterapkan: '+rg.naik+' naik kelas, '+rg.tinggal+' tinggal kelas, '+(rg.lulus||0)+' lulus (masuk menu Alumni)'+(pt==='bawa'?'. Saldo tabungan siswa yang lanjut dibawa, tabungan siswa lulus dihapus':pt==='tutup'?'. Seluruh tabungan siswa dihapus (tutup buku)':''));renderAll()}
+ catch(e){toast((e&&e.message)||String(e),false);b.disabled=false;tbCek()}finally{ld(0)}}
 async function tahunBaru(){
  let rg;try{ld(1);rg=await dbq(db.rpc('tahun_baru_ringkasan',{p_sekolah:SEK}))}catch(e){return toast((e&&e.message)||String(e),false)}finally{ld(0)}
  if(!rg.siap){const li=(rg.alasan||[]).map(a=>'<li>'+esc(a)+'</li>').join(''),mm=(rg.masalah||[]).slice(0,20).map(x=>`<tr><td>${esc(x.nama)}</td><td>${esc(x.kelas)}</td><td>${esc(x.masalah)}</td></tr>`).join('');
   info('Tahun ajaran baru belum bisa dimulai',`<div class="note" style="border:2px solid #d99a27;background:#fff8df"><b>Keputusan akhir tahun belum siap:</b><ul style="margin:6px 0 0 18px">${li}</ul></div>${mm?tab(['Siswa','Kelas','Masalah'],mm):''}<div class="tb"><button class="btn success" onclick="closeM();go('kelola')">Buka Kelola Siswa</button></div>`);return}
- const sal=Number(rg.saldo_total)||0,OP=['Bawa saldo ke tahun berikutnya (tersimpan sebagai saldo bawaan)','Tutup buku (saldo dianggap sudah dikembalikan ke wali)'];
- const f=[{k:'label',l:'Tahun ajaran baru (contoh 2027/2028)'}];
- if(sal>0)f.push({k:'tb',l:'Siswa yang akan dihapus masih punya saldo tabungan '+rp(sal)+'. Apa yang dilakukan dengan saldo ini?',o:OP});
- f.push({k:'ok',l:'Ketik MULAI (huruf kapital semua) untuk menerapkan keputusan akhir tahun dan memulai tahun ajaran baru'});
+ if(!Array.isArray(rg.daftar_saldo)){info('Database perlu diperbarui','<div class="note" style="border:2px solid #d99a27;background:#fff8df">Fungsi database tahun ajaran baru belum diperbarui ke versi terbaru. Jalankan berkas SQL pembaruan di Supabase terlebih dahulu, lalu coba lagi.</div>');return}
+ TB={rg,mode:null,pdf:false,rows:rg.daftar_saldo};
  const dh=rg.daftar_hapus||[],nm=dh.slice(0,40).map(x=>esc(x.nama)+' ('+esc(x.sebab)+')').join(', ')+(dh.length>40?', dan '+(dh.length-40)+' lainnya':'');
- form('Mulai tahun ajaran baru',f,async v=>{if(!v.label||v.ok!=='MULAI')throw new Error('Isi tahun ajaran dan ketik MULAI');
-  const pt=sal>0?(v.tb===OP[0]?'bawa':'tutup'):null;
-  await dbq(db.rpc('mulai_tahun_ajaran',{label:v.label,p_sekolah:SEK,p_tabungan:pt}));S.absen={};S.tab=null;KL.data=null;AL.data=null;KL.sel.clear();await muatDasar();
-  toast('Tahun ajaran baru dimulai. Keputusan diterapkan: '+rg.naik+' naik kelas, '+rg.tinggal+' tinggal kelas, '+(rg.lulus||0)+' lulus (masuk menu Alumni)'+(sal>0?(pt==='bawa'?'. Saldo tabungan tersimpan sebagai saldo bawaan di menu Tabungan':'. Buku tabungan ditutup'):''));renderAll()});
- $('#mbd').insertAdjacentHTML('afterbegin',`<div class="note" style="border:2px solid #d99a27;background:#fff8df"><b>Ringkasan penerapan keputusan (tahun ajaran ${esc(rg.tahun_ajaran)})</b><br>⬆️ Naik kelas: ${rg.naik} siswa dipindah ke kelas tujuan<br>🔁 Tinggal kelas: ${rg.tinggal} siswa tetap di kelasnya<br>🎓 Lulus: ${rg.lulus} siswa (dicatat ke menu Alumni, lalu dihapus dari daftar siswa)<br><br><b>Dihapus permanen (siswa naik kelas dan tinggal kelas TIDAK dihapus):</b><br>- Seluruh absensi, laporan orang tua, dan pesan WhatsApp tahun lalu<br>- ${dh.length} siswa (lulus ${rg.lulus}, nonaktif ${rg.nonaktif}) beserta ${rg.wali_hapus} data wali yang tidak punya anak lain di sekolah ini${nm?'<div style="max-height:110px;overflow:auto;margin-top:6px;font-size:12px">'+nm+'</div>':''}<div class="tb" style="margin:10px 0 0"><button type="button" class="btn success sm dl" onclick="unduhSiswa('pdf',this,'*')">⬇ Data Siswa (PDF)</button><button type="button" class="btn sm dl pdf" onclick="unduhSiswa('xlsx',this,'*')">⬇ Data Siswa (XLSX)</button></div><b>Unduh dulu data yang diperlukan sebelum melanjutkan.</b></div>`)}
+ const ops=`<label class="tbop"><input type="radio" name="tbm" onchange="tbPilih('bawa')"><span><b>Bawa saldo</b> siswa yang naik kelas dan tinggal kelas ke tahun ajaran baru. Riwayat transaksi dihapus, tiap siswa hanya punya satu baris saldo awal sebesar saldo akhirnya.</span></label><label class="tbop"><input type="radio" name="tbm" onchange="tbPilih('tutup')"><span><b>Tutup buku:</b> seluruh tabungan semua siswa di sekolah ini (saldo dan riwayat) dihapus. Saldo dianggap sudah dikembalikan ke wali.</span></label>`;
+ const tabSec=TB.rows.length?`<div class="tbbox"><b>💰 Tabungan siswa yang masih bersaldo</b><div class="mu" style="margin:4px 0 8px">Saldo dan riwayat siswa lulus dan nonaktif selalu dihapus. Pilih perlakuan untuk siswa yang lanjut, lalu unduh PDF rekap per kelas. Setelah Mulai, riwayat tidak bisa dikembalikan.</div>${ops}<div id="tbTabel">${tbTabelHtml()}</div><div class="tb" style="margin:10px 0 0"><button type="button" class="btn success sm dl" onclick="tbUnduhPdf(this)">⬇ Rekap tabungan per kelas (PDF)</button><button type="button" class="btn sm dl pdf" onclick="unduhTabungan('riwayat')">⬇ Riwayat tabungan lengkap (XLSX)</button></div></div>`:`<div class="note">Tidak ada saldo tabungan siswa. Sisa riwayat tabungan (bila ada) tetap dibersihkan saat tahun ajaran baru dimulai.</div>`;
+ $('#mt').textContent='Mulai tahun ajaran baru';
+ $('#mbd').innerHTML=`<div class="note" style="border:2px solid #d99a27;background:#fff8df"><b>Ringkasan penerapan keputusan (tahun ajaran ${esc(rg.tahun_ajaran)})</b><br>⬆️ Naik kelas: ${rg.naik} siswa dipindah ke kelas tujuan<br>🔁 Tinggal kelas: ${rg.tinggal} siswa tetap di kelasnya<br>🎓 Lulus: ${rg.lulus} siswa (dicatat ke menu Alumni, lalu dihapus dari daftar siswa)<br><br><b>Dihapus permanen (siswa naik kelas dan tinggal kelas TIDAK dihapus):</b><br>- Seluruh absensi, laporan orang tua, dan pesan WhatsApp tahun lalu<br>${rg.setoran_hafalan?`- ${rg.setoran_hafalan} catatan setoran hafalan (semua siswa; daftar hafalan tetap)<br>`:''}${rg.jadwal_piket_kelas?`- ${rg.jadwal_piket_kelas} jadwal piket per kelas (piket seluruh kelas tetap)<br>`:''}- ${dh.length} siswa (lulus ${rg.lulus}, nonaktif ${rg.nonaktif}) beserta ${rg.wali_hapus} data wali yang tidak punya anak lain di sekolah ini${nm?'<div style="max-height:110px;overflow:auto;margin-top:6px;font-size:12px">'+nm+'</div>':''}<div class="tb" style="margin:10px 0 0"><button type="button" class="btn success sm dl" onclick="unduhSiswa('pdf',this,'*')">⬇ Data Siswa (PDF)</button><button type="button" class="btn sm dl pdf" onclick="unduhSiswa('xlsx',this,'*')">⬇ Data Siswa (XLSX)</button></div><b>Unduh dulu data yang diperlukan sebelum melanjutkan.</b></div>${tabSec}
+<div class="tbbox"><div class="fd"><label class="l">Tahun ajaran baru (contoh 2027/2028)</label><input id="tbLabel" class="input" autocomplete="off" oninput="tbCek()"></div><div class="fd" style="margin-top:10px"><label class="l">Ketik MULAI (huruf kapital semua) untuk menerapkan keputusan akhir tahun dan memulai tahun ajaran baru</label><input id="tbOk" class="input" autocomplete="off" oninput="tbCek()"></div><div id="tbSyarat" style="margin-top:10px;font-size:13px"></div><div class="mu" style="margin-top:8px">Dengan menekan tombol Mulai, Anda menyatakan sudah memeriksa seluruh daftar di atas dan menyetujui penghapusan data secara permanen.</div></div>`;
+ const m=$('#ms');m.style.display='';m.textContent='Mulai tahun ajaran baru';m.className='btn danger';m.onclick=tbMulai;
+ $('#md').classList.add('besar');$('#md').classList.add('show');tbCek()}
 /* ---------- Kelola Siswa: kenaikan kelas, tinggal kelas, kelulusan, pengesahan ---------- */
 let KL={tab:'naik',asal:'',tujuan:'',q:'',dq:'',dk:'',hm:false,hs:new Set(),sel:new Set(),data:null,ring:null,map:new Map()};
 const KJ={naik:'Naik kelas',tinggal:'Tinggal kelas',lulus:'Lulus'},KJC={naik:'Izin',tinggal:'Sakit',lulus:'Alpa'},KST={sementara:'Sementara',disahkan:'Disahkan',diterapkan:'Diterapkan'},KSC={sementara:'Terlambat',disahkan:'Hadir',diterapkan:'Libur'};
@@ -2024,7 +2071,7 @@ function klProsesHtml(){
  if((t==='naik'||t==='pindah')&&KL.asal&&!klTujuanList().length&&!tanpa.length)w+=`<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ ${t==='pindah'?'Tidak ada kelas lain dengan urutan yang sama dengan kelas asal.':'Tidak ada kelas dengan urutan lebih tinggi dari kelas asal.'}</div>`;
  const btn={naik:'Proses Kenaikan Kelas',tinggal:'Proses Tinggal Kelas',lulus:'Proses Kelulusan',pindah:'Pindahkan Siswa'}[t];
  return `<div class="note">${klJudul[t][1]}${t==='pindah'?' Siswa langsung berpindah kelas.':' Keputusan disimpan sebagai <b>sementara</b>, siswa belum dipindahkan.'}</div>${w}
-<div class="tb"><select class="select grow" onchange="klAsal(this.value)">${klOpsi(as,KL.asal,t==='lulus'?'- Kelas akhir -':'- Kelas asal -')}</select>${(t==='naik'||t==='pindah')?`<select class="select grow" onchange="klTujuan(this.value)">${klOpsi(klTujuanList(),KL.tujuan,'- Kelas tujuan -')}</select>`:''}</div>
+<div class="tb${(t==='naik'||t==='pindah')?'':' tb-full'}"><select class="select grow" onchange="klAsal(this.value)">${klOpsi(as,KL.asal,t==='lulus'?'- Kelas akhir -':'- Kelas asal -')}</select>${(t==='naik'||t==='pindah')?`<select class="select grow" onchange="klTujuan(this.value)">${klOpsi(klTujuanList(),KL.tujuan,'- Kelas tujuan -')}</select>`:''}</div>
 <div class="tb"><input class="input grow" style="flex:1 1 100%;width:100%" placeholder="Cari nama atau NISN" value="${esc(KL.q)}" oninput="klCari(this)"></div>
 <label class="mu" style="display:flex;gap:8px;align-items:center;margin:0 0 10px"><input type="checkbox" ${sem?'checked':''} onchange="klSemua(this.checked)"> Pilih semua yang terlihat</label>
 <div id="klList">${klListHtml()}</div><div class="note" id="klRingkas" style="margin-top:12px">${klRingkasHtml()}</div>
@@ -2241,7 +2288,7 @@ async function unduhAlumni(t,btn){
 
 /* ---------- Tabungan Siswa ---------- */
 let tabK='',tabQ='';
-async function muatTabungan(){const [a,b]=await Promise.all([dbq(db.rpc('tabungan_saldo',{p_sekolah:SEK})),dbq(db.from('tabungan_bawaan').select('*').order('nama_siswa'))]);S.tab=a||[];S.tabBawaan=b||[];if(tabP==='rek'&&tabK)await tabRekRaw()}
+async function muatTabungan(){const a=await dbq(db.rpc('tabungan_saldo',{p_sekolah:SEK}));S.tab=a||[];if(tabP==='rek'&&tabK)await tabRekRaw()}
 const fmtIn=v=>String(v||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 let tabP='in',tabS=0,tabBln=TODAY.slice(0,7),tabRw=[],tabRekD=null;
 const tabWali=k=>{const w=ttdWali(k);return w?w.nama:'-'},tabAdaWali=k=>{const x=S.kelas.find(c=>c.nama===k);return !!x&&x.wali===me};
@@ -2258,10 +2305,291 @@ async function tabRekRaw(){const ids=S.tab.filter(r=>r.kelas_nama===tabK).map(r=
 function tabMuatRek(){if(!tabK)return;guard(async()=>{await tabRekRaw();renderV()})}
 const tabCmp=(a,b)=>a.tanggal!==b.tanggal?(a.tanggal<b.tanggal?-1:1):(a.dibuat!==b.dibuat?(a.dibuat<b.dibuat?-1:1):a.id-b.id);
 const tabBarisAsc=rw=>{let s=0;return rw.slice().sort(tabCmp).map(x=>{const m=x.jenis==='setor'?Number(x.jumlah):'',k=x.jenis==='tarik'?Number(x.jumlah):'';s+=(m||0)-(k||0);return{x,m,k,s}})};
+/* ---------- Jadwal Piket dan Hafalan ---------- */
+async function pgAll(mk){const o=[];for(let a=0;a<50000;a+=1000){const p=await dbq(mk().range(a,a+999));o.push(...(p||[]));if(!p||p.length<1000)break}return o}
+const dbMsg=e=>{const m=String((e&&e.message)||e||'');return /duplicate key|_uq\b|_nama_uq/i.test(m)?'Data dengan isi yang sama sudah ada':m};
+const pkTry=async f=>{try{return await f()}catch(e){throw new Error(dbMsg(e))}};
+const setFitur=(o,msg)=>guard(async()=>{try{await dbq(db.from('pengaturan').update(o))}catch(e){renderV();throw e}await muatDasar();S.pkJenis=null;S.hfJenis=null;toast(msg);renderAll()});
+const setPiket=on=>setFitur({piket_aktif:!!on},on?'Jadwal piket diaktifkan. Menu Jadwal Piket sekarang tersedia':'Jadwal piket dinonaktifkan. Data tetap tersimpan');
+const setNotifPiket=on=>setFitur({notif_piket_aktif:!!on},on?'Pengingat piket ke orang tua diaktifkan':'Pengingat piket ke orang tua dimatikan');
+const setHafalan=on=>setFitur({hafalan_aktif:!!on},on?'Hafalan diaktifkan. Menu Hafalan sekarang tersedia':'Hafalan dinonaktifkan. Data tetap tersimpan');
+const LOADING_FITUR=t=>`<div class="panel"><div class="pb"><div class="note">⏳ Memuat ${t}...</div></div></div>`;
+const pkKelasOpt=()=>S.kelas.map(k=>({value:k.nama,label:k.nama}));
+
+/* --- Piket --- */
+let pkTab='jadwal',pkJ=0,pkK='';
+const pkCakL={kelas:'Per kelas',semua:'Seluruh kelas'},pkCakV={'Per kelas':'kelas','Seluruh kelas':'semua'};
+async function muatPiket(){const [j,d]=await Promise.all([dbq(db.from('piket_jenis').select('*').order('urutan').order('id')),pgAll(()=>db.from('piket_jadwal').select('*').order('id'))]);S.pkJenis=j||[];S.pkJadwal=d||[];if(!S.pkJenis.some(x=>x.id===pkJ))pkJ=S.pkJenis[0]?S.pkJenis[0].id:0}
+V.piket=()=>{if(!S.pkJenis)return LOADING_FITUR('jadwal piket');
+ const hal=[['jadwal','📅 Jadwal'],['jenis','🏷️ Jenis piket']];
+ return `<div class="panel"><div class="ph">🧹 Jadwal Piket</div><div class="pb"><div class="utabs">${hal.map(x=>`<button class="utab${pkTab===x[0]?' on':''}" onclick="pkHal('${x[0]}')">${x[1]}</button>`).join('')}</div>${pkTab==='jenis'?pkJenisHTML():pkJadwalHTML()}</div></div>`};
+const pkHal=p=>{pkTab=p;renderV()};
+const pkPilihJ=id=>{pkJ=id;renderV()},pkPilihK=v=>{pkK=v;renderV()};
+function pkJenisHTML(){
+ const rows=S.pkJenis.map(j=>{const n=S.pkJadwal.filter(x=>x.jenis_id===j.id).length;
+  return `<tr><td><b>${esc(j.nama)}</b>${j.keterangan?`<div class="mu">${esc(j.keterangan)}</div>`:''}</td><td>${pkCakL[j.cakupan]}</td><td>${n}</td><td><div class="tb" style="margin:0;flex-wrap:wrap"><button class="btn sm soft" onclick="pkUbahJenis(${j.id})">✏ Ubah</button><button class="btn sm danger" onclick="pkHapusJenis(${j.id})">Hapus</button></div></td></tr>`}).join('');
+ return `<div class="note">Semua guru boleh menambah, mengubah, dan menghapus jenis piket. <b>Per kelas</b>: jadwal dibuat per kelas dan per anak. <b>Seluruh kelas</b>: kegiatan bersama tanpa nama anak (misalnya gotong royong halaman). Cakupan hanya dapat diubah oleh Kepala Sekolah atau Wakil.</div><div class="tb"><button class="btn success" onclick="pkTambahJenis()">+ Tambah jenis</button></div>`+tab(['Jenis','Cakupan','Jadwal','Aksi'],rows,'Belum ada jenis piket.')}
+function pkTambahJenis(){form('Tambah jenis piket',[{k:'nama',l:'Nama jenis (contoh: Piket kelas, Piket halaman)'},{k:'cak',l:'Cakupan',o:['Per kelas','Seluruh kelas']},{k:'ket',l:'Keterangan (opsional)'}],async v=>{
+ if(!v.nama)throw new Error('Nama jenis wajib diisi');
+ await pkTry(()=>dbq(db.from('piket_jenis').insert({nama:v.nama,cakupan:pkCakV[v.cak]||'kelas',keterangan:v.ket||null,urutan:S.pkJenis.length+1,dibuat_oleh:me})));
+ await muatPiket();renderV();toast('Jenis piket ditambahkan')})}
+function pkUbahJenis(id){const j=S.pkJenis.find(x=>x.id===id);if(!j)return;const kep=adalahKepala();
+ form('Ubah jenis piket',[{k:'nama',l:'Nama jenis',v:j.nama},{k:'ket',l:'Keterangan (opsional)',v:j.keterangan||''},kep?{k:'cak',l:'Cakupan (hanya Kepala Sekolah dan Wakil)',o:['Per kelas','Seluruh kelas'],v:pkCakL[j.cakupan]}:{k:'cak',l:'Cakupan (hanya Kepala Sekolah dan Wakil yang dapat mengubah)',ro:1,v:pkCakL[j.cakupan]}],async v=>{
+ if(!v.nama)throw new Error('Nama jenis wajib diisi');
+ const baru=kep?(pkCakV[v.cak]||j.cakupan):j.cakupan,n=S.pkJadwal.filter(x=>x.jenis_id===id).length;
+ if(baru!==j.cakupan&&n>0&&!await konfirmasi('Mengubah cakupan menjadi "'+pkCakL[baru]+'" akan menghapus '+n+' jadwal di jenis ini. Lanjutkan?',{bahaya:1,judul:'Ubah cakupan',ya:'Ubah dan hapus jadwal'}))throw new Error('Perubahan dibatalkan');
+ await pkTry(()=>dbq(db.from('piket_jenis').update({nama:v.nama,keterangan:v.ket||null}).eq('id',id)));
+ if(baru!==j.cakupan)await pkTry(()=>dbq(db.rpc('piket_ubah_cakupan',{p_jenis:id,p_cakupan:baru})));
+ await muatPiket();renderV();toast('Jenis piket disimpan')})}
+async function pkHapusJenis(id){const j=S.pkJenis.find(x=>x.id===id);if(!j)return;const n=S.pkJadwal.filter(x=>x.jenis_id===id).length;
+ if(!await konfirmasi('Hapus jenis "'+j.nama+'"?'+(n?' '+n+' jadwal di dalamnya ikut terhapus.':''),{bahaya:1,judul:'Hapus jenis piket',ya:'Hapus'}))return;
+ guard(async()=>{await dbq(db.from('piket_jenis').delete().eq('id',id));await muatPiket();renderV();toast('Jenis piket dihapus')})}
+function pkJadwalHTML(){
+ if(!S.pkJenis.length)return '<div class="note">Belum ada jenis piket. Buat dulu di tab Jenis piket.</div><div class="tb"><button class="btn success" onclick="pkHal(\'jenis\');pkTambahJenis()">+ Tambah jenis</button></div>';
+ const j=S.pkJenis.find(x=>x.id===pkJ)||S.pkJenis[0],kl=S.kelas.find(k=>k.nama===pkK);
+ const chips=`<div class="chips kecil">${S.pkJenis.map(x=>`<button class="chip ${x.id===j.id?'on':''}" onclick="pkPilihJ(${x.id})">${esc(x.nama)}</button>`).join('')}</div>`;
+ const pilK=j.cakupan==='kelas'?`<div class="tb tab-choice" style="margin-top:14px">${cpick('pkKelasPick','kelas',pkK,pkKelasOpt(),'pkPilihK','Pilih kelas')}</div>`:'';
+ if(j.cakupan==='kelas'&&!kl)return chips+pilK+PKH;
+ const x_=id=>`<button type="button" class="pk-x" aria-label="Hapus" onclick="pkHapusBaris(${id})">✕</button>`;
+ const kartu=[1,2,3,4,5,6,0].filter(d=>!S.mingguan.includes(d)).map(d=>{
+  const rows=S.pkJadwal.filter(x=>x.jenis_id===j.id&&x.hari===d&&(j.cakupan==='semua'||x.kelas_id===kl.id));let isi;
+  if(j.cakupan==='kelas')isi=rows.map(x=>({x,s:S.siswa.find(y=>y.id===x.siswa_id)})).sort((a,b)=>String(a.s?a.s.nama:'').localeCompare(String(b.s?b.s.nama:''),'id')).map((o,n)=>`<div class="pkrow"><span>${n+1}. ${esc(o.s?o.s.nama:'?')}</span>${x_(o.x.id)}</div>`).join('');
+  else isi=rows.map(x=>{const k=S.kelas.find(y=>y.id===x.kelas_id);return `<div class="tb" style="margin:4px 0;justify-content:space-between"><span><b>${x.kelas_id==null?'Seluruh kelas':'Kelas '+esc(k?k.nama:'?')}</b>${x.catatan?` <span class="mu">· ${esc(x.catatan)}</span>`:''}</span>${x_(x.id)}</div>`}).join('');
+  return `<div class="pkday"><b>${HR[d]}</b><div style="margin-top:6px">${isi||'<span class="mu">Belum ada jadwal</span>'}</div><div class="tb" style="margin:8px 0 0"><button class="btn sm success" onclick="pkTambah(${d})">+ Tambah</button></div></div>`}).join('');
+ return chips+pilK+`<div class="note">Hari libur mingguan tidak ditampilkan. Pengingat ke orang tua dikirim otomatis pukul 18.00 WIB (piket besok) dan 05.00 WIB (piket hari ini), bila pengingat diaktifkan di Pengaturan dan orang tua sudah mengaktifkannya di Halaman Siswa.</div>`+kartu}
+const pkTambah=d=>{const j=S.pkJenis.find(x=>x.id===pkJ);if(!j)return;j.cakupan==='kelas'?pkTambahAnak(d):pkTambahSemua(d)};
+function pkTambahAnak(d){const j=S.pkJenis.find(x=>x.id===pkJ),kl=S.kelas.find(k=>k.nama===pkK);if(!j||!kl)return;
+ const ada=new Set(S.pkJadwal.filter(x=>x.jenis_id===j.id&&x.hari===d).map(x=>x.siswa_id)),sis=S.siswa.filter(s=>s.aktif&&s.kelas_id===kl.id&&!ada.has(s.id));
+ if(!sis.length)return toast('Semua anak aktif di kelas ini sudah terjadwal pada hari tersebut',false);
+ resetTutup();$('#mt').textContent=HR[d]+' · '+j.nama+' · Kelas '+kl.nama;
+ $('#mbd').innerHTML=`<div class="note">Centang anak yang piket.</div><div id="pkCek">${sis.map(s=>`<label class="cbl" style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" value="${s.id}"> ${esc(s.nama)}</label>`).join('')}</div><div class="fd" style="margin-top:8px"><label class="l">Catatan (opsional)</label><input id="pkCat" class="input" maxlength="120"></div>`;
+ const m=$('#ms');m.style.display='';m.textContent='Simpan';
+ m.onclick=()=>guard(async()=>{const ids=[...document.querySelectorAll('#pkCek input:checked')].map(x=>+x.value);if(!ids.length)throw new Error('Pilih minimal satu anak');const cat=($('#pkCat').value||'').trim()||null;
+  await pkTry(()=>dbq(db.from('piket_jadwal').insert(ids.map(id=>({jenis_id:j.id,hari:d,kelas_id:kl.id,siswa_id:id,catatan:cat})))));
+  closeM();await muatPiket();renderV();toast(ids.length+' anak dijadwalkan')});
+ $('#md').classList.add('show')}
+function pkTambahSemua(d){const j=S.pkJenis.find(x=>x.id===pkJ);if(!j)return;
+ form(HR[d]+' · '+j.nama,[{k:'kls',l:'Kelas yang ikut',o:['Seluruh kelas',...S.kelas.map(k=>k.nama)]},{k:'cat',l:'Catatan (opsional, contoh: Kerja bakti halaman)'}],async v=>{
+  const kl=v.kls==='Seluruh kelas'?null:S.kelas.find(k=>k.nama===v.kls);
+  await pkTry(()=>dbq(db.from('piket_jadwal').insert({jenis_id:j.id,hari:d,kelas_id:kl?kl.id:null,siswa_id:null,catatan:v.cat||null})));
+  await muatPiket();renderV();toast('Jadwal ditambahkan')})}
+async function pkHapusBaris(id){const x=S.pkJadwal.find(y=>y.id===id);if(!x)return;const s=S.siswa.find(y=>y.id===x.siswa_id);
+ if(!await konfirmasi('Hapus jadwal '+(s?s.nama+' ':'')+'pada hari '+HR[x.hari]+'?',{bahaya:1,judul:'Hapus jadwal piket',ya:'Hapus'}))return;
+ guard(async()=>{await dbq(db.from('piket_jadwal').delete().eq('id',id));await muatPiket();renderV();toast('Jadwal dihapus')})}
+
+/* --- Hafalan --- */
+let hfMd=0,hfPil=new Set(),hfTab='setor',hfK='',hfDK='',hfSet=[],hfSetK='',hfSiswa=0,hfTgl=TODAY;
+const hfCakL={wajib:'Wajib semua kelas',kelas:'Per kelas'},hfCakV={'Wajib semua kelas':'wajib','Per kelas':'kelas'};
+const hfJ=id=>S.hfJenis.find(j=>j.id===id)||{};
+async function muatHafalan(){const [j,i]=await Promise.all([dbq(db.from('hafalan_jenis').select('*').order('urutan').order('id')),pgAll(()=>db.from('hafalan_item').select('*').order('urutan').order('id'))]);S.hfJenis=j||[];S.hfItem=i||[];hfSetK='';hfSet=[];if(hfK&&S.kelas.some(k=>k.nama===hfK))await hfMuatSetoran()}
+async function hfMuatSetoran(){const kl=S.kelas.find(k=>k.nama===hfK);hfSet=[];hfSetK=hfK;if(!kl)return;const ids=S.siswa.filter(s=>s.aktif&&s.kelas_id===kl.id).map(s=>s.id);if(!ids.length)return;
+ hfSet=await pgAll(()=>db.from('hafalan_setoran').select('id,siswa_id,hafalan_id,hasil,tanggal,catatan,nama_pencatat').in('siswa_id',ids).order('id'))}
+function hfTarget(kid){return S.hfItem.filter(i=>i.kelas_id==null||i.kelas_id===kid).sort((a,b)=>((hfJ(a.jenis_id).urutan||0)-(hfJ(b.jenis_id).urutan||0))||a.jenis_id-b.jenis_id||((a.urutan||0)-(b.urutan||0))||a.id-b.id)}
+function hfStat(sid,tgt){const m=new Map(hfSet.filter(x=>x.siswa_id===sid&&x.hafalan_id!=null).map(x=>[x.hafalan_id,x]));let l=0,u=0;tgt.forEach(i=>{const x=m.get(i.id);if(x){if(x.hasil==='lancar')l++;else u++}});return{m,l,u,t:tgt.length}}
+V.hafalan=()=>{if(!S.hfJenis)return LOADING_FITUR('hafalan');
+ const hal=[['setor','✍️ Setor'],['daftar','📋 Daftar hafalan'],['rekap','📊 Rekap'],['jenis','🏷️ Jenis']];
+ return `<div class="panel"><div class="ph">📖 Hafalan</div><div class="pb"><div class="utabs">${hal.map(x=>`<button class="utab${hfTab===x[0]?' on':''}" onclick="hfHal('${x[0]}')">${x[1]}</button>`).join('')}</div>${hfTab==='setor'?hfSetorHTML():hfTab==='daftar'?hfDaftarHTML():hfTab==='rekap'?hfRekapHTML():hfJenisHTML()}</div></div>`};
+function hfHal(p){hfTab=p;hfMd=0;hfPil=new Set();renderV();if((p==='setor'||p==='rekap')&&hfK&&hfSetK!==hfK)hfMuatSetoran().then(()=>renderV()).catch(e=>toast(dbMsg(e),false))}
+function hfPilihK(v){hfK=v;hfSetK='';hfSet=[];renderV();if(v)hfMuatSetoran().then(()=>renderV()).catch(e=>toast(dbMsg(e),false))}
+const hfPilihDK=v=>{hfDK=v;hfMd=0;hfPil=new Set();renderV()};
+const hfPilKelas=()=>`<div class="tb tab-choice">${cpick('hfKelasPick','kelas',hfK,pkKelasOpt(),'hfPilihK','Pilih kelas')}</div>`;
+function hfSetorHTML(){const pil=hfPilKelas();if(!hfK)return pil+PKH;const kl=S.kelas.find(k=>k.nama===hfK);if(!kl)return pil+PKH;
+ if(hfSetK!==hfK)return pil+'<div class="note">⏳ Memuat setoran...</div>';
+ const tgt=hfTarget(kl.id),sis=S.siswa.filter(s=>s.aktif&&s.kelas_id===kl.id);
+ if(!tgt.length)return pil+'<div class="note">Belum ada daftar hafalan untuk kelas ini. Isi di tab Daftar hafalan.</div>';
+ return pil+tab(['Nama','Lancar','Mengulang','Aksi'],sis.map(s=>{const st=hfStat(s.id,tgt);return `<tr><td><b>${esc(s.nama)}</b></td><td>${st.l} / ${st.t}</td><td>${st.u}</td><td><button class="btn sm success" onclick="hfBuka(${s.id})">✍️ Setor</button></td></tr>`}).join(''),'Belum ada siswa aktif di kelas ini.')}
+function hfIsi(){const s=S.siswa.find(x=>x.id===hfSiswa),kl=s&&S.kelas.find(k=>k.id===s.kelas_id);if(!s||!kl)return '<div class="note">Siswa tidak ditemukan</div>';
+ const tgt=hfTarget(kl.id),st=hfStat(s.id,tgt);
+ let h=`<div class="tb" style="flex-wrap:wrap">${dt('date',hfTgl,'','',{id:'hfTgl',max:TODAY})}<input id="hfCat" class="input grow" placeholder="Catatan (opsional)" maxlength="200"></div><div class="note">Lancar <b>${st.l}</b> dari ${st.t} · Mengulang <b>${st.u}</b>. Tanggal dan catatan berlaku untuk setoran yang dicatat berikutnya. Mencatat Lancar atau Mengulang lagi pada hafalan yang masih Mengulang akan menggantikan catatan lama.</div>`;
+ S.hfJenis.forEach(j=>{const it=tgt.filter(i=>i.jenis_id===j.id);if(!it.length)return;
+  h+=`<div class="tbkh">${esc(j.nama)} <span class="mu">· ${j.cakupan==='wajib'?'Wajib semua kelas':'Kelas '+esc(kl.nama)}</span></div>`+tab(['Aksi','Hafalan','Status','Tanggal setoran','Disetor ke'],it.map(i=>{const x=st.m.get(i.id),lancar=x&&x.hasil==='lancar';
+   const stt=x?(lancar?'<span class="badge hadir">Lancar</span>':'<span class="badge terlambat">Mengulang</span>'):'<span class="mu">Belum</span>';
+   return `<tr><td><div class="hfaks">${lancar?'':`<button class="btn sm success" onclick="hfSetor(${i.id},'lancar')">✓ Lancar</button><button class="btn sm orange" onclick="hfSetor(${i.id},'ulang')">↻ Mengulang</button>`}${x?`<button class="btn sm danger" onclick="hfHapusSetoran(${x.id})">🗑</button>`:''}</div></td><td><b>${esc(i.judul)}</b>${i.target?`<div class="mu">${esc(i.target)}</div>`:''}${x&&x.catatan?`<div class="mu">📝 ${esc(x.catatan)}</div>`:''}</td><td>${stt}</td><td class="hfn">${x?fmt(x.tanggal):'<span class="mu">-</span>'}</td><td class="hfn">${x&&x.nama_pencatat?esc(x.nama_pencatat):'<span class="mu">-</span>'}</td></tr>`}).join('')).replace('<div class="tw">','<div class="tw hfsw">')});
+ return h}
+function hfBuka(sid){const s=S.siswa.find(x=>x.id===sid);if(!s)return;hfSiswa=sid;hfTgl=TODAY;resetTutup();$('#mt').textContent='Setoran hafalan: '+s.nama;$('#ms').style.display='none';$('#mbd').innerHTML=hfIsi();$('#md').classList.add('besar');$('#md').classList.add('show')}
+function hfRefresh(){if($('#md').classList.contains('show')&&hfSiswa&&String($('#mt').textContent).startsWith('Setoran hafalan')){$('#mbd').innerHTML=hfIsi()}renderV()}
+function hfSetor(itemId,hasil){const tg=($('#hfTgl')||{}).value||TODAY,cat=((($('#hfCat')||{}).value)||'').trim()||null;hfTgl=tg;
+ guard(async()=>{await pkTry(()=>dbq(db.from('hafalan_setoran').insert({siswa_id:hfSiswa,hafalan_id:itemId,hasil,tanggal:tg,catatan:cat})));await hfMuatSetoran();hfRefresh();toast(hasil==='lancar'?'Setoran Lancar dicatat':'Dicatat: perlu mengulang')})}
+async function hfHapusSetoran(rid){if(!await konfirmasi('Hapus catatan setoran ini? Status hafalan kembali menjadi Belum.',{bahaya:1,judul:'Hapus setoran',ya:'Hapus'}))return;
+ hfTgl=($('#hfTgl')||{}).value||hfTgl;guard(async()=>{await dbq(db.from('hafalan_setoran').delete().eq('id',rid));await hfMuatSetoran();hfRefresh();toast('Setoran dihapus')})}
+function hfDaftarHTML(){
+ if(!S.hfJenis.length)return '<div class="note">Belum ada jenis hafalan. Buat dulu di tab Jenis.</div><div class="tb"><button class="btn success" onclick="hfHal(\'jenis\');hfTambahJenis()">+ Tambah jenis</button></div>';
+ const kl=S.kelas.find(k=>k.nama===hfDK);let h=S.hfJenis.some(j=>j.cakupan==='kelas')?`<div class="tb tab-choice">${cpick('hfDKPick','kelas',hfDK,pkKelasOpt(),'hfPilihDK','Pilih kelas untuk hafalan per kelas')}</div>`:'';
+ h+='<div class="note">Hafalan <b>wajib semua kelas</b> otomatis berlaku di setiap kelas. Hafalan <b>per kelas</b> diisi per kelas: pilih kelasnya di atas.</div>';
+ h+=`<div class="tbbox"><b>📥 Impor daftar hafalan dari Excel</b><div class="mu" style="margin:4px 0 8px">Unduh template, isi kolom Kelas, Jenis, dan Judul hafalan (kelas dan jenis dipilih dari dropdown), lalu impor. Semua sheet yang headernya sesuai template dibaca sekaligus, dan kelas dibaca dari isi kolom Kelas, bukan dari nama sheet. Hafalan yang sudah ada dilewati.</div><div class="tb" style="flex-wrap:wrap;margin:0"><button class="btn soft sm grow dl" onclick="hfTemplate(this)">⬇ Template (XLSX)</button><button class="btn success sm grow" onclick="document.getElementById('hfFile').click()">⬆ Impor (XLSX)</button><input type="file" id="hfFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hid" onchange="hfImporDipilih(this)"></div></div>`;
+ S.hfJenis.forEach(j=>{const pk=j.cakupan==='kelas',sel=hfMd===j.id;h+=`<div class="tbkh hfkh"><span>${esc(j.nama)} <span class="mu">· ${pk?'Per kelas'+(kl?' · Kelas '+esc(kl.nama):''):'Wajib semua kelas'}</span></span><button type="button" class="btn sm hfdel ${sel?'danger':'soft'}" title="Hapus massal" aria-label="Hapus massal" onclick="hfMode(${j.id})">🗑️</button></div>`;
+  if(pk&&!kl){h+=PKH;return}
+  const it=S.hfItem.filter(i=>i.jenis_id===j.id&&(pk?i.kelas_id===kl.id:i.kelas_id==null));
+  if(sel){const nPil=it.filter(i=>hfPil.has(i.id)).length;
+   h+=tab([`<label class="hfcl"><input type="checkbox" class="hfcb" id="hfAll" ${it.length&&nPil===it.length?'checked':''} onchange="hfPilSemua(${j.id},this.checked)" aria-label="Pilih semua"></label>`,'Hafalan','Target'],it.map(i=>`<tr><td style="width:44px"><label class="hfcl"><input type="checkbox" class="hfcb" data-j="${j.id}" data-id="${i.id}" ${hfPil.has(i.id)?'checked':''} onchange="hfUpd(${j.id})"></label></td><td><b>${esc(i.judul)}</b></td><td>${esc(i.target||'')}</td></tr>`).join(''),'Belum ada hafalan.')+`<div class="tb"><button type="button" class="btn sm danger" id="hfDelBtn" onclick="hfHapusMasal(${j.id})" ${nPil?'':'disabled'}>🗑️ Hapus terpilih (${nPil})</button><button type="button" class="btn sm soft" onclick="hfMode(${j.id})">Batal</button></div>`;return}
+  h+=tab(['Hafalan','Target','Aksi'],it.map(i=>`<tr><td><b>${esc(i.judul)}</b></td><td>${esc(i.target||'')}</td><td style="width:1%;white-space:nowrap"><div class="hfak2"><button class="btn sm soft" onclick="hfUbahItem(${i.id})">✏ Ubah</button><button class="btn sm danger" onclick="hfHapusItem(${i.id})">Hapus</button></div></td></tr>`).join(''),'Belum ada hafalan.')+`<div class="tb"><button class="btn sm success" onclick="hfTambahItem(${j.id})">+ Tambah hafalan</button></div>`});
+ return h}
+/* --- Hafalan: hapus massal dengan centang --- */
+function hfMode(jid){if(hfMd===jid){hfMd=0;hfPil=new Set();return renderV()}
+ const j=hfJ(jid);if(j.cakupan==='kelas'&&!S.kelas.some(k=>k.nama===hfDK))return toast('Pilih kelas dulu',false);
+ hfMd=jid;hfPil=new Set();renderV()}
+function hfUpd(jid){const c=[...document.querySelectorAll('.hfcb[data-j="'+jid+'"]')];
+ hfPil=new Set(c.filter(x=>x.checked).map(x=>+x.dataset.id));
+ const a=document.getElementById('hfAll');if(a)a.checked=c.length>0&&c.every(x=>x.checked);
+ const b=document.getElementById('hfDelBtn');if(b){b.disabled=!hfPil.size;b.textContent='🗑️ Hapus terpilih ('+hfPil.size+')'}}
+function hfPilSemua(jid,on){document.querySelectorAll('.hfcb[data-j="'+jid+'"]').forEach(x=>{x.checked=!!on});hfUpd(jid)}
+async function hfHapusMasal(jid){const j=hfJ(jid),pk=j.cakupan==='kelas',kl=S.kelas.find(k=>k.nama===hfDK);
+ const ada=new Set(S.hfItem.filter(i=>i.jenis_id===jid&&(pk?(kl&&i.kelas_id===kl.id):i.kelas_id==null)).map(i=>i.id));
+ const ids=[...hfPil].filter(x=>ada.has(x));
+ if(!ids.length)return toast('Centang dulu hafalan yang mau dihapus',false);
+ let n=0;try{for(let a=0;a<ids.length;a+=100){const r=await db.from('hafalan_setoran').select('id',{count:'exact',head:true}).in('hafalan_id',ids.slice(a,a+100));n+=r.count||0}}catch(e){}
+ if(!await konfirmasi('Hapus '+ids.length+' hafalan yang dicentang?'+(n?' '+n+' catatan setoran anak tetap tersimpan sebagai riwayat, tetapi tidak dihitung lagi.':''),{bahaya:1,judul:'Hapus hafalan terpilih',ya:'Hapus '+ids.length}))return;
+ guard(async()=>{try{for(let a=0;a<ids.length;a+=100)await dbq(db.from('hafalan_item').delete().in('id',ids.slice(a,a+100)))}
+  finally{hfMd=0;hfPil=new Set();await muatHafalan();renderV()}
+  toast(ids.length+' hafalan dihapus')})}
+function hfTambahItem(jid){const j=hfJ(jid),pk=j.cakupan==='kelas',kl=S.kelas.find(k=>k.nama===hfDK);if(pk&&!kl)return toast('Pilih kelas dulu',false);
+ form('Tambah hafalan: '+j.nama,[{k:'judul',l:'Judul hafalan (contoh: Surah Al-Ikhlas)'},{k:'target',l:'Target (opsional, contoh: ayat 1-4)'}],async v=>{if(!v.judul)throw new Error('Judul wajib diisi');
+  const n=S.hfItem.filter(i=>i.jenis_id===jid&&(pk?i.kelas_id===kl.id:i.kelas_id==null)).length+1;
+  await pkTry(()=>dbq(db.from('hafalan_item').insert({jenis_id:jid,kelas_id:pk?kl.id:null,judul:v.judul,target:v.target||null,urutan:n,dibuat_oleh:me})));
+  await muatHafalan();renderV();toast('Hafalan ditambahkan')})}
+function hfUbahItem(id){const i=S.hfItem.find(x=>x.id===id);if(!i)return;
+ form('Ubah hafalan',[{k:'judul',l:'Judul hafalan',v:i.judul},{k:'target',l:'Target (opsional)',v:i.target||''}],async v=>{if(!v.judul)throw new Error('Judul wajib diisi');
+  await pkTry(()=>dbq(db.from('hafalan_item').update({judul:v.judul,target:v.target||null}).eq('id',id)));await muatHafalan();renderV();toast('Hafalan disimpan')})}
+async function hfHapusItem(id){const i=S.hfItem.find(x=>x.id===id);if(!i)return;let n=0;
+ try{const r=await db.from('hafalan_setoran').select('id',{count:'exact',head:true}).eq('hafalan_id',id);n=r.count||0}catch(e){}
+ if(!await konfirmasi('Hapus hafalan "'+i.judul+'"?'+(n?' '+n+' catatan setoran anak tetap tersimpan sebagai riwayat, tetapi tidak dihitung lagi.':''),{bahaya:1,judul:'Hapus hafalan',ya:'Hapus'}))return;
+ guard(async()=>{await dbq(db.from('hafalan_item').delete().eq('id',id));await muatHafalan();renderV();toast('Hafalan dihapus')})}
+function hfJenisHTML(){
+ const rows=S.hfJenis.map(j=>{const n=S.hfItem.filter(i=>i.jenis_id===j.id).length;
+  return `<tr><td><b>${esc(j.nama)}</b></td><td>${hfCakL[j.cakupan]}</td><td>${n}</td><td><div class="tb" style="margin:0;flex-wrap:wrap"><button class="btn sm soft" onclick="hfUbahJenis(${j.id})">✏ Ubah</button><button class="btn sm danger" onclick="hfHapusJenis(${j.id})">Hapus</button></div></td></tr>`}).join('');
+ return `<div class="note">Semua guru boleh menambah, mengubah, dan menghapus jenis hafalan. <b>Wajib semua kelas</b>: daftar berlaku untuk seluruh kelas. <b>Per kelas</b>: daftar diisi per kelas. Cakupan hanya dapat diubah oleh Kepala Sekolah atau Wakil.</div><div class="tb"><button class="btn success" onclick="hfTambahJenis()">+ Tambah jenis</button></div>`+tab(['Jenis','Cakupan','Hafalan','Aksi'],rows,'Belum ada jenis hafalan.')}
+function hfTambahJenis(){form('Tambah jenis hafalan',[{k:'nama',l:'Nama jenis (contoh: Surah pendek, Doa harian)'},{k:'cak',l:'Cakupan',o:['Wajib semua kelas','Per kelas']}],async v=>{
+ if(!v.nama)throw new Error('Nama jenis wajib diisi');
+ await pkTry(()=>dbq(db.from('hafalan_jenis').insert({nama:v.nama,cakupan:hfCakV[v.cak]||'wajib',urutan:S.hfJenis.length+1,dibuat_oleh:me})));
+ await muatHafalan();renderV();toast('Jenis hafalan ditambahkan')})}
+function hfUbahJenis(id){const j=S.hfJenis.find(x=>x.id===id);if(!j)return;const kep=adalahKepala();
+ form('Ubah jenis hafalan',[{k:'nama',l:'Nama jenis',v:j.nama},kep?{k:'cak',l:'Cakupan (hanya Kepala Sekolah dan Wakil)',o:['Wajib semua kelas','Per kelas'],v:hfCakL[j.cakupan]}:{k:'cak',l:'Cakupan (hanya Kepala Sekolah dan Wakil yang dapat mengubah)',ro:1,v:hfCakL[j.cakupan]}],async v=>{
+ if(!v.nama)throw new Error('Nama jenis wajib diisi');
+ const baru=kep?(hfCakV[v.cak]||j.cakupan):j.cakupan,n=S.hfItem.filter(i=>i.jenis_id===id).length;
+ if(baru!==j.cakupan&&n>0&&!await konfirmasi('Mengubah cakupan menjadi "'+hfCakL[baru]+'" akan menghapus '+n+' hafalan di jenis ini. Catatan setoran anak tetap tersimpan sebagai riwayat. Lanjutkan?',{bahaya:1,judul:'Ubah cakupan',ya:'Ubah dan hapus hafalan'}))throw new Error('Perubahan dibatalkan');
+ await pkTry(()=>dbq(db.from('hafalan_jenis').update({nama:v.nama}).eq('id',id)));
+ if(baru!==j.cakupan)await pkTry(()=>dbq(db.rpc('hafalan_ubah_cakupan',{p_jenis:id,p_cakupan:baru})));
+ await muatHafalan();renderV();toast('Jenis hafalan disimpan')})}
+async function hfHapusJenis(id){const j=S.hfJenis.find(x=>x.id===id);if(!j)return;const n=S.hfItem.filter(i=>i.jenis_id===id).length;
+ if(!await konfirmasi('Hapus jenis "'+j.nama+'"?'+(n?' '+n+' hafalan di dalamnya ikut terhapus. Catatan setoran anak tetap tersimpan sebagai riwayat.':''),{bahaya:1,judul:'Hapus jenis hafalan',ya:'Hapus'}))return;
+ guard(async()=>{await dbq(db.from('hafalan_jenis').delete().eq('id',id));await muatHafalan();renderV();toast('Jenis hafalan dihapus')})}
+function hfRekapHTML(){const pil=hfPilKelas();if(!hfK)return pil+PKH;const kl=S.kelas.find(k=>k.nama===hfK);if(!kl)return pil+PKH;
+ if(hfSetK!==hfK)return pil+'<div class="note">⏳ Memuat setoran...</div>';
+ const tgt=hfTarget(kl.id),sis=S.siswa.filter(s=>s.aktif&&s.kelas_id===kl.id);
+ if(!tgt.length)return pil+'<div class="note">Belum ada daftar hafalan untuk kelas ini.</div>';
+ return pil+`<div class="tb" style="flex-wrap:wrap"><button class="btn soft sm grow" onclick="hfUnduh('pdf',this)">⬇ Rekap (PDF)</button><button class="btn soft sm grow" onclick="hfUnduh('xlsx',this)">⬇ Rekap (XLSX)</button></div>`+tab(['Nama','Lancar','Mengulang','Belum'],sis.map(s=>{const st=hfStat(s.id,tgt);return `<tr><td><b>${esc(s.nama)}</b></td><td>${st.l} / ${st.t}</td><td>${st.u}</td><td>${st.t-st.l-st.u}</td></tr>`}).join(''),'Belum ada siswa aktif di kelas ini.')}
+async function hfUnduh(jenis,btn){if(!setUnduhBusy(btn,true,'Menyiapkan...'))return;
+ try{await jedaUnduh();const kl=S.kelas.find(k=>k.nama===hfK);if(!kl)throw new Error('Pilih kelas dulu');
+  const tgt=hfTarget(kl.id),sis=S.siswa.filter(s=>s.aktif&&s.kelas_id===kl.id),nf=ns().replace(/[^\w]+/g,'-')+'-Kelas-'+kl.nama.replace(/[^\w]+/g,'-');
+  if(jenis==='xlsx'){if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat. Muat ulang halaman');
+   const wb=new ExcelJS.Workbook();wb.creator=ns();wb.created=new Date();
+   const hd=(ws,H)=>H.forEach((h,i)=>{const c=ws.getCell(1,i+1);c.value=h;c.font={bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE9E3F7'}}});
+   const w1=wb.addWorksheet('Rekap');w1.columns=[{width:6},{width:32},{width:12},{width:12},{width:10},{width:14}];hd(w1,['No','Nama','Lancar','Mengulang','Belum','Total hafalan']);
+   sis.forEach((s,n)=>{const st=hfStat(s.id,tgt);w1.addRow([n+1,s.nama,st.l,st.u,st.t-st.l-st.u,st.t])});
+   const w2=wb.addWorksheet('Rincian');w2.columns=[{width:32},...tgt.map(()=>({width:18}))];hd(w2,['Nama',...tgt.map(i=>(hfJ(i.jenis_id).nama||'')+': '+i.judul)]);
+   sis.forEach(s=>{const st=hfStat(s.id,tgt);w2.addRow([s.nama,...tgt.map(i=>{const x=st.m.get(i.id);return x?(x.hasil==='lancar'?'Lancar ':'Mengulang ')+x.tanggal:''})])});
+   await tulisXlsx(wb,'Rekap-Hafalan-'+nf+'-'+TODAY+'.xlsx');toast('Rekap hafalan diunduh');return}
+  const d=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),tg=ttdKepsek(),wl=ttdWali(kl.nama);
+  d.setFont('helvetica','bold');d.setFontSize(13);d.setTextColor(0,0,0);d.text('REKAP HAFALAN - '+ns().toUpperCase(),105,14,{align:'center'});
+  d.setFont('helvetica','normal');d.setFontSize(9);d.text('Kelas '+kl.nama+'  |  Tahun ajaran '+((S.set&&S.set.tahun_ajaran)||'-')+'  |  Wali kelas: '+(wl?wl.nama:'-')+'  |  '+fmt(TODAY),105,20,{align:'center'});
+  const hs={fillColor:[118,80,184],halign:'center'};
+  d.autoTable({startY:26,head:[['No','Nama','Lancar','Mengulang','Belum']],body:sis.map((s,n)=>{const st=hfStat(s.id,tgt);return[n+1,s.nama,st.l+' / '+st.t,st.u,st.t-st.l-st.u]}),theme:'grid',styles:{fontSize:8.5,cellPadding:1.6},headStyles:hs,columnStyles:{0:{halign:'center',cellWidth:10},2:{halign:'center'},3:{halign:'center'},4:{halign:'center'}}});
+  let y=d.lastAutoTable.finalY+8;if(y>255){d.addPage();y=20}
+  d.setFont('helvetica','bold');d.setFontSize(10);d.text('Daftar hafalan kelas',14,y);
+  d.autoTable({startY:y+3,head:[['No','Jenis','Hafalan','Target']],body:tgt.map((i,n)=>[n+1,hfJ(i.jenis_id).nama||'-',i.judul,i.target||'']),theme:'grid',styles:{fontSize:8.5,cellPadding:1.6},headStyles:hs,columnStyles:{0:{halign:'center',cellWidth:10}}});
+  y=d.lastAutoTable.finalY+10;if(y+42>285){d.addPage();y=20}
+  pdfTtd(d,164,y,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);if(wl)pdfTtd(d,46,y,'Mengetahui,',' Wali kelas',wl.kelas,wl.nama,wl.nip);
+  d.save('rekap-hafalan-'+nf+'-'+TODAY+'.pdf');toast('Rekap hafalan diunduh')}
+ catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
+/* --- Hafalan: template dan impor Excel (batch) --- */
+let HFI={rows:[],sheets:0,err:[],dup:0,dupFile:0,skip:[]};
+const hfNorm=s=>String(s==null?'':s).replace(/\s+/g,' ').trim().toLowerCase();
+const hfKey=(j,k,t)=>j+'|'+(k||0)+'|'+hfNorm(t);
+async function hfTemplate(btn){if(!setUnduhBusy(btn,true,'Menyiapkan...'))return;
+ try{await jedaUnduh();if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
+  if(!S.hfJenis.length)throw new Error('Buat dulu minimal satu jenis hafalan di tab Jenis');
+  const N=1000,ln={style:'thin',color:{argb:'FFCFD9D3'}},wb=new ExcelJS.Workbook();wb.creator=ns();wb.created=new Date();
+  const kl=['Wajib semua kelas',...S.kelas.map(k=>k.nama)],jn=S.hfJenis.map(j=>j.nama),head=['Kelas','Jenis','Judul Hafalan','Target (Opsional)'];
+  const fk=['Pilihan!$A$2:$A$'+(kl.length+1)],fj=['Pilihan!$B$2:$B$'+(jn.length+1)];
+  const mk=nama=>{const ws=wb.addWorksheet(nama);ws.columns=[{width:26},{width:24},{width:40},{width:26}];ws.addRow(head);ws.getRow(1).height=24;
+   ws.getRow(1).eachCell(c=>{c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B3A'}};c.alignment={horizontal:'center',vertical:'middle'};c.border={top:ln,left:ln,bottom:ln,right:ln}});
+   ws.views=[{state:'frozen',ySplit:1}];
+   for(let r=2;r<=N;r++){
+    ws.getCell(r,1).dataValidation={type:'list',allowBlank:true,formulae:fk,showErrorMessage:true,errorStyle:'stop',errorTitle:'Kelas tidak valid',error:'Pilih kelas dari daftar. Untuk hafalan semua kelas pilih "Wajib semua kelas".',showInputMessage:true,promptTitle:'Kelas',prompt:'Pilih dari daftar'};
+    ws.getCell(r,2).dataValidation={type:'list',allowBlank:true,formulae:fj,showErrorMessage:true,errorStyle:'stop',errorTitle:'Jenis tidak valid',error:'Pilih jenis hafalan dari daftar yang tersedia di sistem.',showInputMessage:true,promptTitle:'Jenis',prompt:'Pilih dari daftar'}}};
+  mk('Hafalan');mk('Hafalan 2');
+  const ls=wb.addWorksheet('Pilihan',{state:'hidden'});ls.getCell('A1').value='Kelas';ls.getCell('B1').value='Jenis';kl.forEach((n,i)=>{ls.getCell(i+2,1).value=n});jn.forEach((n,i)=>{ls.getCell(i+2,2).value=n});
+  const pt=wb.addWorksheet('Petunjuk');pt.columns=[{width:30},{width:30},{width:38},{width:28}];
+  const tx=['PETUNJUK IMPOR DAFTAR HAFALAN','',
+   '1. Isi sheet "Hafalan". Anda boleh memakai beberapa sheet (sheet "Hafalan 2" atau salinan sheet lain) asal baris pertamanya sama dengan template. Nama sheet bebas dan tidak dipakai.',
+   '2. Kolom Kelas dan Jenis dipilih dari dropdown. Kelas dibaca dari isi kolom Kelas pada tiap baris, bukan dari nama sheet.',
+   '3. "Wajib semua kelas" hanya untuk jenis yang cakupannya Wajib semua kelas. Kelas tertentu hanya untuk jenis yang cakupannya Per kelas.',
+   '4. Judul hafalan maksimal 100 huruf dan target maksimal 120 huruf. Jangan mengubah judul kolom di baris pertama.',
+   '5. Hafalan yang sama dengan daftar yang sudah ada (kelas, jenis, dan judul sama) dilewati. Impor hanya menambah, tidak mengubah atau menghapus.','',
+   'Contoh pengisian (jangan disalin ke sheet data kecuali memang diperlukan):'];
+  tx.forEach(t=>pt.addRow([t]));pt.getRow(1).font={name:'Arial',size:13,bold:true};
+  const jw=S.hfJenis.find(j=>j.cakupan==='wajib'),jk=S.hfJenis.find(j=>j.cakupan==='kelas'),k0=S.kelas[0];
+  pt.addRow(head).font={bold:true};
+  if(jw)pt.addRow(['Wajib semua kelas',jw.nama,'Surah Al-Fatihah','Ayat 1-7']);
+  if(jk&&k0)pt.addRow([k0.nama,jk.nama,'Doa sebelum makan','']);
+  pt.addRow([]);pt.addRow(['Jenis hafalan saat ini','Cakupan']).font={bold:true};S.hfJenis.forEach(j=>pt.addRow([j.nama,hfCakL[j.cakupan]]));
+  await tulisXlsx(wb,'template-daftar-hafalan.xlsx');toast('Template daftar hafalan diunduh')}
+ catch(e){toast('Gagal membuat template: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
+function hfImporDipilih(el){const f=el.files&&el.files[0];el.value='';if(!f)return;
+ guard(async()=>{
+  if(typeof XLSX==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
+  if(!/\.xlsx?$/i.test(f.name))throw new Error('Gunakan file Excel (.xlsx) dari tombol Template');
+  const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),HEAD=['kelas','jenis','judul hafalan','target (opsional)'];
+  const mj=new Map(S.hfJenis.map(j=>[hfNorm(j.nama),j])),mk=new Map(S.kelas.map(k=>[hfNorm(k.nama),k]));
+  const ada=new Set(S.hfItem.map(i=>hfKey(i.jenis_id,i.kelas_id,i.judul))),lihat=new Set();
+  const ok=[],err=[],skip=[],sheets=[],grup=new Map();let dup=0,dupF=0,total=0;
+  const G=l=>{if(!grup.has(l))grup.set(l,{baru:0,dup:0,err:0});return grup.get(l)};
+  wb.SheetNames.forEach(nm=>{const a=XLSX.utils.sheet_to_json(wb.Sheets[nm],{header:1,defval:''});const h=(a[0]||[]).map(hfNorm);
+   if(!HEAD.every((x,i)=>h[i]===x)){skip.push(nm);return}
+   sheets.push(nm);
+   a.slice(1).forEach((r,ix)=>{const c=r.map(x=>String(x==null?'':x).trim()),row=ix+2;if(!c.slice(0,4).some(Boolean))return;total++;
+    const [kl,jn,judul,tg]=c,wajib=/^wajib/.test(hfNorm(kl)),kelas=wajib?null:mk.get(hfNorm(kl)),jenis=mj.get(hfNorm(jn)),lbl=wajib?'Wajib semua kelas':(kelas?kelas.nama:(kl||'(kolom Kelas kosong)'));
+    const bad=m=>{err.push('Sheet '+nm+' - Baris '+row+' ('+(judul||'-')+'): '+m);G(lbl).err++};
+    if(!kl)return bad('kolom Kelas kosong');
+    if(!wajib&&!kelas)return bad('kelas "'+kl+'" tidak ada di sistem');
+    if(!jn)return bad('kolom Jenis kosong');
+    if(!jenis)return bad('jenis "'+jn+'" tidak ada di sistem');
+    if(wajib&&jenis.cakupan!=='wajib')return bad('jenis "'+jenis.nama+'" khusus per kelas, pilih kelasnya di kolom Kelas');
+    if(!wajib&&jenis.cakupan!=='kelas')return bad('jenis "'+jenis.nama+'" adalah wajib semua kelas, pilih "Wajib semua kelas" di kolom Kelas');
+    if(!judul)return bad('judul hafalan kosong');
+    if(judul.length>100)return bad('judul lebih dari 100 huruf');
+    if(tg.length>120)return bad('target lebih dari 120 huruf');
+    const key=hfKey(jenis.id,kelas?kelas.id:null,judul);
+    if(ada.has(key)){dup++;G(lbl).dup++;return}
+    if(lihat.has(key)){dupF++;G(lbl).dup++;return}
+    lihat.add(key);G(lbl).baru++;ok.push({jenis_id:jenis.id,kelas_id:kelas?kelas.id:null,judul,target:tg||null})})});
+  if(!sheets.length)throw new Error('Tidak ditemukan sheet data yang sesuai template. Pastikan header tabel ada di baris pertama.');
+  if(!total)throw new Error('Semua sheet data kosong.');
+  if(ok.length>5000)throw new Error('Maksimal 5000 hafalan baru per impor. Pecah menjadi beberapa file');
+  HFI={rows:ok,sheets:sheets.length,err,dup,dupFile:dupF,skip};
+  hfPratinjau(grup)})}
+function hfPratinjau(grup){const H=HFI,tg=[...grup.entries()].sort((a,b)=>{const o=n=>n==='Wajib semua kelas'?-1:S.kelas.findIndex(k=>k.nama===n);return(o(a[0])-o(b[0]))||String(a[0]).localeCompare(String(b[0]),'id')});
+ resetTutup();$('#mt').textContent='Pratinjau impor daftar hafalan';
+ $('#mbd').innerHTML=`<div class="note">📄 Sheet data terdeteksi: <b>${H.sheets}</b>${H.skip.length?` · sheet dilewati: ${H.skip.map(esc).join(', ')}`:''}<br>✅ Akan ditambah: <b>${H.rows.length}</b> hafalan<br>⏭ Duplikat dilewati: <b>${H.dup+H.dupFile}</b><br>❌ Bermasalah (tidak diimpor): <b>${H.err.length}</b></div>`
+  +tab(['Kelas','Baru','Duplikat','Bermasalah'],tg.map(([n,v])=>`<tr><td><b>${esc(n)}</b></td><td>${v.baru}</td><td>${v.dup}</td><td>${v.err}</td></tr>`).join(''),'Tidak ada baris')
+  +(H.err.length?`<div class="tbkh">Baris bermasalah</div><div class="note" style="max-height:240px;overflow:auto;border:1px solid #d62839;color:#d62839">${H.err.slice(0,100).map(esc).join('<br>')}${H.err.length>100?`<br>... dan ${H.err.length-100} lainnya`:''}</div>`:'')
+  +(H.rows.length?'':'<div class="note">Tidak ada hafalan baru yang bisa diimpor.</div>');
+ const m=$('#ms');m.className='btn success';m.disabled=false;m.style.display=H.rows.length?'':'none';m.textContent='Impor '+H.rows.length+' hafalan';m.onclick=hfImporKirim;
+ $('#md').classList.add('besar');$('#md').classList.add('show')}
+async function hfImporKirim(){const H=HFI,rows=H.rows;if(!rows.length)return;const BATCH=200,paket=Math.ceil(rows.length/BATCH),b=$('#ms');let tambah=0,dup=0,n=0;b.disabled=true;
+ try{ld(1);
+  for(let i=0;i<rows.length;i+=BATCH){n++;$('#ldt').textContent='Mengimpor hafalan '+Math.min(i+BATCH,rows.length)+' dari '+rows.length+'...';
+   const chunk=rows.slice(i,i+BATCH);let r;
+   try{r=await dbq(db.rpc('hafalan_impor',{p_sekolah:SEK,p_baris:chunk}))}
+   catch(e){throw new Error('Paket '+n+' dari '+paket+' gagal: '+dbMsg(e)+(n>1?'. Paket sebelumnya sudah masuk. Ulangi impor untuk melanjutkan, yang sudah masuk akan dilewati':''))}
+   tambah+=Number(r&&r.ditambah)||0;dup+=Number(r&&r.duplikat)||0}
+ }catch(e){ld(0);b.disabled=false;try{await muatHafalan()}catch(_){}renderV();toast((e&&e.message)||String(e),false);return}
+ ld(0);closeM();try{await muatHafalan()}catch(_){}renderV();
+ info('Hasil impor daftar hafalan','<div class="note">📄 Sheet data terdeteksi: <b>'+H.sheets+'</b><br>✅ Berhasil ditambah: <b>'+tambah+'</b> hafalan<br>⏭ Duplikat dilewati: <b>'+(H.dup+H.dupFile+dup)+'</b><br>❌ Bermasalah (tidak diimpor): <b>'+H.err.length+'</b></div>'+(H.err.length?'<div class="mu" style="max-height:200px;overflow:auto">'+H.err.slice(0,100).map(esc).join('<br>')+'</div>':''))}
 V.tabungan=()=>{if(!S.tab)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat tabungan...</div></div></div>';
  const sis=S.tab.filter(r=>r.kelas_nama===tabK),hal=[['in','⬇ Pemasukan'],['out','⬆ Pengeluaran'],['rek','📊 Rekap &amp; Laporan']];
  const pil=tabP==='rek'?dt('month',tabBln,'tabSetBln(this.value)'):cpick('tabSiswaPick','nama siswa',tabS,sis.map(x=>({value:x.siswa_id,label:x.nama+(x.nisn?' · '+x.nisn:'')})),'tabPilihS','Pilih siswa');
- return panelBawaan()+`<div class="panel"><div class="ph">💰 Tabungan Siswa</div><div class="pb"><div class="utabs">${hal.map(x=>`<button class="utab${tabP===x[0]?' on':''}" onclick="tabHal('${x[0]}')">${x[1]}</button>`).join('')}</div><div class="tb tab-choice">${cpick('tabKelasPick','kelas',tabK,S.kelas.map(k=>({value:k.nama,label:k.nama})),'tabPilihK','Pilih kelas')}</div>${tabK?`<div class="tb tab-choice">${pil}</div>`:''}${!tabK?PKH:tabP==='rek'?tabRekHTML():tabFormHTML(tabP==='out')}</div></div>`};
+ return `<div class="panel"><div class="ph">💰 Tabungan Siswa</div><div class="pb"><div class="utabs">${hal.map(x=>`<button class="utab${tabP===x[0]?' on':''}" onclick="tabHal('${x[0]}')">${x[1]}</button>`).join('')}</div><div class="tb tab-choice">${cpick('tabKelasPick','kelas',tabK,S.kelas.map(k=>({value:k.nama,label:k.nama})),'tabPilihK','Pilih kelas')}</div>${tabK?`<div class="tb tab-choice">${pil}</div>`:''}${!tabK?PKH:tabP==='rek'?tabRekHTML():tabFormHTML(tabP==='out')}</div></div>`};
 function tabFormHTML(out){const r=S.tab.find(x=>x.siswa_id===tabS&&x.kelas_nama===tabK);if(!r)return '<div class="note">Pilih siswa terlebih dahulu</div>';
  const wali=tabAdaWali(tabK),batal=new Set(tabRw.filter(x=>x.membatalkan_id).map(x=>x.membatalkan_id)),asc=tabBarisAsc(tabRw);
  const kotak=out&&!wali?`<div class="note">Penarikan hanya boleh dilakukan oleh wali kelas (${esc(tabWali(tabK))}).</div>`:`<div class="tb" style="flex-wrap:wrap"><input id="tbJml" class="input grow" inputmode="numeric" placeholder="Jumlah ${out?'penarikan':'setoran'} (Rp)" oninput="this.value=fmtIn(this.value)">${dt('date',TODAY,'','',{id:'tbTgl',max:TODAY})}<input id="tbCat" class="input grow" placeholder="Catatan (opsional)"><button class="btn ${out?'orange':'success'}" onclick="tabSimpan('${out?'tarik':'setor'}')">${out?'− Tarik':'+ Setor'}</button></div>`;
@@ -2310,7 +2638,7 @@ async function tabBerkas(t,nm,judul,sub,head,rows,kls,btn,num){if(!setUnduhBusy(
    await tulisXlsx(wb,nm+'.xlsx')}
   toast('Berkas '+(t==='xlsx'?'XLSX':'PDF')+' berhasil diunduh')}catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
-const tabJenis=x=>x.sumber==='pembatalan'?'Pembatalan':x.sumber==='saldo_awal'?'Saldo awal':x.sumber==='tutup_buku'?'Tutup buku':x.sumber==='pindah_bawaan'?'Pindah bawaan':x.jenis==='setor'?'Setor':'Tarik';
+const tabJenis=x=>x.sumber==='pembatalan'?'Pembatalan':x.sumber==='saldo_awal'?'Saldo awal':x.jenis==='setor'?'Setor':'Tarik';
 function tabRiwayat(sid){const r=(S.tab||[]).find(x=>x.siswa_id===sid)||{nama:'',saldo:0};
  guard(async()=>{const t=await dbq(db.from('tabungan_transaksi').select('*').eq('siswa_id',sid).order('id',{ascending:false}).limit(200));
   const batal=new Set(t.filter(x=>x.membatalkan_id).map(x=>x.membatalkan_id));
@@ -2319,17 +2647,6 @@ function tabRiwayat(sid){const r=(S.tab||[]).find(x=>x.siswa_id===sid)||{nama:''
 function tabBatal(id,sid){form('Batalkan transaksi',[{k:'a',l:'Alasan pembatalan (wajib)'}],async v=>{
   if((v.a||'').trim().length<3)throw new Error('Isi alasan pembatalan');
   await dbq(db.rpc('tabungan_batalkan',{p_id:id,p_alasan:v.a.trim()}));await muatTabungan();await tabMuatRw();toast('Transaksi dibatalkan');renderV()});$('#ms').textContent='Batalkan transaksi'}
-function panelBawaan(){const b=S.tabBawaan||[];if(!b.length)return '';const kl=adalahKepala();
- const sis=S.siswa.filter(s=>s.aktif).sort((a,c)=>a.nama.localeCompare(c.nama,'id'));
- const opt=x=>{const pre=sis.find(s=>x.nisn&&s.nisn&&s.nisn===x.nisn)||sis.find(s=>s.nama.trim().toLowerCase()===String(x.nama_siswa).trim().toLowerCase());
-  return '<option value="">- Pilih anak -</option>'+sis.map(s=>`<option value="${s.id}" ${pre&&pre.id===s.id?'selected':''}>${esc(s.nama)}${s.kelas?' ('+esc(s.kelas)+')':''}</option>`).join('')};
- return `<div class="panel"><div class="ph">📥 Saldo bawaan tahun lalu <button class="btn soft sm" onclick="tabTautOtomatis()">Tautkan otomatis (NISN sama)</button></div><div class="pb"><div class="note">Saldo ini dibawa dari tahun ajaran sebelumnya. Pilih anak yang sama pada tahun ini lalu tautkan; saldonya masuk sebagai saldo awal.</div>${tab(['Nama lama','Kelas lama','Saldo','Tautkan ke','Aksi'],b.map(x=>`<tr><td><b>${esc(x.nama_siswa)}</b><div class="mu">${esc(x.tahun_asal||'')}</div></td><td>${esc(x.kelas_nama||'-')}</td><td><b>${rp(x.saldo)}</b></td><td><select id="tb_${x.id}" class="select">${opt(x)}</select></td><td><div class="tb" style="margin:0;flex-wrap:wrap"><button class="btn sm success" onclick="tabTaut(${x.id})">Tautkan</button>${kl?`<button class="btn sm danger" onclick="tabBuang(${x.id})">Buang</button>`:''}</div></td></tr>`).join(''))}</div></div>`}
-function tabTaut(id){const el=$('#tb_'+id),sid=el?Number(el.value):0;if(!sid)return toast('Pilih anak yang dimaksud terlebih dahulu',false);
- guard(async()=>{await dbq(db.rpc('tabungan_tautkan_bawaan',{p_bawaan:id,p_siswa:sid}));await muatTabungan();toast('Saldo ditautkan sebagai saldo awal');renderV()})}
-function tabTautOtomatis(){guard(async()=>{const n=await dbq(db.rpc('tabungan_tautkan_otomatis',{p_sekolah:SEK}));await muatTabungan();toast(n?n+' saldo ditautkan otomatis':'Tidak ada NISN yang cocok. Tautkan manual dari daftar',!!n);renderV()})}
-function tabBuang(id){const x=(S.tabBawaan||[]).find(v=>v.id===id);form('Buang saldo bawaan',[{k:'a',l:'Alasan (wajib, tercatat di log audit)'}],async v=>{
-  if((v.a||'').trim().length<3)throw new Error('Isi alasan');
-  await dbq(db.rpc('tabungan_buang_bawaan',{p_bawaan:id,p_alasan:v.a.trim()}));await muatTabungan();toast('Saldo bawaan '+(x?x.nama_siswa:'')+' dibuang');renderV()});$('#ms').textContent='Buang saldo'}
 function sheetTabungan(wb,nama,rows,kls){
  const F='Arial',ws=wb.addWorksheet(String(nama).replace(/[\\\/\?\*\[\]:]/g,'-').slice(0,31),{pageSetup:{orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0}});
  const fl=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}}),ln={style:'thin',color:{argb:'FFCFD9D3'}},bd={top:ln,left:ln,bottom:ln,right:ln},mid={horizontal:'center',vertical:'middle'};
@@ -2391,8 +2708,8 @@ let devTab='ringkas';
 const MB=()=>{try{return !!sessionStorage.getItem('mode_bantuan')}catch(e){return false}};
 const hBT=()=>{try{const m=JSON.parse(sessionStorage.getItem('mode_bantuan')||'null'),t=m&&m.bantuan;return t?{'X-Bantuan':t}:{}}catch(e){return {}}};
 async function apiDev(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/developer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/developer tidak ditemukan (404). Pastikan file api/developer.js sudah di-deploy');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
-async function muatDev(){const [g,sk,pd,pn,lg,sm,al,nl]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100})),dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_alpa')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_libur')).catch(e=>({error:(e&&e.message)||String(e)}))]);S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg;S.devSimpan=sm;S.devAlpa=al;S.devNL=nl;S.devAlRing=await dbq(db.rpc('developer_alumni_ringkas')).catch(()=>null);S.devAlTh='';S.devAlList=[];await muatKalNas().catch(()=>{})}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['hapus','🗑 Hapus Data'],['log','📜 Log'],['sistem','🩺 Sistem']];
+async function muatDev(){const [g,sk,pd,pn,lg,sm,al,nl,np]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100})),dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_alpa')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_libur')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_piket')).catch(e=>({error:(e&&e.message)||String(e)}))]);S.devNP=np;S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg;S.devSimpan=sm;S.devAlpa=al;S.devNL=nl;S.devAlRing=await dbq(db.rpc('developer_alumni_ringkas')).catch(()=>null);S.devAlTh='';S.devAlList=[];await muatKalNas().catch(()=>{})}
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['hapus','🗑 Hapus Data'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
 function devBuka(k){drw(0);kalReset();devTab=k;if(view==='developer'){renderAll();scrollTo(0,0);kedipHalaman()}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
@@ -2433,7 +2750,7 @@ function ubahLiburNas(t){const r=(S.devKal||[]).find(x=>x.tanggal===t);if(!r)ret
 async function hapusLiburNas(t){if(!await konfirmasi('Hapus libur nasional '+fmt(t)+'?',{judul:'Hapus libur nasional',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.rpc('libur_nasional_hapus',{p_tanggal:t}));await muatKalNas();renderV();toast('Libur nasional dihapus')})}
 function segarDev(){drw(0);guard(async()=>{await muatDev();renderV();toast('Data diperbarui')})}
 V.developer=()=>{if(devTab==='ringkas')devTab='setuju';
- return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,liburnotif:devNotifLibur,hapus:devHapus,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
+ return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,hapus:devHapus,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
 function renderNavDev(){
  const nm=(S.devPend||[]).length+(S.devNomor||[]).length,bd=nm?` <span class="badge Belum">${nm}</span>`:'';
  const itm=(on,fn,ic,lb,ex)=>`<button class="${on?'on':''}" onclick="${fn}"><span>${ic}</span>${lb}${ex||''}</button>`,dv=k=>view==='developer'&&devTab===k;
@@ -2453,6 +2770,7 @@ function devNotif(){
  if(al&&al.error)L.push(kartu('e','⚠️','Status Alpa Otomatis gagal dimuat',esc(al.error)+'<br>Pastikan skrip SQL langkah 6 sudah dijalankan.','<button class="btn soft sm" onclick="devBuka(\'alpa\')">⏰ Buka Alpa Otomatis</button>'));
  else if(al){const er=al.map(x=>({x,v:statusAlpa(x)})).filter(o=>o.v[0]==='err');if(er.length)L.push(kartu('e','⏰','Alpa Otomatis error ('+er.length+' sekolah)',er.slice(0,3).map(o=>'<b style="display:inline">'+esc(o.x.nama)+'</b>: '+esc(o.v[2])).join('<br>')+(er.length>3?'<br>dan '+(er.length-3)+' sekolah lainnya.':''),'<button class="btn soft sm" onclick="devBuka(\'alpa\')">⏰ Buka Alpa Otomatis</button>'))}
  const nl=S.devNL;if(nl&&!nl.error){const er=nl.map(x=>({x,v:statusNL(x)})).filter(o=>o.v[0]==='err');if(er.length)L.push(kartu('e','🔔','Notifikasi Libur error ('+er.length+' sekolah)',er.slice(0,3).map(o=>'<b style="display:inline">'+esc(o.x.nama)+'</b>: '+esc(o.v[2])).join('<br>')+(er.length>3?'<br>dan '+(er.length-3)+' sekolah lainnya.':''),'<button class="btn soft sm" onclick="devBuka(\'liburnotif\')">🔔 Buka Notifikasi Libur</button>'))}
+  const np=S.devNP;if(np&&!np.error){const gg=(np.log||[]).filter(x=>x.status==='gagal');if(gg.length)L.push(kartu('e','📲','Notifikasi Piket gagal ('+gg.length+' catatan)',gg.slice(0,3).map(x=>'<b style="display:inline">'+esc(x.nama)+'</b>: '+esc(x.pesan_error||x.alasan||'gagal')).join('<br>'),'<button class="btn soft sm" onclick="devBuka(\'piketnotif\')">📲 Buka Notifikasi Piket</button>'))}
  const ce=chk&&chk.r?chk.r.filter(x=>x[0]==='err').length:0;
  if(ce)L.push(kartu('e','🩺','Pemeriksaan sistem menemukan masalah',ce+' pemeriksaan gagal pada pengecekan terakhir ('+esc(chk.t)+').','<button class="btn soft sm" onclick="devBuka(\'sistem\')">🩺 Buka Pemeriksaan Sistem</button>'));
  return `<div class="dnt-h">🔔 Pemberitahuan <span>${L.length?L.length+' perlu perhatian':'Tidak ada yang mendesak'}</span></div>`+(L.length?L.join(''):kartu('ok','🌿','Semuanya aman','Tidak ada persetujuan tertunda, error, maupun libur nasional hari ini.'))}
@@ -2552,6 +2870,7 @@ const RETENSI=[
  ['laporan_ortu','1 hari','Hanya data hari ini'],
  ['notifikasi_alpa','1 hari','Hanya data hari ini'],
  ['notifikasi_libur','1 hari','Hanya data hari ini'],
+ ['piket_notif_log','3 hari','Hanya 3 hari terakhir (tugas bersihkan_piket_notif_log pukul 00.15 WIB)'],
  ['alpa_proses','1 hari','Hanya data hari ini'],
  ['libur_batal','1 hari','Dihapus setelah tanggal pembatalannya lewat'],
  ['libur_tanggal','Sampai tanggal lewat','Dihapus bila tanggal akhirnya sudah lewat; hari ini masih disimpan'],
@@ -2587,6 +2906,28 @@ function statusNL(x){if(x.status_sekolah!=='aktif')return['off','Non-Aktif','Sek
  if(!x.nomor_ada)return['err','Error','Nomor Kepala Sekolah belum diisi di Pengaturan > Koneksi'];if(!x.token_ada)return['err','Error','Token Fonnte belum diisi di Pengaturan > Koneksi'];
  if(x.terakhir_status==='failed')return['err','Error','Eksekusi terakhir gagal: '+(x.terakhir_pesan||'')];
  if(x.notif_status==='failed')return['err','Error','Notifikasi terakhir gagal: '+(x.notif_error||'')];return['ok','Aktif','']}
+const NP_STATUS={selesai:['Hadir','Selesai'],sebagian:['Belum','Sebagian'],gagal:['Alpa','Gagal'],dilewati:['Belum','Dilewati'],berjalan:['Belum','Berjalan']};
+function devNotifPiket(){const d=S.devNP;
+ if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat status notifikasi piket...</div></div></div>';
+ if(d.error)return `<div class="panel"><div class="ph">📲 Notifikasi Piket</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL pembaruan_tahap4_notif_piket.sql sudah dijalankan.</div></div></div>`;
+ const ls=d.log||[],cr=d.cron||[],ht=d.http||[],lg=d.langganan_sekolah||[];
+ const bs=s=>{const v=NP_STATUS[s]||['Belum',s];return `<span class="badge ${v[0]}">${esc(v[1])}</span>`};
+ return `<div class="panel"><div class="ph">📲 Notifikasi Piket (push) <button class="btn soft sm" onclick="muatUlangNP()">↻ Muat ulang</button></div><div class="pb"><div class="cards"><div class="card stat"><b>${Number(d.sekolah_aktif)||0}</b>Sekolah aktif</div><div class="card stat"><b>${Number(d.langganan_total)||0}</b>HP terdaftar</div><div class="card stat"><b>${ls.filter(x=>x.status==='gagal').length}</b>Catatan gagal</div></div>
+ <div class="tbkh">Tugas otomatis</div>
+ ${cr.length?tab(['Tugas','Jadwal (UTC)','Aktif','Terakhir jalan','Hasil'],cr.map(c=>`<tr><td><b>${esc(c.nama)}</b></td><td>${esc(c.jadwal)}</td><td>${c.aktif?'Ya':'Tidak'}</td><td>${c.terakhir?waktuId(c.terakhir.mulai):'-'}</td><td>${c.terakhir?esc(c.terakhir.status)+(c.terakhir.pesan?' · '+esc(c.terakhir.pesan):''):'Belum pernah jalan'}</td></tr>`).join('')):'<div class="note">Tugas cron belum terbentuk. Jalankan skrip SQL tahap 4.</div>'}
+ <div class="note" style="margin-top:8px">Pengingat dikirim pukul 18.00 WIB (11.00 UTC) untuk piket besok dan pukul 05.00 WIB (22.00 UTC) untuk piket hari ini.</div>
+ <div class="tb" style="flex-wrap:wrap"><button class="btn soft sm" onclick="ujiNotifPiket('malam')">✉ Uji kirim: piket besok</button><button class="btn soft sm" onclick="ujiNotifPiket('pagi')">✉ Uji kirim: piket hari ini</button></div>
+ <div class="tbkh">HP terdaftar per sekolah</div>
+ ${tab(['Sekolah','HP','Anak','Terakhir berhasil'],lg.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${Number(x.jumlah)||0}</td><td>${Number(x.anak)||0}</td><td>${waktuId(x.terakhir_ok)}</td></tr>`).join(''),'Belum ada HP yang mengaktifkan pengingat.')}
+ <div class="tbkh">Catatan pengiriman (3 hari terakhir)</div>
+ ${tab(['Mulai','Sekolah','Piket tanggal','Waktu','Status','Anak','HP','Terkirim','Gagal','Dibuang','Durasi','Keterangan'],ls.map(x=>`<tr><td>${waktuId(x.mulai_at)}</td><td><b>${esc(x.nama)}</b></td><td>${esc(x.tanggal_piket)}</td><td>${x.waktu==='malam'?'18.00':'05.00'}</td><td>${bs(x.status)}</td><td>${Number(x.jml_siswa)||0}</td><td>${Number(x.jml_langganan)||0}</td><td>${Number(x.terkirim)||0}</td><td>${Number(x.gagal)||0}</td><td>${Number(x.dibuang)||0}</td><td>${x.durasi_ms!=null?(Number(x.durasi_ms)/1000).toFixed(1)+' dtk':'-'}</td><td>${esc(x.pesan_error||x.alasan||'')}</td></tr>`).join(''),'Belum ada catatan pengiriman.')}
+ <div class="tbkh">Respons terakhir dari server pengirim (tersimpan sekitar 6 jam)</div>
+ ${tab(['Waktu','Status HTTP','Isi atau galat'],ht.map(x=>`<tr><td>${waktuId(x.dibuat)}</td><td><span class="badge ${Number(x.status)===200?'Hadir':'Alpa'}">${x.status==null?'-':esc(x.status)}</span></td><td>${esc(x.galat||x.isi||'')}</td></tr>`).join(''),'Belum ada respons tercatat.')}
+ <div class="note" style="margin-top:8px">Status 401 berarti CRON_RAHASIA di Vercel tidak sama dengan rahasia di Vault. Status 500 biasanya VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, atau VAPID_SUBJECT belum diisi di Vercel. Status Dilewati bukan galat: artinya tidak ada jadwal, hari libur, atau belum ada HP yang mengaktifkan pengingat.</div></div></div>`}
+function muatUlangNP(){guard(async()=>{S.devNP=await dbq(db.rpc('developer_notif_piket')).catch(e=>({error:(e&&e.message)||String(e)}));renderV()})}
+async function ujiNotifPiket(w){const t=w==='malam'?'piket BESOK':'piket HARI INI';
+ if(!await konfirmasi('Kirim notifikasi push SUNGGUHAN untuk '+t+' ke semua HP orang tua yang sudah terdaftar? Catatan pengiriman hari itu akan diganti dan pesan dikirim ulang.',{judul:'Uji kirim notifikasi piket',ya:'Kirim sekarang'}))return;
+ guard(async()=>{await dbq(db.rpc('developer_uji_notif_piket',{p_waktu:w}));toast('Permintaan kirim dijalankan. Tunggu beberapa detik lalu tekan Muat ulang untuk melihat hasilnya')})}
 function devNotifLibur(){const d=S.devNL;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat status notifikasi libur...</div></div></div>';
  if(d.error)return `<div class="panel"><div class="ph">🔔 Notifikasi Libur</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL notifikasi-libur.sql dan notifikasi-libur-halaman.sql sudah dijalankan.</div></div></div>`;
@@ -2601,10 +2942,10 @@ function devHapus(){const last=(S.devLog||[]).find(x=>x.aksi==='beritahu_kepala'
  const ret=RETENSI;
  return `<div class="panel"><div class="ph">📢 1. Pemberitahuan Kepala Sekolah</div><div class="pb"><div class="note">Kirim WhatsApp ke semua Kepala Sekolah aktif (${nk} sekolah) agar mengunduh rekap absensi di menu Pengaturan > Tahun Ajaran sebelum data dihapus. Pesan dikirim lewat perangkat Fonnte Developer.</div><div class="fd"><label class="l">Batas waktu mengunduh (opsional)</label>${dt('date','','','',{id:'bkBatas',min:TODAY,kosong:1,ph:'Pilih tanggal (opsional)'})}</div><div class="mu" style="margin:8px 0">${last?'Terakhir dikirim: '+waktuId(last.waktu)+' ('+esc(last.rincian||'')+')':'Belum pernah dikirim.'}</div><button class="btn success" onclick="beritahuKepala()">📢 Kirim pemberitahuan</button></div></div>
 <div class="panel"><div class="ph">🗑 2. Hapus seluruh isi tabel absensi</div><div class="pb"><div class="note" style="color:var(--rd)">Menghapus SELURUH data absensi dari SEMUA sekolah dan tidak bisa dikembalikan. Data siswa, wali, guru, dan kelas tidak ikut terhapus. Lakukan setelah Kepala Sekolah diberi tahu dan sempat mengunduh rekap. Dibutuhkan kata sandi Developer.</div><button class="btn danger" onclick="hapusAbsensi()">🗑 Hapus seluruh data absensi</button></div></div>
-<div class="panel"><div class="ph">🗑 3. Hapus seluruh isi tabel tabungan</div><div class="pb"><div class="note">Kirim WhatsApp ke semua Kepala Sekolah aktif (${nk} sekolah) agar mengunduh rekap saldo tabungan di menu Tabungan > Rekap & Laporan sebelum data dihapus.</div><div class="fd"><label class="l">Batas waktu mengunduh (opsional)</label>${dt('date','','','',{id:'bkBatasT',min:TODAY,kosong:1,ph:'Pilih tanggal (opsional)'})}</div><div class="mu" style="margin:8px 0">${(()=>{const l=(S.devLog||[]).find(x=>x.aksi==='beritahu_kepala_tabungan');return l?'Terakhir dikirim: '+waktuId(l.waktu)+' ('+esc(l.rincian||'')+')':'Belum pernah dikirim.'})()}</div><div class="tb"><button class="btn success" onclick="beritahuKepalaTabungan()">📢 Kirim pemberitahuan tabungan</button></div><div class="note" style="color:var(--rd)">Menghapus SELURUH isi tabel tabungan_transaksi dan tabungan_bawaan dari SEMUA sekolah dan tidak bisa dikembalikan. Data siswa, wali, guru, kelas, dan absensi tidak ikut terhapus. Lakukan setelah Kepala Sekolah sempat mengunduh rekap tabungan. Dibutuhkan kata sandi Developer.</div><button class="btn danger" onclick="hapusTabungan()">🗑 Hapus seluruh data tabungan</button></div></div>
-<div class="panel"><div class="ph">🧹 4. Pembersihan otomatis harian</div><div class="pb"><div class="note">Berjalan otomatis setiap hari pukul 00.05 WIB lewat pg_cron Supabase (cleanup-data-harian, fungsi bersihkan_data_lama). Batas dihitung dari awal hari ini pukul 00.00 WIB, jadi 1 hari berarti hanya data hari ini yang disimpan dan data kemarin terhapus pukul 00.05.</div>${tab(['Tabel','Disimpan','Aturan'],ret.map(r=>`<tr><td><b>${esc(r[0])}</b></td><td>${r[1]}</td><td>${esc(r[2])}</td></tr>`).join(''))}<div class="note" style="margin-top:8px">Tidak dibersihkan otomatis: absensi, tabungan_transaksi, tabungan_bawaan, serta data inti (siswa, wali, guru, kelas, libur mingguan, pengaturan). Libur tanggal dan libur nasional hanya dihapus setelah tanggalnya lewat, jadi libur hari ini tetap tersimpan sampai tengah malam. Absensi dan tabungan hanya terhapus lewat bagian 2 dan 3 di atas.</div></div></div>
+<div class="panel"><div class="ph">🗑 3. Hapus seluruh isi tabel tabungan</div><div class="pb"><div class="note">Kirim WhatsApp ke semua Kepala Sekolah aktif (${nk} sekolah) agar mengunduh rekap saldo tabungan di menu Tabungan > Rekap & Laporan sebelum data dihapus.</div><div class="fd"><label class="l">Batas waktu mengunduh (opsional)</label>${dt('date','','','',{id:'bkBatasT',min:TODAY,kosong:1,ph:'Pilih tanggal (opsional)'})}</div><div class="mu" style="margin:8px 0">${(()=>{const l=(S.devLog||[]).find(x=>x.aksi==='beritahu_kepala_tabungan');return l?'Terakhir dikirim: '+waktuId(l.waktu)+' ('+esc(l.rincian||'')+')':'Belum pernah dikirim.'})()}</div><div class="tb"><button class="btn success" onclick="beritahuKepalaTabungan()">📢 Kirim pemberitahuan tabungan</button></div><div class="note" style="color:var(--rd)">Menghapus SELURUH isi tabel tabungan_transaksi dari SEMUA sekolah dan tidak bisa dikembalikan. Data siswa, wali, guru, kelas, dan absensi tidak ikut terhapus. Lakukan setelah Kepala Sekolah sempat mengunduh rekap tabungan. Dibutuhkan kata sandi Developer.</div><button class="btn danger" onclick="hapusTabungan()">🗑 Hapus seluruh data tabungan</button></div></div>
+<div class="panel"><div class="ph">🧹 4. Pembersihan otomatis harian</div><div class="pb"><div class="note">Berjalan otomatis setiap hari pukul 00.05 WIB lewat pg_cron Supabase (cleanup-data-harian, fungsi bersihkan_data_lama). Batas dihitung dari awal hari ini pukul 00.00 WIB, jadi 1 hari berarti hanya data hari ini yang disimpan dan data kemarin terhapus pukul 00.05.</div>${tab(['Tabel','Disimpan','Aturan'],ret.map(r=>`<tr><td><b>${esc(r[0])}</b></td><td>${r[1]}</td><td>${esc(r[2])}</td></tr>`).join(''))}<div class="note" style="margin-top:8px">Tidak dibersihkan otomatis: absensi, tabungan_transaksi, serta data inti (siswa, wali, guru, kelas, libur mingguan, pengaturan). Libur tanggal dan libur nasional hanya dihapus setelah tanggalnya lewat, jadi libur hari ini tetap tersimpan sampai tengah malam. Absensi dan tabungan hanya terhapus lewat bagian 2 dan 3 di atas, atau saat Kepala Sekolah memulai tahun ajaran baru.</div></div></div>
 ${devAlumniPanel()}
-<div class="panel"><div class="ph">⏱ Jadwal otomatis harian (WIB)</div><div class="pb">${tab(['Jam','Tugas','Fungsi'],[['00.05','Pembersihan data lama','bersihkan_data_lama'],['00.10','Menyegarkan data libur','segarkan_libur_data'],['00.20','Memperbarui data penyimpanan','perbarui_pemakaian'],['Sesuai jam tiap sekolah (bawaan 06.00)','Notifikasi libur ke Kepala Sekolah','kirim_notifikasi_libur (Pengaturan > Notifikasi Libur)'],['Sesuai jam alpa tiap sekolah','Alpa otomatis per sekolah','proses_alpa_untuk (lihat tab Alpa Otomatis)']].map(r=>`<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join(''))}</div></div>`}
+<div class="panel"><div class="ph">⏱ Jadwal otomatis harian (WIB)</div><div class="pb">${tab(['Jam','Tugas','Fungsi'],[['00.05','Pembersihan data lama','bersihkan_data_lama'],['00.10','Menyegarkan data libur','segarkan_libur_data'],['00.15','Membersihkan catatan notifikasi piket (lebih dari 3 hari)','bersihkan_piket_notif_log'],['00.20','Memperbarui data penyimpanan','perbarui_pemakaian'],['05.00','Pengingat piket hari ini (push ke HP orang tua)','kirim_notifikasi_piket(pagi) lalu api/piket-notif'],['18.00','Pengingat piket besok (push ke HP orang tua)','kirim_notifikasi_piket(malam) lalu api/piket-notif'],['Sesuai jam tiap sekolah (bawaan 06.00)','Notifikasi libur ke Kepala Sekolah','kirim_notifikasi_libur (Pengaturan > Notifikasi Libur)'],['Sesuai jam alpa tiap sekolah','Alpa otomatis per sekolah','proses_alpa_untuk (lihat tab Alpa Otomatis)']].map(r=>`<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join(''))}</div></div>`}
 function batasId(id){const v=($('#'+id)||{}).value||'';return v?fmt(v):''}
 function beritahuKepala(){const nk=(S.devSek||[]).filter(x=>x.status==='aktif'&&x.kepala_nama).length,batas=batasId('bkBatas');
  konfirmasi('Kirim pemberitahuan WhatsApp ke Kepala Sekolah dari '+nk+' sekolah aktif?'+(batas?'\n\nBatas waktu: '+batas:''),{judul:'Kirim pemberitahuan',ya:'Kirim',ikon:'📢'}).then(ok=>{if(!ok)return;
@@ -2623,7 +2964,7 @@ function hapusTabungan(){form('Hapus seluruh data tabungan',[{k:'kf',l:'Ketik HA
   let j;try{j=await kirim(false)}catch(e){
    if(e.message!=='BELUM_ADA_PEMBERITAHUAN')throw e;
    const ok=await konfirmasi('Anda belum mengirim pemberitahuan tabungan kepada Kepala Sekolah dalam 3 hari terakhir, jadi mereka mungkin belum sempat mengunduh rekap tabungan. Tetap hapus sekarang?',{judul:'Belum ada pemberitahuan',ya:'Tetap hapus',bahaya:1});if(!ok)return;j=await kirim(true)}
-  await muatDev();toast('Data tabungan dihapus ('+j.transaksi+' transaksi, '+j.bawaan+' saldo bawaan)');renderV()});$('#ms').textContent='Hapus semua'}
+  await muatDev();toast('Data tabungan dihapus ('+j.transaksi+' transaksi)');renderV()});$('#ms').textContent='Hapus semua'}
 function devLog(){const l=S.devLog||[];
  return `<div class="panel"><div class="ph">📜 Log audit <span class="mu">100 terbaru</span></div><div class="pb">${l.length?tab(['Waktu','Pelaku','Sekolah','Aksi','Rincian'],l.map(x=>`<tr><td>${esc(new Date(x.waktu).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'short',timeStyle:'short'}))}</td><td>${esc(x.pelaku||'-')}</td><td>${esc(x.sekolah||'-')}</td><td><b>${esc(x.aksi)}</b></td><td>${esc(x.rincian||'')}</td></tr>`).join('')):'<div class="mu">Belum ada catatan.</div>'}</div></div>`}
 function devSistem(){const r=chk?chk.r:null,n=l=>r?r.filter(x=>x[0]===l).length:0;
