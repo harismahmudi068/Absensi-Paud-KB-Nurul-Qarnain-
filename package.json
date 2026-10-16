@@ -6,6 +6,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@google/genai": "2.25.0"
+    "@google/genai": "2.25.0",
+    "web-push": "3.6.7"
   }
 }
