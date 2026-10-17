@@ -238,7 +238,7 @@ const tgl=d=>{const p=String(d).split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]
 const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jakarta'}):'';
 const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
 const m=location.pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);
-const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['libur','🎉','Kalender Hari Libur']];
+const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['libur','🎉','Kalender Hari Libur'],['notifikasi','🔔','Notifikasi']];
 const C={},S={},LAP={st:'',busy:0};let cur='',tok=0;
 const segar=v=>C[v];
 
@@ -264,6 +264,7 @@ function pesan(j,t){$('#isi').innerHTML='<div class="msg"><div style="font-size:
 function loading(){$('#isi').innerHTML='<div class="sk"></div><div class="sk" style="height:140px"></div><div class="sk"></div>'}
 async function ambil(v){
  if(segar(v))return C[v];
+ if(v==='notifikasi'){const d=await ambil('dashboard');C.notifikasi=d;return d}
  const r=await fetch('/api/portal?k='+m[1]+'&v='+v,{cache:'no-store'});
  if(r.status===404){const e=new Error('404');e.nf=1;throw e}
  if(!r.ok)throw 0;const d=await r.json();C[v]=d;S.siswa=d.siswa;S.sekolah=d.sekolah;S.hari=d.hari_ini;if(d.fitur)S.fitur=d.fitur;if(d.push&&d.push.vapid)S.vapid=d.push.vapid;if(d.libur)S.libur=d.libur;
@@ -293,10 +294,10 @@ function kedipKosong(){if(!KD)return;KD=0;
 function profilNotif(s){const k=profilKurang(s);if(!k.length)return '';
  return '<div class="panel ct pk" role="alert"><div class="pb" style="padding-top:14px"><div class="pkt">⚠️ Profil anak belum lengkap</div><div class="mu">Belum diisi: '+esc(k.join(', '))+'.</div><button type="button" class="btn fx" onclick="lengkapi()">Lengkapi</button></div></div>'}
 R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
- return profilNotif(s)+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
+ return profilNotif(s)+(d.push&&d.push.aktif?'<div id="pushBanner"></div>':'')+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
  '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'</div></div>'+
  (tb.aktif?'<div class="panel ct"><div class="ph">💰 Tabungan Hari Ini</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(tb.saldo)+'</div>'+(tb.hari_ini.length?tb.hari_ini.map(trx).join(''):'<div class="mu">Tidak ada transaksi hari ini.</div>')+'</div></div>':'')+
- piketPanel(d)+(d.push&&d.push.aktif?'<div id="pushBox"></div>':'')+hafalanPanel(d)+calPanel(d)};
+ piketPanel(d)+hafalanPanel(d)+calPanel(d)};
 const SAP={hadir:'Selamat beraktivitas 😊',alpa:'Semangat yah sekolahnya 💪',terlambat:'Belajar disiplin lagi yah, semangat terus 🙂',sakit:'Semoga cepat sembuh dan bisa beraktivitas kembali 🤒',izin:'Semoga dilancarkan segala urusannya 🤲',libur:'Selamat menikmati momen bersama keluarga, sampai jumpa kembali 👨‍👩‍👧'};
 function sapa(d){const a=d.absen_hari_ini,k=a?a.status:(d.libur.some(x=>x.tanggal===d.hari_ini)?'libur':'');$('#gt').textContent=SAP[k]||'Semoga harimu menyenangkan 🌤️'}
 
@@ -493,9 +494,9 @@ function hafalanPanel(d){const h=d.hafalan;if(!h||!h.aktif)return '';
  const pct=Math.round(h.lancar*100/h.total);
  return '<div class="panel ct"><div class="ph">📖 Hafalan</div><div class="pb"><div class="saldo">'+h.lancar+' <span class="hs">dari '+h.total+' hafalan lancar</span></div><div class="hbar"><i style="width:'+pct+'%"></i></div>'+(h.ulang?'<div class="mu">'+h.ulang+' hafalan perlu diulang</div>':'')+'<button type="button" class="btn fx" onclick="go(\'hafalan\')">Lihat daftar hafalan</button></div></div>'}
 R.piket=d=>{const p=d.piket;if(!p||!p.aktif)return pesanFitur('🧹','Jadwal piket tidak aktif','Sekolah belum mengaktifkan fitur jadwal piket.');
- const kls=d.siswa.kelas?' · Kelas '+esc(d.siswa.kelas):'',kotak=d.push&&d.push.aktif?'<div id="pushBox"></div>':'';
- if(!p.hari.some(x=>x.item.length))return kotak+'<div class="panel"><div class="ph">🧹 Jadwal Piket'+kls+'</div><div class="pb mu">Belum ada jadwal piket untuk kelas ini.</div></div>'+liburDepan(p);
- return kotak+'<div class="panel"><div class="ph">🧹 Jadwal Piket Pekan Ini'+kls+'</div><div class="pb">'+p.hari.map(h=>'<div class="pkh'+(h.hari_ini?' now':'')+(h.libur?' lb':'')+'"><div class="pkd">'+esc(h.nama)+' <span class="mu">'+tgl(h.tanggal)+'</span>'+(h.hari_ini?' <span class="bd" style="background:#fff0c2;color:#9a5400">Hari ini</span>':'')+(h.libur?' <span class="bd" style="background:#e5edf4;color:#42668a">Libur · '+esc(h.libur.ket)+'</span>':'')+'</div>'+
+ const kls=d.siswa.kelas?' · Kelas '+esc(d.siswa.kelas):'';
+ if(!p.hari.some(x=>x.item.length))return '<div class="panel"><div class="ph">🧹 Jadwal Piket'+kls+'</div><div class="pb mu">Belum ada jadwal piket untuk kelas ini.</div></div>'+liburDepan(p);
+ return '<div class="panel"><div class="ph">🧹 Jadwal Piket Pekan Ini'+kls+'</div><div class="pb">'+p.hari.map(h=>'<div class="pkh'+(h.hari_ini?' now':'')+(h.libur?' lb':'')+'"><div class="pkd">'+esc(h.nama)+' <span class="mu">'+tgl(h.tanggal)+'</span>'+(h.hari_ini?' <span class="bd" style="background:#fff0c2;color:#9a5400">Hari ini</span>':'')+(h.libur?' <span class="bd" style="background:#e5edf4;color:#42668a">Libur · '+esc(h.libur.ket)+'</span>':'')+'</div>'+
   (h.item.length?h.item.map(i=>'<div class="pki"><b>'+esc(i.jenis)+'</b>'+i.anak.map(a=>'<div class="pkn'+(a.saya?' me':'')+'">'+esc(a.nama)+(a.saya?' · anak Anda':'')+'</div>').join('')+
    i.entri.map(e=>{const t=[i.semua?(e.kelas==null?'Seluruh kelas':'Kelas '+e.kelas):'',e.catatan].filter(Boolean).join(' · ');return t?'<div class="mu">'+esc(t)+'</div>':''}).join('')+'</div>').join('')+(h.libur?'<div class="mu">Piket tidak berlaku karena libur.</div>':''):(h.libur?'<div class="mu">Libur, tidak ada piket.</div>':'<div class="mu">Tidak ada piket</div>'))+'</div>').join('')+'</div></div>'+liburDepan(p)};
 function liburDepan(p){return p.libur_depan&&p.libur_depan.length?'<div class="panel"><div class="ph">🎉 Libur 30 hari ke depan</div><div class="pb">'+p.libur_depan.map(x=>'<div class="li"><div><b>'+esc(x.ket)+'</b></div><span class="bd" style="background:#e5edf4;color:#42668a">'+tgl(x.tanggal)+'</span></div>').join('')+'</div></div>':''}
@@ -515,15 +516,28 @@ const PK_PIL='pk_pil_'+(m?m[1]:'');
 const pkPilihan=()=>{let o={};try{o=JSON.parse(localStorage.getItem(PK_PIL)||'{}')||{}}catch(_){}return{piket:o.piket!==false,absensi:o.absensi!==false,tabungan:o.tabungan!==false}};
 const PK_NAMA={piket:'Pengingat piket',absensi:'Absensi harian anak',tabungan:'Tabungan (nominal dan saldo akhir)'};
 const pkJenis=d=>{const j=(d&&d.push&&d.push.jenis)||{};return['absensi','tabungan','piket'].filter(k=>j[k])};
-async function pushRender(d,galat){const box=$('#pushBox');if(!box||!d||!d.push||!d.push.aktif)return;let h='';const jn=pkJenis(d),daftar=jn.map(k=>PK_NAMA[k].toLowerCase().replace(/ \(.*\)/,'')).join(', ');
- if(!pushDidukung()){h=iosBelumPasang()?'<div class="mu">Di iPhone, notifikasi hanya bisa diaktifkan dari aplikasi di Layar Utama. Ketuk tombol Bagikan, pilih <b>Tambahkan ke Layar Utama</b>, buka Halaman Siswa dari ikon itu, lalu aktifkan notifikasi di sini.</div>':'<div class="mu">Browser ini belum mendukung notifikasi. Gunakan Chrome di Android, atau pasang ke Layar Utama di iPhone.</div>'}
- else if(Notification.permission==='denied'){h='<div class="mu">Izin notifikasi diblokir di browser. Buka pengaturan situs, izinkan notifikasi, lalu muat ulang halaman ini.</div>'}
- else{const sub=await pushSub().catch(()=>null),off=localStorage.getItem(PK_OFF)==='1';
-  if(sub&&Notification.permission==='granted'&&!off){
-   if(!sessionStorage.getItem('pk_ok_'+m[1])){try{await pushPost({aksi:'push_daftar',langganan:sub.toJSON(),agen:navigator.userAgent.slice(0,120),terima:pkPilihan()});sessionStorage.setItem('pk_ok_'+m[1],'1')}catch(e){galat=e.message}}
-   const pil=pkPilihan();
-   h='<div class="mu">✅ Notifikasi aktif di HP ini. Pilih yang ingin diterima:</div>'+jn.map(k=>'<label class="li" style="cursor:pointer"><span>'+PK_NAMA[k]+'</span><input type="checkbox" id="pkc_'+k+'" '+(pil[k]?'checked':'')+' onchange="pushPilih()"></label>').join('')+'<button type="button" class="btn fx" style="margin-top:8px" onclick="pushMatikan()">Matikan semua notifikasi</button>'}
-  else h='<div class="mu">Dapatkan notifikasi otomatis di HP ini: '+esc(daftar)+'.</div><button type="button" class="btn fx" onclick="pushAktifkan()">🔔 Aktifkan notifikasi</button>'}
+function pushBanner(st,daftar,galat){if(st==='aktif'||st==='nosupport')return '';
+ const lihat='<button type="button" class="btn fx" onclick="go(\'notifikasi\')">Lihat caranya</button>';
+ let t,b;
+ if(st==='mati'){t='Aktifkan agar tidak ketinggalan kabar anak di HP ini: '+esc(daftar)+'.';b='<button type="button" class="btn fx" onclick="pushAktifkan()">🔔 Aktifkan notifikasi</button>'}
+ else if(st==='denied'){t='Izin notifikasi diblokir di browser, jadi kabar dari sekolah belum bisa masuk ke HP ini.';b=lihat}
+ else{t='Di iPhone, notifikasi hanya bisa diaktifkan dari aplikasi di Layar Utama.';b=lihat}
+ return '<div class="panel ct pk" role="alert"><div class="pb" style="padding-top:14px"><div class="pkt">🔔 Notifikasi belum aktif</div><div class="mu">'+t+'</div>'+b+(galat?'<div class="mu" style="color:#c0342b">'+esc(galat)+'</div>':'')+'</div></div>'}
+async function pushRender(d,galat){if(!d||!d.push||!d.push.aktif)return;
+ const jn=pkJenis(d),daftar=jn.map(k=>PK_NAMA[k].toLowerCase().replace(/ \(.*\)/,'')).join(', ');let st;
+ if(!pushDidukung())st=iosBelumPasang()?'ios':'nosupport';
+ else if(Notification.permission==='denied')st='denied';
+ else{const sub=await pushSub().catch(()=>null);st=(sub&&Notification.permission==='granted'&&localStorage.getItem(PK_OFF)!=='1')?'aktif':'mati';
+  if(st==='aktif'&&!sessionStorage.getItem('pk_ok_'+m[1])){try{await pushPost({aksi:'push_daftar',langganan:sub.toJSON(),agen:navigator.userAgent.slice(0,120),terima:pkPilihan()});sessionStorage.setItem('pk_ok_'+m[1],'1')}catch(e){galat=e.message}}}
+ const ban=$('#pushBanner'),box=$('#pushBox');
+ if(ban)ban.innerHTML=pushBanner(st,daftar,galat);
+ if(!box)return;let h='';
+ if(st==='nosupport')h='<div class="mu">Browser ini belum mendukung notifikasi. Gunakan Chrome di Android, atau pasang ke Layar Utama di iPhone.</div>';
+ else if(st==='ios')h='<div class="mu">Di iPhone, notifikasi hanya bisa diaktifkan dari aplikasi di Layar Utama. Ketuk tombol Bagikan, pilih <b>Tambahkan ke Layar Utama</b>, buka Halaman Siswa dari ikon itu, lalu aktifkan notifikasi di sini.</div>';
+ else if(st==='denied')h='<div class="mu">Izin notifikasi diblokir di browser. Buka pengaturan situs, izinkan notifikasi, lalu muat ulang halaman ini.</div>';
+ else if(st==='aktif'){const pil=pkPilihan();
+  h='<div class="mu">✅ Notifikasi aktif di HP ini. Pilih yang ingin diterima:</div>'+jn.map(k=>'<label class="li" style="cursor:pointer"><span>'+PK_NAMA[k]+'</span><input type="checkbox" id="pkc_'+k+'" '+(pil[k]?'checked':'')+' onchange="pushPilih()"></label>').join('')+'<button type="button" class="btn fx" style="margin-top:8px" onclick="pushMatikan()">Matikan semua notifikasi</button>'}
+ else h='<div class="mu">Dapatkan notifikasi otomatis di HP ini: '+esc(daftar)+'.</div><button type="button" class="btn fx" onclick="pushAktifkan()">🔔 Aktifkan notifikasi</button>';
  if(galat)h+='<div class="mu" style="color:#c0342b;margin-top:6px">'+esc(galat)+'</div>';
  box.innerHTML='<div class="panel ct"><div class="ph">🔔 Notifikasi</div><div class="pb">'+h+'</div></div>'}
 async function pushAktifkan(){try{
@@ -547,7 +561,8 @@ async function pushMatikan(){try{const sub=await pushSub();if(sub)await pushPost
 R.libur=d=>calPanel(d);
 A.libur=()=>calRender(DD.cal.val);
 A.dashboard=d=>{calRender(DD.cal.val);S.pd=d;pushRender(d)};
-A.piket=d=>{S.pd=d;pushRender(d)};
+R.notifikasi=d=>{if(!d.push||!d.push.aktif)return pesanFitur('🔔','Notifikasi tidak aktif','Sekolah belum mengaktifkan fitur notifikasi.');return '<div id="pushBox"></div>'};
+A.notifikasi=d=>{S.pd=d;pushRender(d)};
 function calRender(ym){const d={libur:S.libur,hari_ini:S.hari},p=ym.split('-'),y=+p[0],mo=+p[1]-1,first=new Date(y,mo,1).getDay(),len=new Date(y,mo+1,0).getDate(),lib={};
  d.libur.forEach(x=>lib[x.tanggal]=x);
  let h=HR.map(x=>'<div class="h">'+x+'</div>').join('')+'<div class="d e"></div>'.repeat(first),dl=[];
