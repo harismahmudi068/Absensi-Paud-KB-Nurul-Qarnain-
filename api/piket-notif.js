@@ -157,7 +157,7 @@ async function prosesSekolah(sid, waktu, tanggal, paksa) {
     // HP yang terdaftar untuk anak-anak itu
     const ids = [...target.keys()];
     const langganan = await perPaket(ids, 150, (c) =>
-      semua(`/rest/v1/push_langganan?sekolah_id=eq.${sid}&siswa_id=in.(${c.join(',')})&select=id,siswa_id,endpoint,p256dh,auth,gagal`)
+      semua(`/rest/v1/push_langganan?sekolah_id=eq.${sid}&terima_piket=eq.true&siswa_id=in.(${c.join(',')})&select=id,siswa_id,endpoint,p256dh,auth,gagal`)
     );
     if (!langganan.length) {
       await selesai('dilewati', { alasan: 'Belum ada HP yang mengaktifkan pengingat', jml_siswa: target.size });
