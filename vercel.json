@@ -11,6 +11,9 @@
   "functions": {
     "api/guru.js": {
       "maxDuration": 60
+    },
+    "api/notif-siswa.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
