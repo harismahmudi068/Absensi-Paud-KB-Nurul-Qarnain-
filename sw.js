@@ -42,3 +42,4 @@ self.addEventListener('notificationclick', (e) => {
     await self.clients.openWindow(tujuan.href);
   })());
 });
+
