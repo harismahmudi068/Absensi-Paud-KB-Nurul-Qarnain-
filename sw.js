@@ -1,17 +1,24 @@
-/* Service worker Halaman Siswa: khusus notifikasi push pengingat piket.
-   Tidak menyimpan cache dan tidak menangani fetch, jadi tidak mengubah perilaku halaman. */
+/* Service worker Halaman Siswa: khusus notifikasi push (pengingat piket, absensi, tabungan).
+   Tidak menyimpan cache dan tidak menangani fetch, jadi tidak mengubah perilaku halaman.
+   - badge : siluet putih transparan di bilah status HP (/ikon-badge.png)
+   - icon  : gambar sesuai jenis notifikasi (/notif-<jenis>.png), hanya nama yang dikenal yang dipakai */
+const IKON_DIKENAL = ['piket', 'hadir', 'terlambat', 'alpa', 'sakit', 'izin', 'libur', 'tabungan-masuk', 'tabungan-keluar'];
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 self.addEventListener('push', (e) => {
   let d = {};
-  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { judul: 'Pengingat', isi: e.data ? e.data.text() : '' }; }
-  const judul = String(d.judul || 'Pengingat piket').slice(0, 80);
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { judul: 'Pemberitahuan', isi: e.data ? e.data.text() : '' }; }
+  const judul = String(d.judul || 'Pemberitahuan').slice(0, 80);
+  const ikon = IKON_DIKENAL.indexOf(String(d.ikon || '')) >= 0 ? String(d.ikon) : 'piket';
+  const tag = String(d.tag || 'piket');
   e.waitUntil(self.registration.showNotification(judul, {
     body: String(d.isi || '').slice(0, 300),
-    icon: '/ikon-192.png',
-    badge: '/ikon-192.png',
-    tag: String(d.tag || 'piket'),
+    icon: '/notif-' + ikon + '.png',
+    badge: '/ikon-badge.png',
+    tag: tag,
+    renotify: true, // notifikasi dengan tag sama menggantikan yang lama dan tetap berbunyi
     data: { url: String(d.url || '/') }
   }));
 });
