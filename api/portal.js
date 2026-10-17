@@ -137,7 +137,15 @@ const tglValid = (t) => {
   return x.getUTCFullYear() === y && x.getUTCMonth() === mo - 1 && x.getUTCDate() === d;
 };
 
-// Pendaftaran dan pencabutan HP untuk pengingat piket (push). Satu HP boleh terdaftar untuk beberapa anak.
+// Jenis notifikasi push yang tersedia di sekolah (piket, absensi, tabungan)
+function notifTersedia(p) {
+  const piket = !!(p.piket_aktif && p.notif_piket_aktif);
+  const absensi = !!p.notif_absensi_aktif;
+  const tabungan = !!(p.tabungan_aktif && p.notif_tabungan_aktif);
+  return { piket, absensi, tabungan, ada: piket || absensi || tabungan };
+}
+
+// Pendaftaran dan pencabutan HP untuk notifikasi push. Satu HP boleh terdaftar untuk beberapa anak.
 async function aksiPush(req, res) {
   if (!/^application\/json/i.test(String(req.headers['content-type'] || '')))
     return res.status(415).json({ error: 'Format permintaan tidak didukung' });
@@ -159,9 +167,9 @@ async function aksiPush(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    const peng = ((await L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=piket_aktif,notif_piket_aktif&limit=1`, 'GET')) || [])[0] || {};
-    if (!peng.piket_aktif || !peng.notif_piket_aktif)
-      return res.status(409).json({ error: 'Pengingat piket belum diaktifkan oleh sekolah' });
+    const peng = ((await L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=piket_aktif,notif_piket_aktif,notif_absensi_aktif,tabungan_aktif,notif_tabungan_aktif&limit=1`, 'GET')) || [])[0] || {};
+    if (!notifTersedia(peng).ada)
+      return res.status(409).json({ error: 'Notifikasi belum diaktifkan oleh sekolah' });
     const lg = b.langganan && typeof b.langganan === 'object' ? b.langganan : {};
     const ep = String(lg.endpoint || '');
     const kk = lg.keys && typeof lg.keys === 'object' ? lg.keys : {};
@@ -169,8 +177,15 @@ async function aksiPush(req, res) {
     if (!ep || ep.length > 600 || !endpointAman(ep) || !RE_B64URL.test(p256dh) || !RE_B64URL.test(auth))
       return res.status(400).json({ error: 'Data pengingat dari browser tidak valid' });
     const agen = String(b.agen || '').replace(/[\u0000-\u001f\u007f]+/g, ' ').trim().slice(0, 120);
-    await L.panggil('/rest/v1/push_langganan?on_conflict=siswa_id,endpoint', 'POST',
-      { sekolah_id: sid, siswa_id: id, endpoint: ep, p256dh, auth, agen: agen || null, gagal: 0 },
+    // Pilihan jenis notifikasi per HP (hanya ditimpa bila dikirim oleh halaman)
+    const pil = b.terima && typeof b.terima === 'object' ? b.terima : null;
+    const baris = { sekolah_id: sid, siswa_id: id, endpoint: ep, p256dh, auth, agen: agen || null, gagal: 0 };
+    if (pil) {
+      baris.terima_piket = pil.piket !== false;
+      baris.terima_absensi = pil.absensi !== false;
+      baris.terima_tabungan = pil.tabungan !== false;
+    }
+    await L.panggil('/rest/v1/push_langganan?on_conflict=siswa_id,endpoint', 'POST', baris,
       { Prefer: 'resolution=merge-duplicates,return=minimal' });
     return res.status(200).json({ ok: true });
   } catch (e) {
@@ -285,7 +300,7 @@ module.exports = async (req, res) => {
       icons: [
         { src: '/ikon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
         { src: '/ikon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-        { src: '/ikon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        { src: '/ikon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
       ]
     }));
   }
@@ -358,7 +373,7 @@ module.exports = async (req, res) => {
     const [sekRows, pengRows, kelasRows, trxData, absData, liburData, pkRows, jnData, itemData, setData] = await Promise.all([
       L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=id,nama,status&limit=1`, 'GET'),
       L.panggil(
-        `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif&limit=1`,
+        `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif,notif_absensi_aktif,notif_tabungan_aktif&limit=1`,
         'GET'
       ),
       s.kelas_id
@@ -413,7 +428,7 @@ module.exports = async (req, res) => {
       },
       // Pengingat push piket: kunci publik hanya dikirim bila sekolah mengaktifkannya
       push: v === 'dashboard' || v === 'piket'
-        ? (peng.piket_aktif && peng.notif_piket_aktif && VAPID_PUB ? { aktif: true, vapid: VAPID_PUB } : { aktif: false })
+        ? (notifTersedia(peng).ada && VAPID_PUB ? { aktif: true, vapid: VAPID_PUB, jenis: { piket: notifTersedia(peng).piket, absensi: notifTersedia(peng).absensi, tabungan: notifTersedia(peng).tabungan } } : { aktif: false })
         : undefined,
       // Fitur yang aktif di sekolah ini (menentukan menu Piket dan Hafalan di halaman siswa)
       fitur: { piket: !!peng.piket_aktif, hafalan: !!peng.hafalan_aktif, notif_piket: !!peng.notif_piket_aktif }
