@@ -1083,6 +1083,7 @@ async function keluar(){
   // 2. Bersihkan sessionStorage dan localStorage aplikasi.
   try{sessionStorage.clear()}catch(e){}
   const _pks={};try{['pk_aktif','pk_akun','tema_ui'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
+  try{Object.keys(localStorage).filter(k=>/^pk_(off|pil)_/.test(k)).forEach(k=>{_pks[k]=localStorage.getItem(k)})}catch(e){}
   try{localStorage.clear()}catch(e){}
   try{Object.keys(_pks).forEach(k=>localStorage.setItem(k,_pks[k]))}catch(e){}
 
@@ -1110,7 +1111,7 @@ async function keluar(){
   try{
     if('serviceWorker' in navigator){
       const regs=await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r=>r.unregister()));
+      await Promise.all(regs.filter(r=>!/\/sw\.js(\?|$)/.test((r.active||r.waiting||r.installing||{scriptURL:''}).scriptURL||'')).map(r=>r.unregister()));
     }
   }catch(e){}
 
