@@ -392,7 +392,7 @@ html[data-tema=gelap] .pk-warn{color:#f87171}
 .tb-full>select.select{width:100%}
 .chip.on,html[data-tema=gelap] .chip.on{background:#22c55e!important;background-image:none!important;border-color:#22c55e!important;color:#fff!important;box-shadow:none!important;text-shadow:none}
 .cls .ci span .csel:has(select.urutan-sel){min-width:92px;width:100px;flex:none}
-.csel:has(select.urutan-sel) .csel-search{display:none}
+.csel:has(select.urutan-sel) .csel-search,.csel:has(select.tanpa-cari) .csel-search{display:none}
 /* Kolom input & dropdown: garis tepi hijau tegas */
 .input,.select,.cpick-btn,.csel-btn{border:1.5px solid #2f8f55!important;border-radius:14px;box-shadow:0 1px 4px rgba(22,101,52,.12)}
 .input:focus,.select:focus,.input:focus-within,.cpick.open .cpick-btn,.csel.open .csel-btn{border-color:#15803d!important;box-shadow:0 0 0 3px rgba(21,128,61,.2)!important;outline:none}
@@ -791,7 +791,7 @@ const segarkan=()=>dbq(db.rpc('segarkan_libur',{p_sekolah:SEK}));
 function loginView(msg){tampilTombolPasskey();const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=idErr(msg||'')}
 function formDaftarSekolah(){info('Daftarkan sekolah','<div class="note">Isi data sekolah dan akun Anda. Pendaftaran akan diperiksa admin; akun aktif setelah disetujui dan Anda dihubungi lewat WhatsApp.</div>'
  +'<div class="fg">'
- +'<div class="fd"><label class="l">Saya mendaftar sebagai</label><select id="dfPr" class="select" onchange="ubahPeranDaftar()"><option value="kepala_sekolah">Kepala Sekolah</option><option value="operator">Operator</option></select></div>'
+ +'<div class="fd"><label class="l">Saya mendaftar sebagai</label><select id="dfPr" class="select tanpa-cari" onchange="ubahPeranDaftar()"><option value="kepala_sekolah">Kepala Sekolah</option><option value="operator">Operator</option></select></div>'
  +'<div class="fd"><label class="l">Nama sekolah</label><input id="dfSk" class="input" maxlength="80"></div>'
  +'<div class="fd"><label class="l">Alamat / kota (opsional)</label><input id="dfAl" class="input" maxlength="150"></div>'
  +'<div class="fd"><label id="dfLNm" class="l">Nama kepala sekolah</label><input id="dfNm" class="input" maxlength="80"></div>'
@@ -806,7 +806,7 @@ function formDaftarSekolah(){info('Daftarkan sekolah','<div class="note">Isi dat
  +'<div class="fd"><label class="l">NIP kepala sekolah (opsional)</label><input id="dfKnip" class="input" maxlength="30"></div>'
  +'<div class="fd"><label class="l">Nomor WhatsApp kepala sekolah</label><input id="dfKw" class="input" inputmode="tel" placeholder="08123456789"></div></div>'
  +'</div><div id="dfErr" class="mu" style="color:var(--rd);margin:6px 0"></div>'
- +'<button id="dfKirim" class="btn success" style="width:100%" onclick="kirimDaftar()">Kirim pendaftaran</button>')}
+ +'<button id="dfKirim" class="btn success" style="width:100%" onclick="kirimDaftar()">Kirim pendaftaran</button>');enhanceCustomSelects($('#mbd'))}
 function formReset(){info('Bantuan akun',`<div class="note">Pilih masalah yang Anda alami. Kode verifikasi dikirim ke nomor WhatsApp yang terdaftar di akun Anda.</div>
 <button class="btn success" style="width:100%;margin:6px 0" onclick="mulaiReset('sandi')">🔐 Lupa sandi saja</button>
 <button class="btn success" style="width:100%;margin:6px 0" onclick="mulaiReset('username')">👤 Lupa username saja</button>
