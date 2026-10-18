@@ -369,6 +369,13 @@ module.exports = async (req, res) => {
       ? 'id,hari,catatan,siswa_id,kelas_id,siswa:siswa(nama,nama_panggilan),jenis:piket_jenis(id,nama,cakupan,urutan)'
       : 'hari,catatan,siswa_id,jenis:piket_jenis(nama,cakupan)';
 
+    // Logo sekolah: hanya untuk halaman kartu (siswa), diambil terpisah agar halaman tetap jalan
+    // walau kolom pengaturan.logo belum ada. Hanya data URL gambar yang diterima.
+    const logoP = v === 'siswa'
+      ? L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=logo&limit=1`, 'GET')
+          .then(r => { const x = r && r[0] && r[0].logo; return (typeof x === 'string' && x.length <= 150000 && /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(x)) ? x : ''; })
+          .catch(() => '')
+      : Promise.resolve('');
     // 2-3. Sekolah, pengaturan, kelas, dan data halaman diambil BERSAMAAN (satu putaran ke database).
     const [sekRows, pengRows, kelasRows, trxData, absData, liburData, pkRows, jnData, itemData, setData] = await Promise.all([
       L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=id,nama,status&limit=1`, 'GET'),
@@ -424,7 +431,8 @@ module.exports = async (req, res) => {
         nama: String(peng.nama_sekolah || '').trim() || sek.nama || '',
         alamat: peng.alamat || '',
         kota: peng.kota || '',
-        tahun_ajaran: peng.tahun_ajaran || ''
+        tahun_ajaran: peng.tahun_ajaran || '',
+        logo: await logoP
       },
       // Pengingat push piket: kunci publik hanya dikirim bila sekolah mengaktifkannya
       push: v === 'dashboard' || v === 'piket'
