@@ -2,6 +2,16 @@
 // NOTIFIKASI ALPA OTOMATIS
 // Supabase -> Vercel -> Fonnte -> WhatsApp Admin
 // ============================================================
+//
+// Penerima:
+//   - Kepala Sekolah (nomor di Pengaturan > Koneksi) SELALU menjadi penerima utama.
+//     Hasil pengirimannya menentukan status sent / failed (dan percobaan ulang).
+//   - LIBUR: setelah kepala berhasil, pesan yang sama dikirim ke semua anggota aktif
+//     sekolah (kepala, wakil, operator, guru) yang punya nomor WhatsApp di profil.
+//   - ALPA: setelah kepala berhasil, setiap wali kelas menerima daftar alpa KELASNYA SAJA.
+//     Wakil, operator, dan guru lain tidak menerima notifikasi alpa.
+//   - Kegagalan pesan tambahan TIDAK membuat notifikasi dianggap gagal (agar kepala tidak
+//     menerima pesan dobel saat percobaan ulang); hanya dicatat di terakhir_error.
 
 // ============================================================
 // TUJUAN NOTIFIKASI
@@ -133,6 +143,124 @@ async function kirimFonnte(token, nomorTujuan, teks) {
   }
 
   return hasil;
+}
+
+
+// ============================================================
+// PENERIMA TAMBAHAN (staf untuk libur, wali kelas untuk alpa)
+// ============================================================
+const RE_WA = /^628\d{8,12}$/;
+const bersihNomor = (n) => String(n || '').replace(/\D/g, '');
+const RE_ID = /^[0-9a-f-]{36}$/i;
+
+// Kirim banyak pesan, 5 sekaligus agar tidak melewati batas waktu fungsi dan tidak memicu spam.
+// Mengembalikan daftar kegagalan (teks) dan jumlah yang berhasil.
+async function kirimBanyak(token, daftar) {
+  const gagal = [];
+  let ok = 0;
+  for (let i = 0; i < daftar.length; i += 5) {
+    const bagian = daftar.slice(i, i + 5);
+    const hasil = await Promise.allSettled(
+      bagian.map((x) => kirimFonnte(token, x.nomor, x.teks))
+    );
+    hasil.forEach((h, j) => {
+      if (h.status === 'fulfilled') ok++;
+      else gagal.push(`${bagian[j].nama || bagian[j].nomor}: ${String((h.reason && h.reason.message) || h.reason)}`);
+    });
+  }
+  return { ok, gagal };
+}
+
+// Anggota aktif sekolah beserta nomor WhatsApp dari profil.
+async function anggotaAktif(sekolahId, hanyaIds) {
+  let url = `keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id`;
+  if (hanyaIds) url += `&profil_id=in.(${hanyaIds.join(',')})`;
+  const ang = (await supabase(url)) || [];
+  const ids = [...new Set(ang.map((a) => a.profil_id).filter((x) => RE_ID.test(String(x))))];
+  if (!ids.length) return [];
+  const prof = (await supabase(`profil?id=in.(${ids.join(',')})&aktif=eq.true&select=id,nama,no_wa`)) || [];
+  return prof.map((p) => ({ id: p.id, nama: p.nama || '', nomor: bersihNomor(p.no_wa) }));
+}
+
+// LIBUR: semua anggota aktif sekolah (selain nomor kepala yang sudah menerima).
+async function kirimStafLibur(token, sekolahId, nomorKepala, teks) {
+  const pesan = teks.replace('Bapak/Ibu Kepala Sekolah', 'Bapak/Ibu');
+  const sudah = new Set([nomorKepala]);
+  const tujuan = [];
+  for (const a of await anggotaAktif(sekolahId)) {
+    if (!RE_WA.test(a.nomor) || sudah.has(a.nomor)) continue;
+    sudah.add(a.nomor);
+    tujuan.push({ nama: a.nama, nomor: a.nomor, teks: pesan });
+  }
+  return kirimBanyak(token, tujuan);
+}
+
+// ALPA: pesan khusus wali kelas, memakai kepala dan penutup pesan untuk kepala sekolah.
+function pesanWali(teks, tanggal, daftarKelas) {
+  const total = daftarKelas.reduce((n, k) => n + k.siswa.length, 0);
+  const iHeader = teks.indexOf('Berikut daftar anak');
+  const iFooter = teks.lastIndexOf('Terimakasih');
+  let atas;
+  if (iHeader > 0) {
+    atas = teks
+      .slice(0, iHeader)
+      .replace('Bapak/Ibu Kepala Sekolah', 'Bapak/Ibu Wali Kelas')
+      .replace(/Total: \d+ siswa/, `Total: ${total} siswa`);
+  } else {
+    atas =
+      "_Assalamu'alaikum, Bapak/Ibu Wali Kelas_\n\n🔔 NOTIFIKASI ALPA OTOMATIS\n\n" +
+      `📅 Tanggal: ${formatTanggal(tanggal)}\n👥 Total: ${total} siswa\n`;
+  }
+  const bawah = iFooter >= 0 ? teks.slice(iFooter) : 'Terimakasih 🌹';
+  let daftar = 'Berikut daftar anak yang *DI ALPA* :\n\n';
+  daftarKelas.forEach((k, idx) => {
+    if (idx > 0) daftar += '\n';
+    daftar += `📚 ${k.nama}\n`;
+    k.siswa.forEach((n, i) => {
+      daftar += `${i + 1}. ${n}\n`;
+    });
+  });
+  return atas + daftar + '\n' + bawah;
+}
+
+async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa) {
+  if (!Array.isArray(alpa) || !alpa.length) return { ok: 0, gagal: [] };
+
+  // Kelompokkan siswa alpa per kelas
+  const perKelas = new Map();
+  for (const x of alpa) {
+    const kid = Number(x && x.kelas_id);
+    if (!Number.isInteger(kid) || kid <= 0) continue;
+    if (!perKelas.has(kid)) perKelas.set(kid, []);
+    perKelas.get(kid).push(String(x.nama || '').trim());
+  }
+  if (!perKelas.size) return { ok: 0, gagal: [] };
+
+  // Kelas harus milik sekolah ini; ambil wali kelasnya
+  const kelas =
+    (await supabase(
+      `kelas?sekolah_id=eq.${sekolahId}&id=in.(${[...perKelas.keys()].join(',')})&select=id,nama,wali_profil_id`
+    )) || [];
+  const waliIds = [...new Set(kelas.map((k) => k.wali_profil_id).filter((x) => x && RE_ID.test(String(x))))];
+  if (!waliIds.length) return { ok: 0, gagal: [] };
+
+  // Wali harus anggota aktif sekolah ini dan punya nomor WhatsApp yang valid
+  const wali = new Map((await anggotaAktif(sekolahId, waliIds)).map((a) => [a.id, a]));
+
+  const perNomor = new Map();
+  for (const k of kelas.slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama)))) {
+    const w = wali.get(k.wali_profil_id);
+    if (!w || !RE_WA.test(w.nomor) || w.nomor === nomorKepala) continue;
+    if (!perNomor.has(w.nomor)) perNomor.set(w.nomor, { nama: w.nama, kelas: [] });
+    perNomor.get(w.nomor).kelas.push({ nama: k.nama, siswa: perKelas.get(Number(k.id)) || [] });
+  }
+
+  const tujuan = [...perNomor.entries()].map(([nomor, v]) => ({
+    nama: `${v.nama} (wali ${v.kelas.map((k) => k.nama).join(', ')})`,
+    nomor,
+    teks: pesanWali(teks, tanggal, v.kelas)
+  }));
+  return kirimBanyak(token, tujuan);
 }
 
 
@@ -331,11 +459,39 @@ module.exports = async (req, res) => {
     }, tabel);
 
 
+    // --------------------------------------------------------
+    // PESAN TAMBAHAN (setelah kepala berhasil; kegagalan tidak membatalkan 'sent')
+    // libur -> semua anggota aktif sekolah; alpa -> wali kelas (kelasnya saja)
+    // --------------------------------------------------------
+    let tambahan = { ok: 0, gagal: [] };
+    try {
+      tambahan = tabel === 'notifikasi_libur'
+        ? await kirimStafLibur(token, sekolahId, nomorTujuan, teks)
+        : await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa);
+
+      if (tambahan.gagal.length) {
+        await updateNotifikasi(id, {
+          terakhir_error: ('Sebagian pesan tambahan gagal: ' + tambahan.gagal.join('; ')).slice(0, 500)
+        }, tabel);
+      }
+    } catch (e) {
+      console.error('NOTIFIKASI TAMBAHAN ERROR:', e);
+      tambahan.gagal.push(String(e.message || e));
+      try {
+        await updateNotifikasi(id, {
+          terakhir_error: ('Pesan tambahan gagal: ' + String(e.message || e)).slice(0, 500)
+        }, tabel);
+      } catch (_) {}
+    }
+
+
     return res.status(200).json({
       ok: true,
       sent: true,
       id,
-      tanggal
+      tanggal,
+      tambahan_terkirim: tambahan.ok,
+      tambahan_gagal: tambahan.gagal.length
     });
 
 
