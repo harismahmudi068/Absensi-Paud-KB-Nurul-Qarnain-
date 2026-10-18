@@ -2,7 +2,7 @@
 // ID grup, nomor kepala sekolah) dan alamat Webhook WhatsApp.
 // Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
-// Boleh dipakai oleh Kepala Sekolah sekolah itu atau Developer.
+// Boleh dipakai oleh Kepala Sekolah, Wakil Kepala Sekolah, atau Operator sekolah itu, atau Developer.
 // Aksi: baca, simpan (kunci AI dan nomor kepala sekolah),
 //       token_tambah, token_hapus, grup_tambah, grup_hapus (banyak token Fonnte dan ID grup per sekolah),
 //       tes_fonnte, tes_ai (kirim pesan tes ke nomor Kepala Sekolah),
@@ -172,9 +172,9 @@ module.exports = async (req, res) => {
         'GET'
       );
       const m = k && k[0];
-      if (!m || !m.aktif || !['kepala_sekolah','wakil_kepala'].includes(m.role))
+      if (!m || !m.aktif || !['kepala_sekolah','wakil_kepala','operator'].includes(m.role))
         return res.status(403).json({
-          error: 'Hanya Kepala Sekolah sekolah ini atau Developer yang boleh'
+          error: 'Hanya Kepala Sekolah, Wakil Kepala Sekolah, atau Operator sekolah ini, atau Developer yang boleh'
         });
     }
 
