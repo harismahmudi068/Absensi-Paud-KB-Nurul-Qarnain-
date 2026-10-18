@@ -6,6 +6,7 @@
 button,input,select{font:inherit}button{cursor:pointer}.hid{display:none!important}
 .app{display:flex;min-height:100vh}
 .sidebar{width:250px;flex:0 0 250px;background:linear-gradient(180deg,#176b3a,#0d542c 58%,#68469f);color:#fff;padding:16px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:auto}
+.logo.ada{background:transparent;border-radius:0}.logo.ada img{border-radius:0}
 .logo img,.hr-body i img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}.hr-body i img{width:64px;height:64px;border-radius:16px}.lgprev{width:96px;height:96px;border-radius:18px;border:1px solid var(--bd,#d6e4dc);background:#fff;display:grid;place-items:center;overflow:hidden;font-size:40px}.lgprev img{width:100%;height:100%;object-fit:contain}
 .brand{display:flex;gap:10px;align-items:center;padding:6px 8px 18px}.logo{width:44px;height:44px;border-radius:14px;background:var(--cr);display:grid;place-items:center;font-size:24px}.brand small{opacity:.75}
 .nav{display:grid;gap:4px}.nav button{border:0;background:transparent;color:#eef6ee;text-align:left;padding:11px 12px;border-radius:12px;display:flex;gap:10px;font-weight:700}
@@ -62,7 +63,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 #drw .modal{position:absolute;left:0;top:0;bottom:0;width:min(300px,88%);border-radius:0 18px 18px 0;max-height:none;background:#fffdf5}
 #drw .nav button{color:#284737;background:#f2f8ef;border:1px solid #dcebdc}#drw .nav button.on{color:#fff;background:linear-gradient(90deg,#188b49,#6e4aa8)}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#163e68;color:#fff;padding:12px 18px;border-radius:14px;z-index:130;display:none;max-width:88vw;text-align:center;font-weight:700}.toast.ok{background:#159965}.toast.err{background:#c83e4c}
-.login{min-height:100vh;display:grid;place-items:center;padding:16px;background:linear-gradient(160deg,#e4f6e8,#fff8df 55%,#eee5fb)}.lbox{width:min(380px,100%);background:#fff;border-radius:20px;padding:24px;box-shadow:var(--sh);border:1px solid var(--bd)}.lbox .logo{margin:0 auto 10px;width:56px;height:56px;font-size:30px}.lbox .input{width:100%;margin:4px 0 12px}
+.login{min-height:100vh;display:grid;place-items:center;padding:16px;background:linear-gradient(160deg,#e4f6e8,#fff8df 55%,#eee5fb)}.lbox{width:min(380px,100%);background:#fff;border-radius:20px;padding:24px;box-shadow:var(--sh);border:1px solid var(--bd)}.lbox .logo{margin:0 auto 10px;width:56px;height:56px;font-size:30px}
+#lg .lbox .logo{font-size:44px;line-height:1;overflow:visible}
+#lg .lbox .logo:not(.ada){box-sizing:border-box;padding-bottom:9px}.lbox .input{width:100%;margin:4px 0 12px}
 #reader{width:100%;max-width:420px;margin:0 auto 10px}
 .bottom{display:none}
 @media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr)}.cards{grid-template-columns:repeat(2,1fr)}}
@@ -454,7 +457,7 @@ html[data-tema=gelap] .input:focus,html[data-tema=gelap] .select:focus,html[data
 <nav class="bottom hid" id="bn"></nav>
 <div class="mb" id="drw" onclick="if(event.target===this)drw(0)"><div class="modal"><div class="mh"><b>Menu</b><button onclick="drw(0)">✕</button></div><div class="mbody"><div id="dn" class="nav"></div></div></div></div>
 <div class="mb" id="md" onclick="if(event.target===this&&!this.classList.contains('besar'))closeM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="closeM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" id="mtp" onclick="closeM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
-<div class="mb" id="cf" style="z-index:150"><div class="modal" style="width:min(400px,100%)"><div class="mbody" style="text-align:center;padding:24px 20px 14px"><div id="cfi" style="font-size:42px;line-height:1"></div><h3 id="cft" style="margin:10px 0 6px"></h3><div id="cfm" class="mu" style="font-size:14px;white-space:pre-line"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" id="cfn">Batal</button><button class="btn success" id="cfy">Ya</button></div></div></div>
+<div class="mb" id="cf" style="z-index:150"><div class="modal" style="width:min(400px,100%)"><div class="mbody" style="text-align:center;padding:24px 20px 14px"><div id="cfi" style="font-size:42px;line-height:1"></div><h3 id="cft" style="margin:10px 0 6px"></h3><img id="cfg" alt="Pratinjau" style="display:none;max-width:160px;max-height:160px;margin:10px auto;padding:8px;background:#fff;border:1px solid #d6e4dc;border-radius:14px;object-fit:contain"><div id="cfm" class="mu" style="font-size:14px;white-space:pre-line"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" id="cfn">Batal</button><button class="btn success" id="cfy">Ya</button></div></div></div>
 <div class="toast" id="ts"></div><div id="ld"><div class="spin"></div><div id="ldt">Memuat...</div></div><input type="file" id="fx" accept=".xlsx,.xls" class="hid" onchange="impor(this)">
 <script>
 const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j4AB79X1wVZVLgdfcO0sAQ_EMFBq3KN';
@@ -670,7 +673,7 @@ const logoHtml=()=>logoOk(S.set&&S.set.logo)?'<img alt="Logo sekolah" src="'+esc
 function terapLogo(){let lg='';const muat=!!(S.set&&('nama_sekolah' in S.set));
  if(muat){lg=logoOk(S.set.logo)?S.set.logo:'';try{lg?localStorage.setItem('logo_sekolah',lg):localStorage.removeItem('logo_sekolah')}catch(e){}}
  else{try{const c=localStorage.getItem('logo_sekolah');lg=logoOk(c)?c:''}catch(e){}}
- document.querySelectorAll('.brand .logo,#lg .logo').forEach(el=>{el.textContent='';if(lg){const im=document.createElement('img');im.alt='Logo sekolah';im.src=lg;el.appendChild(im)}else el.textContent='🏫'})}
+ document.querySelectorAll('.brand .logo,#lg .logo').forEach(el=>{el.textContent='';el.classList.toggle('ada',!!lg);if(lg){const im=document.createElement('img');im.alt='Logo sekolah';im.src=lg;el.appendChild(im)}else el.textContent='🏫'})}
 function terapNama(){terapLogo();const ada=!!(S.set&&S.set.nama_sekolah),n=ada?ns():'Sistem Absensi';
  document.title=ada?n+' - Absensi':'Sistem Absensi';const b=$('#bnm');if(b)b.textContent=n;
  document.querySelectorAll('a.wab').forEach(x=>x.href='https://wa.me/6285117441486?text='+encodeURIComponent('Assalamualaikum, saya butuh bantuan sistem absensi '+n+'.'))}
@@ -1198,7 +1201,7 @@ async function verifikasiDaftar(){const wa=normWA($('#dfWa').value),kode=$('#dfK
  o.style.color='';o.textContent='Memeriksa...';
  try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
 function closeM(){$('#md').classList.remove('show','besar');const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
-function konfirmasi(pesan,o){o=o||{};return new Promise(res=>{const m=$('#cf'),y=$('#cfy'),n=$('#cfn');$('#cfi').textContent=o.ikon||(o.bahaya?'🗑️':'❓');$('#cft').textContent=o.judul||'Konfirmasi';$('#cfm').textContent=pesan;y.textContent=o.ya||'Ya';y.className='btn '+(o.bahaya?'danger':'success');
+function konfirmasi(pesan,o){o=o||{};const _g=$('#cfg');if(_g){if(o.gambar){_g.src=o.gambar;_g.style.display='block'}else{_g.removeAttribute('src');_g.style.display='none'}}return new Promise(res=>{const m=$('#cf'),y=$('#cfy'),n=$('#cfn');$('#cfi').textContent=o.ikon||(o.bahaya?'🗑️':'❓');$('#cft').textContent=o.judul||'Konfirmasi';$('#cfm').textContent=pesan;y.textContent=o.ya||'Ya';y.className='btn '+(o.bahaya?'danger':'success');
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
  document.addEventListener('keydown',kd);y.onclick=()=>fin(true);n.onclick=()=>fin(false);m.onclick=e=>{if(e.target===m)fin(false)};m.classList.add('show');y.focus()})}
 const V={};
@@ -2010,18 +2013,23 @@ function tampilWebhook(url,baru){info('Alamat Webhook sekolah Anda','<div class=
 async function salinTeks(t){try{await navigator.clipboard.writeText(t);toast('Tersalin')}catch(e){const i=$('#whUrl');if(i){i.select();try{document.execCommand('copy');toast('Tersalin')}catch(_){toast('Gagal menyalin, salin manual',false)}}}}
 function woptGuru(sel){return '<option value="">- Belum ada -</option>'+S.guru.filter(g=>g.aktif||g.id===sel).map(g=>`<option value="${g.id}" ${g.id===sel?'selected':''}>${esc(g.nama)}</option>`).join('')}
 function setWaliKelas(id,v){guard(async()=>{await dbq(db.from('kelas').update({wali_profil_id:v||null}).eq('id',id));const k=S.kelas.find(x=>x.id===id);if(k)k.wali=v||null;toast(v?'Wali kelas disimpan':'Wali kelas dikosongkan')})}
+function skalaLogo(src,w,h){let cur=src,cw=src.width,ch=src.height;
+ while(cw/2>=w&&ch/2>=h){const n=document.createElement('canvas');n.width=cw=Math.floor(cw/2);n.height=ch=Math.floor(ch/2);const x=n.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,0,0,cw,ch);cur=n}
+ const o=document.createElement('canvas');o.width=w;o.height=h;const x=o.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,0,0,w,h);return o}
 function logoKecil(file){return new Promise((ok,gagal)=>{const u=URL.createObjectURL(file),im=new Image();
  im.onerror=()=>{URL.revokeObjectURL(u);gagal(new Error('File bukan gambar yang valid'))};
- im.onload=()=>{URL.revokeObjectURL(u);try{for(const sz of [256,200,160]){const r=Math.min(1,sz/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r));
-  const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);
-  for(const f of ['image/png','image/webp']){const d=cv.toDataURL(f,.9);if(d.startsWith('data:'+f)&&d.length<=135000)return ok(d)}}
-  gagal(new Error('Logo terlalu besar setelah diperkecil (maksimal sekitar 100 KB). Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}}
+ im.onload=()=>{URL.revokeObjectURL(u);try{for(const sz of [384,320,256,200]){const r=Math.min(1,sz/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r));
+  const cv=skalaLogo(im,w,h);
+  for(const f of ['image/png','image/webp']){const d=cv.toDataURL(f,.95);if(d.startsWith('data:'+f)&&d.length<=148000)return ok(d)}}
+  gagal(new Error('Logo terlalu besar setelah diperkecil (maksimal sekitar 110 KB). Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}}
  im.src=u})}
 async function simpanLogo(v){const r=await dbq(db.from('pengaturan').update({logo:v}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan atau Anda tidak berhak mengubahnya');
  S.set.logo=v;try{KC.clear()}catch(e){}try{await Kartu.siapkanLogo(v)}catch(e){}terapLogo();renderV()}
-function pilihLogo(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
+async function pilihLogo(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
  if(f.size>2*1024*1024)return toast('Ukuran file maksimum 2 MB. File Anda '+(f.size/1048576).toFixed(1)+' MB',false);
- guard(async()=>{ld(1,'Menyimpan logo...');try{const v=await logoKecil(f);try{await simpanLogo(v)}catch(e){if(/logo/i.test(String(e&&e.message))&&/column|kolom|schema/i.test(String(e.message)))throw new Error('Kolom logo belum ada di database. Jalankan di Supabase SQL Editor: ALTER TABLE pengaturan ADD COLUMN logo text;');throw e}toast('Logo sekolah disimpan')}finally{ld(0)}})}
+ let v;try{ld(1,'Memproses gambar...');v=await logoKecil(f)}catch(e){return toast((e&&e.message)||String(e),false)}finally{ld(0)}
+ if(!await konfirmasi('Logo ini akan disimpan sebagai logo sekolah dan tampil di menu samping, dashboard, dan kartu pelajar.',{ikon:'🖼️',judul:'Simpan logo ini?',ya:'Simpan',gambar:v}))return;
+ guard(async()=>{try{await simpanLogo(v)}catch(e){if(/logo/i.test(String(e&&e.message))&&/column|kolom|schema/i.test(String(e.message)))throw new Error('Kolom logo belum ada di database. Jalankan di Supabase SQL Editor: ALTER TABLE pengaturan ADD COLUMN logo text;');throw e}toast('Logo sekolah disimpan')})}
 async function hapusLogo(){if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
  if(!await konfirmasi('Hapus logo sekolah?\n\nLogo di menu samping, dashboard, dan kartu pelajar akan kembali ke tampilan bawaan.',{bahaya:true,judul:'Hapus logo',ya:'Hapus'}))return;
  guard(async()=>{await simpanLogo(null);toast('Logo sekolah dihapus')})}
