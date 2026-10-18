@@ -546,8 +546,12 @@ async function pushAktifkan(){try{
   const izin=await Notification.requestPermission();
   if(izin!=='granted')throw new Error(izin==='denied'?'Izin notifikasi ditolak. Izinkan lewat pengaturan situs lalu coba lagi.':'Izin notifikasi belum diberikan');
   const reg=await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;
+  const kunci=b64ke8(S.vapid);
   let sub=await reg.pushManager.getSubscription();
-  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ke8(S.vapid)});
+  if(sub){const k=sub.options&&sub.options.applicationServerKey;
+   const sama=k&&new Uint8Array(k).length===kunci.length&&new Uint8Array(k).every((v,i)=>v===kunci[i]);
+   if(!sama){try{await sub.unsubscribe()}catch(_){}sub=null}}
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:kunci});
   await pushPost({aksi:'push_daftar',langganan:sub.toJSON(),agen:navigator.userAgent.slice(0,120),terima:pkPilihan()});
   localStorage.removeItem(PK_OFF);sessionStorage.setItem('pk_ok_'+m[1],'1');await pushRender(S.pd)
  }catch(e){await pushRender(S.pd,(e&&e.message)||'Gagal mengaktifkan notifikasi')}}
@@ -558,7 +562,7 @@ async function pushPilih(){try{
   await pushPost({aksi:'push_daftar',langganan:sub.toJSON(),agen:navigator.userAgent.slice(0,120),terima:pil});
   await pushRender(S.pd)
  }catch(e){await pushRender(S.pd,(e&&e.message)||'Gagal menyimpan pilihan')}}
-async function pushMatikan(){try{const sub=await pushSub();if(sub)await pushPost({aksi:'push_cabut',endpoint:sub.endpoint});localStorage.setItem(PK_OFF,'1');sessionStorage.removeItem('pk_ok_'+m[1]);await pushRender(S.pd)}catch(e){await pushRender(S.pd,(e&&e.message)||'Gagal mematikan notifikasi')}}
+async function pushMatikan(){try{const sub=await pushSub();if(sub){await pushPost({aksi:'push_cabut',endpoint:sub.endpoint});try{await sub.unsubscribe()}catch(_){}}localStorage.setItem(PK_OFF,'1');sessionStorage.removeItem('pk_ok_'+m[1]);await pushRender(S.pd)}catch(e){await pushRender(S.pd,(e&&e.message)||'Gagal mematikan notifikasi')}}
 R.libur=d=>calPanel(d);
 A.libur=()=>calRender(DD.cal.val);
 A.dashboard=d=>{calRender(DD.cal.val);S.pd=d;pushRender(d)};
@@ -629,6 +633,7 @@ function jamTgl(){const n=new Date(),p=new Intl.DateTimeFormat('en-GB',{hour:'2-
  $('#jm').innerHTML=p[0]+'<i> : </i>'+p[1]+' <small>WIB</small>';
  $('#tg').textContent=n.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Jakarta'})}
 tema();jamTgl();setInterval(jamTgl,1000);setInterval(tema,60000);
+if(m&&('serviceWorker' in navigator))navigator.serviceWorker.register('/sw.js').catch(()=>{});
 (function(){if(m){const lk=document.createElement('link');lk.rel='manifest';lk.href='/api/portal?k='+m[1]+'&v=manifest';document.head.appendChild(lk)}})();
 go(MENU.some(x=>x[0]===location.hash.slice(1))?location.hash.slice(1):'dashboard');
 </script></body></html>
