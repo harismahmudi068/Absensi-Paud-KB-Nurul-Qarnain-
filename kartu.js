@@ -24,15 +24,8 @@ function lsText(c,t,x,y,sp){for(const ch of t){c.fillText(ch,x,y);x+=c.measureTe
 function lsW(c,t,sp){let w=0;for(const ch of t)w+=c.measureText(ch).width+sp;return w-sp}
 function fitFont(c,t,max,start,min,fmt){let z=start;c.font=fmt(z);while(c.measureText(t).width>max&&z>min){z-=.5;c.font=fmt(z)}return z}
 function elips(c,t,max){if(c.measureText(t).width<=max)return t;while(t.length>1&&c.measureText(t+'\u2026').width>max)t=t.slice(0,-1);return t+'\u2026'}
-function bintang(c,cx,cy,ro,ri,n,rot){c.beginPath();for(let i=0;i<n*2;i++){const r=i%2?ri:ro,a=rot+i*Math.PI/n;const x=cx+r*Math.cos(a),y=cy+r*Math.sin(a);i?c.lineTo(x,y):c.moveTo(x,y)}c.closePath()}
-/* lambang bawaan bila sekolah belum mengunggah logo */
-function lambang(c,cx,cy){
- bintang(c,cx,cy,41,31,8,-Math.PI/2);c.fillStyle='#f0cf5a';c.fill();
- bintang(c,cx,cy,36,27,8,-Math.PI/2);c.fillStyle='#0d5a40';c.fill();c.lineWidth=1.6;c.strokeStyle='#fff';c.stroke();
- c.fillStyle='#fff';c.beginPath();c.moveTo(cx,cy+13);c.lineTo(cx-17,cy+9);c.lineTo(cx-17,cy-6);c.lineTo(cx,cy-2);c.closePath();c.fill();
- c.beginPath();c.moveTo(cx,cy+13);c.lineTo(cx+17,cy+9);c.lineTo(cx+17,cy-6);c.lineTo(cx,cy-2);c.closePath();c.fill();
- c.strokeStyle='#0d5a40';c.lineWidth=1;c.beginPath();c.moveTo(cx,cy-2);c.lineTo(cx,cy+13);c.stroke();
- bintang(c,cx,cy-17,3.6,1.5,5,-Math.PI/2);c.fillStyle='#f0cf5a';c.fill()}
+/* teks ditebalkan: huruf berat + goresan tipis warna yang sama */
+function tebal(c,s,x,y,w){c.fillText(s,x,y);c.save();c.lineWidth=w;c.lineJoin='round';c.strokeStyle=c.fillStyle;c.strokeText(s,x,y);c.restore()}
 /* ---- ikon putih (vektor, tidak bergantung emoji/font perangkat) ---- */
 const HJ='#0e5a3d';
 const IK={
@@ -65,22 +58,19 @@ function buatKartu(s,opt){
  c.beginPath();c.moveTo(518,94);c.bezierCurveTo(585,90,640,62,660,20);c.lineWidth=2.4;c.strokeStyle='#f0cf5a';c.stroke();
  /* logo sekolah */
  const lg=opt.logo?LG.get(opt.logo):null;
- if(lg&&lg.width){c.save();c.beginPath();c.arc(74,51,40,0,7);c.fillStyle='#fff';c.fill();c.clip();
-  const bx=60,r=Math.min(bx/lg.width,bx/lg.height),w=lg.width*r,h=lg.height*r;c.drawImage(lg,74-w/2,51-h/2,w,h);c.restore();
-  c.beginPath();c.arc(74,51,40,0,7);c.lineWidth=2;c.strokeStyle='#f0cf5a';c.stroke()}
- else lambang(c,74,51);
+ if(lg&&lg.width){const bx=82,r=Math.min(bx/lg.width,bx/lg.height),w=lg.width*r,h=lg.height*r;c.drawImage(lg,74-w/2,51-h/2,w,h)}
  /* judul */
  c.strokeStyle='#e9c55a';c.lineWidth=1.6;c.beginPath();c.moveTo(138,22);c.lineTo(138,81);c.stroke();
  c.textBaseline='middle';c.textAlign='left';
  c.fillStyle='#f2c94c';c.font='bold 15px '+F;lsText(c,'KARTU PELAJAR',157,27,2.6);
  const yr=String(s.masuk||'')||String(opt.tahun||opt.hari).slice(0,4),_nm=String(opt.nama||'').toUpperCase();
- c.fillStyle='#fff';fitFont(c,_nm,355,31,12,z=>'bold '+z+'px '+F);c.fillText(_nm,157,53);
+ c.fillStyle='#fff';fitFont(c,_nm,355,31,12,z=>'800 '+z+'px '+F);tebal(c,_nm,157,53,.8);
  c.fillStyle='#e6f2ec';c.font='14px '+F;c.fillText('Tahun Terdaftar : '+yr,158,78);
  /* nama lengkap */
  c.fillStyle=HJ;c.font='bold 11.5px '+F;lsText(c,'NAMA LENGKAP',29,112,.7);
  rr(c,25,123,401,34,17);gr=c.createLinearGradient(0,123,0,157);gr.addColorStop(0,'#f4faf7');gr.addColorStop(1,'#e2f1ea');c.fillStyle=gr;c.fill();c.lineWidth=1.3;c.strokeStyle='#2a8a68';c.stroke();
  c.beginPath();c.moveTo(42,123);c.lineTo(58,123);c.lineTo(69,140);c.lineTo(58,157);c.lineTo(42,157);c.arc(42,140,17,Math.PI/2,Math.PI*1.5);c.closePath();c.fillStyle=HJ;c.fill();IK.orang(c,43,140);
- const nm=String(s.nama||'').toUpperCase();c.fillStyle='#0b3d2b';fitFont(c,nm,335,17,9,z=>'bold '+z+'px '+F);c.fillText(elips(c,nm,335),80,140.5);
+ const nm=String(s.nama||'').toUpperCase();c.fillStyle='#0b3d2b';fitFont(c,nm,335,17,9,z=>'800 '+z+'px '+F);tebal(c,elips(c,nm,335),80,140.5,.5);
  /* informasi siswa */
  c.fillStyle=HJ;c.font='bold 11.5px '+F;lsText(c,'INFORMASI SISWA',29,171,.7);const iw=29+lsW(c,'INFORMASI SISWA',.7)+9;
  c.lineWidth=2;c.strokeStyle='#e9c13a';c.beginPath();c.moveTo(iw,171);c.lineTo(iw+42,171);c.stroke();
@@ -90,11 +80,11 @@ function buatKartu(s,opt){
  rows.forEach((p,i)=>{const y=183+i*30.6;
   rr(c,25,y,401,26,13);gr=c.createLinearGradient(0,y,0,y+26);gr.addColorStop(0,'#ffffff');gr.addColorStop(1,'#e9f6f0');c.fillStyle=gr;c.fill();c.lineWidth=1.2;c.strokeStyle='#b4dccb';c.stroke();
   rr(c,25,y,40,26,13);c.fillStyle=HJ;c.fill();p[2](c,45,y+13);
-  c.textAlign='left';c.textBaseline='middle';c.fillStyle='#0f4a33';c.font='600 12px '+F;c.fillText(p[0],76,y+13.5);c.fillText(':',178,y+13.5);
-  c.fillStyle='#10261c';fitFont(c,p[1],228,12,8,z=>'bold '+z+'px '+F);c.fillText(elips(c,p[1],228),190,y+13.5)});
+  c.textAlign='left';c.textBaseline='middle';c.fillStyle='#0f4a33';fitFont(c,p[0],98,13.5,10,z=>'600 '+z+'px '+F);c.fillText(p[0],76,y+13.5);c.fillText(':',178,y+13.5);
+  c.fillStyle='#10261c';fitFont(c,p[1],228,14,8,z=>'bold '+z+'px '+F);c.fillText(elips(c,p[1],228),190,y+13.5)});
  /* QR */
  rr(c,439,118,200,204,16);c.fillStyle='#fff';c.fill();c.lineWidth=2.2;c.strokeStyle='#0f7a54';c.stroke();
- const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(172*K/n)/K,sz=cl*n,qx=539-sz/2,qy=220-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl,cl);
+ const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(186*K/n)/K,sz=cl*n,qx=539-sz/2,qy=220-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl,cl);
  /* lencana aktif */
  rr(c,440,331,202,37,18.5);c.fillStyle=HJ;c.fill();
  c.beginPath();c.arc(467,349.5,12.5,0,7);c.fillStyle='#fff';c.fill();c.strokeStyle=HJ;c.lineWidth=2.4;c.lineCap='round';c.lineJoin='round';c.beginPath();c.moveTo(461.5,349.5);c.lineTo(465.5,353.5);c.lineTo(473,345.5);c.stroke();c.lineCap='butt';c.lineJoin='miter';
