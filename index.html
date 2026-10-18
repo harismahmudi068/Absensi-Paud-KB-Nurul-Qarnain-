@@ -6,6 +6,7 @@
 button,input,select{font:inherit}button{cursor:pointer}.hid{display:none!important}
 .app{display:flex;min-height:100vh}
 .sidebar{width:250px;flex:0 0 250px;background:linear-gradient(180deg,#176b3a,#0d542c 58%,#68469f);color:#fff;padding:16px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:auto}
+.logo img,.hr-body i img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}.hr-body i img{width:64px;height:64px;border-radius:16px}.lgprev{width:96px;height:96px;border-radius:18px;border:1px solid var(--bd,#d6e4dc);background:#fff;display:grid;place-items:center;overflow:hidden;font-size:40px}.lgprev img{width:100%;height:100%;object-fit:contain}
 .brand{display:flex;gap:10px;align-items:center;padding:6px 8px 18px}.logo{width:44px;height:44px;border-radius:14px;background:var(--cr);display:grid;place-items:center;font-size:24px}.brand small{opacity:.75}
 .nav{display:grid;gap:4px}.nav button{border:0;background:transparent;color:#eef6ee;text-align:left;padding:11px 12px;border-radius:12px;display:flex;gap:10px;font-weight:700}
 .nav button.on,.nav button:hover{background:linear-gradient(90deg,#2ab968,#168449);color:#fff}
@@ -664,7 +665,13 @@ async function muatRange(a,b){let from=0,rows=[];for(;;){const d=await dbq(db.fr
 const muatBulan=b=>{const p=b.split('-').map(Number);return muatRange(b+'-01',b+'-'+String(new Date(p[0],p[1],0).getDate()).padStart(2,'0'))};
 const NS_DEF='KB Nurul Qarnain';
 const ns=()=>String((S.set&&S.set.nama_sekolah)||'').trim()||NS_DEF;
-function terapNama(){const ada=!!(S.set&&S.set.nama_sekolah),n=ada?ns():'Sistem Absensi';
+const logoOk=v=>typeof v==='string'&&/^data:image\/(png|webp|jpeg);base64,/.test(v);
+const logoHtml=()=>logoOk(S.set&&S.set.logo)?'<img alt="Logo sekolah" src="'+esc(S.set.logo)+'">':'🏫';
+function terapLogo(){let lg='';const muat=!!(S.set&&('nama_sekolah' in S.set));
+ if(muat){lg=logoOk(S.set.logo)?S.set.logo:'';try{lg?localStorage.setItem('logo_sekolah',lg):localStorage.removeItem('logo_sekolah')}catch(e){}}
+ else{try{const c=localStorage.getItem('logo_sekolah');lg=logoOk(c)?c:''}catch(e){}}
+ document.querySelectorAll('.brand .logo,#lg .logo').forEach(el=>{el.textContent='';if(lg){const im=document.createElement('img');im.alt='Logo sekolah';im.src=lg;el.appendChild(im)}else el.textContent='🏫'})}
+function terapNama(){terapLogo();const ada=!!(S.set&&S.set.nama_sekolah),n=ada?ns():'Sistem Absensi';
  document.title=ada?n+' - Absensi':'Sistem Absensi';const b=$('#bnm');if(b)b.textContent=n;
  document.querySelectorAll('a.wab').forEach(x=>x.href='https://wa.me/6285117441486?text='+encodeURIComponent('Assalamualaikum, saya butuh bantuan sistem absensi '+n+'.'))}
 async function muatDasar(){
@@ -672,7 +679,7 @@ async function muatDasar(){
  S.kelas=k.map(x=>({id:x.id,nama:x.nama,jam:(x.jam_masuk||'07:30').slice(0,5),wali:x.wali_profil_id||null,urutan:x.urutan==null?null:x.urutan,akhir:!!x.kelas_akhir}));const kn=id=>(S.kelas.find(x=>x.id===id)||{}).nama||'';
  S.siswa=s.map(x=>({id:x.id,nama:x.nama,pan:x.nama_panggilan,nisn:x.nisn||'',kelas:kn(x.kelas_id),kelas_id:x.kelas_id,aktif:x.aktif,kode_qr:x.kode_qr,tgl:x.tgl_lahir||'',jk:x.jenis_kelamin||'',alamat:x.alamat||'',masuk:x.tahun_masuk||'',wa:(x.siswa_wali||[]).map(w=>w.wali&&w.wali.no_wa).filter(Boolean)[0]||''}));
  S.guru=p;S.nomor=nm||{};S.nasional=(ln||[]).map(x=>({tgl:x.tanggal,ket:x.keterangan||'Libur nasional'}));S.nasMap=new Map(S.nasional.map(x=>[x.tgl,x.ket]));S.mingguan=lm.map(x=>x.hari);S.libur=lt.map(x=>({id:x.id,tgl:x.mulai,sampai:x.sampai,ket:x.keterangan||'',kelas:x.kelas_id?kn(x.kelas_id):'',sumber:x.sumber||''}));await muatBatal();
- S.set=pr||{};S.set.jam=(S.set.alpa_jam||'10:00').slice(0,5);S.set.njam=(S.set.notif_libur_jam||'06:00').slice(0,5);terapNama()}
+ S.set=pr||{};S.set.jam=(S.set.alpa_jam||'10:00').slice(0,5);S.set.njam=(S.set.notif_libur_jam||'06:00').slice(0,5);try{await Kartu.siapkanLogo(logoOk(S.set.logo)?S.set.logo:null)}catch(e){}terapNama()}
 const muatPesan=async()=>{S.pesan=(await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100))).map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek}))};
 const muatGuruData=async()=>{const k=await dbq(db.from('keanggotaan').select('role,aktif,profil(id,nama,username,role,aktif,nip,dibuat)').eq('sekolah_id',SEK));return k.filter(x=>x.profil).map(x=>({...x.profil,role:x.role,aktif:x.aktif})).sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'))};
 async function muatNomor(){const r=await dbq(db.rpc('nomor_wa_guru',{p_sekolah:SEK}));const m={};(r||[]).forEach(x=>{m[x.profil_id]=x.no_wa||''});return m}
@@ -1082,7 +1089,7 @@ async function keluar(){
 
   // 2. Bersihkan sessionStorage dan localStorage aplikasi.
   try{sessionStorage.clear()}catch(e){}
-  const _pks={};try{['pk_aktif','pk_akun','tema_ui'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
+  const _pks={};try{['pk_aktif','pk_akun','tema_ui','logo_sekolah'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
   try{Object.keys(localStorage).filter(k=>/^pk_(off|pil)_/.test(k)).forEach(k=>{_pks[k]=localStorage.getItem(k)})}catch(e){}
   try{localStorage.clear()}catch(e){}
   try{Object.keys(_pks).forEach(k=>localStorage.setItem(k,_pks[k]))}catch(e){}
@@ -1325,7 +1332,7 @@ V.dashboard=()=>{if(role==='Developer')return devDashboard();const a=A(TODAY),l=
  l.forEach(s=>{const st=dayStat(s,TODAY);c[st]++;const p=pk[s.kelas]||(pk[s.kelas]=kosong());p.t++;p[st]++});
  const kl=key=>Object.keys(pk).map(nm=>{const p=pk[nm],v=key==='Hadir'?p.Hadir+p.Terlambat:p[key];return `<div class="${v?'':'z'}"><b>${esc(nm)}</b> : ${v} dari ${p.t} orang</div>`}).join('');
  const n=l.length||1,cs=[['Hadir',c.Hadir+c.Terlambat,'termasuk '+c.Terlambat+' terlambat','#159447','Hadir'],['Terlambat',c.Terlambat,'','#d99a27','Terlambat'],['Izin',c.Izin,'','#248fe9','Izin'],['Sakit',c.Sakit,'','#ef5361','Sakit'],['Alpa',c.Alpa,'','#7a4be5','Alpa'],['Libur',c.Libur,'','#526b84','Libur'],['Belum Absen',c.Belum,'perlu ditindaklanjuti','#c98a1b','Belum']];
- return `<div class="hero hero2"><div class="hr-top"><span id="hrJam">${jamHero()}</span><span>${tglHero(TODAY)}</span></div><div class="hr-body"><div><h1>Selamat Datang 👋🏻<br>di ${esc(ns())}</h1></div><i>🏫</i></div><p class="hr-belum">${c.Belum} anak belum absen.</p></div>${panduanAwal()}${notifGabung()}
+ return `<div class="hero hero2"><div class="hr-top"><span id="hrJam">${jamHero()}</span><span>${tglHero(TODAY)}</span></div><div class="hr-body"><div><h1>Selamat Datang 👋🏻<br>di ${esc(ns())}</h1></div><i>${logoHtml()}</i></div><p class="hr-belum">${c.Belum} anak belum absen.</p></div>${panduanAwal()}${notifGabung()}
  <div class="panel"><div class="ph">⚡ Aksi Cepat</div><div class="pb"><div class="quick"><button style="background:#168b47" onclick="go('absensi')">✍️ Absensi</button><button style="background:#d7a72f" onclick="go('scan')">📷 Scan</button><button style="background:#7650b8" onclick="go('siswa')">👤 Siswa</button>${S.set&&S.set.tabungan_aktif?'<button style="background:#2a806c" onclick="go(\'tabungan\')">💰 Tabungan</button>':'<button style="background:#2a806c" onclick="go(\'rekap\')">📚 Rekap</button>'}</div></div></div>
  <div class="stats">${cs.map(x=>`<div class="card stat"><b style="color:${x[3]}">${x[1]}</b>${x[0]}<div class="mu">${x[2]||'&nbsp;'}</div><div class="bar"><i style="width:${Math.round(x[1]*100/n)}%;background:${x[3]}"></i></div>${S.kelas.length?`<div class="kls" style="color:${x[3]}">${kl(x[4])}</div>`:''}</div>`).join('')}</div>
  <div class="panel"><div class="ph rk-h" onclick="toggleRekapHari()"><span>📋 Rekap Hari Ini</span><span class="mu">${fmt(TODAY)} <span class="rk-arrow">${rkOpen?'▲':'▼'}</span></span></div>${rkOpen?`<div class="pb"><div class="rekap-filter"><input id="rkq" class="input" placeholder="Cari nama anak..." value="${esc(rkQ)}" oninput="cariRekapHari(this)"><select class="select" onchange="rkKelas=this.value;renderV()">${rkOpt()}</select></div><div id="rkTab" style="margin-top:10px">${rekapHariTabel()}</div></div>`:''}</div>`};
@@ -1646,8 +1653,8 @@ function qrObj(kode){const o=qrcode(0,'M');o.addData(kode);o.make();return o}
 function qrSvg(kode,px){const o=qrObj(kode),n=o.getModuleCount(),m=2;let r='';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(o.isDark(y,x))r+=`<rect x="${x+m}" y="${y+m}" width="1" height="1"/>`;return `<svg viewBox="0 0 ${n+m*2} ${n+m*2}" width="${px}" height="${px}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/>${r}</svg>`}
 const KC=new Map();
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
-function kartuUrl(s){const key=[s.id,s.kode_qr,s.nama,s.nisn,s.kelas,s.wa,s.tgl,s.jk,s.alamat,s.masuk,S.set.tahun_ajaran,ns()].join('|');if(KC.has(key))return KC.get(key);
- const u=Kartu.buatKartu(s,{nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.urlQR(s.kode_qr)});KC.set(key,u);return u}
+function kartuUrl(s){const key=[s.id,s.kode_qr,s.nama,s.nisn,s.kelas,s.wa,s.tgl,s.jk,s.alamat,s.masuk,S.set.tahun_ajaran,ns(),(S.set.logo||'').length].join('|');if(KC.has(key))return KC.get(key);
+ const u=Kartu.buatKartu(s,{nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.urlQR(s.kode_qr),logo:logoOk(S.set.logo)?S.set.logo:null});KC.set(key,u);return u}
 function kartuCards(){const z=String(kkQ||'').toLowerCase().trim();return act().filter(s=>kk&&s.kelas===kk&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z))).map(s=>`<div class="card" style="padding:10px"><img class="kimg" data-kartu-id="${s.id}" alt="Menyiapkan kartu..."><button class="btn sm success" style="width:100%;margin-top:8px" onclick="unduhSatu(${s.id},this)">⬇ Unduh kartu ${esc(s.pan)}</button><div style="display:flex;gap:8px;margin-top:8px"><button class="btn soft sm" style="flex:1" onclick="salinLinkSatu(${s.id})">🔗 Salin link</button><button class="btn sm" style="flex:1" ${s.wa?'':'disabled title="Belum ada nomor WA"'} onclick="kirimLinkSatu(${s.id})">📤 Kirim link</button></div></div>`).join('')||(kk?'':'');}
 V.kartu=()=>`<div class="panel"><div class="ph">🪪 Kartu Siswa</div><div class="pb"><div class="tb tb-full"><select class="select" onchange="kk=this.value;kkQ='';renderV()">${kopt2(kk)}</select><input id="kkCari" class="input grow search-smooth" style="flex:1 1 100%" placeholder="Cari nama anak, panggilan atau NISN..." value="${esc(kkQ)}" oninput="cariKartuInput(this)"><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;flex:1 1 100%"><button class="btn success sm dl" style="margin:0" onclick="unduhKartu(this)">⬇ Unduh Kartu (PDF)</button><button class="btn soft sm" style="margin:0" onclick="salinSemuaLink()">🔗 Salin semua link</button><button class="btn sm" style="margin:0" onclick="kirimSemuaLink()">📤 Kirim semua link</button></div></div>${kk?'':PKH}<div id="kartuCards" class="cards">${kartuCards()}</div></div></div>`;
 function cariKartuInput(el){kkQ=el.value;const c=$('#kartuCards');if(c){c.innerHTML=kartuCards();muatGambarKartu().catch(()=>{})}}
@@ -1940,6 +1947,7 @@ V.pengaturan=()=>`${taInit()}<div class="panel" id="pnTahunAjaran"><div class="p
 <div class="note">Pilih kelas tertentu atau semua kelas. Setiap bulan tampil di halaman (PDF) atau sheet (XLSX) tersendiri, lengkap dengan tanda tangan Kepala Sekolah.</div>
 <button id="btnTahunBaru" class="btn danger" onclick="tahunBaru()">Mulai tahun ajaran baru</button></div></div>
 <div class="panel" id="pnNama"><div class="ph">🏫 Nama Sekolah</div><div class="pb"><div class="note">Nama ini tampil di menu samping, dashboard, kartu pelajar, riwayat/rekap absensi (PDF dan XLSX), serta pesan laporan orang tua. Setelah disimpan, halaman dimuat ulang otomatis.</div><div class="tb"><input id="nsInp" class="input grow" maxlength="80" value="${esc(ns())}" placeholder="Nama sekolah" onkeydown="if(event.key==='Enter')simpanNamaSekolah($('#nsBtn'))"><button id="nsBtn" class="btn success" onclick="simpanNamaSekolah(this)">💾 Simpan</button></div></div></div>
+<div class="panel" id="pnLogo"><div class="ph">🖼️ Logo Sekolah</div><div class="pb"><div class="note">Logo tampil di menu samping, dashboard, dan kartu pelajar. Gunakan gambar persegi atau bulat (PNG transparan paling bagus). Ukuran file maksimum <b>2 MB</b> (PNG, JPG, atau WebP). Gambar otomatis diperkecil saat disimpan.</div><div class="tb" style="align-items:center;gap:14px"><div class="lgprev">${logoHtml()}</div><div style="display:flex;flex-direction:column;gap:8px"><input id="lgFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="pilihLogo(this)"><button class="btn success" onclick="$('#lgFile').click()">⬆ ${logoOk(S.set.logo)?'Ganti logo':'Unggah logo'}</button>${logoOk(S.set.logo)?'<button class="btn danger" onclick="hapusLogo()">🗑 Hapus logo</button>':''}</div></div></div></div>
 <div class="panel" id="pnAlamat"><div class="ph">📍 Alamat Sekolah</div><div class="pb"><div class="note">Kota dipakai pada tanda tangan Kepala Sekolah di rekap (contoh: Jember, Minggu 4 Oktober 2026).</div><div class="fg"><div class="fd"><label class="l">Alamat sekolah</label><input id="alInp" class="input" maxlength="150" value="${esc(S.set.alamat||'')}" placeholder="Jl. Contoh No. 1"></div><div class="fd"><label class="l">Kota / kabupaten (untuk tanda tangan rekap)</label><input id="ktInp" class="input" maxlength="60" value="${esc(S.set.kota||'')}" placeholder="contoh Jember"></div></div><button class="btn success" style="margin-top:14px" onclick="simpanAlamat(this)">💾 Simpan alamat</button></div></div>
 ${panelKelasHtml()}
 <div class="panel" id="pnAlpa"><div class="ph">⏰ Alpa Otomatis</div><div class="pb"><div class="note">Anak yang belum tercatat sampai jam ini otomatis berstatus Alpa (tidak berlaku di hari libur). Server menjalankannya tepat pada jam yang diatur. Bila orang tua mengabari izin sesudahnya, statusnya diubah.</div>
@@ -2002,6 +2010,21 @@ function tampilWebhook(url,baru){info('Alamat Webhook sekolah Anda','<div class=
 async function salinTeks(t){try{await navigator.clipboard.writeText(t);toast('Tersalin')}catch(e){const i=$('#whUrl');if(i){i.select();try{document.execCommand('copy');toast('Tersalin')}catch(_){toast('Gagal menyalin, salin manual',false)}}}}
 function woptGuru(sel){return '<option value="">- Belum ada -</option>'+S.guru.filter(g=>g.aktif||g.id===sel).map(g=>`<option value="${g.id}" ${g.id===sel?'selected':''}>${esc(g.nama)}</option>`).join('')}
 function setWaliKelas(id,v){guard(async()=>{await dbq(db.from('kelas').update({wali_profil_id:v||null}).eq('id',id));const k=S.kelas.find(x=>x.id===id);if(k)k.wali=v||null;toast(v?'Wali kelas disimpan':'Wali kelas dikosongkan')})}
+function logoKecil(file){return new Promise((ok,gagal)=>{const u=URL.createObjectURL(file),im=new Image();
+ im.onerror=()=>{URL.revokeObjectURL(u);gagal(new Error('File bukan gambar yang valid'))};
+ im.onload=()=>{URL.revokeObjectURL(u);try{for(const sz of [256,200,160]){const r=Math.min(1,sz/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r));
+  const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);
+  for(const f of ['image/png','image/webp']){const d=cv.toDataURL(f,.9);if(d.startsWith('data:'+f)&&d.length<=135000)return ok(d)}}
+  gagal(new Error('Logo terlalu besar setelah diperkecil (maksimal sekitar 100 KB). Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}}
+ im.src=u})}
+async function simpanLogo(v){const r=await dbq(db.from('pengaturan').update({logo:v}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan atau Anda tidak berhak mengubahnya');
+ S.set.logo=v;try{KC.clear()}catch(e){}try{await Kartu.siapkanLogo(v)}catch(e){}terapLogo();renderV()}
+function pilihLogo(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
+ if(f.size>2*1024*1024)return toast('Ukuran file maksimum 2 MB. File Anda '+(f.size/1048576).toFixed(1)+' MB',false);
+ guard(async()=>{ld(1,'Menyimpan logo...');try{const v=await logoKecil(f);try{await simpanLogo(v)}catch(e){if(/logo/i.test(String(e&&e.message))&&/column|kolom|schema/i.test(String(e.message)))throw new Error('Kolom logo belum ada di database. Jalankan di Supabase SQL Editor: ALTER TABLE pengaturan ADD COLUMN logo text;');throw e}toast('Logo sekolah disimpan')}finally{ld(0)}})}
+async function hapusLogo(){if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
+ if(!await konfirmasi('Hapus logo sekolah?\n\nLogo di menu samping, dashboard, dan kartu pelajar akan kembali ke tampilan bawaan.',{bahaya:true,judul:'Hapus logo',ya:'Hapus'}))return;
+ guard(async()=>{await simpanLogo(null);toast('Logo sekolah dihapus')})}
 function simpanAlamat(btn){const al=$('#alInp').value.trim(),kt=$('#ktInp').value.trim();if(btn)btn.disabled=true;
  guard(async()=>{try{const r=await dbq(db.from('pengaturan').update({alamat:al||null,kota:kt||null}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan');S.set.alamat=al;S.set.kota=kt;toast('Alamat sekolah disimpan');renderV()}finally{if(btn)btn.disabled=false}})}
 async function simpanNamaSekolah(btn){const v=String($('#nsInp').value||'').replace(/\s+/g,' ').trim();
