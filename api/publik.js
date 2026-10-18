@@ -1,7 +1,10 @@
 // Fungsi server untuk aksi PUBLIK (tanpa login).
 // Aksi:
 //   otp_kirim  -> kirim kode OTP ke nomor WhatsApp (keperluan: daftar)
-//   daftar     -> daftarkan sekolah baru (wajib kode OTP); menunggu persetujuan developer
+//   daftar     -> daftarkan sekolah baru (wajib kode OTP); menunggu persetujuan developer.
+//                 Pendaftar memilih peran: 'kepala_sekolah' (bawaan) atau 'operator'.
+//                 Operator wajib mengisi data kepala sekolah (nama, nomor WA, NIP opsional);
+//                 akun kepala dibuat kemudian oleh operator lewat menu Guru.
 //   reset_kirim   -> kirim kode OTP reset ke nomor WhatsApp (respons selalu seragam)
 //   reset_selesai -> reset sandi / username / keduanya setelah kode benar
 //   hilang_otp    -> kirim kode OTP ke NOMOR BARU (nomor lama hilang)
@@ -66,17 +69,31 @@ module.exports = async (req, res) => {
     // DAFTAR SEKOLAH
     // ---------------------------------------------------------
     if (b.aksi === 'daftar') {
+      const peran = b.peran === 'operator' ? 'operator' : 'kepala_sekolah';
+      const adaOperator = peran === 'operator';
       const namaSekolah = teks(b.nama_sekolah, 80);
       const alamat = teks(b.alamat, 150);
-      const namaKepala = teks(b.nama_kepala, 80);
+      // Nama pemilik akun yang mendaftar (kepala sekolah, atau operator)
+      const namaAkun = teks(adaOperator ? b.nama_operator : b.nama_kepala, 80);
       const nip = teks(b.nip, 30);
       const nomor = L.normWA(b.nomor);
       const username = String(b.username || '').trim().toLowerCase();
       const sandi = String(b.sandi || '');
+      // Data kepala sekolah: untuk pendaftar kepala = dirinya sendiri; untuk operator = diisi terpisah
+      const namaKepala = adaOperator ? teks(b.nama_kepala, 80) : namaAkun;
+      const nipKepala = adaOperator ? teks(b.nip_kepala, 30) : nip;
+      const waKepala = adaOperator ? L.normWA(b.wa_kepala) : nomor;
 
       if (namaSekolah.length < 3) throw new Error('Nama sekolah minimal 3 karakter');
-      if (namaKepala.length < 3) throw new Error('Nama kepala sekolah minimal 3 karakter');
+      if (namaAkun.length < 3)
+        throw new Error(adaOperator ? 'Nama Anda minimal 3 karakter' : 'Nama kepala sekolah minimal 3 karakter');
       if (!L.RE_WA.test(nomor)) throw new Error('Nomor WhatsApp tidak valid');
+      if (adaOperator) {
+        if (namaKepala.length < 3) throw new Error('Nama kepala sekolah minimal 3 karakter');
+        if (!L.RE_WA.test(waKepala)) throw new Error('Nomor WhatsApp kepala sekolah tidak valid');
+        if (waKepala === nomor)
+          throw new Error('Nomor WhatsApp kepala sekolah harus berbeda dari nomor Anda');
+      }
       if (!L.RE_USER.test(username)) throw new Error(L.PESAN_USER);
       if (sandi.length < 6) throw new Error('Kata sandi minimal 6 karakter');
 
@@ -106,7 +123,7 @@ module.exports = async (req, res) => {
         email: username + '@absensi.local',
         password: sandi,
         email_confirm: true,
-        user_metadata: { nama: namaKepala }
+        user_metadata: { nama: namaAkun }
       });
 
       let profilDibuat = false;
@@ -117,9 +134,11 @@ module.exports = async (req, res) => {
           'POST',
           {
             id: baru.id,
-            nama: namaKepala,
+            nama: namaAkun,
             username,
-            role: 'kepala_sekolah',
+            // profil.role hanya mengenal kepala_sekolah/guru/developer; Operator disimpan 'guru'.
+            // Peran sebenarnya di sekolah ditentukan saat disetujui (keanggotaan.role).
+            role: adaOperator ? 'guru' : 'kepala_sekolah',
             aktif: false,
             no_wa: nomor,
             nip: nip || null
@@ -135,7 +154,11 @@ module.exports = async (req, res) => {
             profil_id: baru.id,
             nama_sekolah: namaSekolah,
             alamat: alamat || null,
-            ip: ip || null
+            ip: ip || null,
+            peran,
+            nama_kepala: adaOperator ? namaKepala : null,
+            nip_kepala: adaOperator ? nipKepala || null : null,
+            wa_kepala: adaOperator ? waKepala : null
           },
           { Prefer: 'return=representation' }
         );
@@ -161,8 +184,10 @@ module.exports = async (req, res) => {
           '',
           `🏫 ${namaSekolah}`,
           alamat ? `📍 ${alamat}` : null,
+          adaOperator ? `🧑‍💼 Didaftarkan oleh Operator: ${namaAkun}` : null,
+          adaOperator ? `📱 WhatsApp operator: ${nomor}` : null,
           `👤 Kepala sekolah: ${namaKepala}`,
-          `📱 WhatsApp: ${nomor}`,
+          adaOperator ? `📱 WhatsApp kepala: ${waKepala}` : `📱 WhatsApp: ${nomor}`,
           '',
           'Buka dashboard developer untuk menyetujui atau menolak.'
         ]
