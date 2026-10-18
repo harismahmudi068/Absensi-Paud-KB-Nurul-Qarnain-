@@ -19,6 +19,7 @@ const L = require('./_lib');
 const BATAS_BARIS = 150; // jumlah antrean yang diproses per panggilan (sisanya diambil menit berikutnya)
 const PARALEL = 25;
 const BATAS_GAGAL = 5;
+const TIMEOUT_KIRIM_MS = 8000; // batas waktu kirim ke satu HP, agar satu alamat lambat tidak menahan seluruh paket
 const MACET_MENIT = 10; // antrean 'berjalan' lebih lama dari ini dianggap macet (tidak dikirim ulang, agar tidak dobel)
 const TTL_DETIK = { absensi: 3 * 3600, tabungan: 6 * 3600 };
 
@@ -57,6 +58,11 @@ async function jalankanParalel(daftar, fn) {
 }
 
 const unik = (a) => [...new Set(a)];
+const kelompokkan = (daftar, kunciFn) => {
+  const m = new Map();
+  daftar.forEach((x) => { const k = kunciFn(x); (m.get(k) || m.set(k, []).get(k)).push(x); });
+  return m;
+};
 const rp = (n) => {
   const v = Math.round(Number(n) || 0);
   return (v < 0 ? '-' : '') + 'Rp' + Math.abs(v).toLocaleString('id-ID');
@@ -127,13 +133,24 @@ async function proses(klaim) {
     );
     trx.forEach((t) => trxMap.set(Number(t.id), t));
     const sIds = unik(barisTabungan.map((r) => Number(r.siswa_id)));
-    const semuaTrx = await perPaket(sIds, 50, (c) =>
-      semua(`/rest/v1/tabungan_transaksi?siswa_id=in.(${c.join(',')})&select=id,siswa_id,jenis,jumlah&order=id.asc`)
-    );
-    semuaTrx.forEach((t) => {
-      const k = Number(t.siswa_id);
-      saldoMap.set(k, (saldoMap.get(k) || 0) + (t.jenis === 'setor' ? 1 : -1) * Number(t.jumlah || 0));
-    });
+    // Saldo dihitung di database (fungsi saldo_siswa). Bila fungsinya belum dibuat, pakai cara lama sebagai cadangan.
+    let saldoDariDb = false;
+    try {
+      const rows = await perPaket(sIds, 150, async (c) => (await L.panggil('/rest/v1/rpc/saldo_siswa', 'POST', { ids: c })) || []);
+      rows.forEach((x) => saldoMap.set(Number(x.siswa_id), Number(x.saldo) || 0));
+      saldoDariDb = true;
+    } catch (e) {
+      console.error('notif-siswa: saldo_siswa belum tersedia, memakai cara lama:', e && e.message);
+    }
+    if (!saldoDariDb) {
+      const semuaTrx = await perPaket(sIds, 50, (c) =>
+        semua(`/rest/v1/tabungan_transaksi?siswa_id=in.(${c.join(',')})&select=id,siswa_id,jenis,jumlah&order=id.asc`)
+      );
+      semuaTrx.forEach((t) => {
+        const k = Number(t.siswa_id);
+        saldoMap.set(k, (saldoMap.get(k) || 0) + (t.jenis === 'setor' ? 1 : -1) * Number(t.jumlah || 0));
+      });
+    }
   }
 
   // Susun pesan per baris antrean
@@ -194,7 +211,7 @@ async function proses(klaim) {
     webpush.sendNotification(
       { endpoint: l.endpoint, keys: { p256dh: l.p256dh, auth: l.auth } },
       JSON.stringify(item.payload),
-      { TTL: TTL_DETIK[item.jenis] || 3600, urgency: 'high', topic: potong(item.payload.tag, 32) }
+      { TTL: TTL_DETIK[item.jenis] || 3600, urgency: 'high', topic: potong(item.payload.tag, 32), timeout: TIMEOUT_KIRIM_MS }
     )
   );
   hasil.forEach((h, i) => {
@@ -223,9 +240,12 @@ async function proses(klaim) {
       { terakhir_ok: new Date().toISOString(), gagal: 0 }, { Prefer: 'return=minimal' });
     return [];
   });
-  await jalankanParalel(gagalBaris, (l) =>
-    L.panggil(`/rest/v1/push_langganan?id=eq.${l.id}`, 'PATCH', { gagal: (Number(l.gagal) || 0) + 1 }, { Prefer: 'return=minimal' })
-  );
+  for (const [nilai, daftar] of kelompokkan(gagalBaris, (l) => (Number(l.gagal) || 0) + 1)) {
+    await perPaket(unik(daftar.map((l) => l.id)), 150, async (c) => {
+      await L.panggil(`/rest/v1/push_langganan?id=in.(${c.join(',')})`, 'PATCH', { gagal: nilai }, { Prefer: 'return=minimal' });
+      return [];
+    });
+  }
   await perPaket(unik(mati), 150, async (c) => {
     await L.panggil(`/rest/v1/push_langganan?id=in.(${c.join(',')})`, 'DELETE');
     return [];
@@ -251,8 +271,12 @@ async function proses(klaim) {
       pembaruan.push({ id, data: { status: v.status, hasil: potong(v.hasil, 300) } });
     }
   });
-  await jalankanParalel(pembaruan, (p) =>
-    L.panggil(`/rest/v1/notif_antrean?id=eq.${p.id}`, 'PATCH', p.data, { Prefer: 'return=minimal' })
+  const kelompokHasil = [...kelompokkan(pembaruan, (p) => JSON.stringify(p.data)).values()];
+  await jalankanParalel(kelompokHasil, (grup) =>
+    perPaket(grup.map((p) => p.id), 150, async (c) => {
+      await L.panggil(`/rest/v1/notif_antrean?id=in.(${c.join(',')})`, 'PATCH', grup[0].data, { Prefer: 'return=minimal' });
+      return [];
+    })
   );
   return { diproses: klaim.length, terkirim, gagal, dilewati };
 }
