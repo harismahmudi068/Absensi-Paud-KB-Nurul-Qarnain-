@@ -58,7 +58,7 @@ function buatKartu(s,opt){
  c.beginPath();c.moveTo(518,94);c.bezierCurveTo(585,90,640,62,660,20);c.lineWidth=2.4;c.strokeStyle='#f0cf5a';c.stroke();
  /* logo sekolah */
  const lg=opt.logo?LG.get(opt.logo):null;
- if(lg&&lg.width){const bx=82,r=Math.min(bx/lg.width,bx/lg.height),w=lg.width*r,h=lg.height*r;c.drawImage(lg,74-w/2,51-h/2,w,h)}
+ if(lg&&lg.width){const bx=82,r=Math.min(bx/lg.width,bx/lg.height),w=lg.width*r,h=lg.height*r;c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(lg,69-w/2,47-h/2,w,h)}
  /* judul */
  c.strokeStyle='#e9c55a';c.lineWidth=1.6;c.beginPath();c.moveTo(138,22);c.lineTo(138,81);c.stroke();
  c.textBaseline='middle';c.textAlign='left';
