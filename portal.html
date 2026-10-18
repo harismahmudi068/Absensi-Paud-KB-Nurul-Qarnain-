@@ -372,14 +372,14 @@ async function lapKirim(){if(!LAP.st||LAP.busy)return;
   LAP.busy=0;b.disabled=false;return}}
 
 /* B1. Data Siswa */
-function kartu(){const s=S.siswa,k=S.sekolah;return Kartu.buatKartu({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr)})}
+function kartu(){const s=S.siswa,k=S.sekolah;return Kartu.buatKartu({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr),logo:k.logo||null})}
 R.siswa=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
  return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
  '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><img class="kimg" id="kimg" alt="Kartu anak"><button class="btn fx" id="kunduh" onclick="unduh()">⬇ Unduh kartu</button><button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'+
  '<div class="panel"><div class="ph">👤 Profil</div><div class="pb">'+
  [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-','pan'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tanggal lahir',s.tgl?tgl(s.tgl):'-','tgl'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-','jk'],['Alamat',s.alamat||'-','alamat'],['WA orang tua',wa,'wa'],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"'+(x[2]?' data-f="'+x[2]+'"':'')+'><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
  '<div class="panel"><div class="pb" style="padding-top:14px"><button type="button" class="btn fx" style="margin-top:0" onclick="profilBuka()">✏️ Ubah profil</button><div class="mu" style="margin-top:8px;text-align:center">Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</div></div></div>'};
-A.siswa=()=>{try{$('#kimg').src=kartu()}catch(e){const p=$('#kimg'),u=$('#kunduh');if(p)p.remove();if(u)u.remove()}kedipKosong()};
+A.siswa=()=>{const k=S.sekolah||{};Kartu.siapkanLogo(k.logo||null).catch(()=>null).then(()=>{try{$('#kimg').src=kartu()}catch(e){const p=$('#kimg'),u=$('#kunduh');if(p)p.remove();if(u)u.remove()}});kedipKosong()};
 async function salinLinkAnak(){const t=Kartu.urlQR(S.siswa.kode_qr);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}ok?toast('Link halaman disalin'):toast('Tidak bisa menyalin, coba lagi','err')}
 function unduh(){const a=document.createElement('a');a.href=$('#kimg').src;a.download='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-')+'.png';document.body.appendChild(a);a.click();a.remove()}
 
