@@ -56,16 +56,19 @@ function buatKartu(s,opt){
  c.beginPath();c.moveTo(518,94);c.bezierCurveTo(585,90,640,62,660,20);c.lineTo(660,94);c.closePath();
  gr=c.createLinearGradient(520,94,660,20);gr.addColorStop(0,'#b9ddcb');gr.addColorStop(1,'#eaf6f0');c.fillStyle=gr;c.fill();
  c.beginPath();c.moveTo(518,94);c.bezierCurveTo(585,90,640,62,660,20);c.lineWidth=2.4;c.strokeStyle='#f0cf5a';c.stroke();
- /* logo sekolah */
- const lg=opt.logo?LG.get(opt.logo):null;
- if(lg&&lg.width){const bx=82,r=Math.min(bx/lg.width,bx/lg.height),w=lg.width*r,h=lg.height*r;c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(lg,69-w/2,47-h/2,w,h)}
+ /* logo sekolah: kotak/tinggi tetap di area lama; logo panjang diberi ruang lebih lebar
+    (garis emas dan judul bergeser ke kanan) agar tampil sebesar mungkin */
+ const lg=opt.logo?LG.get(opt.logo):null;let gx=138;
+ if(lg&&lg.width){const H0=82,asp=lg.width/lg.height,W0=Math.min(asp*H0,185),r=Math.min(W0/lg.width,H0/lg.height),w=lg.width*r,h=lg.height*r;
+  gx=Math.max(138,Math.round(w+30));c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(lg,gx/2-w/2,47-h/2,w,h)}
+ const tx=gx+19;
  /* judul */
- c.strokeStyle='#e9c55a';c.lineWidth=1.6;c.beginPath();c.moveTo(138,22);c.lineTo(138,81);c.stroke();
+ c.strokeStyle='#e9c55a';c.lineWidth=1.6;c.beginPath();c.moveTo(gx,22);c.lineTo(gx,81);c.stroke();
  c.textBaseline='middle';c.textAlign='left';
- c.fillStyle='#f2c94c';c.font='bold 15px '+F;lsText(c,'KARTU PELAJAR',157,27,2.6);
+ c.fillStyle='#f2c94c';c.font='bold 15px '+F;lsText(c,'KARTU PELAJAR',tx,27,2.6);
  const yr=String(s.masuk||'')||String(opt.tahun||opt.hari).slice(0,4),_nm=String(opt.nama||'').toUpperCase();
- c.fillStyle='#fff';fitFont(c,_nm,355,31,12,z=>'800 '+z+'px '+F);tebal(c,_nm,157,53,.8);
- c.fillStyle='#e6f2ec';c.font='14px '+F;c.fillText('Tahun Terdaftar : '+yr,158,78);
+ c.fillStyle='#fff';fitFont(c,_nm,512-tx,31,12,z=>'800 '+z+'px '+F);tebal(c,_nm,tx,53,.8);
+ c.fillStyle='#e6f2ec';c.font='14px '+F;c.fillText('Tahun Terdaftar : '+yr,tx+1,78);
  /* nama lengkap */
  c.fillStyle=HJ;c.font='bold 11.5px '+F;lsText(c,'NAMA LENGKAP',29,112,.7);
  rr(c,25,123,401,34,17);gr=c.createLinearGradient(0,123,0,157);gr.addColorStop(0,'#f4faf7');gr.addColorStop(1,'#e2f1ea');c.fillStyle=gr;c.fill();c.lineWidth=1.3;c.strokeStyle='#2a8a68';c.stroke();
