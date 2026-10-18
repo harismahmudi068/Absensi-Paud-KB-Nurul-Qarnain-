@@ -1,12 +1,12 @@
 // Fungsi server akun guru (multi-sekolah).
 // Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
-// Aksi untuk Kepala Sekolah / Wakil Kepala Sekolah sekolah itu atau Developer (wajib kirim sekolah_id):
+// Aksi untuk Kepala Sekolah / Wakil Kepala Sekolah / Operator sekolah itu atau Developer (wajib kirim sekolah_id):
 //   otp_kelola_kirim, otp_kelola_verifikasi (bukti kepemilikan: OTP ke nomor pengelola sendiri)
 //   cek_nomor, tautkan, tambah, tambah_batch (wajib izin dari OTP, kecuali Developer atau Developer di mode bantuan)
 //   ubah_role, aktif, hapus, hapus_batch (keluarkan banyak guru sekaligus)
 // Aksi untuk pemilik akun sendiri: akun_sendiri, nomor_otp_kirim, nomor_simpan, otp_cek
-// Ganti Kepala Sekolah: Kepala Sekolah lama, Wakil, atau Developer; kepala lama otomatis menjadi Guru
+// Ganti Kepala Sekolah: Kepala Sekolah lama, Wakil, Operator, atau Developer; kepala lama otomatis menjadi Guru
 // (fungsi database ganti_kepala_sekolah, satu transaksi).
 // Aksi khusus Developer:
 //   reset (atur sandi baru), hapus_akun (hapus akun seluruhnya),
@@ -23,8 +23,11 @@ const { kirimOtp, cekOtp, lihatOtp, ipDari, verifPasskey, bantuanCek, catatLog }
 const RE_UUID = /^[0-9a-f-]{36}$/i;
 const RE_USER = /^[a-z0-9._-]{3,20}$/;
 const RE_WA = /^628\d{8,12}$/;
-const ROLE_SEKOLAH = ['guru', 'wakil_kepala', 'kepala_sekolah'];
-const ROLE_PENGELOLA = ['kepala_sekolah', 'wakil_kepala'];
+const ROLE_SEKOLAH = ['guru', 'operator', 'wakil_kepala', 'kepala_sekolah'];
+const ROLE_PENGELOLA = ['kepala_sekolah', 'wakil_kepala', 'operator'];
+// Kolom profil.role hanya mengenal kepala_sekolah, guru, developer (batasan database).
+// Wakil Kepala dan Operator disimpan sebagai 'guru' di profil; peran sebenarnya ada di keanggotaan.role.
+const peranProfil = (r) => (r === 'developer' || r === 'kepala_sekolah' ? r : 'guru');
 const IZIN_MENIT = 15;
 // Batas permintaan paralel ke Supabase Auth saat impor (hash sandi dikerjakan di sana).
 // Naikkan bila Auth masih santai, turunkan bila muncul error 429/timeout.
@@ -175,7 +178,7 @@ async function buatAkun({ username, nama, nip, sandi, role, no_wa, sekolahId }) 
         id: baru.id,
         nama,
         username,
-        role,
+        role: peranProfil(role),
         aktif: true,
         no_wa: no_wa || null,
         nip: nip || null
@@ -508,13 +511,21 @@ module.exports = async (req, res) => {
           })
         : null;
 
+    // Peran pemanggil di sekolah ini (dipakai untuk membatasi penunjukan Operator)
+    let peranPemanggil = isDev ? 'developer' : '';
     if (!isDev) {
       const k = await ambilKeanggotaan(user.id, sekolahId);
       if (!k || !k.aktif || !ROLE_PENGELOLA.includes(k.role))
         return res
           .status(403)
-          .json({ error: 'Hanya Kepala Sekolah atau Wakil Kepala Sekolah sekolah ini, atau Developer, yang boleh' });
+          .json({ error: 'Hanya Kepala Sekolah, Wakil Kepala Sekolah, atau Operator sekolah ini, atau Developer, yang boleh' });
+      peranPemanggil = k.role;
     }
+    // Yang boleh menunjuk Operator: Kepala Sekolah, Wakil, dan Developer (bukan Operator)
+    const tolakOperator = (r) => {
+      if (peranPemanggil === 'operator' && r === 'operator')
+        throw new Error('Operator tidak boleh menunjuk Operator. Hubungi Kepala Sekolah atau Wakil');
+    };
 
     // ---------- OTP pengelola (bukti kepemilikan) ----------
     if (b.aksi === 'otp_kelola_kirim' || b.aksi === 'otp_kelola_verifikasi') {
@@ -556,6 +567,7 @@ module.exports = async (req, res) => {
       if (!isDev && !bantuan) izinCek(b.izin, user.id, sekolahId);
       await catatBantuan();
       const role = ROLE_SEKOLAH.includes(b.role) ? b.role : 'guru';
+      tolakOperator(role);
       const t = await cariProfilByWA(wa);
       if (!t || !t.aktif) throw new Error('Akun dengan nomor ini tidak ditemukan');
       if (await ambilKeanggotaan(t.id, sekolahId))
@@ -573,6 +585,7 @@ module.exports = async (req, res) => {
       const d = periksaDataAkun(b, { wajibWA: b.role !== 'developer' });
       if (d.role === 'developer' && !isDev)
         throw new Error('Hanya Developer yang boleh membuat akun Developer');
+      tolakOperator(d.role);
       if (d.no_wa && (await cariProfilByWA(d.no_wa)))
         throw new Error('Nomor WhatsApp sudah punya akun. Gunakan Tautkan');
       // Kepala Sekolah: dibuat sebagai Guru lebih dulu, lalu diganti secara atomis
@@ -625,6 +638,7 @@ module.exports = async (req, res) => {
             throw new Error('Hanya Developer yang boleh membuat akun Developer');
           if (d.role === 'kepala_sekolah' && !isDev)
             throw new Error('Role Kepala Sekolah hanya bisa ditetapkan Developer');
+          tolakOperator(d.role);
           if (userDlm.has(d.username)) throw new Error('Username sudah dipakai');
           if (d.no_wa && waDlm.has(d.no_wa))
             throw new Error('Nomor WhatsApp sudah punya akun');
@@ -699,7 +713,7 @@ module.exports = async (req, res) => {
         id: x.id,
         nama: x.d.nama,
         username: x.d.username,
-        role: x.d.role,
+        role: peranProfil(x.d.role),
         aktif: true,
         no_wa: x.d.no_wa || null,
         nip: x.d.nip || null
@@ -840,6 +854,8 @@ module.exports = async (req, res) => {
         const role = String(b.role || '');
         if (!ROLE_SEKOLAH.includes(role))
           return res.status(400).json({ error: 'Role tidak valid' });
+        if (peranPemanggil === 'operator' && (role === 'operator' || target.role === 'operator'))
+          return res.status(403).json({ error: 'Operator tidak boleh menunjuk atau mengubah peran Operator. Hubungi Kepala Sekolah atau Wakil' });
         if (role === 'kepala_sekolah') {
           if (!target.aktif)
             return res.status(400).json({ error: 'Aktifkan guru ini dulu sebelum menjadikannya Kepala Sekolah' });
