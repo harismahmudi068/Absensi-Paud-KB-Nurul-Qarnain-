@@ -7,7 +7,7 @@ button,input,select{font:inherit}button{cursor:pointer}.hid{display:none!importa
 .app{display:flex;min-height:100vh}
 .sidebar{width:250px;flex:0 0 250px;background:linear-gradient(180deg,#176b3a,#0d542c 58%,#68469f);color:#fff;padding:16px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:auto}
 .logo.ada{background:transparent;border-radius:0}.logo.ada img{border-radius:0}
-.logo img,.hr-body i img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}.hr-body i img{width:64px;height:64px;border-radius:16px}.lgprev{width:96px;height:96px;border-radius:18px;border:1px solid var(--bd,#d6e4dc);background:#fff;display:grid;place-items:center;overflow:hidden;font-size:40px}.lgprev img{width:100%;height:100%;object-fit:contain}
+.logo img,.hr-body i img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}.hr-body i{flex:0 0 auto}.hr-body i img{width:auto;height:auto;max-width:130px;max-height:88px;border-radius:0}.lgprev{width:96px;height:96px;border-radius:18px;border:1px solid var(--bd,#d6e4dc);background:#fff;display:grid;place-items:center;overflow:hidden;font-size:40px}.lgprev img{width:100%;height:100%;object-fit:contain}
 .brand{display:flex;gap:10px;align-items:center;padding:6px 8px 18px}.logo{width:44px;height:44px;border-radius:14px;background:var(--cr);display:grid;place-items:center;font-size:24px}.brand small{opacity:.75}
 .nav{display:grid;gap:4px}.nav button{border:0;background:transparent;color:#eef6ee;text-align:left;padding:11px 12px;border-radius:12px;display:flex;gap:10px;font-weight:700}
 .nav button.on,.nav button:hover{background:linear-gradient(90deg,#2ab968,#168449);color:#fff}
@@ -115,7 +115,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 .ci .ci-act .btn{flex:1 1 0;min-width:0;white-space:nowrap;text-align:center;padding:8px 4px;font-size:clamp(11px,3.3vw,12.5px)}
 .ci .ci-act .btn:first-child{flex:2 1 0}
 .rw{position:relative;max-width:420px;margin:0 auto 10px}.flip{display:none;position:absolute;top:8px;right:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:20px}.rw.on .flip{display:block}.camov{position:absolute;inset:0;z-index:4;background:#000;display:flex;align-items:center;justify-content:center;border-radius:inherit;overflow:hidden}.camov canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.camov::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.35)}.camov .spin{position:relative;z-index:1;border-color:rgba(255,255,255,.35);border-top-color:#fff}.flip,.flip.click-fx{animation:none!important;transition:none!important}.flip::after{display:none!important}.flip.busy{position:absolute!important;opacity:1!important}.flip.busy::before{display:none!important}
-.kimg{width:100%;border-radius:14px;display:block}
+.kimg{width:100%;border-radius:14px;display:block}.kwrap{position:relative;aspect-ratio:660/420;border-radius:14px;overflow:hidden;background:rgba(21,148,71,.09)}.kwrap .kimg{position:absolute;inset:0;height:100%;opacity:0;transition:opacity .3s}.kwrap.siap .kimg{opacity:1}.kwrap .kspin{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3d5a48}.kwrap.siap .kspin{display:none}.kspn{width:34px;height:34px;border:4px solid #cfe5d6;border-top-color:#159447;border-radius:50%;animation:sp .8s linear infinite}.kspn.sm{width:18px;height:18px;border-width:3px;flex:0 0 auto}.kstat{display:none;align-items:center;justify-content:center;gap:10px;padding:10px 12px;margin:0 0 10px;border-radius:12px;background:rgba(21,148,71,.1);font-weight:800;font-size:14px;color:#146a38}
 .fb{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;z-index:6;border-radius:12px}
 .fb.ok{background:rgba(21,148,71,.28)}.fb.no{background:rgba(217,83,93,.32)}
 .fb.show{display:flex;animation:fbp .22s ease-out}
@@ -1169,16 +1169,21 @@ function renderAll(){
  const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Ganti sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=(role==='Developer'?['developer']:['dashboard','absensi','scan','tabungan']).filter(allowed).slice(0,4);
  $('#bn').innerHTML=pref.map(id=>{const m=MENUS.find(x=>x[0]===id);return `<button class="${view===id?'on':''}" onclick="go('${id}')"><span>${id==='scan'?'<svg width="32" height="32" viewBox="0 0 32 32" style="display:block;margin:-2px auto 1px"><rect x="1.5" y="1.5" width="29" height="29" rx="7" fill="none" stroke="currentColor" stroke-width="2.4"/><g fill="currentColor"><rect x="7" y="8" width="2" height="16"/><rect x="10.5" y="8" width="1" height="16"/><rect x="13" y="8" width="3" height="16"/><rect x="17.5" y="8" width="1.2" height="16"/><rect x="20.2" y="8" width="2.2" height="16"/><rect x="24" y="8" width="1" height="16"/></g></svg>':m[2]}</span>${m[1]}</button>`}).join('')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`;
  $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
+let kartuTok=0;
+const jedaGambar=()=>new Promise(r=>{let d=0;const f=()=>{if(!d){d=1;r()}};try{requestAnimationFrame(()=>setTimeout(f,0))}catch(e){}setTimeout(f,60)});
 async function muatGambarKartu(){
- const imgs=[...document.querySelectorAll('#v img[data-kartu-id]')];
- for(let i=0;i<imgs.length;i++){
-  const id=Number(imgs[i].dataset.kartuId),s=S.siswa.find(x=>x.id===id);
-  if(s){
-   imgs[i].src=kartuUrl(s);
-   imgs[i].alt='Kartu '+(s.pan||'');
+ const tok=++kartuTok,imgs=[...document.querySelectorAll('#v img[data-kartu-id]')],st=$('#kartuStatus');
+ const stat=(on,i)=>{if(!st)return;st.style.display=on?'flex':'none';if(on)st.innerHTML='<span class="kspn sm"></span><span>Menyiapkan kartu '+i+' dari '+imgs.length+'...</span>'};
+ try{
+  for(let i=0;i<imgs.length;i++){
+   stat(true,i+1);await jedaGambar();
+   if(tok!==kartuTok)return;
+   const im=imgs[i];if(!im.isConnected)continue;
+   const id=Number(im.dataset.kartuId),s=S.siswa.find(x=>x.id===id);
+   if(s){im.src=kartuUrl(s);im.alt='Kartu '+(s.pan||'');try{await im.decode()}catch(e){}}
+   const w=im.closest('.kwrap');if(w)w.classList.add('siap');
   }
-  if(i%2===1)await new Promise(r=>setTimeout(r,0));
- }
+ }finally{if(tok===kartuTok)stat(false)}
 }
 function renderV(){
  tutupAksi();const _tb=view==='kelola'||view==='tabungan'||view==='piket'||view==='hafalan',_sl=_tb?(document.querySelector('#v .utabs')||{}).scrollLeft:0;
@@ -1658,8 +1663,8 @@ const KC=new Map();
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
 function kartuUrl(s){const key=[s.id,s.kode_qr,s.nama,s.nisn,s.kelas,s.wa,s.tgl,s.jk,s.alamat,s.masuk,S.set.tahun_ajaran,ns(),(S.set.logo||'').length].join('|');if(KC.has(key))return KC.get(key);
  const u=Kartu.buatKartu(s,{nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.urlQR(s.kode_qr),logo:logoOk(S.set.logo)?S.set.logo:null});KC.set(key,u);return u}
-function kartuCards(){const z=String(kkQ||'').toLowerCase().trim();return act().filter(s=>kk&&s.kelas===kk&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z))).map(s=>`<div class="card" style="padding:10px"><img class="kimg" data-kartu-id="${s.id}" alt="Menyiapkan kartu..."><button class="btn sm success" style="width:100%;margin-top:8px" onclick="unduhSatu(${s.id},this)">⬇ Unduh kartu ${esc(s.pan)}</button><div style="display:flex;gap:8px;margin-top:8px"><button class="btn soft sm" style="flex:1" onclick="salinLinkSatu(${s.id})">🔗 Salin link</button><button class="btn sm" style="flex:1" ${s.wa?'':'disabled title="Belum ada nomor WA"'} onclick="kirimLinkSatu(${s.id})">📤 Kirim link</button></div></div>`).join('')||(kk?'':'');}
-V.kartu=()=>`<div class="panel"><div class="ph">🪪 Kartu Siswa</div><div class="pb"><div class="tb tb-full"><select class="select" onchange="kk=this.value;kkQ='';renderV()">${kopt2(kk)}</select><input id="kkCari" class="input grow search-smooth" style="flex:1 1 100%" placeholder="Cari nama anak, panggilan atau NISN..." value="${esc(kkQ)}" oninput="cariKartuInput(this)"><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;flex:1 1 100%"><button class="btn success sm dl" style="margin:0" onclick="unduhKartu(this)">⬇ Unduh Kartu (PDF)</button><button class="btn soft sm" style="margin:0" onclick="salinSemuaLink()">🔗 Salin semua link</button><button class="btn sm" style="margin:0" onclick="kirimSemuaLink()">📤 Kirim semua link</button></div></div>${kk?'':PKH}<div id="kartuCards" class="cards">${kartuCards()}</div></div></div>`;
+function kartuCards(){const z=String(kkQ||'').toLowerCase().trim();return act().filter(s=>kk&&s.kelas===kk&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z))).map(s=>`<div class="card" style="padding:10px"><div class="kwrap"><div class="kspin"><div class="kspn"></div>Memuat kartu...</div><img class="kimg" data-kartu-id="${s.id}" alt=""></div><button class="btn sm success" style="width:100%;margin-top:8px" onclick="unduhSatu(${s.id},this)">⬇ Unduh kartu ${esc(s.pan)}</button><div style="display:flex;gap:8px;margin-top:8px"><button class="btn soft sm" style="flex:1" onclick="salinLinkSatu(${s.id})">🔗 Salin link</button><button class="btn sm" style="flex:1" ${s.wa?'':'disabled title="Belum ada nomor WA"'} onclick="kirimLinkSatu(${s.id})">📤 Kirim link</button></div></div>`).join('')||(kk?'':'');}
+V.kartu=()=>`<div class="panel"><div class="ph">🪪 Kartu Siswa</div><div class="pb"><div class="tb tb-full"><select class="select" onchange="kk=this.value;kkQ='';renderV()">${kopt2(kk)}</select><input id="kkCari" class="input grow search-smooth" style="flex:1 1 100%" placeholder="Cari nama anak, panggilan atau NISN..." value="${esc(kkQ)}" oninput="cariKartuInput(this)"><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;flex:1 1 100%"><button class="btn success sm dl" style="margin:0" onclick="unduhKartu(this)">⬇ Unduh Kartu (PDF)</button><button class="btn soft sm" style="margin:0" onclick="salinSemuaLink()">🔗 Salin semua link</button><button class="btn sm" style="margin:0" onclick="kirimSemuaLink()">📤 Kirim semua link</button></div></div>${kk?'':PKH}<div id="kartuStatus" class="kstat"></div><div id="kartuCards" class="cards">${kartuCards()}</div></div></div>`;
 function cariKartuInput(el){kkQ=el.value;const c=$('#kartuCards');if(c){c.innerHTML=kartuCards();muatGambarKartu().catch(()=>{})}}
 /* ---------- salin & kirim link halaman siswa (link yang sama dengan isi QR kartu) ---------- */
 function linkSiswa(s){return Kartu.urlQR(s.kode_qr)}
@@ -2018,7 +2023,7 @@ function skalaLogo(src,w,h){let cur=src,cw=src.width,ch=src.height;
  const o=document.createElement('canvas');o.width=w;o.height=h;const x=o.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,0,0,w,h);return o}
 function logoKecil(file){return new Promise((ok,gagal)=>{const u=URL.createObjectURL(file),im=new Image();
  im.onerror=()=>{URL.revokeObjectURL(u);gagal(new Error('File bukan gambar yang valid'))};
- im.onload=()=>{URL.revokeObjectURL(u);try{for(const sz of [384,320,256,200]){const r=Math.min(1,sz/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r));
+ im.onload=()=>{URL.revokeObjectURL(u);try{for(const sz of (im.width/im.height>1.3?[576,480,384,320,256,200]:[384,320,256,200])){const r=Math.min(1,sz/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r));
   const cv=skalaLogo(im,w,h);
   for(const f of ['image/png','image/webp']){const d=cv.toDataURL(f,.95);if(d.startsWith('data:'+f)&&d.length<=148000)return ok(d)}}
   gagal(new Error('Logo terlalu besar setelah diperkecil (maksimal sekitar 110 KB). Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}}
