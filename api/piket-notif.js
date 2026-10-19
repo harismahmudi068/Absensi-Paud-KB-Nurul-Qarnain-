@@ -28,6 +28,12 @@ const hariJakarta = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'As
 const tglPlus = (t, n) => new Date(Date.parse(t + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const dowOf = (t) => new Date(t + 'T00:00:00Z').getUTCDay();
 const potong = (t, n) => String(t == null ? '' : t).slice(0, n);
+const BOLD = (t) => String(t).replace(/[A-Za-z0-9]/g, (c) => {
+  const k = c.charCodeAt(0);
+  if (k >= 65 && k <= 90) return String.fromCodePoint(0x1D5D4 + k - 65);
+  if (k >= 97 && k <= 122) return String.fromCodePoint(0x1D5EE + k - 97);
+  return String.fromCodePoint(0x1D7EC + k - 48);
+});
 
 function rahasiaCocok(header) {
   const rahasia = process.env.CRON_RAHASIA || '';
@@ -173,7 +179,7 @@ async function prosesSekolah(sid, waktu, tanggal, paksa) {
       perHp.set(l.endpoint, g);
     });
 
-    const judul = waktu === 'malam' ? `🧹 Piket besok (${NAMA_HARI[dow]})` : '🧹 Piket hari ini';
+    const judul = waktu === 'malam' ? 'Info piket besok' : 'Info piket hari ini';
     const butirTeks = (b) => b.jenis + (b.semua ? ' (seluruh kelas)' : '') + (b.catatan ? ': ' + potong(b.catatan, 60) : '');
 
     let terkirim = 0, gagal = 0, dibuang = 0, pesanError = '';
@@ -181,13 +187,12 @@ async function prosesSekolah(sid, waktu, tanggal, paksa) {
     const hasil = await jalankanParalel([...perHp.entries()], async ([endpoint, g]) => {
       const anak = [...g.anak].map((i) => siswaMap.get(i)).filter(Boolean);
       const baris = anak.map((s) => {
-        const nm = String(s.nama_panggilan || '').trim() || String(s.nama || '').trim().split(' ')[0] || 'Anak';
-        const kl = s.kelas_id ? namaKelas.get(Number(s.kelas_id)) : '';
-        return `${nm}${kl ? ' (Kelas ' + kl + ')' : ''}: ${(target.get(Number(s.id)) || []).map(butirTeks).join(', ')}`;
+        const nm = String(s.nama || '').trim() || String(s.nama_panggilan || '').trim() || 'Anak';
+        return BOLD(nm) + '\n' + (target.get(Number(s.id)) || []).map(butirTeks).join(', ');
       });
       const payload = JSON.stringify({
         judul,
-        isi: potong(baris.join('\n'), 280),
+        isi: potong('🟡 ' + BOLD(NAMA_HARI[dow]) + '\n' + baris.join('\n\n'), 480),
         url: '/p/' + anak[0].kode_qr + '#piket',
         tag: 'piket-' + waktu
       });
