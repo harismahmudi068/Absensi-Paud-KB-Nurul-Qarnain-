@@ -71,18 +71,30 @@ const jamJkt = (iso) => {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', '.');
+  return d.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false }).replace(':', ' : ');
 };
 const namaAnak = (s) =>
   String(s.nama_panggilan || '').trim() || String(s.nama || '').trim().split(' ')[0] || 'Anak';
+const BOLD = (t) => String(t).replace(/[A-Za-z0-9]/g, (c) => {
+  const k = c.charCodeAt(0);
+  if (k >= 65 && k <= 90) return String.fromCodePoint(0x1D5D4 + k - 65);
+  if (k >= 97 && k <= 122) return String.fromCodePoint(0x1D5EE + k - 97);
+  return String.fromCodePoint(0x1D7EC + k - 48);
+});
+const namaLengkap = (s) =>
+  String(s.nama || '').trim() || String(s.nama_panggilan || '').trim() || 'Anak';
+const rpS = (n) => {
+  const v = Math.round(Number(n) || 0);
+  return (v < 0 ? '-' : '') + 'Rp ' + Math.abs(v).toLocaleString('id-ID');
+};
 
 // Teks notifikasi absensi: [ikon, isi]
 function teksAbsensi(a) {
   const jam = jamJkt(a.jam_datang);
   const st = String(a.status || '').toLowerCase();
   const T = {
-    hadir: ['hadir', jam ? 'Hadir pukul ' + jam : 'Hadir hari ini'],
-    terlambat: ['terlambat', jam ? 'Terlambat, tiba pukul ' + jam : 'Terlambat hari ini'],
+    hadir: ['hadir', jam ? 'Hadir pukul ' + jam + ' WIB' : 'Hadir hari ini'],
+    terlambat: ['terlambat', jam ? 'Terlambat, tiba pukul ' + jam + ' WIB' : 'Terlambat hari ini'],
     alpa: ['alpa', 'Tercatat alpa hari ini'],
     izin: ['izin', 'Tercatat izin hari ini'],
     sakit: ['sakit', 'Tercatat sakit hari ini'],
@@ -172,7 +184,7 @@ async function proses(klaim) {
       if (!a) return lewati('Data absensi sudah tidak ada');
       const t = teksAbsensi(a);
       if (!t) return lewati('Status absensi tidak dikenal');
-      judul = 'Absensi ' + nm; isi = t[1]; ikon = t[0];
+      judul = 'Info absensi Hari ini'; isi = namaLengkap(s) + '\n' + t[1]; ikon = t[0];
       url = '/p/' + s.kode_qr + '#absensi';
       tag = 'absen-' + anakId + '-' + r.tanggal;
       bendera = 'terima_absensi';
@@ -180,17 +192,13 @@ async function proses(klaim) {
       if (!p.tabungan_aktif || !p.notif_tabungan_aktif) return lewati('Notifikasi tabungan dimatikan sekolah');
       const t = trxMap.get(Number(r.ref_id));
       if (!t) return lewati('Transaksi sudah tidak ada');
-      const nominal = rp(t.jumlah), saldo = rp(saldoMap.get(anakId) || 0);
-      if (t.membatalkan_id) {
-        judul = 'Koreksi tabungan ' + nm;
-        isi = 'Pembatalan transaksi ' + nominal + '. Saldo akhir ' + saldo;
-      } else if (t.jenis === 'setor') {
-        judul = 'Tabungan ' + nm;
-        isi = 'Setoran ' + nominal + '. Saldo akhir ' + saldo;
-      } else {
-        judul = 'Tabungan ' + nm;
-        isi = 'Penarikan ' + nominal + '. Saldo akhir ' + saldo;
-      }
+      const saldo = saldoMap.get(anakId) || 0;
+      let baris;
+      if (t.membatalkan_id) baris = 'Pembatalan transaksi (' + rpS(t.jumlah) + ')';
+      else if (t.jenis === 'setor') baris = '🟢 Setoran (+' + rpS(t.jumlah) + ')';
+      else baris = '🔴 Penarikan (-' + rpS(t.jumlah) + ')';
+      judul = 'Info Tabungan hari ini';
+      isi = BOLD(namaLengkap(s)) + '\n' + baris + '\nSaldo akhir = ' + BOLD('(' + rpS(saldo) + ')');
       ikon = t.jenis === 'setor' ? 'tabungan-masuk' : 'tabungan-keluar';
       url = '/p/' + s.kode_qr + '#tabungan';
       tag = 'tab-' + Number(r.ref_id);
@@ -199,7 +207,7 @@ async function proses(klaim) {
 
     const subs = (langgananPerAnak.get(anakId) || []).filter((l) => l[bendera] !== false);
     if (!subs.length) return lewati('Tidak ada HP yang mengaktifkan jenis notifikasi ini');
-    const payload = { judul, isi: potong(isi, 280), url, tag, ikon };
+    const payload = { judul, isi: potong(isi, 480), url, tag, ikon };
     const item = { r, payload, jenis: r.jenis, terkirim: 0, gagal: 0, dibuang: 0, galat: '' };
     subs.forEach((l) => tugas.push({ item, l }));
     hasilBaris.set(r.id, { item });
