@@ -14,7 +14,7 @@ self.addEventListener('push', (e) => {
   const ikon = IKON_DIKENAL.indexOf(String(d.ikon || '')) >= 0 ? String(d.ikon) : 'piket';
   const tag = String(d.tag || 'piket');
   e.waitUntil(self.registration.showNotification(judul, {
-    body: String(d.isi || '').slice(0, 300),
+    body: String(d.isi || '').slice(0, 500),
     icon: '/notif-' + ikon + '.png',
     badge: '/ikon-badge.png',
     tag: tag,
