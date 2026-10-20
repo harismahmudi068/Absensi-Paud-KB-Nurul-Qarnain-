@@ -145,7 +145,7 @@ function buatBelakang(s,opt){
  /* QR */
  c.save();c.shadowColor='rgba(15,92,63,.22)';c.shadowBlur=18*K;c.shadowOffsetY=3*K;rr(c,212.5,131,235,236,18);c.fillStyle='#fff';c.fill();c.restore();
  rr(c,212.5,131,235,236,18);c.lineWidth=3.4;c.strokeStyle='#1b7a5a';c.stroke();
- const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(190*K/n)/K,sz=cl*n,qx=330-sz/2,qy=249-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl,cl);
+ const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(212*K/n)/K,sz=cl*n,qx=330-sz/2,qy=249-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl,cl);
  /* footer */
  gr=c.createLinearGradient(0,0,660,0);gr.addColorStop(0,'#0a5a3f');gr.addColorStop(1,'#0e6a49');c.fillStyle=gr;c.fillRect(0,378,660,42);
  pola(c,0,378,660,42,'rgba(255,255,255,.06)',.6);
