@@ -138,20 +138,21 @@ function buatBelakang(s,opt){
  c.fillStyle='#f2c94c';c.font='bold 15px '+F;lsText(c,'KARTU ID CARD',tx,28,2.6);
  const _nm=String(opt.nama||'').toUpperCase();c.fillStyle='#fff';fitFont(c,_nm,538-tx,26,12,z=>'800 '+z+'px '+F);tebal(c,_nm,tx,57,.8);
  /* lingkaran hias di balik QR */
- c.beginPath();c.arc(330,247,143,0,7);c.lineWidth=1;c.strokeStyle='rgba(30,130,95,.12)';c.stroke();
- c.save();c.setLineDash([1.5,3.5]);c.beginPath();c.arc(330,247,131,0,7);c.lineWidth=1.2;c.strokeStyle='rgba(224,189,74,.8)';c.stroke();c.restore();
- /* nama anak */
- const nm=String(s.nama||'').toUpperCase();c.textAlign='center';c.textBaseline='middle';c.fillStyle='#0e5a3d';fitFont(c,nm,430,24,11,z=>'800 '+z+'px '+F);tebal(c,elips(c,nm,430),330,112,.6);
+ c.beginPath();c.arc(330,234.5,143,0,7);c.lineWidth=1;c.strokeStyle='rgba(30,130,95,.12)';c.stroke();
+ c.save();c.setLineDash([1.5,3.5]);c.beginPath();c.arc(330,234.5,131,0,7);c.lineWidth=1.2;c.strokeStyle='rgba(224,189,74,.8)';c.stroke();c.restore();
  /* QR */
- c.save();c.shadowColor='rgba(15,92,63,.22)';c.shadowBlur=18*K;c.shadowOffsetY=3*K;rr(c,212.5,131,235,236,18);c.fillStyle='#fff';c.fill();c.restore();
- rr(c,212.5,131,235,236,18);c.lineWidth=3.4;c.strokeStyle='#1b7a5a';c.stroke();
- const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(212*K/n)/K,sz=cl*n,qx=330-sz/2,qy=249-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl,cl);
+ c.save();c.shadowColor='rgba(15,92,63,.22)';c.shadowBlur=18*K;c.shadowOffsetY=3*K;rr(c,199,103.5,262,262,18);c.fillStyle='#fff';c.fill();c.restore();
+ rr(c,199,103.5,262,262,18);c.lineWidth=3.4;c.strokeStyle='#1b7a5a';c.stroke();
+ const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(240*K/n)/K,sz=cl*n,qx=330-sz/2,qy=234.5-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl,cl);
  /* footer */
  gr=c.createLinearGradient(0,0,660,0);gr.addColorStop(0,'#0a5a3f');gr.addColorStop(1,'#0e6a49');c.fillStyle=gr;c.fillRect(0,378,660,42);
  pola(c,0,378,660,42,'rgba(255,255,255,.06)',.6);
  c.beginPath();c.moveTo(520,420);c.bezierCurveTo(590,416,640,398,660,374);c.lineTo(660,420);c.closePath();c.fillStyle='rgba(125,196,165,.55)';c.fill();
  c.beginPath();c.moveTo(520,420);c.bezierCurveTo(590,416,640,398,660,374);c.lineWidth=2.4;c.strokeStyle='#f0cf5a';c.stroke();
  c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth=1.1;c.beginPath();c.moveTo(126.7,398.5);c.lineTo(176.7,398.5);c.moveTo(483,398.5);c.lineTo(533,398.5);c.stroke();
+ /* nama anak: di footer, rata tengah antara dua garis, tengah vertikal sejajar garis */
+ const nm=String(s.nama||'').toUpperCase();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle='#f2c94c';fitFont(c,nm,270,23,10,z=>'800 '+z+'px '+F);
+ const _t=elips(c,nm,270),_cap=c.measureText('H').actualBoundingBoxAscent;tebal(c,_t,330,398.5+_cap/2,.6);
  c.restore();return cv.toDataURL('image/png')}
 g.Kartu={DOMAIN_PORTAL,urlQR,kodeDariQR,qrObj,buatKartu,buatBelakang,siapkanLogo,tglDMY,jkNama};
 })(window);
