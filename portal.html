@@ -84,6 +84,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .kr{display:flex;gap:8px;align-items:stretch;margin-top:8px}.kr textarea{flex:1;min-width:0;resize:none;border:1.5px solid var(--cbd);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;line-height:1.35;text-align:left;background:var(--c2);color:var(--tx)}
 .kr textarea:focus{outline:none;border-color:var(--pu)}.kr .btn{width:auto;margin:0;padding:0 16px;flex:0 0 auto}.btn[disabled]{opacity:.5;cursor:default}
 .ov{position:fixed;inset:0;z-index:90;background:rgba(5,15,30,.55);display:grid;place-items:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}.ov.on{opacity:1;pointer-events:auto}
+.fprev{display:block;margin:10px auto 2px;max-width:150px;max-height:200px;border-radius:12px;border:1.5px solid var(--ln);background:#fff}.fkc{display:block;margin:10px auto 0;width:240px;height:320px;max-width:100%;touch-action:none;border-radius:14px;border:3px solid var(--g);background:#eef6f1;cursor:grab}.fkz{width:100%;margin:12px 0 2px;accent-color:var(--g)}.fthumbrow{display:flex;gap:12px;align-items:center;padding:6px 0 12px;margin-bottom:4px;border-bottom:1px solid var(--ln)}.fthumb{width:60px;height:80px;border-radius:10px;border:2px solid var(--g);background:#eef6f1;display:grid;place-items:center;overflow:hidden;font-size:30px;flex:0 0 auto}.fthumb img{width:100%;height:100%;object-fit:cover;display:block}
 .dlg{width:100%;max-width:340px;background:var(--c2);color:var(--tx);border-radius:20px;padding:20px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.4);text-align:center;transform:translateY(12px) scale(.96);transition:transform .2s}.ov.on .dlg{transform:none}
 .dlg .di{font-size:34px}.dlg h3{margin:6px 0 4px;font-size:17px;color:var(--tt)}.dlg p{margin:0 0 14px;color:var(--mu);font-size:14px;word-break:break-word}
 .dlg .da{display:flex;gap:8px}.dlg .da button{flex:1;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer}
@@ -229,7 +230,7 @@ html[data-tm=d] .fd .fa .ya{background:linear-gradient(135deg,#2fa35b,#14693a);b
  </div></div>
  <div id="isi"></div>
 </div>
-<div class="ov" id="ov"></div><div class="eo" id="eo" role="dialog" aria-modal="true" aria-live="polite"></div><div class="fo" id="fo"></div><div class="po" id="po" role="dialog" aria-modal="true" aria-live="polite"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="ov" id="ov"></div><div class="ov" id="fk"></div><input type="file" id="fotoF" accept="image/*" hidden onchange="fotoDipilih(this)"><div class="eo" id="eo" role="dialog" aria-modal="true" aria-live="polite"></div><div class="fo" id="fo"></div><div class="po" id="po" role="dialog" aria-modal="true" aria-live="polite"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],HR=['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
@@ -319,7 +320,7 @@ function lapCek(){const b=$('#lapkirim');if(b&&LAP.st&&!b.disabled){b.classList.
 let tT;
 function toast(t,tp){const e=$('#toast');tp=tp||'ok';e.className='toast '+tp;e.textContent=(tp==='err'?'⚠️ ':tp==='info'?'⏳ ':'✅ ')+t;void e.offsetWidth;e.classList.add('on');clearTimeout(tT);if(tp!=='info')tT=setTimeout(()=>e.classList.remove('on'),tp==='err'?5000:3500)}
 function konfirm(o){return new Promise(ok=>{const ov=$('#ov');
- ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true"><div class="di">'+o.ikon+'</div><h3>'+esc(o.judul)+'</h3><p>'+esc(o.isi)+'</p>'+(o.cat?'<div class="wn" role="alert"><b>⚠️ '+esc(o.cat[0])+'</b><span>'+esc(o.cat[1])+'</span></div>':'')+'<div class="da"><button type="button" class="bt fx">'+esc(o.batal||'Batal')+'</button><button type="button" class="ya fx" style="background:'+o.warna+'">'+esc(o.ya)+'</button></div></div>';
+ ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true"><div class="di">'+o.ikon+'</div><h3>'+esc(o.judul)+'</h3>'+(o.gambar?'<img class="fprev" alt="Pratinjau foto" src="'+esc(o.gambar)+'">':'')+'<p>'+esc(o.isi)+'</p>'+(o.cat?'<div class="wn" role="alert"><b>⚠️ '+esc(o.cat[0])+'</b><span>'+esc(o.cat[1])+'</span></div>':'')+'<div class="da"><button type="button" class="bt fx">'+esc(o.batal||'Batal')+'</button><button type="button" class="ya fx" style="background:'+o.warna+'">'+esc(o.ya)+'</button></div></div>';
  const tutup=v=>{ov.classList.remove('on');document.removeEventListener('keydown',kd);setTimeout(()=>{ov.innerHTML=''},220);ok(v)},kd=e=>{if(e.key==='Escape')tutup(false)};
  ov.onclick=e=>{if(e.target===ov)tutup(false)};ov.querySelector('.bt').onclick=()=>tutup(false);const y=ov.querySelector('.ya');y.onclick=()=>tutup(true);
  document.addEventListener('keydown',kd);ov.classList.add('on');y.focus()})}
@@ -372,14 +373,17 @@ async function lapKirim(){if(!LAP.st||LAP.busy)return;
   LAP.busy=0;b.disabled=false;return}}
 
 /* B1. Data Siswa */
-function kartu(sisi){const s=S.siswa,k=S.sekolah;return (sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr),logo:k.logo||null})}
+function kartu(sisi){const s=S.kd.siswa,k=S.kd.sekolah;return (sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr),logo:k.logo||null,foto:S.fotoImg||null})}
 R.siswa=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
  return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
- '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><img class="kimg" id="kimg" alt="Kartu anak, sisi depan"><img class="kimg" id="kimg2" alt="Kartu anak, sisi belakang" style="margin-top:10px"><button class="btn fx" id="kunduh" onclick="unduh()">⬇ Unduh kartu (depan &amp; belakang)</button><button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'+
+ '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><img class="kimg" id="kimg" alt="Kartu anak, sisi depan"><img class="kimg" id="kimg2" alt="Kartu anak, sisi belakang" style="margin-top:10px"><button class="btn fx" id="kunduh" onclick="unduh()">⬇ Unduh kartu (depan &amp; belakang)</button>'+(d.sekolah&&d.sekolah.izin_foto===false?'<div class="mu" style="margin-top:10px;text-align:center">Foto anak diatur oleh sekolah.</div>':'<button type="button" class="btn fx" id="kfoto" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button>')+'<button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'+
  '<div class="panel"><div class="ph">👤 Profil</div><div class="pb">'+
  [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-','pan'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tanggal lahir',s.tgl?tgl(s.tgl):'-','tgl'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-','jk'],['Alamat',s.alamat||'-','alamat'],['WA orang tua',wa,'wa'],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"'+(x[2]?' data-f="'+x[2]+'"':'')+'><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
  '<div class="panel"><div class="pb" style="padding-top:14px"><button type="button" class="btn fx" style="margin-top:0" onclick="profilBuka()">✏️ Ubah profil</button><div class="mu" style="margin-top:8px;text-align:center">Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</div></div></div>'};
-A.siswa=()=>{const k=S.sekolah||{};Kartu.siapkanLogo(k.logo||null).catch(()=>null).then(()=>{try{$('#kimg').src=kartu('depan');$('#kimg2').src=kartu('belakang')}catch(e){['#kimg','#kimg2','#kunduh'].forEach(q=>{const z=$(q);if(z)z.remove()})}});kedipKosong()};
+function kartuRender(){const d=S.kd;if(!d)return Promise.resolve();const s=d.siswa,k=d.sekolah||{};
+ return Promise.all([Kartu.siapkanLogo(k.logo||null).catch(()=>null),Kartu.siapkanLogo(s.foto||null).catch(()=>null)]).then(r=>{S.fotoImg=r[1];
+  try{$('#kimg').src=kartu('depan');$('#kimg2').src=kartu('belakang')}catch(e){['#kimg','#kimg2','#kunduh'].forEach(q=>{const z=$(q);if(z)z.remove()})}})}
+A.siswa=d=>{S.kd=d;kartuRender();kedipKosong()};
 async function salinLinkAnak(){const t=Kartu.urlQR(S.siswa.kode_qr);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}ok?toast('Link halaman disalin'):toast('Tidak bisa menyalin, coba lagi','err')}
 function unduh(){const dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-'),dl=(u,n)=>{const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove()};
  dl($('#kimg').src,dasar+'-depan.png');setTimeout(()=>{dl($('#kimg2').src,dasar+'-belakang.png')},500)}
@@ -408,9 +412,73 @@ function tgSet(v){$('#ftg').value=v;const t=$('#tgval');t.textContent=v?tgFmt(v)
 function tgPick(k,e){e.stopPropagation();tgSet(k)}
 function tgClr(e){e.stopPropagation();tgSet('')}
 function tgX(e){e.stopPropagation();$('#tgbox').classList.remove('open')}
+/* ---------- Foto anak (diunggah orang tua, dipotong rasio 3:4 di perangkat) ---------- */
+const FOTO_MAX=80000;
+function skalaFoto(img,sx,sy,sw,sh,W,H){let cur=img,csx=sx,csy=sy,csw=sw,csh=sh;
+ while(csw/2>=W&&csh/2>=H){const n=document.createElement('canvas');n.width=Math.floor(csw/2);n.height=Math.floor(csh/2);const x=n.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,csx,csy,csw,csh,0,0,n.width,n.height);cur=n;csx=0;csy=0;csw=n.width;csh=n.height}
+ const o=document.createElement('canvas');o.width=W;o.height=H;const x=o.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,csx,csy,csw,csh,0,0,W,H);return o}
+async function fotoJpeg(im,sx,sy,sw,sh){
+ for(const [W,H] of [[450,600],[390,520],[330,440]]){const cv=skalaFoto(im,sx,sy,sw,sh,W,H);
+  for(const q of [.88,.8,.72,.64,.56,.5]){const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',q));if(b&&b.size<=FOTO_MAX)return b}}
+ throw new Error('Foto terlalu rumit untuk disimpan. Coba foto lain')}
+function fotoCrop(file){return new Promise(ok=>{
+ const u=URL.createObjectURL(file),im=new Image();
+ im.onerror=()=>{URL.revokeObjectURL(u);toast('File bukan gambar yang valid','err');ok(null)};
+ im.onload=()=>{URL.revokeObjectURL(u);
+  const iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height;
+  if(Math.min(iw,ih)<200){toast('Foto terlalu kecil (minimal 200 px)','err');return ok(null)}
+  const ov=$('#fk');
+  ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true"><div class="di">📷</div><h3>Atur foto</h3><p>Geser foto untuk mengatur posisi. Cubit layar atau pakai penggeser untuk memperbesar.</p><canvas class="fkc" id="fkc" width="480" height="640"></canvas><input class="fkz" id="fkz" type="range" min="1" max="3" step="0.01" value="1" aria-label="Perbesar foto"><div class="da"><button type="button" class="bt fx" id="fkb">Batal</button><button type="button" class="ya fx" id="fkok" style="background:#159447">Lanjut</button></div></div>';
+  const cv=$('#fkc'),x=cv.getContext('2d'),W=240,H=320,sl=$('#fkz'),bs=Math.max(W/iw,H/ih),P=new Map();
+  let z=1,cx=iw/2,cy=ih*.42,d0=0,z0=1;
+  const ukr=()=>({s:bs*z,sw:W/(bs*z),sh:H/(bs*z)});
+  const jepit=()=>{const {sw,sh}=ukr();cx=Math.min(Math.max(cx,sw/2),iw-sw/2);cy=Math.min(Math.max(cy,sh/2),ih-sh/2)};
+  const gambar=()=>{jepit();const {sw,sh}=ukr();x.fillStyle='#eef6f1';x.fillRect(0,0,480,640);x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(im,cx-sw/2,cy-sh/2,sw,sh,0,0,480,640)};
+  const kd=e=>{if(e.key==='Escape')batal()};
+  const tutup=()=>{document.removeEventListener('keydown',kd);ov.classList.remove('on');setTimeout(()=>{if(!ov.classList.contains('on'))ov.innerHTML=''},220)};
+  const batal=()=>{tutup();ok(null)};
+  cv.onpointerdown=e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}P.set(e.pointerId,{x:e.clientX,y:e.clientY});if(P.size===2){const [a,b]=[...P.values()];d0=Math.hypot(a.x-b.x,a.y-b.y)||1;z0=z}};
+  cv.onpointermove=e=>{const p=P.get(e.pointerId);if(!p)return;const k=W/(cv.clientWidth||W);
+   if(P.size===1){const {s}=ukr();cx-=(e.clientX-p.x)*k/s;cy-=(e.clientY-p.y)*k/s}
+   P.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   if(P.size===2){const [a,b]=[...P.values()];z=Math.min(3,Math.max(1,z0*(Math.hypot(a.x-b.x,a.y-b.y)||1)/d0));sl.value=z}
+   gambar()};
+  cv.onpointerup=cv.onpointercancel=e=>{P.delete(e.pointerId)};
+  cv.onwheel=e=>{e.preventDefault();z=Math.min(3,Math.max(1,z*(e.deltaY<0?1.08:.93)));sl.value=z;gambar()};
+  sl.oninput=()=>{z=+sl.value;gambar()};
+  ov.onclick=e=>{if(e.target===ov)batal()};$('#fkb').onclick=batal;
+  $('#fkok').onclick=async()=>{const bt=$('#fkok');bt.disabled=true;try{jepit();const {sw,sh}=ukr();const b=await fotoJpeg(im,cx-sw/2,cy-sh/2,sw,sh);tutup();ok(b)}catch(e){toast((e&&e.message)||'Foto gagal diproses','err');bt.disabled=false}};
+  document.addEventListener('keydown',kd);gambar();void ov.offsetWidth;ov.classList.add('on')};
+ im.src=u})}
+const blobKeData=b=>new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(b)});
+function fotoBlokP(){const d=S.kd;if(!d||(d.sekolah&&d.sekolah.izin_foto===false))return '';const s=d.siswa;
+ return '<div class="fthumbrow"><div class="fthumb" id="fthumb">'+(s.foto?'<img src="'+esc(s.foto)+'" alt="Foto anak">':'👤')+'</div><div style="flex:1"><button type="button" class="btn fx" id="kfoto2" style="margin:0;background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button><div class="mu" style="margin-top:6px">Foto tampil di kartu pelajar.</div></div></div>'}
+function fotoMulai(){const d=S.kd;if(!d)return;if(d.sekolah&&d.sekolah.izin_foto===false)return toast('Foto anak diatur oleh sekolah','err');const f=$('#fotoF');f.value='';f.click()}
+async function fotoSegarkan(){const d=S.kd;if(!d)return;const s=d.siswa;
+ const th=$('#fthumb');if(th)th.innerHTML=s.foto?'<img src="'+esc(s.foto)+'" alt="Foto anak">':'👤';
+ ['#kfoto','#kfoto2'].forEach(q=>{const b=$(q);if(b)b.textContent='📷 '+(s.foto?'Ubah foto':'Upload foto')});
+ if(cur==='siswa')await kartuRender()}
+async function fotoDipilih(inp){const f=inp.files&&inp.files[0];inp.value='';const d=S.kd;if(!f||!d)return;
+ if(!/^image\//.test(f.type))return toast('Pilih file gambar (JPG, PNG, atau WebP)','err');
+ if(f.size>15*1024*1024)return toast('Ukuran file maksimum 15 MB. File Anda '+(f.size/1048576).toFixed(1)+' MB','err');
+ const blob=await fotoCrop(f);if(!blob)return;
+ const pr=URL.createObjectURL(blob),s=d.siswa,nm=s.pan||s.nama;
+ const ya=await konfirm({ikon:'📷',judul:s.foto?'Ganti foto?':'Simpan foto?',isi:(s.foto?'Foto lama akan diganti. ':'')+'Foto ini akan disimpan dan tampil di kartu pelajar '+nm+'.',batal:'Batal',ya:'Ya, simpan',warna:'#159447',gambar:pr});
+ URL.revokeObjectURL(pr);if(!ya)return;
+ let data;try{data=await blobKeData(blob)}catch(e){return toast('Foto gagal dibaca, coba lagi','err')}
+ for(;;){
+  const o=poBuka(),q=t=>o.querySelector(t),pc=q('.pc');q('.pe').textContent='📷';q('.pm').textContent='Menyimpan foto…';
+  const req=fetch('/api/portal',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({k:m[1],aksi:'foto_ubah',foto:data})}).then(async r=>({r,j:await r.json().catch(()=>({}))})).catch(()=>null);
+  await slp(1000);const x=await req;
+  if(x&&x.r.ok){s.foto=data;pc.classList.add('ok');q('.pm').textContent='Foto berhasil disimpan';q('.ps').textContent='Kartu '+nm+' sudah memakai foto baru.';
+   await slp(RM?1200:1800);poTutup(o);await fotoSegarkan();return}
+  const pesan=!x?'Periksa koneksi internet, lalu coba lagi.':(x.j.error||'Gagal menyimpan foto, coba lagi.');
+  pc.classList.add('bad','shk');q('.pm').textContent='Gagal menyimpan foto';q('.ps').textContent=pesan;
+  const a=await new Promise(res=>{q('.pry').onclick=()=>res(1);q('.pct').onclick=()=>res(0);q('.pct').focus()});
+  if(a)continue;poTutup(o);return}}
 function profilBuka(){const s=S.siswa,o=$('#fo');
  const f=(id,l,v,x)=>'<label for="'+id+'">'+l+'</label><input id="'+id+'" value="'+esc(v)+'" '+(x||'')+'>',ro=(l,v)=>'<label>'+l+'</label><input disabled value="'+esc(v||'-')+'">';
- o.innerHTML='<div class="fd" role="dialog" aria-modal="true"><div class="fh"><h3>✏️ Ubah profil</h3><p class="fs">Perbarui data anak Anda. Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</p></div>'+
+ o.innerHTML='<div class="fd" role="dialog" aria-modal="true"><div class="fh"><h3>✏️ Ubah profil</h3><p class="fs">Perbarui data anak Anda. Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</p></div>'+fotoBlokP()+
   f('fnm','Nama lengkap',s.nama,'maxlength="100" autocomplete="off"')+f('fpn','Nama panggilan',s.pan,'maxlength="30" autocomplete="off"')+
   tgField(s.tgl)+
   '<label>Jenis kelamin</label>'+dd('jk',[{v:'',t:'Belum dipilih'},{v:'L',t:'Laki-laki'},{v:'P',t:'Perempuan'}],s.jk||'',()=>{})+
