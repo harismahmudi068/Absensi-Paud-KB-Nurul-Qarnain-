@@ -116,6 +116,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 .ci .ci-act .btn{flex:1 1 0;min-width:0;white-space:nowrap;text-align:center;padding:8px 4px;font-size:clamp(11px,3.3vw,12.5px)}
 .ci .ci-act .btn:first-child{flex:2 1 0}
 .rw{position:relative;max-width:420px;margin:0 auto 10px}.flip{display:none;position:absolute;top:8px;right:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:20px}.rw.on .flip{display:block}.camov{position:absolute;inset:0;z-index:4;background:#000;display:flex;align-items:center;justify-content:center;border-radius:inherit;overflow:hidden}.camov canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.camov::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.35)}.camov .spin{position:relative;z-index:1;border-color:rgba(255,255,255,.35);border-top-color:#fff}.flip,.flip.click-fx{animation:none!important;transition:none!important}.flip::after{display:none!important}.flip.busy{position:absolute!important;opacity:1!important}.flip.busy::before{display:none!important}
+.fotoprev{width:72px;height:96px;border-radius:12px;border:2px solid var(--g);background:#eef6f1;display:grid;place-items:center;overflow:hidden;font-size:34px;flex:0 0 auto}.fotoprev img{width:100%;height:100%;object-fit:cover;display:block}
 .kimg{width:100%;border-radius:14px;display:block}.kpair{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cards.dua{grid-template-columns:repeat(2,1fr)}@media(max-width:700px){.kpair{grid-template-columns:1fr}.cards.dua{grid-template-columns:1fr}}.kwrap{position:relative;aspect-ratio:660/420;border-radius:14px;overflow:hidden;background:rgba(21,148,71,.09)}.kwrap .kimg{position:absolute;inset:0;height:100%;opacity:0;transition:opacity .3s}.kwrap.siap .kimg{opacity:1}.kwrap .kspin{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#3d5a48}.kwrap.siap .kspin{display:none}.kspn{width:34px;height:34px;border:4px solid #cfe5d6;border-top-color:#159447;border-radius:50%;animation:sp .8s linear infinite}.kspn.sm{width:18px;height:18px;border-width:3px;flex:0 0 auto}.kstat{display:none;align-items:center;justify-content:center;gap:10px;padding:10px 12px;margin:0 0 10px;border-radius:12px;background:rgba(21,148,71,.1);font-weight:800;font-size:14px;color:#146a38}
 .fb{position:absolute;inset:0;display:none;align-items:center;justify-content:center;pointer-events:none;z-index:6;border-radius:12px}
 .fb.ok{background:rgba(21,148,71,.28)}.fb.no{background:rgba(217,83,93,.32)}
@@ -517,8 +518,10 @@ html[data-tema=gelap] .input:focus,html[data-tema=gelap] .select:focus,html[data
 <nav class="bottom hid" id="bn"></nav>
 <div class="mb" id="drw" onclick="if(event.target===this)drw(0)"><div class="modal"><div class="mh"><b>Menu</b><button onclick="drw(0)">✕</button></div><div class="mbody"><div id="dn" class="nav"></div></div></div></div>
 <div class="mb" id="md" onclick="if(event.target===this&&!this.classList.contains('besar'))closeM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="closeM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" id="mtp" onclick="closeM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
+<div class="mb" id="fk" style="z-index:140" onclick="if(event.target===this)fotoBatal()"><div class="modal" style="width:min(380px,100%);height:auto;max-height:94vh"><div class="mh"><b>Atur foto</b><button onclick="fotoBatal()">✕</button></div><div class="mbody" style="text-align:center"><div class="mu" style="font-size:13px;margin-bottom:10px">Geser foto untuk mengatur posisi. Cubit layar atau pakai penggeser untuk memperbesar.</div><canvas id="fkc" width="480" height="640" style="width:240px;height:320px;max-width:100%;touch-action:none;border-radius:14px;border:3px solid var(--g);background:#eef6f1;cursor:grab"></canvas><div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:0 6px"><span aria-hidden="true">🔍</span><input id="fkz" type="range" min="1" max="3" step="0.01" value="1" style="flex:1" aria-label="Perbesar foto"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" onclick="fotoBatal()">Batal</button><button class="btn success" id="fkok">Lanjut</button></div></div></div>
 <div class="mb" id="cf" style="z-index:150"><div class="modal" style="width:min(400px,100%)"><div class="mbody" style="text-align:center;padding:24px 20px 14px"><div id="cfi" style="font-size:42px;line-height:1"></div><h3 id="cft" style="margin:10px 0 6px"></h3><img id="cfg" alt="Pratinjau" style="display:none;max-width:160px;max-height:160px;margin:10px auto;padding:8px;background:#fff;border:1px solid #d6e4dc;border-radius:14px;object-fit:contain"><div id="cfm" class="mu" style="font-size:14px;white-space:pre-line"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" id="cfn">Batal</button><button class="btn success" id="cfy">Ya</button></div></div></div>
 <div class="toast" id="ts"></div><div id="ld"><div class="spin"></div><div id="ldt">Memuat...</div></div><input type="file" id="fx" accept=".xlsx,.xls" class="hid" onchange="impor(this)">
+<input type="file" id="fotoFile" accept="image/*" class="hid" onchange="fotoDipilih(this)">
 <script>
 const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j4AB79X1wVZVLgdfcO0sAQ_EMFBq3KN';
 /* ---------- animasi proses pada setiap tombol ---------- */
@@ -740,7 +743,7 @@ function terapNama(){terapLogo();const ada=!!(S.set&&S.set.nama_sekolah),n=ada?n
 async function muatDasar(){
  const [k,s,p,lm,lt,pr,nm,ln]=await Promise.all([dbq(db.from('kelas').select('*').eq('aktif',true).order('id')),dbq(db.from('siswa').select('*, siswa_wali(wali(no_wa))').order('nama')),muatGuruData(),dbq(db.from('libur_mingguan').select('hari')),dbq(db.from('libur_tanggal').select('*').order('mulai')),dbq(db.from('pengaturan').select('*').maybeSingle()),muatNomor(),dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal')).catch(()=>[])]);
  S.kelas=k.map(x=>({id:x.id,nama:x.nama,jam:(x.jam_masuk||'07:30').slice(0,5),wali:x.wali_profil_id||null,urutan:x.urutan==null?null:x.urutan,akhir:!!x.kelas_akhir}));const kn=id=>(S.kelas.find(x=>x.id===id)||{}).nama||'';
- S.siswa=s.map(x=>({id:x.id,nama:x.nama,pan:x.nama_panggilan,nisn:x.nisn||'',kelas:kn(x.kelas_id),kelas_id:x.kelas_id,aktif:x.aktif,kode_qr:x.kode_qr,tgl:x.tgl_lahir||'',jk:x.jenis_kelamin||'',alamat:x.alamat||'',masuk:x.tahun_masuk||'',wa:(x.siswa_wali||[]).map(w=>w.wali&&w.wali.no_wa).filter(Boolean)[0]||''}));
+ S.siswa=s.map(x=>({id:x.id,nama:x.nama,pan:x.nama_panggilan,nisn:x.nisn||'',kelas:kn(x.kelas_id),kelas_id:x.kelas_id,aktif:x.aktif,kode_qr:x.kode_qr,sekolah_id:x.sekolah_id,foto_path:x.foto_path||'',tgl:x.tgl_lahir||'',jk:x.jenis_kelamin||'',alamat:x.alamat||'',masuk:x.tahun_masuk||'',wa:(x.siswa_wali||[]).map(w=>w.wali&&w.wali.no_wa).filter(Boolean)[0]||''}));
  S.guru=p;S.nomor=nm||{};S.nasional=(ln||[]).map(x=>({tgl:x.tanggal,ket:x.keterangan||'Libur nasional'}));S.nasMap=new Map(S.nasional.map(x=>[x.tgl,x.ket]));S.mingguan=lm.map(x=>x.hari);S.libur=lt.map(x=>({id:x.id,tgl:x.mulai,sampai:x.sampai,ket:x.keterangan||'',kelas:x.kelas_id?kn(x.kelas_id):'',sumber:x.sumber||''}));await muatBatal();
  S.set=pr||{};S.set.jam=(S.set.alpa_jam||'10:00').slice(0,5);S.set.njam=(S.set.notif_libur_jam||'06:00').slice(0,5);try{await Kartu.siapkanLogo(logoOk(S.set.logo)?S.set.logo:null)}catch(e){}terapNama()}
 const muatPesan=async()=>{S.pesan=(await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100))).map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek}))};
@@ -1241,7 +1244,7 @@ async function muatGambarKartu(){
    if(tok!==kartuTok)return;
    const im=imgs[i];if(!im.isConnected)continue;
    const id=Number(im.dataset.kartuId),s=S.siswa.find(x=>x.id===id);
-   if(s){const sd=im.dataset.sisi||'depan';im.src=kartuUrl(s,sd);im.alt='Kartu '+sd+' '+(s.pan||'');try{await im.decode()}catch(e){}}
+   if(s){const sd=im.dataset.sisi||'depan';if(sd==='depan')await fotoSiap(s);if(tok!==kartuTok)return;im.src=kartuUrl(s,sd);im.alt='Kartu '+sd+' '+(s.pan||'');try{await im.decode()}catch(e){}}
    const w=im.closest('.kwrap');if(w)w.classList.add('siap');
   }
  }finally{if(tok===kartuTok)stat(false)}
@@ -1443,7 +1446,8 @@ function addSiswa(){if(!S.kelas.length)return belumAdaKelas();form('Tambah Siswa
  const s=await dbq(db.from('siswa').insert({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,kelas_id:kid(v.kelas),...siswaExtra(v)}).select().single());await setWali(s.id,normWA(v.wa));await muatDasar();toast('Siswa tersimpan');renderV()})}
 function ubahSiswa(id){const s=S.siswa.find(x=>x.id===id);form('Ubah Siswa',[{k:'nama',l:'Nama lengkap',v:s.nama},{k:'pan',l:'Nama panggilan',v:s.pan},{k:'nisn',l:'NISN (opsional)',t:'tel',v:s.nisn},{k:'kelas',l:'Kelas (hanya dibaca, pindah kelas lewat menu Kelola Siswa)',ro:1,v:s.kelas||'-'},{k:'wa',l:'WhatsApp orang tua',t:'tel',v:s.wa},{k:'tgl',l:'Tanggal lahir (opsional)',t:'date',v:s.tgl,ref:(+TODAY.slice(0,4)-4)+'-01-01'},{k:'jk',l:'Jenis kelamin',o:['-','Laki-laki','Perempuan'],v:jkNama(s.jk)||'-'},{k:'alamat',l:'Alamat (opsional)',v:s.alamat},{k:'masuk',l:'Tahun masuk',t:'year',v:String(s.masuk||'')}],async v=>{if(!v.nama||!v.pan)throw new Error('Nama dan panggilan wajib diisi');const nisn=normNISN(v.nisn);if(!validNISN(nisn))throw new Error('NISN harus tepat 10 digit atau dikosongkan');
  const dup=nisn?S.siswa.find(x=>x.id!==id&&x.nisn===nisn):null;if(dup)throw new Error('NISN sudah digunakan oleh '+dup.nama);
- await dbq(db.from('siswa').update({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,...siswaExtra(v)}).eq('id',id));if(normWA(v.wa)!==s.wa)await setWali(id,normWA(v.wa));await muatDasar();toast('Data siswa diperbarui');renderV()})}
+ await dbq(db.from('siswa').update({nama:v.nama,nama_panggilan:v.pan,nisn:nisn||null,...siswaExtra(v)}).eq('id',id));if(normWA(v.wa)!==s.wa)await setWali(id,normWA(v.wa));await muatDasar();toast('Data siswa diperbarui');renderV()});
+ $('#mbd').insertAdjacentHTML('afterbegin',fotoBlok(s));fotoSiap(s).then(()=>fotoBlokUlang(s))}
 function togSiswa(id){guard(async()=>{const s=S.siswa.find(x=>x.id===id);await dbq(db.from('siswa').update({aktif:!s.aktif}).eq('id',id));s.aktif=!s.aktif;renderV()})}
 /* ---------- guru ---------- */
 let gsel=new Set();
@@ -1788,10 +1792,10 @@ function qrObj(kode){const o=qrcode(0,'M');o.addData(kode);o.make();return o}
 function qrSvg(kode,px){const o=qrObj(kode),n=o.getModuleCount(),m=2;let r='';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(o.isDark(y,x))r+=`<rect x="${x+m}" y="${y+m}" width="1" height="1"/>`;return `<svg viewBox="0 0 ${n+m*2} ${n+m*2}" width="${px}" height="${px}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/>${r}</svg>`}
 const KC=new Map();
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
-function kartuUrl(s,sisi){sisi=sisi||'depan';const key=[sisi,s.id,s.kode_qr,s.nama,s.nisn,s.kelas,s.wa,s.tgl,s.jk,s.alamat,s.masuk,S.set.tahun_ajaran,ns(),(S.set.logo||'').length].join('|');if(KC.has(key))return KC.get(key);
- const u=(sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)(s,{nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.urlQR(s.kode_qr),logo:logoOk(S.set.logo)?S.set.logo:null});KC.set(key,u);return u}
+function kartuUrl(s,sisi){sisi=sisi||'depan';const key=[sisi,s.id,s.kode_qr,s.nama,s.nisn,s.kelas,s.wa,s.tgl,s.jk,s.alamat,s.masuk,S.set.tahun_ajaran,ns(),(S.set.logo||'').length,sisi==='depan'&&fotoMuat(s)?s.foto_path:'-'].join('|');if(KC.has(key))return KC.get(key);
+ const u=(sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)(s,{nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.urlQR(s.kode_qr),logo:logoOk(S.set.logo)?S.set.logo:null,foto:sisi==='depan'?fotoMuat(s):null});KC.set(key,u);return u}
 const kimg=(s,sd)=>`<div class="kwrap"><div class="kspin"><div class="kspn"></div>Memuat kartu...</div><img class="kimg" data-kartu-id="${s.id}" data-sisi="${sd}" alt=""></div>`;
-function kartuCards(){const z=String(kkQ||'').toLowerCase().trim();return act().filter(s=>kk&&s.kelas===kk&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z))).map(s=>`<div class="card" style="padding:10px">${ks==='keduanya'?`<div class="kpair">${kimg(s,'depan')}${kimg(s,'belakang')}</div>`:kimg(s,ks)}<button class="btn sm success" style="width:100%;margin-top:8px" onclick="unduhSatu(${s.id},this)">⬇ Unduh kartu ${esc(s.pan)}${ks==='keduanya'?' (depan &amp; belakang)':ks==='belakang'?' (belakang)':''}</button><div style="display:flex;gap:8px;margin-top:8px"><button class="btn soft sm" style="flex:1" onclick="salinLinkSatu(${s.id})">🔗 Salin link</button><button class="btn sm" style="flex:1" ${s.wa?'':'disabled title="Belum ada nomor WA"'} onclick="kirimLinkSatu(${s.id})">📤 Kirim link</button></div></div>`).join('')||(kk?'':'');}
+function kartuCards(){const z=String(kkQ||'').toLowerCase().trim();return act().filter(s=>kk&&s.kelas===kk&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z))).map(s=>`<div class="card" style="padding:10px">${ks==='keduanya'?`<div class="kpair">${kimg(s,'depan')}${kimg(s,'belakang')}</div>`:kimg(s,ks)}<button class="btn sm success" style="width:100%;margin-top:8px" onclick="unduhSatu(${s.id},this)">⬇ Unduh kartu ${esc(s.pan)}${ks==='keduanya'?' (depan &amp; belakang)':ks==='belakang'?' (belakang)':''}</button>${ks==='belakang'?'':`<button class="btn soft sm" style="width:100%;margin-top:8px" onclick="fotoPilih(${s.id})">📷 ${s.foto_path?'Ubah foto':'Upload foto'}</button>`}<div style="display:flex;gap:8px;margin-top:8px"><button class="btn soft sm" style="flex:1" onclick="salinLinkSatu(${s.id})">🔗 Salin link</button><button class="btn sm" style="flex:1" ${s.wa?'':'disabled title="Belum ada nomor WA"'} onclick="kirimLinkSatu(${s.id})">📤 Kirim link</button></div></div>`).join('')||(kk?'':'');}
 V.kartu=()=>`<div class="panel"><div class="ph">🪪 Kartu Siswa</div><div class="pb"><div class="tb tb-full"><select class="select" onchange="kk=this.value;kkQ='';renderV()">${kopt2(kk)}</select><select class="select" onchange="ks=this.value;renderV()">${[['depan','Sisi depan'],['belakang','Sisi belakang'],['keduanya','Depan & belakang']].map(x=>`<option value="${x[0]}" ${ks===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select><input id="kkCari" class="input grow search-smooth" style="flex:1 1 100%" placeholder="Cari nama anak, panggilan atau NISN..." value="${esc(kkQ)}" oninput="cariKartuInput(this)"><div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;flex:1 1 100%"><button class="btn success sm dl" style="margin:0" onclick="unduhKartu(this)">⬇ Unduh Kartu (PDF)</button><button class="btn soft sm" style="margin:0" onclick="salinSemuaLink()">🔗 Salin semua link</button><button class="btn sm" style="margin:0" onclick="kirimSemuaLink()">📤 Kirim semua link</button></div></div>${kk?'':PKH}<div id="kartuStatus" class="kstat"></div><div id="kartuCards" class="cards${ks==='keduanya'?' dua':''}">${kartuCards()}</div></div></div>`;
 function cariKartuInput(el){kkQ=el.value;const c=$('#kartuCards');if(c){c.innerHTML=kartuCards();muatGambarKartu().catch(()=>{})}}
 /* ---------- salin & kirim link halaman siswa (link yang sama dengan isi QR kartu) ---------- */
@@ -1816,18 +1820,95 @@ const jedaKecil=ms=>new Promise(r=>setTimeout(r,ms));
 function simpanPng(url,nama){const a=document.createElement('a');a.href=url;a.download=nama;document.body.appendChild(a);a.click();a.remove()}
 async function unduhSatu(id,btn){if(!setUnduhBusy(btn,true,'Menyiapkan kartu...'))return;try{await jedaUnduh();const s=S.siswa.find(x=>x.id===id);if(!s)throw new Error('Data anak tidak ditemukan');
  const sisi=ks==='keduanya'?['depan','belakang']:[ks],dasar='kartu-'+s.nama.replace(/[^\w]+/g,'-');
+ if(sisi.includes('depan'))await fotoSiap(s);
  for(let i=0;i<sisi.length;i++){if(i)await jedaKecil(500);simpanPng(kartuUrl(s,sisi[i]),dasar+'-'+sisi[i]+'.png')}
  toast('Kartu '+s.pan+' berhasil diproses')}catch(e){toast('Gagal mengunduh kartu: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
+/* ---------- FOTO SISWA (Supabase Storage, bucket privat 'foto-siswa') ---------- */
+const FOTO_BUCKET='foto-siswa',FOTO_MAX=80000,FC=new Map(),FU=new Map();
+const fotoMuat=s=>{const p=s&&s.foto_path;return p&&FC.has(p)?FC.get(p):null};
+async function fotoSiap(s){const p=s&&s.foto_path;if(!p)return null;if(FC.has(p))return FC.get(p);
+ try{const r=await db.storage.from(FOTO_BUCKET).download(p);if(r.error||!r.data)throw r.error||new Error('kosong');
+  const u=URL.createObjectURL(r.data),im=new Image();im.src=u;await im.decode();
+  if(FC.size>=150){const k=FC.keys().next().value;FC.delete(k);const o=FU.get(k);if(o)URL.revokeObjectURL(o);FU.delete(k)}
+  FC.set(p,im);FU.set(p,u);return im}catch(e){return null}}
+async function fotoHapusBerkas(ps){ps=(ps||[]).filter(Boolean);if(!ps.length)return;try{await db.storage.from(FOTO_BUCKET).remove(ps)}catch(e){}ps.forEach(p=>{FC.delete(p);FU.delete(p)})}
+/* pengecilan bertahap supaya hasil tajam */
+function skalaFoto(img,sx,sy,sw,sh,W,H){let cur=img,csx=sx,csy=sy,csw=sw,csh=sh;
+ while(csw/2>=W&&csh/2>=H){const n=document.createElement('canvas');n.width=Math.floor(csw/2);n.height=Math.floor(csh/2);const x=n.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,csx,csy,csw,csh,0,0,n.width,n.height);cur=n;csx=0;csy=0;csw=n.width;csh=n.height}
+ const o=document.createElement('canvas');o.width=W;o.height=H;const x=o.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,csx,csy,csw,csh,0,0,W,H);return o}
+async function fotoJpeg(im,sx,sy,sw,sh){
+ for(const [W,H] of [[450,600],[390,520],[330,440]]){const cv=skalaFoto(im,sx,sy,sw,sh,W,H);
+  for(const q of [.88,.8,.72,.64,.56,.5]){const b=await new Promise(r=>cv.toBlob(r,'image/jpeg',q));if(b&&b.size<=FOTO_MAX)return b}}
+ throw new Error('Foto terlalu rumit, ukuran hasil melebihi batas. Coba foto lain')}
+/* pemotong foto rasio 3:4: geser, cubit, atau gunakan penggeser untuk memperbesar */
+let FK=null;
+function fotoBatal(){if(FK)FK.batal()}
+function fotoCrop(file){return new Promise(ok=>{
+ const u=URL.createObjectURL(file),im=new Image();
+ im.onerror=()=>{URL.revokeObjectURL(u);toast('File bukan gambar yang valid',false);ok(null)};
+ im.onload=()=>{URL.revokeObjectURL(u);
+  const iw=im.naturalWidth||im.width,ih=im.naturalHeight||im.height;
+  if(Math.min(iw,ih)<200){toast('Foto terlalu kecil (minimal 200 px)',false);return ok(null)}
+  const cv=$('#fkc'),x=cv.getContext('2d'),W=240,H=320,sl=$('#fkz'),bs=Math.max(W/iw,H/ih),P=new Map();
+  let z=1,cx=iw/2,cy=ih*.42,d0=0,z0=1;
+  const ukr=()=>({s:bs*z,sw:W/(bs*z),sh:H/(bs*z)});
+  const jepit=()=>{const {sw,sh}=ukr();cx=Math.min(Math.max(cx,sw/2),iw-sw/2);cy=Math.min(Math.max(cy,sh/2),ih-sh/2)};
+  const gambar=()=>{jepit();const {sw,sh}=ukr();x.fillStyle='#eef6f1';x.fillRect(0,0,480,640);x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(im,cx-sw/2,cy-sh/2,sw,sh,0,0,480,640)};
+  const tutup=()=>{$('#fk').classList.remove('show');cv.onpointerdown=cv.onpointermove=cv.onpointerup=cv.onpointercancel=cv.onwheel=null;sl.oninput=null;FK=null};
+  cv.width=480;cv.height=640;sl.value=1;
+  cv.onpointerdown=e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}P.set(e.pointerId,{x:e.clientX,y:e.clientY});if(P.size===2){const [a,b]=[...P.values()];d0=Math.hypot(a.x-b.x,a.y-b.y)||1;z0=z}};
+  cv.onpointermove=e=>{const p=P.get(e.pointerId);if(!p)return;const k=W/(cv.clientWidth||W);
+   if(P.size===1){const {s}=ukr();cx-=(e.clientX-p.x)*k/s;cy-=(e.clientY-p.y)*k/s}
+   P.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   if(P.size===2){const [a,b]=[...P.values()];z=Math.min(3,Math.max(1,z0*(Math.hypot(a.x-b.x,a.y-b.y)||1)/d0));sl.value=z}
+   gambar()};
+  cv.onpointerup=cv.onpointercancel=e=>{P.delete(e.pointerId)};
+  cv.onwheel=e=>{e.preventDefault();z=Math.min(3,Math.max(1,z*(e.deltaY<0?1.08:.93)));sl.value=z;gambar()};
+  sl.oninput=()=>{z=+sl.value;gambar()};
+  FK={batal:()=>{tutup();ok(null)}};
+  $('#fkok').onclick=async()=>{const bt=$('#fkok');bt.disabled=true;try{jepit();const {sw,sh}=ukr();const b=await fotoJpeg(im,cx-sw/2,cy-sh/2,sw,sh);tutup();ok(b)}catch(e){toast((e&&e.message)||String(e),false)}finally{bt.disabled=false}};
+  gambar();$('#fk').classList.add('show')};
+ im.src=u})}
+let FOTO_ID=null;
+function fotoPilih(id){if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);FOTO_ID=id;const f=$('#fotoFile');f.value='';f.click()}
+async function fotoDipilih(inp){const f=inp.files&&inp.files[0];inp.value='';const id=FOTO_ID;if(!f||id==null)return;const s=S.siswa.find(x=>x.id===id);if(!s)return;
+ if(!/^image\//.test(f.type))return toast('Pilih file gambar (JPG, PNG, atau WebP)',false);
+ if(f.size>15*1024*1024)return toast('Ukuran file maksimum 15 MB. File Anda '+(f.size/1048576).toFixed(1)+' MB',false);
+ const blob=await fotoCrop(f);if(!blob)return;
+ const pr=URL.createObjectURL(blob),nm=s.pan||s.nama;
+ const ya=await konfirmasi((s.foto_path?'Foto lama '+nm+' akan diganti. ':'')+'Foto ini akan disimpan dan tampil di kartu pelajar '+nm+'.',{judul:s.foto_path?'Ubah foto?':'Simpan foto?',ikon:'📷',ya:'Simpan',gambar:pr});
+ URL.revokeObjectURL(pr);if(!ya)return;
+ guard(()=>fotoSimpan(s,blob))}
+function pesanFoto(e){const m=String((e&&e.message)||e||'');
+ if(/bucket not found/i.test(m))return 'Penyimpanan foto belum dibuat. Jalankan SQL Tahap 2 di Supabase.';
+ if(/row-level security|policy|not authori[sz]ed|unauthori[sz]ed|403/i.test(m))return 'Anda tidak berhak menyimpan foto (aturan akses Storage belum dipasang atau tidak cocok).';
+ if(/foto_path/i.test(m))return 'Kolom foto_path belum ada. Jalankan SQL Tahap 2 di Supabase.';
+ return m||'Gagal menyimpan foto'}
+async function fotoSimpan(s,blob){
+ const sid=s.sekolah_id||(S.set&&S.set.sekolah_id);if(!sid)throw new Error('Sekolah tidak dikenali');
+ const lama=s.foto_path||'',baru=sid+'/'+s.id+'-'+Date.now().toString(36)+'.jpg',bk=db.storage.from(FOTO_BUCKET);
+ const up=await bk.upload(baru,blob,{contentType:'image/jpeg',upsert:false,cacheControl:'31536000'});if(up.error)throw new Error(pesanFoto(up.error));
+ try{await dbq(db.from('siswa').update({foto_path:baru}).eq('id',s.id))}catch(e){await bk.remove([baru]).catch(()=>{});throw new Error(pesanFoto(e))}
+ s.foto_path=baru;if(lama){bk.remove([lama]).catch(()=>{});FC.delete(lama);FU.delete(lama)}
+ await fotoSiap(s);toast(lama?'Foto diperbarui':'Foto disimpan');fotoRefresh(s)}
+async function fotoHapus(id){if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);const s=S.siswa.find(x=>x.id===id);if(!s||!s.foto_path)return;
+ await fotoSiap(s);
+ if(!await konfirmasi('Hapus foto '+(s.pan||s.nama)+'? Kartu akan kembali menampilkan siluet.',{judul:'Hapus foto',bahaya:1,ya:'Hapus',gambar:FU.get(s.foto_path)||''}))return;
+ guard(async()=>{const p=s.foto_path;await dbq(db.from('siswa').update({foto_path:null}).eq('id',id));s.foto_path='';await fotoHapusBerkas([p]);toast('Foto dihapus');fotoRefresh(s)})}
+function fotoBlok(s){const p=s.foto_path,u=p&&FU.get(p);
+ return `<div id="fotoBlok" data-id="${s.id}" style="display:flex;gap:14px;align-items:center;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--bd)"><div class="fotoprev">${u?`<img src="${esc(u)}" alt="Foto">`:'<span>👤</span>'}</div><div style="display:flex;flex-direction:column;gap:8px"><button type="button" class="btn success sm" onclick="fotoPilih(${s.id})">📷 ${p?'Ubah foto':'Upload foto'}</button>${p?`<button type="button" class="btn danger sm" onclick="fotoHapus(${s.id})">🗑 Hapus foto</button>`:''}</div></div>`}
+function fotoBlokUlang(s){const el=$('#fotoBlok');if(el&&+el.dataset.id===s.id)el.outerHTML=fotoBlok(s)}
+function fotoRefresh(s){fotoBlokUlang(s);if(view==='kartu')renderV()}
 function gambarQR(doc,kode,x,y,size){const o=qrObj(kode),n=o.getModuleCount(),qz=2,cell=size/(n+qz*2);doc.setFillColor(255,255,255);doc.rect(x,y,size,size,'F');doc.setFillColor(0,0,0);for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(o.isDark(r,c))doc.rect(x+(c+qz)*cell,y+(r+qz)*cell,cell+0.03,cell+0.03,'F')}
 async function unduhKartu(btn){if(!setUnduhBusy(btn,true,'Membuat PDF kartu...'))return;try{await jedaUnduh();const list=act().filter(s=>!kk||s.kelas===kk);if(!list.length){toast('Tidak ada siswa untuk dicetak',false);return}
  /* ukuran kartu & jarak antar kartu (mm), ubah di sini bila perlu */
  const KW=86,KH=54.7,GX=10,GY=8,C=2,R=4,dua=ks==='keduanya',PP=dua?R:C*R,x0=(210-(C*KW+(C-1)*GX))/2,y0=(297-(R*KH+(R-1)*GY))/2,doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
  const taruh=(s,sd,x,y)=>{doc.addImage(kartuUrl(s,sd),'PNG',x,y,KW,KH);doc.rect(x-.6,y-.6,KW+1.2,KH+1.2)};
- for(let i=0;i<list.length;i++){const s=list[i];if(i>0&&i%PP===0)doc.addPage();const p=i%PP;if(p===0){doc.setDrawColor(170);doc.setLineWidth(.15);doc.setLineDashPattern([1.2,1.2],0)}
+ for(let i=0;i<list.length;i++){const s=list[i];if(dua||ks==='depan')await fotoSiap(s);if(i>0&&i%PP===0)doc.addPage();const p=i%PP;if(p===0){doc.setDrawColor(170);doc.setLineWidth(.15);doc.setLineDashPattern([1.2,1.2],0)}
   if(dua){const y=y0+p*(KH+GY);taruh(s,'depan',x0,y);taruh(s,'belakang',x0+KW+GX,y)}
   else taruh(s,ks,x0+(p%C)*(KW+GX),y0+Math.floor(p/C)*(KH+GY));
-  if(btn&&i%2===1&&i<list.length-1){btn.innerHTML='<span class="dl-spin" aria-hidden="true"></span>Membuat PDF kartu '+(i+1)+'/'+list.length+'...';await jedaKecil(0)}}
+  if(btn&&i<list.length-1){btn.innerHTML='<span class="dl-spin" aria-hidden="true"></span>Membuat PDF kartu '+(i+1)+'/'+list.length+'...';await jedaKecil(0)}}
  doc.save('kartu-siswa'+(dua?'-depan-belakang':'-'+ks)+'.pdf');toast(list.length+' kartu berhasil diproses')}catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 /* ---------- download data siswa ---------- */
 function siswaRowsDownload(k){return act().filter(s=>!k||k==='*'||s.kelas===k).sort((a,b)=>String(a.kelas).localeCompare(String(b.kelas),'id')||String(a.nama).localeCompare(String(b.nama),'id'))}
@@ -1955,10 +2036,10 @@ async function kirimSemua(){if(!lo)return toast(PK,false);const l=act().filter(s
 async function kirimSatu(id){const s=S.siswa.find(x=>x.id===id);if(await konfirmasi('Kirim laporan '+fmtB(lb)+' '+s.pan+' ke '+s.wa+'?',{judul:'Kirim laporan',ikon:'📤',ya:'Kirim'}))kirimList([s])}
 async function hapusWaliYatim(wids){const ids=[...new Set(wids||[])];if(!ids.length)return 0;const r=await dbq(db.from('siswa_wali').select('wali_id').in('wali_id',ids));const used=new Set((r||[]).map(x=>x.wali_id));const orphan=ids.filter(id=>!used.has(id));if(!orphan.length)return 0;await dbq(db.from('wali').delete().in('id',orphan));return orphan.length}
 async function hapusSiswa(id){const s=S.siswa.find(x=>x.id===id);if(!s)return;if(!await konfirmasi('Hapus '+s.nama+'? Seluruh riwayat absensi dan data walinya ikut terhapus dan tidak bisa dikembalikan. Bila hanya berhenti sekolah, lebih baik Nonaktifkan.',{judul:'Hapus data anak',ya:'Hapus',bahaya:1}))return;
- guard(async()=>{const tw=(await dbq(db.from('siswa_wali').select('wali_id').eq('siswa_id',id))).map(x=>x.wali_id);await dbq(db.from('absensi').delete().eq('siswa_id',id));await dbq(db.from('siswa_wali').delete().eq('siswa_id',id));await dbq(db.from('siswa').delete().eq('id',id));
+ guard(async()=>{const tw=(await dbq(db.from('siswa_wali').select('wali_id').eq('siswa_id',id))).map(x=>x.wali_id);await dbq(db.from('absensi').delete().eq('siswa_id',id));await dbq(db.from('siswa_wali').delete().eq('siswa_id',id));await dbq(db.from('siswa').delete().eq('id',id));fotoHapusBerkas([s.foto_path]);
   let n=0,err='';try{n=await hapusWaliYatim(tw)}catch(e){err=e.message||String(e)}
   ssel.delete(id);S.absen={};await muatDasar();err?toast('Anak dihapus, tetapi data wali gagal dihapus: '+err,false):toast(n?'Data anak dan data wali dihapus':tw.length?'Data anak dihapus (data wali masih dipakai anak lain)':'Data anak dihapus');renderV()})}
-async function hapusSiswaTerpilih(){const ids=[...ssel].filter(id=>S.siswa.some(s=>s.id===id));if(!ids.length)return toast('Belum ada siswa yang dipilih',false);if(!await konfirmasi('Hapus '+ids.length+' siswa terpilih? Seluruh riwayat absensi dan wali yang sudah tidak dipakai akan ikut terhapus dan tidak bisa dikembalikan.',{judul:'Hapus siswa terpilih',ya:'Hapus semua',bahaya:1}))return;guard(async()=>{const tw=[...new Set((await dbq(db.from('siswa_wali').select('wali_id').in('siswa_id',ids))).map(x=>x.wali_id))];await dbq(db.from('absensi').delete().in('siswa_id',ids));await dbq(db.from('siswa_wali').delete().in('siswa_id',ids));await dbq(db.from('siswa').delete().in('id',ids));let n=0,err='';try{n=await hapusWaliYatim(tw)}catch(e){err=e.message||String(e)}ssel.clear();S.absen={};await muatDasar();err?toast(ids.length+' anak dihapus, tetapi sebagian data wali gagal dihapus: '+err,false):toast(ids.length+' anak dihapus'+(n?' dan '+n+' data wali yang tidak terpakai ikut dihapus':''));renderV()})}
+async function hapusSiswaTerpilih(){const ids=[...ssel].filter(id=>S.siswa.some(s=>s.id===id));if(!ids.length)return toast('Belum ada siswa yang dipilih',false);if(!await konfirmasi('Hapus '+ids.length+' siswa terpilih? Seluruh riwayat absensi dan wali yang sudah tidak dipakai akan ikut terhapus dan tidak bisa dikembalikan.',{judul:'Hapus siswa terpilih',ya:'Hapus semua',bahaya:1}))return;guard(async()=>{const tw=[...new Set((await dbq(db.from('siswa_wali').select('wali_id').in('siswa_id',ids))).map(x=>x.wali_id))];await dbq(db.from('absensi').delete().in('siswa_id',ids));await dbq(db.from('siswa_wali').delete().in('siswa_id',ids));await dbq(db.from('siswa').delete().in('id',ids));fotoHapusBerkas(S.siswa.filter(x=>ids.includes(x.id)).map(x=>x.foto_path));let n=0,err='';try{n=await hapusWaliYatim(tw)}catch(e){err=e.message||String(e)}ssel.clear();S.absen={};await muatDasar();err?toast(ids.length+' anak dihapus, tetapi sebagian data wali gagal dihapus: '+err,false):toast(ids.length+' anak dihapus'+(n?' dan '+n+' data wali yang tidak terpakai ikut dihapus':''));renderV()})}
 let impK='';
 function bukaPilihFile(k){impK=k;const f=$('#fx');f.value='';f.click()}
 function pilihXlsx(k){if(k!=='guru'||role==='Developer'||MB()||(izinKelola&&Date.now()<izinExp))return bukaPilihFile(k);
