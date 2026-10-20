@@ -88,7 +88,7 @@ function buatKartu(s,opt){
  c.fillStyle=HJ;c.font='bold 11.5px '+F;lsText(c,'INFORMASI SISWA',29,171,.7);const iw=29+lsW(c,'INFORMASI SISWA',.7)+9;
  c.lineWidth=2;c.strokeStyle='#e9c13a';c.beginPath();c.moveTo(iw,171);c.lineTo(iw+42,171);c.stroke();
  c.lineWidth=1.2;c.strokeStyle='#1b7a5a';c.beginPath();c.moveTo(iw+46,171);c.lineTo(417,171);c.stroke();
- const wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
+ const wa=s.wa?('0'+String(s.wa).replace(/\D/g,'').replace(/^62/,'').replace(/^0+/,'')).replace(/(\d{4})(?=\d)/g,'$1-'):'-';
  const rows=[['Kelas',s.kelas||'-',IK.topi],['NISN',s.nisn||'-',IK.kartu],['Tanggal Lahir',tglDMY(s.tgl)||'-',IK.kalender],['Jenis Kelamin',jkNama(s.jk)||'-',IK.pria],['Alamat',s.alamat||'-',IK.lokasi],['WA Ortu',wa,IK.telepon]];
  rows.forEach((p,i)=>{const y=183+i*30.6;
   rr(c,25,y,401,26,13);gr=c.createLinearGradient(0,y,0,y+26);gr.addColorStop(0,'#ffffff');gr.addColorStop(1,'#e9f6f0');c.fillStyle=gr;c.fill();c.lineWidth=1.2;c.strokeStyle='#b4dccb';c.stroke();
