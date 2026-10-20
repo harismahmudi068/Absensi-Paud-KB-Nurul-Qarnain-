@@ -5,6 +5,8 @@
 // PATCH /api/portal  {k, nama, pan, tgl, jk, alamat, wa}  : orang tua mengubah profil anak.
 //      Kelas, NISN, dan tahun masuk TIDAK PERNAH diubah lewat jalur ini. Nomor WA berlaku per anak
 //      (satu nomor boleh dipakai beberapa anak, atau tiap anak memakai nomor berbeda).
+// POST /api/portal  {k, aksi:'foto_ubah', foto:<JPEG base64>}  : orang tua mengganti foto anak (bila diizinkan sekolah).
+//      Foto disimpan di Storage privat 'foto-siswa' dan dikirim kembali ke halaman kartu lewat server ini.
 // Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (lihat api/_lib.js)
 //
 // Aturan pemisahan sekolah:
@@ -18,6 +20,99 @@ const L = require('./_lib');
 
 const RE_KODE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIDAK_ADA = { error: 'Kartu tidak ditemukan' };
+
+// ---- Foto siswa: Supabase Storage (bucket privat 'foto-siswa'), diakses hanya lewat server ini ----
+const FOTO_BUCKET = 'foto-siswa';
+const RE_FOTO = /^(\d+)\/(\d+)-([a-z0-9]{4,16})\.jpg$/;   // {sekolah_id}/{siswa_id}-{kode}.jpg
+const FOTO_MAKS_BYTE = 100 * 1024;
+const sbEnv = () => ({ url: String(process.env.SUPABASE_URL || '').replace(/\/+$/, ''), key: String(process.env.SUPABASE_SERVICE_ROLE_KEY || '') });
+async function sbStorage(metode, path, opsi = {}) {
+  const { url, key } = sbEnv();
+  if (!url || !key || !RE_FOTO.test(path)) return null;
+  const ac = new AbortController();
+  const tm = setTimeout(() => ac.abort(), 9000);
+  try {
+    return await fetch(`${url}/storage/v1/object/${FOTO_BUCKET}/${path}`,
+      { method: metode, headers: Object.assign({ apikey: key, Authorization: `Bearer ${key}` }, opsi.headers || {}), body: opsi.body, signal: ac.signal });
+  } catch (e) { return null; } finally { clearTimeout(tm); }
+}
+// Foto anak sebagai data URL (kosong bila tidak ada / gagal). Jalur harus milik siswa & sekolah itu.
+async function fotoAmbil(path, sid, id) {
+  if (!path || !path.startsWith(`${sid}/${id}-`)) return '';
+  const r = await sbStorage('GET', path);
+  if (!r || !r.ok) return '';
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (!buf.length || buf.length > 160 * 1024 || buf[0] !== 0xff || buf[1] !== 0xd8) return '';
+  return 'data:image/jpeg;base64,' + buf.toString('base64');
+}
+// Baca lebar/tinggi JPEG dari penanda SOF (null bila bukan JPEG yang utuh)
+function jpegUkuran(buf) {
+  if (buf.length < 12 || buf[0] !== 0xff || buf[1] !== 0xd8 || buf[2] !== 0xff) return null;
+  if (buf[buf.length - 2] !== 0xff || buf[buf.length - 1] !== 0xd9) return null;
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) { i++; continue; }
+    const m = buf[i + 1];
+    if (m === 0xff) { i++; continue; }
+    if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+    const len = buf.readUInt16BE(i + 2);
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+    i += 2 + len;
+  }
+  return null;
+}
+// Saklar sekolah (pengaturan.izin_foto_ortu). Bila kolom belum ada / gagal dibaca: dianggap diizinkan.
+const izinFotoOrtu = (sid) =>
+  L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=izin_foto_ortu&limit=1`, 'GET')
+    .then((r) => !(r && r[0] && r[0].izin_foto_ortu === false)).catch(() => true);
+
+async function ubahFoto(req, res) {
+  if (!/^application\/json/i.test(String(req.headers['content-type'] || '')))
+    return res.status(415).json({ error: 'Format permintaan tidak didukung' });
+  const b = req.body && typeof req.body === 'object' ? req.body : {};
+  const k = String(b.k || '').trim();
+  if (!RE_KODE.test(k)) return res.status(404).json(TIDAK_ADA);
+
+  const mentah = String(b.foto || '').replace(/^data:image\/jpeg;base64,/, '');
+  if (!mentah || mentah.length > 140000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(mentah))
+    return res.status(400).json({ error: 'Foto tidak valid atau terlalu besar' });
+  const buf = Buffer.from(mentah, 'base64');
+  if (buf.length > FOTO_MAKS_BYTE) return res.status(400).json({ error: 'Ukuran foto terlalu besar (maksimal 100 KB)' });
+  const uk = jpegUkuran(buf);
+  if (!uk || uk.w < 200 || uk.w > 700 || uk.h < 260 || uk.h > 900 || Math.abs(uk.w / uk.h - 0.75) > 0.02)
+    return res.status(400).json({ error: 'Foto tidak valid. Gunakan fitur potong foto di halaman ini' });
+
+  try {
+    const cari = (await L.panggil(`/rest/v1/siswa?kode_qr=eq.${encodeURIComponent(k)}&select=id,sekolah_id,aktif,foto_path&limit=2`, 'GET')) || [];
+    if (cari.length !== 1 || !cari[0].aktif) return res.status(404).json(TIDAK_ADA);
+    const sid = Number(cari[0].sekolah_id), id = Number(cari[0].id);
+    if (!Number.isInteger(sid) || !Number.isInteger(id)) return res.status(404).json(TIDAK_ADA);
+    const sek = ((await L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=status&limit=1`, 'GET')) || [])[0];
+    if (!sek || sek.status !== 'aktif') return res.status(404).json(TIDAK_ADA);
+    if (!(await izinFotoOrtu(sid))) return res.status(403).json({ error: 'Sekolah tidak mengizinkan orang tua mengubah foto. Hubungi pihak sekolah.' });
+
+    // Jeda antar perubahan (waktu perubahan terakhir tersimpan di nama berkas)
+    const lama = String(cari[0].foto_path || '');
+    const m = RE_FOTO.exec(lama);
+    if (m) { const t0 = parseInt(m[3], 36); if (Number.isFinite(t0) && Date.now() - t0 < 30000) return res.status(429).json({ error: 'Tunggu beberapa detik sebelum mengubah foto lagi.' }); }
+
+    const baru = `${sid}/${id}-${Date.now().toString(36)}.jpg`;
+    const up = await sbStorage('POST', baru, { headers: { 'Content-Type': 'image/jpeg', 'x-upsert': 'false', 'cache-control': 'max-age=31536000' }, body: buf });
+    if (!up || !up.ok) { console.error('portal.js foto upload', up && up.status); return res.status(500).json({ error: 'Foto belum bisa disimpan, coba lagi beberapa saat' }); }
+    let r;
+    try {
+      r = await L.panggil(`/rest/v1/siswa?id=eq.${id}&sekolah_id=eq.${sid}`, 'PATCH', { foto_path: baru }, { Prefer: 'return=representation' });
+    } catch (e) { r = null; }
+    if (!Array.isArray(r) || !r.length) { await sbStorage('DELETE', baru); return res.status(500).json({ error: 'Foto belum bisa disimpan, coba lagi beberapa saat' }); }
+    if (lama && lama !== baru && RE_FOTO.test(lama) && lama.startsWith(`${sid}/${id}-`)) sbStorage('DELETE', lama);
+
+    await L.catatLog({ pelaku: null, sekolah_id: sid, aksi: 'ubah_foto_dashboard_siswa', rincian: `siswa ${id} ganti foto` });
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('portal.js foto', e.message);
+    return res.status(500).json({ error: 'Terjadi kendala, coba lagi beberapa saat' });
+  }
+}
 
 // Ambil semua baris (per 1000) dengan urutan yang stabil
 async function semua(path) {
@@ -277,6 +372,7 @@ module.exports = async (req, res) => {
   if (req.method === 'POST') {
     const a = req.body && typeof req.body === 'object' ? req.body.aksi : '';
     if (a === 'push_daftar' || a === 'push_cabut') return aksiPush(req, res);
+    if (a === 'foto_ubah') return ubahFoto(req, res);
     return kirimLaporan(req, res);
   }
   if (req.method === 'PATCH') return ubahProfil(req, res);
@@ -313,7 +409,7 @@ module.exports = async (req, res) => {
     const cari =
       (await L.panggil(
         `/rest/v1/siswa?kode_qr=eq.${encodeURIComponent(k)}` +
-          `&select=id,sekolah_id,nama,nama_panggilan,nisn,kelas_id,aktif,tgl_lahir,jenis_kelamin,alamat,tahun_masuk,siswa_wali(wali(no_wa))&limit=2`,
+          `&select=id,sekolah_id,nama,nama_panggilan,nisn,kelas_id,aktif,tgl_lahir,jenis_kelamin,alamat,tahun_masuk,foto_path,siswa_wali(wali(no_wa))&limit=2`,
         'GET'
       )) || [];
     if (cari.length !== 1) {
@@ -376,6 +472,9 @@ module.exports = async (req, res) => {
           .then(r => { const x = r && r[0] && r[0].logo; return (typeof x === 'string' && x.length <= 150000 && /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(x)) ? x : ''; })
           .catch(() => '')
       : Promise.resolve('');
+    // Foto anak dan saklar izin: hanya untuk halaman kartu (siswa); gagal tidak mengganggu halaman.
+    const fotoP = v === 'siswa' ? fotoAmbil(String(s.foto_path || ''), sid, id).catch(() => '') : Promise.resolve('');
+    const izinP = v === 'siswa' ? izinFotoOrtu(sid) : Promise.resolve(true);
     // 2-3. Sekolah, pengaturan, kelas, dan data halaman diambil BERSAMAAN (satu putaran ke database).
     const [sekRows, pengRows, kelasRows, trxData, absData, liburData, pkRows, jnData, itemData, setData] = await Promise.all([
       L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=id,nama,status&limit=1`, 'GET'),
@@ -425,14 +524,16 @@ module.exports = async (req, res) => {
         alamat: s.alamat || '',
         masuk: s.tahun_masuk || '',
         wa,
-        kode_qr: k
+        kode_qr: k,
+        foto: await fotoP
       },
       sekolah: {
         nama: String(peng.nama_sekolah || '').trim() || sek.nama || '',
         alamat: peng.alamat || '',
         kota: peng.kota || '',
         tahun_ajaran: peng.tahun_ajaran || '',
-        logo: await logoP
+        logo: await logoP,
+        izin_foto: await izinP
       },
       // Pengingat push piket: kunci publik hanya dikirim bila sekolah mengaktifkannya
       push: v === 'dashboard' || v === 'piket'
