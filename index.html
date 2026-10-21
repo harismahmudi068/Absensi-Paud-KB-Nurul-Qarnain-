@@ -1908,22 +1908,22 @@ const kalBulat=v=>{v=Math.round((parseFloat(v)||0)*10)/10;return Math.max(-5,Mat
 function kalMuat(){try{const o=JSON.parse(localStorage.getItem(KALK)||'{}');return{x:kalBulat(o.x),y:kalBulat(o.y)}}catch(e){return{x:0,y:0}}}
 let KAL=kalMuat(),kalT={x:0,y:0};
 const daftarKartu=()=>act().filter(s=>!kk||s.kelas===kk).sort((a,b)=>String(a.kelas).localeCompare(String(b.kelas),'id')||String(a.nama).localeCompare(String(b.nama),'id')||(a.id>b.id?1:a.id<b.id?-1:0));
-const kalTeks=o=>'X '+(o.x>0?'+':'')+o.x.toFixed(1)+' mm, Y '+(o.y>0?'+':'')+o.y.toFixed(1)+' mm';
+const kalFmt=v=>v===0?'0':v.toFixed(1),kalTeks=o=>'X '+(o.x>0?'+':'')+kalFmt(o.x)+' mm, Y '+(o.y>0?'+':'')+kalFmt(o.y)+' mm';
 function kalPrev(){const e=$('#kalPrev');if(!e)return;e.innerHTML='<svg viewBox="-7 -7 100 68.7" style="width:100%;max-width:270px;display:block;margin:0 auto" aria-hidden="true"><rect x="0" y="0" width="86" height="54.7" rx="3" fill="none" stroke="#8a948d" stroke-width=".6" stroke-dasharray="2 1.5"/><rect x="'+kalT.x+'" y="'+kalT.y+'" width="86" height="54.7" rx="3" fill="rgba(21,148,71,.16)" stroke="#159447" stroke-width=".9"/><text x="43" y="30" font-size="6" text-anchor="middle" fill="currentColor" opacity=".7">'+kalTeks(kalT)+'</text></svg><div class="mu" style="font-size:12px;margin-top:4px">Abu putus-putus = posisi awal, hijau = posisi belakang setelah digeser (pratinjau dibesarkan)</div>'}
-function kalTampil(){$('#kalx').value=kalT.x.toFixed(1);$('#kaly').value=kalT.y.toFixed(1);kalPrev()}
+function kalTampil(){$('#kalx').value=kalFmt(kalT.x);$('#kaly').value=kalFmt(kalT.y);kalPrev()}
 function kalBuka(){kalT={x:KAL.x,y:KAL.y};kalTampil();$('#kal').classList.add('show')}
 function kalTutup(){$('#kal').classList.remove('show')}
 function kalUbah(k,d){kalT[k]=kalBulat(kalT[k]+d);kalTampil()}
 function kalIsi(k,v){kalT[k]=kalBulat(v);kalTampil()}
-function kalReset(){kalT={x:0,y:0};kalTampil()}
+function kalReset(){kalT={x:0,y:0};KAL={x:0,y:0};try{localStorage.removeItem(KALK)}catch(e){}kalTampil()}
 function kalSimpan(){KAL={x:kalT.x,y:kalT.y};try{localStorage.setItem(KALK,JSON.stringify(KAL))}catch(e){}kalTutup();toast('Kalibrasi disimpan: '+kalTeks(KAL))}
 async function kalUji(btn){if(!setUnduhBusy(btn,true,'Membuat lembar uji...'))return;try{await jedaUnduh();
  const KW=86,KH=54.7,GX=10,GY=8,C=2,R=4,x0=(210-(C*KW+(C-1)*GX))/2,y0=(297-(R*KH+(R-1)*GY))/2,doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
  [0,1].forEach(pg=>{if(pg)doc.addPage();
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(40);doc.text(pg?'LEMBAR UJI - BELAKANG':'LEMBAR UJI - DEPAN',105,12,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100);doc.text('A4 portrait, skala 100%, duplex flip on long edge. Terawang ke cahaya: kotak bernomor sama harus berimpit.',105,17,{align:'center'});
-  if(pg)doc.text('Geser belakang: '+kalTeks(KAL),105,21,{align:'center'});
-  for(let p=0;p<C*R;p++){let c=p%C;const r=Math.floor(p/C);if(pg)c=C-1-c;const x=x0+c*(KW+GX)+(pg?KAL.x:0),y=y0+r*(KH+GY)+(pg?KAL.y:0);
+  if(pg)doc.text('Geser belakang: '+kalTeks(kalT),105,21,{align:'center'});
+  for(let p=0;p<C*R;p++){let c=p%C;const r=Math.floor(p/C);if(pg)c=C-1-c;const x=x0+c*(KW+GX)+(pg?kalT.x:0),y=y0+r*(KH+GY)+(pg?kalT.y:0);
    doc.setDrawColor(110);doc.setLineWidth(.25);doc.setLineDashPattern([],0);doc.rect(x,y,KW,KH);
    doc.setLineWidth(.15);doc.line(x+KW/2-7,y+KH/2,x+KW/2+7,y+KH/2);doc.line(x+KW/2,y+KH/2-7,x+KW/2,y+KH/2+7);
    doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(60);doc.text(String(p+1),x+5,y+12);
