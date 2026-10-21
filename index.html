@@ -1909,7 +1909,7 @@ function kalMuat(){try{const o=JSON.parse(localStorage.getItem(KALK)||'{}');retu
 let KAL=kalMuat(),kalT={x:0,y:0};
 const daftarKartu=()=>act().filter(s=>!kk||s.kelas===kk).sort((a,b)=>String(a.kelas).localeCompare(String(b.kelas),'id')||String(a.nama).localeCompare(String(b.nama),'id')||(a.id>b.id?1:a.id<b.id?-1:0));
 const kalFmt=v=>v===0?'0':v.toFixed(1),kalTeks=o=>'X '+(o.x>0?'+':'')+kalFmt(o.x)+' mm, Y '+(o.y>0?'+':'')+kalFmt(o.y)+' mm';
-function kalPrev(){const e=$('#kalPrev');if(!e)return;e.innerHTML='<svg viewBox="-7 -7 100 68.7" style="width:100%;max-width:270px;display:block;margin:0 auto" aria-hidden="true"><rect x="0" y="0" width="86" height="54.7" rx="3" fill="none" stroke="#8a948d" stroke-width=".6" stroke-dasharray="2 1.5"/><rect x="'+kalT.x+'" y="'+kalT.y+'" width="86" height="54.7" rx="3" fill="rgba(21,148,71,.16)" stroke="#159447" stroke-width=".9"/><text x="43" y="30" font-size="6" text-anchor="middle" fill="currentColor" opacity=".7">'+kalTeks(kalT)+'</text></svg><div class="mu" style="font-size:12px;margin-top:4px">Abu putus-putus = posisi awal, hijau = posisi belakang setelah digeser (pratinjau dibesarkan)</div>'}
+function kalPrev(){const e=$('#kalPrev');if(!e)return;e.innerHTML='<svg viewBox="-7 -7 100 68.7" style="width:100%;max-width:270px;display:block;margin:0 auto" aria-hidden="true"><rect x="0" y="0" width="85.6" height="53.98" rx="3" fill="none" stroke="#8a948d" stroke-width=".6" stroke-dasharray="2 1.5"/><rect x="'+kalT.x+'" y="'+kalT.y+'" width="85.6" height="53.98" rx="3" fill="rgba(21,148,71,.16)" stroke="#159447" stroke-width=".9"/><text x="42.8" y="30" font-size="6" text-anchor="middle" fill="currentColor" opacity=".7">'+kalTeks(kalT)+'</text></svg><div class="mu" style="font-size:12px;margin-top:4px">Abu putus-putus = posisi awal, hijau = posisi belakang setelah digeser (pratinjau dibesarkan)</div>'}
 function kalTampil(){$('#kalx').value=kalFmt(kalT.x);$('#kaly').value=kalFmt(kalT.y);kalPrev()}
 function kalBuka(){kalT={x:KAL.x,y:KAL.y};kalTampil();$('#kal').classList.add('show')}
 function kalTutup(){$('#kal').classList.remove('show')}
@@ -1918,7 +1918,7 @@ function kalIsi(k,v){kalT[k]=kalBulat(v);kalTampil()}
 function kalNol(){kalT={x:0,y:0};KAL={x:0,y:0};try{localStorage.removeItem(KALK)}catch(e){}kalTampil()}
 function kalSimpan(){KAL={x:kalT.x,y:kalT.y};try{localStorage.setItem(KALK,JSON.stringify(KAL))}catch(e){}kalTutup();toast('Kalibrasi disimpan: '+kalTeks(KAL))}
 async function kalUji(btn){if(!setUnduhBusy(btn,true,'Membuat lembar uji...'))return;try{await jedaUnduh();
- const KW=86,KH=54.7,GX=10,GY=8,C=2,R=4,x0=(210-(C*KW+(C-1)*GX))/2,y0=(297-(R*KH+(R-1)*GY))/2,doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+ const KW=85.6,KH=53.98,GX=10,GY=8,C=2,R=4,x0=(210-(C*KW+(C-1)*GX))/2,y0=(297-(R*KH+(R-1)*GY))/2,doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
  [0,1].forEach(pg=>{if(pg)doc.addPage();
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(40);doc.text(pg?'LEMBAR UJI - BELAKANG':'LEMBAR UJI - DEPAN',105,12,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100);doc.text('A4 portrait, skala 100%, duplex flip on long edge. Terawang ke cahaya: kotak bernomor sama harus berimpit.',105,17,{align:'center'});
@@ -1930,8 +1930,8 @@ async function kalUji(btn){if(!setUnduhBusy(btn,true,'Membuat lembar uji...'))re
    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100);doc.text(pg?'BELAKANG':'DEPAN',x+KW-4,y+KH-4,{align:'right'})}});
  doc.save('lembar-uji-kartu.pdf');toast('Lembar uji dibuat, cetak bolak-balik lalu terawang ke cahaya')}catch(e){toast('Gagal membuat lembar uji: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 async function unduhKartu(btn){if(!setUnduhBusy(btn,true,'Membuat PDF kartu...'))return;try{await jedaUnduh();const list=daftarKartu();if(!list.length){toast('Tidak ada siswa untuk dicetak',false);return}
- /* ukuran kartu & jarak antar kartu (mm), ubah di sini bila perlu */
- const KW=86,KH=54.7,GX=10,GY=8,C=2,R=4,dua=ks==='keduanya',PP=dua?R:C*R,x0=(210-(C*KW+(C-1)*GX))/2,y0=(297-(R*KH+(R-1)*GY))/2,doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true});
+ /* ukuran kartu = ID-1 / KTP 85,6 x 53,98 mm; jarak antar kartu (mm), ubah di sini bila perlu */
+ const KW=85.6,KH=53.98,GX=10,GY=8,C=2,R=4,dua=ks==='keduanya',PP=dua?R:C*R,x0=(210-(C*KW+(C-1)*GX))/2,y0=(297-(R*KH+(R-1)*GY))/2,doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true});
  /* gambar kartu untuk PDF dibuat JPEG (ukuran tetap 1980x1260) supaya PDF tidak perlu membongkar PNG besar: jauh lebih cepat, hasil tetap tajam */
  const JP=new Map(),taruh=async(s,sd,x,y)=>{const u=kartuUrl(s,sd);let j=JP.get(u);if(!j){const im=new Image();im.src=u;await im.decode();const cv=document.createElement('canvas');cv.width=1980;cv.height=1260;const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,1980,1260);c.drawImage(im,0,0,1980,1260);j=cv.toDataURL('image/jpeg',.92);JP.set(u,j)}doc.addImage(j,'JPEG',x,y,KW,KH);doc.rect(x-.6,y-.6,KW+1.2,KH+1.2)};
  for(let i=0;i<list.length;i++){const s=list[i];if(dua||ks==='depan')await fotoSiap(s);if(i>0&&i%PP===0)doc.addPage();const p=i%PP;if(p===0){doc.setDrawColor(170);doc.setLineWidth(.15);doc.setLineDashPattern([1.2,1.2],0)}
