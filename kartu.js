@@ -129,10 +129,10 @@ function buatBelakang(s,opt){
  c.beginPath();c.arc(589,34,25.7,0,7);c.stroke();c.beginPath();c.arc(589,34,2.4,0,7);c.fill();
  c.strokeRect(551.7,-3,75.3,75.3);c.beginPath();c.moveTo(536,34);c.lineTo(589,-19);c.lineTo(642,34);c.lineTo(589,87);c.closePath();c.stroke();c.restore();
  /* logo */
- const lg=opt.logo?LG.get(opt.logo):null;let gx=115;
- if(lg&&lg.width){const H0=62,asp=lg.width/lg.height,W0=Math.min(asp*H0,150),r=Math.min(W0/lg.width,H0/lg.height),w=lg.width*r,h=lg.height*r;
-  gx=Math.max(115,Math.round(w+26));c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(lg,gx/2-w/2,45.5-h/2,w,h)}
- const tx=gx+16.7;
+ const lg=opt.logo?LG.get(opt.logo):null;let gx=138;
+ if(lg&&lg.width){const H0=82,asp=lg.width/lg.height,W0=Math.min(asp*H0,185),r=Math.min(W0/lg.width,H0/lg.height),w=lg.width*r,h=lg.height*r;
+  gx=Math.max(138,Math.round(w+30));c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(lg,gx/2-w/2,45.5-h/2,w,h)}
+ const tx=gx+19;
  c.strokeStyle='#e9c55a';c.lineWidth=1.6;c.beginPath();c.moveTo(gx,18);c.lineTo(gx,73);c.stroke();
  c.textBaseline='middle';c.textAlign='left';
  c.fillStyle='#f2c94c';c.font='bold 15px '+F;lsText(c,'KARTU ID CARD',tx,28,2.6);
