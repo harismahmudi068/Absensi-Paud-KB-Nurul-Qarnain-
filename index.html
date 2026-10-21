@@ -1932,7 +1932,7 @@ async function kalUji(btn){if(!setUnduhBusy(btn,true,'Membuat lembar uji...'))re
 async function unduhKartu(btn){if(!setUnduhBusy(btn,true,'Membuat PDF kartu...'))return;try{await jedaUnduh();const list=daftarKartu();if(!list.length){toast('Tidak ada siswa untuk dicetak',false);return}
  /* ukuran kartu & jarak antar kartu (mm), ubah di sini bila perlu */
  const KW=86,KH=54.7,GX=10,GY=8,C=2,R=4,dua=ks==='keduanya',PP=dua?R:C*R,x0=(210-(C*KW+(C-1)*GX))/2,y0=(297-(R*KH+(R-1)*GY))/2,doc=new window.jspdf.jsPDF({unit:'mm',format:'a4',compress:true});
- const taruh=(s,sd,x,y)=>{doc.addImage(kartuUrl(s,sd),'PNG',x,y,KW,KH,undefined,'MEDIUM');doc.rect(x-.6,y-.6,KW+1.2,KH+1.2)};
+ const taruh=(s,sd,x,y)=>{doc.addImage(kartuUrl(s,sd),'PNG',x,y,KW,KH,undefined,'FAST');doc.rect(x-.6,y-.6,KW+1.2,KH+1.2)};
  for(let i=0;i<list.length;i++){const s=list[i];if(dua||ks==='depan')await fotoSiap(s);if(i>0&&i%PP===0)doc.addPage();const p=i%PP;if(p===0){doc.setDrawColor(170);doc.setLineWidth(.15);doc.setLineDashPattern([1.2,1.2],0)}
   if(dua){const y=y0+p*(KH+GY);taruh(s,'depan',x0,y);taruh(s,'belakang',x0+KW+GX,y)}
   else{const cb=p%C,bl=ks==='belakang',cx=bl?C-1-cb:cb,o=bl?KAL:{x:0,y:0};taruh(s,ks,x0+cx*(KW+GX)+o.x,y0+Math.floor(p/C)*(KH+GY)+o.y)}
