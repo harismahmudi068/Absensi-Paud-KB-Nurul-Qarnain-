@@ -307,7 +307,7 @@ const LW={izin:'#1b73e8',sakit:'#e62d4a'};
 function lapForm(d){const a=d.absen_hari_ini;
  if(d.libur.some(x=>x.tanggal===d.hari_ini)||(a&&(a.status==='hadir'||a.status==='terlambat')))return '';
  const ada=!!a&&(a.status==='izin'||a.status==='sakit');LAP.st=ada?a.status:'';
- const ket=ada?String(a.catatan||'').replace(/\s*\|\s*sakit otomatis.*$/i,''):'';
+ const ket='';
  return '<div class="lap"><div class="lt">'+(ada?'Ubah laporan hari ini':'Anak tidak masuk hari ini?')+'</div><div class="pil">'+
   ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
   '<div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
