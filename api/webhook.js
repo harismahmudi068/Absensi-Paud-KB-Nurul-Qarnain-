@@ -671,7 +671,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
 
       tulis.forEach(d => rows.push({
         sekolah_id: K().sekolahId, siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
-        catatan: catatanDb, diubah
+        catatan: catatanDb || null, diubah, diubah_oleh: null
       }));
       const k = `${tulis.join(',')}|${tidakAktif.join(',')}|${p.lanjut || ''}|${terlindung.map(t => t.tgl + t.label).join(',')}`;
       if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif, lanjut: p.lanjut || null, terlindung });
