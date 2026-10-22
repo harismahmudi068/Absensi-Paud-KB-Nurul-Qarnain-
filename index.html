@@ -51,6 +51,11 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f2f7f1;t
 .sn{font-weight:800;font-size:17px}.sk{color:var(--mu);font-size:11px;margin-bottom:10px}
 .sb{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.sb button{border:1px solid var(--bd);background:#f8fbf8;border-radius:9px;padding:9px 2px;font-weight:800;font-size:12px;color:#45614f}
 .sb button.sel{color:#fff;border-color:transparent}.sb [data-s=Hadir].sel{background:#20b979}.sb [data-s=Terlambat].sel{background:#d99a27}.sb [data-s=Izin].sel{background:#248fe9}.sb [data-s=Sakit].sel{background:#ef5361}.sb [data-s=Alpa].sel{background:#7a4be5}.sb .clr{background:#fff;color:var(--rd);border-color:#f0c9cd}.sb .clr:disabled{opacity:.35}
+.cat-t{display:block;width:100%;margin-top:8px;padding:5px 2px;border:0;background:transparent;color:var(--mu);font-size:11px;font-weight:700;text-align:left}
+.cat-t .cat-dot{display:none;width:7px;height:7px;border-radius:50%;background:#168b47;margin-left:4px;vertical-align:middle}
+.cat-t.isi .cat-dot{display:inline-block}
+.cat-b{margin-top:2px}
+.cat-b textarea{width:100%;box-sizing:border-box;border:1px solid var(--bd);border-radius:9px;padding:8px 10px;font:inherit;font-size:12px;background:transparent;color:inherit;resize:vertical}
 .save{position:fixed;left:250px;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid var(--bd);box-shadow:0 -6px 18px rgba(30,60,40,.12);padding:10px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .kc{border:2px solid #159447;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center;background:#fff}.kc b{font-size:17px;display:block}
 .cls{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.ci{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px;border:1px solid var(--bd);border-radius:12px;flex-wrap:wrap}
@@ -506,6 +511,68 @@ html[data-tema=gelap] .input:focus,html[data-tema=gelap] .select:focus,html[data
 .card.mh.msel{outline:3px solid var(--g);background:var(--mint)}.card.mh .mh-t{min-width:0}.card.mh .sk{margin:0 0 3px}.card.mh .sn{overflow-wrap:anywhere}
 .save .btn:disabled{opacity:.5;cursor:default}
 </style>
+<style id="patch-v2">
+/* 1. grup menu */
+.ngrp{display:grid;gap:4px}.ngrp+.ngrp,.ngrp+button{margin-top:12px}
+.ngt{font-size:12px;font-weight:800;color:var(--mu,#6b7f73);padding:4px 12px 2px;letter-spacing:.01em}
+html[data-tema=gelap] .ngt{color:#9fc9b0}
+/* 2. geser untuk menutup */
+#drw .modal{touch-action:pan-y;overscroll-behavior:contain}
+/* 3. tanpa kilatan biru & spinner kecil pada tombol navigasi */
+*{-webkit-tap-highlight-color:transparent}
+button,a,summary,label,[onclick]{-webkit-touch-callout:none}
+.nav button,.bottom button,.utab,.top button,.hamb,.seg2 button,#drw .mh button{-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;outline:none}
+.nav button:focus,.bottom button:focus,.utab:focus,.top button:focus,.hamb:focus,.seg2 button:focus{outline:none}
+.nav button.busy::before,.bottom button.busy::before,.utab.busy::before,.top button.busy::before,.hamb.busy::before,.seg2 button.busy::before,#drw .mh button.busy::before{display:none!important;content:none!important}
+.nav button.busy,.bottom button.busy,.utab.busy,.top button.busy,.hamb.busy,.seg2 button.busy{opacity:1!important}
+.nav button.click-fx,.bottom button.click-fx,.utab.click-fx,.top button.click-fx,.hamb.click-fx,.nav button.click-fx::after,.bottom button.click-fx::after,.utab.click-fx::after,.top button.click-fx::after,.hamb.click-fx::after{animation:none!important;box-shadow:none!important}
+.bottom button:active:not(:disabled),.utab:active:not(:disabled),.top button:active:not(:disabled),.hamb:active:not(:disabled){filter:none!important}
+/* 4. tab Kamera/Scanner: tanpa garis/kedip saat ditekan */
+.seg2 button,.seg2 button:active,.seg2 button:active:not(:disabled),.seg2 button.click-fx{transform:none!important;filter:none!important;animation:none!important;transition:none!important;box-shadow:none!important;outline:none!important}
+.seg2 button::before,.seg2 button::after{display:none!important;content:none!important}
+/* ===== HP: menu bar bawah = lembar dari bawah, kotak-kotak ===== */
+@keyframes drwUp{from{transform:translateY(100%)}to{transform:none}}
+@keyframes drwDown{from{transform:none}to{transform:translateY(100%)}}
+@keyframes drwTile{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}
+@media(max-width:760px){
+#drw:not(.side) .modal{top:auto;bottom:0;left:0;right:0;width:100%;height:auto;max-height:86vh;border-radius:22px 22px 0 0}
+#drw:not(.side) .modal::before{content:"";flex:0 0 4px;width:42px;height:4px;border-radius:4px;background:var(--bd,#cfdccf);margin:9px auto 0}
+#drw:not(.side) .mh{padding:8px 16px;border-bottom:0}
+#drw:not(.side) .modal{touch-action:none}
+#drw:not(.side) .mbody{touch-action:pan-y}
+#drw:not(.side) .mbody{overflow-y:auto;min-height:0;padding:2px 14px calc(18px + env(safe-area-inset-bottom,0px));overscroll-behavior:contain}
+#drw:not(.side) .nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#drw:not(.side) .nav .ngrp{grid-column:1/-1;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:0}
+#drw:not(.side) .nav .ngrp+.ngrp{margin-top:6px}
+#drw:not(.side) .nav .ngt{grid-column:1/-1;padding:6px 2px 0}
+#drw:not(.side) .nav .ngrp+button{margin-top:6px}
+#drw:not(.side) .nav button{flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;padding:12px 4px;min-height:84px;border-radius:16px;font-size:12px;line-height:1.2;overflow-wrap:anywhere}
+#drw:not(.side) .nav button>span{margin:0 auto}
+#drw:not(.side) .nav button[onclick^="go("]>span,#drw .nav button[onclick^="go("]>span::before{width:26px;height:26px;flex:0 0 26px}
+#drw.show:not(.side) .modal{animation:drwUp .36s cubic-bezier(.22,.9,.3,1)}
+#drw.closing:not(.side) .modal{animation:drwDown .3s cubic-bezier(.4,0,.8,.4) forwards}
+#drw.show:not(.side) .nav button{animation:drwTile .38s ease both}
+#drw.show:not(.side) .nav .ngrp:nth-child(2) button{animation-delay:.07s}
+#drw.show:not(.side) .nav .ngrp:nth-child(3) button{animation-delay:.13s}
+#drw.show:not(.side) .nav .ngrp:nth-child(4) button{animation-delay:.19s}
+#drw.show:not(.side) .nav .ngrp:nth-child(5) button{animation-delay:.25s}
+#drw.closing:not(.side) .nav button{animation:none}
+}
+/* pengait penanda awal gestur */
+#hkS,#hkB{display:none;position:fixed;z-index:49;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+#hkS i,#hkB i{position:absolute;display:block;background:var(--mu,#6d7d73);opacity:.55;pointer-events:none}
+@media(max-width:760px){
+#hkS.on{display:block;left:0;top:50%;width:18px;height:150px;transform:translateY(-50%)}
+#hkS i{left:0;top:50%;width:6px;height:120px;transform:translateY(-50%);border-radius:0 6px 6px 0}
+#hkB.on{display:block;left:21%;right:21%;bottom:68px;height:24px}
+#hkB i{bottom:0;top:auto;height:6px;border-radius:6px 6px 0 0}
+#hkB i.a{left:0;right:0}
+#hkB i.b{display:none}
+#hkB.tg i.a{left:0;right:calc(50% + 40px)}
+#hkB.tg i.b{display:block;left:calc(50% + 40px);right:0}
+}
+</style>
+<!--/patch-v2-->
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">Selamat Datang</h2><p class="mu" style="text-align:center;margin:0 0 16px">di Sistem Absensi. Silakan masukkan username dan kata sandi Anda.</p>
 <label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
@@ -514,7 +581,7 @@ html[data-tema=gelap] .input:focus,html[data-tema=gelap] .select:focus,html[data
 <div id="dua" class="login hid"><div class="lbox"><div class="logo">🔐</div><h2 style="text-align:center;margin:0 0 4px">Verifikasi 2 langkah</h2><div id="duaIsi"></div><div id="duaErr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div><p class="mu" style="text-align:center;margin:14px 0 0"><a href="#" onclick="batalDuaFaktor();return false">Batal dan kembali ke halaman masuk</a></p></div></div>
 <div class="app hid" id="ap">
 <aside class="sidebar"><div class="brand"><div class="logo">🏫</div><div><b id="bnm">Sistem Absensi</b><br><small>Sistem Absensi</small></div></div><nav id="sn" class="nav"></nav><div class="foot"><a class="wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener">💬 Bantuan via WhatsApp</a>Anak Hebat Berawal dari<br>Kebiasaan Baik ♡</div></aside>
-<main class="main"><header class="top"><button class="hamb" onclick="drw(1)">☰</button><div style="flex:1;min-width:0"><small id="who" style="font-size:14px;opacity:1;font-weight:700"></small></div><div class="pill dtp" id="dt"></div><button class="tm" id="tmBtn" type="button" onclick="tmToggle()" aria-label="Mode gelap" aria-pressed="false" title="Mode terang / gelap"><i class="tmk"><svg class="k-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="k-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/></svg></i></button><a class="hb wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener" title="Bantuan via WhatsApp">💬</a><button class="pill keluar-ic" type="button" onclick="tanyaKeluar()" aria-label="Keluar" title="Keluar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button></header>
+<main class="main"><header class="top"><button class="hamb" onclick="drw(1,1)">☰</button><div style="flex:1;min-width:0"><small id="who" style="font-size:14px;opacity:1;font-weight:700"></small></div><div class="pill dtp" id="dt"></div><button class="tm" id="tmBtn" type="button" onclick="tmToggle()" aria-label="Mode gelap" aria-pressed="false" title="Mode terang / gelap"><i class="tmk"><svg class="k-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="k-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/></svg></i></button><a class="hb wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener" title="Bantuan via WhatsApp">💬</a><button class="pill keluar-ic" type="button" onclick="tanyaKeluar()" aria-label="Keluar" title="Keluar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button></header>
 <section class="content" id="v"></section></main></div>
 <nav class="bottom hid" id="bn"></nav>
 <div class="mb" id="drw" onclick="if(event.target===this)drw(0)"><div class="modal"><div class="mh"><b>Menu</b><button onclick="drw(0)">✕</button></div><div class="mbody"><div id="dn" class="nav"></div></div></div></div>
@@ -643,6 +710,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TP)tpTutup()});
 window.addEventListener('resize',()=>{if(TP)tpPos()});
 window.addEventListener('scroll',e=>{if(TP&&innerWidth>640&&!(e.target&&e.target.nodeType===1&&e.target.closest('#tpop')))tpTutup()},true);
 const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['piket','Jadwal Piket','🧹','KG'],['hafalan','Hafalan','📖','KG'],['kartu','Kartu','🪪','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['alumni','Alumni','🏅','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['guru','Data Guru','👨‍🏫','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
+const MENU_GRUP=[['Utama',['dashboard','profil']],['Kegiatan Harian',['absensi','scan','piket','hafalan','tabungan']],['Data Sekolah',['siswa','kelola','alumni','kartu','guru','kelasjam']],['Laporan &amp; Komunikasi',['rekap','laporanortu','pesan']],['Pengaturan',['libur','pengaturan']]];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',operator:'Operator',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Operator':'operator','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Operator':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah'||role==='Operator';
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
@@ -1230,7 +1298,9 @@ function drw(o){const d=$('#drw');if(o){clearTimeout(drwT);d.classList.remove('c
 async function go(id){tpTutup();usbStop(true);await stopScan();TODAY=hariIni();view=id;drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
  try{if(LOAD[id])await LOAD[id]()}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
- const ms=MENUS.filter(m=>allowed(m[0])),h=ms.map(m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`).join('');
+ const ms=MENUS.filter(m=>allowed(m[0])),bt=m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`;let h;
+ if(role==='Developer')h=ms.map(bt).join('');
+ else{const pakai=new Set();h=MENU_GRUP.map(([j,ids])=>{const it=ids.map(i=>ms.find(m=>m[0]===i)).filter(Boolean);it.forEach(m=>pakai.add(m[0]));return it.length?`<div class="ngrp"><div class="ngt">${j}</div>${it.map(bt).join('')}</div>`:''}).join('');const sisa=ms.filter(m=>!pakai.has(m[0]));if(sisa.length)h+=`<div class="ngrp">${sisa.map(bt).join('')}</div>`}
  const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Ganti sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=(role==='Developer'?['developer']:['dashboard','absensi','scan','tabungan']).filter(allowed).slice(0,4);
  $('#bn').innerHTML=pref.map(id=>{const m=MENUS.find(x=>x[0]===id);return `<button class="${view===id?'on':''}" onclick="go('${id}')"><span>${id==='scan'?'<svg width="32" height="32" viewBox="0 0 32 32" style="display:block;margin:-2px auto 1px"><rect x="1.5" y="1.5" width="29" height="29" rx="7" fill="none" stroke="currentColor" stroke-width="2.4"/><g fill="currentColor"><rect x="7" y="8" width="2" height="16"/><rect x="10.5" y="8" width="1" height="16"/><rect x="13" y="8" width="3" height="16"/><rect x="17.5" y="8" width="1.2" height="16"/><rect x="20.2" y="8" width="2.2" height="16"/><rect x="24" y="8" width="1" height="16"/></g></svg>':m[2]}</span>${m[1]}</button>`}).join('')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`;
  $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
@@ -1607,19 +1677,22 @@ async function hapusAkunPermanen(id){const g=(S.devGuru||[]).find(x=>x.id===id);
  if(!await konfirmasi('Hapus akun '+g.nama+' ('+g.username+') secara permanen? Akun, profil, dan keanggotaannya dihapus dan tidak bisa dikembalikan.',{judul:'Hapus akun permanen',ya:'Hapus permanen',bahaya:1}))return;
  guard(async()=>{await apiGuru({aksi:'hapus_akun',id});await muatDev();toast('Akun dihapus permanen');renderV()})}
 /* ---------- absensi manual ---------- */
-function absensiCards(l,lv){return lv.map((s,i)=>{const d=draft[s.id],cur=d?d.st:'';return `<div class="card sc c${i%4+1}"><div class="av">${ini(s.pan)}</div><div class="sn">${esc(s.pan)}</div><div class="sk">${esc(s.nama)} - ${esc(s.kelas)}${d&&d.cara!=='manual'?' - via '+esc(d.cara):''} ${cur==='Libur'?badge('Libur'):''}</div><div class="sk" style="margin-top:-7px">NISN: ${esc(s.nisn||'-')}</div><div class="sb">${ST.map(x=>`<button data-s="${x}" class="${cur===x?'sel':''}" onclick="pick(${s.id},'${x}')">${x}</button>`).join('')}<button class="clr" ${cur?'':'disabled'} onclick="clr(${s.id})">Kosongkan</button></div></div>`}).join('')||(attKelas?(attQ?'<div class="mu">Nama siswa tidak ditemukan.</div>':'<div class="mu">Belum ada siswa.</div>'):PKH)}
+let catBuka=new Set();
+function catToggle(id){if(catBuka.has(id))catBuka.delete(id);else catBuka.add(id);const b=document.getElementById('cb'+id),t=document.getElementById('ct'+id),buka=catBuka.has(id);if(b)b.hidden=!buka;if(t)t.setAttribute('aria-expanded',buka);if(buka&&b){const x=b.querySelector('textarea');if(x)x.focus()}}
+function catIsi(id,el){if(!draft||!draft[id])return;draft[id].cat=el.value;draft[id].ketik=true;const t=document.getElementById('ct'+id);if(t)t.classList.toggle('isi',!!el.value.trim())}
+function absensiCards(l,lv){return lv.map((s,i)=>{const d=draft[s.id],cur=d?d.st:'';return `<div class="card sc c${i%4+1}"><div class="av">${ini(s.pan)}</div><div class="sn">${esc(s.pan)}</div><div class="sk">${esc(s.nama)} - ${esc(s.kelas)}${d&&d.cara!=='manual'?' - via '+esc(d.cara):''} ${cur==='Libur'?badge('Libur'):''}</div><div class="sk" style="margin-top:-7px">NISN: ${esc(s.nisn||'-')}</div><div class="sb">${ST.map(x=>`<button data-s="${x}" class="${cur===x?'sel':''}" onclick="pick(${s.id},'${x}')">${x}</button>`).join('')}<button class="clr" ${cur?'':'disabled'} onclick="clr(${s.id})">Kosongkan</button></div>${cur?`<button type="button" id="ct${s.id}" class="cat-t${d.cat&&d.cat.trim()?' isi':''}" aria-expanded="${catBuka.has(s.id)}" onclick="catToggle(${s.id})">📝 Catatan (opsional)<span class="cat-dot"></span></button><div id="cb${s.id}" class="cat-b"${catBuka.has(s.id)?'':' hidden'}><textarea rows="2" maxlength="200" placeholder="Catatan (opsional)" oninput="catIsi(${s.id},this)">${esc(d.cat||'')}</textarea></div>`:''}</div>`}).join('')||(attKelas?(attQ?'<div class="mu">Nama siswa tidak ditemukan.</div>':'<div class="mu">Belum ada siswa.</div>'):PKH)}
 V.absensi=()=>{if(mMulti)return mhView();if(!draft)draft=JSON.parse(JSON.stringify(A(attDate)));const l=act().filter(s=>attKelas&&(attKelas==='*'||s.kelas===attKelas)),lv=l.filter(s=>!attQ||s.nama.toLowerCase().includes(attQ.toLowerCase())||s.pan.toLowerCase().includes(attQ.toLowerCase())||String(s.nisn||'').includes(attQ.trim())),lib=infoLiburTerpilih(attDate,attKelas),isi=l.filter(s=>draft[s.id]).length;const key='manual|'+liburKey(attDate,attKelas);if(attKelas&&lib&&!liburPrompted[key]){liburPrompted[key]=true;setTimeout(async()=>{await cekLiburSebelumAbsensi(attKelas,attDate);if(view==='absensi')renderV()},0)}
  return `<div class="panel"><div class="ph">✍️ Absensi Manual</div><div class="pb"><div class="tb">${dt('date',attDate,'if(this.value)setAtt(this.value)','att-date-pick',{id:'attTgl'})}${cpick('absKelasPick','kelas',attKelas,S.kelas.map(k=>({value:k.nama,label:k.nama})).concat([{value:'*',label:'Semua kelas'}]), 'setAttKelas','Pilih kelas')}<input id="attCari" class="input grow" placeholder="Cari nama siswa..." value="${esc(attQ)}" oninput="cariAbsensiInput(this)"><button class="btn soft sm" style="margin:4px auto 0;align-self:center" onclick="mhToggle()">📆 Multi Hari</button><button class="btn orange sm dl" style="margin:4px auto 0;align-self:center" onclick="markLibur()">🏖 Liburkan siswa</button></div><div class="note">📅 Guru dapat mengisi dan mengedit absensi untuk tanggal sebelumnya, hari ini, maupun tanggal yang akan datang.</div>
  ${lib?`<div class="note">🏖 ${esc(lib)} sedang libur. Konfirmasi diperlukan sebelum absensi dapat dimulai.</div>`:''}
  <div class="cards">${absensiCards(l,lv)}</div></div></div>
  <div style="height:76px"></div><div class="save"><div><b>${isi} dari ${l.length} terisi</b><div class="mu">${l.length-isi} dikosongkan (bisa diisi orang tua lewat WhatsApp)</div></div><button class="btn success sm dl" style="padding:7px 18px" onclick="saveAtt()">💾 Simpan</button></div>`};
-function setAttKelas(v){attKelas=v||'';attQ='';draft=null;mSel.clear();liburPrompted={};document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));renderV()}
+function setAttKelas(v){attKelas=v||'';attQ='';draft=null;catBuka.clear();mSel.clear();liburPrompted={};document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));renderV()}
 function cariAbsensiInput(el){attQ=el.value;const l=act().filter(s=>attKelas&&(attKelas==='*'||s.kelas===attKelas)),lv=l.filter(s=>!attQ||s.nama.toLowerCase().includes(attQ.toLowerCase())||s.pan.toLowerCase().includes(attQ.toLowerCase())||String(s.nisn||'').includes(attQ.trim()));const c=document.querySelector('#v .cards');if(c){c.innerHTML=mMulti?mhCards(lv):absensiCards(l,lv);if(mMulti)mhUpd()}}
-function setAtt(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return toast('Tanggal absensi tidak valid',false);attDate=v;draft=null;liburPrompted={};guard(async()=>{await muatRange(v,v);renderV()})}
-async function pick(id,st){const s=S.siswa.find(x=>x.id===id);if(!await okLib(s.kelas,attDate))return;const o=draft[id]||{};draft[id]={st,cara:'manual',cat:o.cat||'',jam:o.jam||'',iso:o.iso||null};renderV()}
+function setAtt(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return toast('Tanggal absensi tidak valid',false);attDate=v;draft=null;catBuka.clear();liburPrompted={};guard(async()=>{await muatRange(v,v);renderV()})}
+async function pick(id,st){const s=S.siswa.find(x=>x.id===id);if(!await okLib(s.kelas,attDate))return;const o=draft[id]||{},sama=o.st===st,adaJam=['Hadir','Terlambat'],pakaiJam=adaJam.includes(o.st)&&adaJam.includes(st);draft[id]={st,cara:'manual',cat:(sama||o.ketik)?(o.cat||''):'',ketik:!!o.ketik,jam:pakaiJam?(o.jam||''):'',iso:pakaiJam?(o.iso||null):null};renderV()}
 function clr(id){delete draft[id];renderV()}
 function saveAtt(){guard(async()=>{const before=A(attDate),ups=[],del=[],now=new Date().toISOString();
- Object.keys(draft).forEach(id=>{const d=draft[id],b=before[id];if(!b||b.st!==d.st||b.cara!==d.cara||(b.cat||'')!==(d.cat||''))ups.push({siswa_id:+id,tanggal:attDate,status:low(d.st),cara:d.cara,catatan:d.cat||null,jam_datang:d.iso||null,diubah:now,diubah_oleh:me})});
+ Object.keys(draft).forEach(id=>{const d=draft[id],b=before[id];if(!b||b.st!==d.st||b.cara!==d.cara||(b.cat||'')!==(d.cat||''))ups.push({siswa_id:+id,tanggal:attDate,status:low(d.st),cara:d.cara,catatan:(d.cat||'').trim()||null,jam_datang:d.iso||null,diubah:now,diubah_oleh:me})});
  Object.keys(before).forEach(id=>{if(!draft[id])del.push(+id)});
  if(ups.length)await dbq(db.from('absensi').upsert(ups,{onConflict:'siswa_id,tanggal'}));
  if(del.length)await dbq(db.from('absensi').delete().eq('tanggal',attDate).in('siswa_id',del));
@@ -1786,7 +1859,7 @@ async function onScan(mentah){const cr=cariKode(mentah),kode=cr.s?String(cr.s.ko
   const r=await dbq(db.from('absensi').select('*').eq('siswa_id',s.id).eq('tanggal',TODAY).maybeSingle()),ada=r?fromRow(r):null;
   if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat'))return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false);
   const iso=new Date().toISOString(),jm=jamJkt(iso),lim=(S.kelas.find(k=>k.nama===s.kelas)||{jam:'23:59'}).jam,st=jm>lim?'Terlambat':'Hadir';
-  await dbq(db.from('absensi').upsert({siswa_id:s.id,tanggal:TODAY,status:low(st),cara:'scan',catatan:ada&&ada.cara!=='otomatis'?ada.cat||null:null,jam_datang:iso,diubah:iso,diubah_oleh:me},{onConflict:'siswa_id,tanggal'}));
+  await dbq(db.from('absensi').upsert({siswa_id:s.id,tanggal:TODAY,status:low(st),cara:'scan',catatan:null,jam_datang:iso,diubah:iso,diubah_oleh:me},{onConflict:'siswa_id,tanggal'}));
   (S.absen[TODAY]=S.absen[TODAY]||{})[s.id]={st,cara:'scan',cat:'',jam:jm,iso};if(ada)scanUbah.push({pan:s.pan,nama:s.nama,dari:ada.st,ke:st,jam:jm});hasil(`${s.pan} ${st.toLowerCase()}, jam ${jm}.`+(ada?` (sebelumnya ${ada.st.toLowerCase()})`:''),true);const h=$('#hist');if(h)h.innerHTML=histHTML()}
  catch(e){hasil('Gagal: '+(e.message||e),false)}finally{busy=false}}
 /* ---------- kartu ---------- */
@@ -3355,4 +3428,94 @@ document.addEventListener('click',e=>{
  b._clickFxTimer=setTimeout(()=>b.classList.remove('click-fx'),420);
 },true);
 mulai();setInterval(()=>{if(me&&view==='dashboard')muatRange(TODAY,TODAY).then(renderV).catch(()=>{})},60000);
-</script></body></html>
+</script><script id="patch-v2-js">
+/* menu: samping (tombol ☰ / geser dari tepi kiri) dan lembar bawah (tombol Menu / geser naik pada bar bawah) */
+(function(){
+ var d=document.getElementById('drw');if(!d)return;var m=d.querySelector('.modal');if(!m)return;
+ var mb=d.querySelector('.mbody'),mq=window.matchMedia('(max-width:760px)');
+ var _drw=window.drw;
+ window.drw=function(o,side){
+  if(o){bersih();d.classList.toggle('side',!!side)}
+  _drw(o);
+  if(!o)setTimeout(function(){if(!d.classList.contains('show'))d.classList.remove('side')},340);
+ };
+ var x0=0,y0=0,dx=0,dy=0,t0=0,on=false,lock=0,ver=false;
+ function bersih(){m.style.animation='';m.style.transition='';m.style.transform='';d.style.transition='';d.style.opacity=''}
+ d.addEventListener('touchstart',function(e){
+  if(!d.classList.contains('show')||d.classList.contains('closing')||e.touches.length!==1)return;
+  var t=e.touches[0];x0=t.clientX;y0=t.clientY;dx=0;dy=0;t0=Date.now();on=true;lock=0;
+  ver=mq.matches&&!d.classList.contains('side')},{passive:true});
+ d.addEventListener('touchmove',function(e){
+  if(!on)return;var t=e.touches[0],ax=t.clientX-x0,ay=t.clientY-y0;
+  if(!lock){if(Math.abs(ax)<8&&Math.abs(ay)<8)return;
+   if(ver)lock=(ay>0&&Math.abs(ay)>Math.abs(ax)*1.2&&(!mb||mb.scrollTop<=0))?1:2;
+   else lock=(ax<0&&Math.abs(ax)>Math.abs(ay)*1.2)?1:2;
+   if(lock===1){m.style.animation='none';m.style.transition='none'}}
+  if(lock!==1)return;
+  if(e.cancelable)e.preventDefault();
+  if(ver){dy=Math.max(0,ay);m.style.transform='translateY('+dy+'px)'}
+  else{dx=Math.min(0,ax);m.style.transform='translateX('+dx+'px)'}},{passive:false});
+ function akhir(){
+  if(!on)return;on=false;if(lock!==1)return;
+  var j=ver?(m.offsetHeight||400):(m.offsetWidth||300),g=ver?dy:-dx,cepat=g/Math.max(1,Date.now()-t0)>0.5;
+  m.style.transition='transform .22s ease';
+  if(g>j*0.28||(cepat&&g>30)){
+   m.style.transform=ver?'translateY(100%)':'translateX(-100%)';d.style.transition='opacity .22s ease';d.style.opacity='0';
+   setTimeout(function(){d.classList.remove('show','closing','side');bersih()},230);
+  }else{m.style.transform=ver?'translateY(0)':'translateX(0)';setTimeout(function(){m.style.transition='';m.style.transform=''},230)}
+ }
+ d.addEventListener('touchend',akhir,{passive:true});
+ d.addEventListener('touchcancel',akhir,{passive:true});
+
+ /* buka menu samping: geser ke kanan dari tepi kiri layar */
+ var ex=0,ey=0,eon=false;
+ function bisaBuka(){
+  var ap=document.getElementById('ap');
+  return mq.matches&&ap&&!ap.classList.contains('hid')&&!document.querySelector('.mb.show');
+ }
+ document.addEventListener('touchstart',function(e){
+  eon=false;if(e.touches.length!==1)return;var t=e.touches[0];
+  if(t.clientX>28||!bisaBuka())return;
+  ex=t.clientX;ey=t.clientY;eon=true},{passive:true});
+ document.addEventListener('touchmove',function(e){
+  if(!eon)return;var t=e.touches[0],ax=t.clientX-ex,ay=t.clientY-ey;
+  if(Math.abs(ay)>Math.abs(ax)*1.2&&Math.abs(ay)>14){eon=false;return}
+  if(ax>44&&Math.abs(ax)>Math.abs(ay)*1.5){eon=false;if(e.cancelable)e.preventDefault();window.drw(1,1)}},{passive:false});
+ document.addEventListener('touchend',function(){eon=false},{passive:true});
+ document.addEventListener('touchcancel',function(){eon=false},{passive:true});
+
+ /* buka lembar bawah: geser ke atas pada bar bawah */
+ var bn=document.getElementById('bn');
+ if(bn){var bx=0,by=0,bon=false;
+  bn.addEventListener('touchstart',function(e){
+   if(e.touches.length!==1||!mq.matches||d.classList.contains('show')){bon=false;return}
+   bx=e.touches[0].clientX;by=e.touches[0].clientY;bon=true},{passive:true});
+  bn.addEventListener('touchmove',function(e){
+   if(!bon)return;var ay=e.touches[0].clientY-by,ax=e.touches[0].clientX-bx;
+   if(ay<-36&&Math.abs(ay)>Math.abs(ax)*1.5){bon=false;if(e.cancelable)e.preventDefault();window.drw(1)}},{passive:false});
+  bn.addEventListener('touchend',function(){bon=false},{passive:true});
+  bn.addEventListener('touchcancel',function(){bon=false},{passive:true});
+ }
+ /* pengait: penanda awal gestur (samping & bawah) */
+ var hs=document.createElement('div');hs.id='hkS';hs.innerHTML='<i></i>';hs.setAttribute('aria-label','Buka menu samping');hs.onclick=function(){window.drw(1,1)};
+ var hb=document.createElement('div');hb.id='hkB';hb.innerHTML='<i class="a"></i><i class="b"></i>';hb.setAttribute('aria-label','Buka menu bawah');hb.onclick=function(){window.drw(1)};
+ document.body.appendChild(hs);document.body.appendChild(hb);
+ var rq=0;
+ function sinkron(){
+  rq=0;var ap=document.getElementById('ap'),ok=!!(mq.matches&&ap&&!ap.classList.contains('hid')&&!document.querySelector('.mb.show'));
+  var bar=!!(bn&&!bn.classList.contains('hid'));
+  hs.classList.toggle('on',ok);hb.classList.toggle('on',ok&&bar);
+  hb.classList.toggle('tg',!!(bn&&bn.querySelector('button[onclick*=scan]')));
+ }
+ new MutationObserver(function(){if(!rq)rq=requestAnimationFrame(sinkron)}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+ if(mq.addEventListener)mq.addEventListener('change',sinkron);
+ sinkron();
+ (function(){var gx=0,gy=0,gon=false;
+  hb.addEventListener('touchstart',function(e){if(e.touches.length!==1){gon=false;return}gx=e.touches[0].clientX;gy=e.touches[0].clientY;gon=true},{passive:true});
+  hb.addEventListener('touchmove',function(e){if(!gon)return;var ay=e.touches[0].clientY-gy,ax=e.touches[0].clientX-gx;
+   if(ay<-24&&Math.abs(ay)>Math.abs(ax)*1.5){gon=false;if(e.cancelable)e.preventDefault();window.drw(1)}},{passive:false});
+  hb.addEventListener('touchend',function(){gon=false},{passive:true});
+ })();
+})();
+</script>
+</body></html>
