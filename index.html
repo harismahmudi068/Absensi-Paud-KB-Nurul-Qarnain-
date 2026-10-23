@@ -600,7 +600,7 @@ button,a,summary,label,[onclick]{-webkit-touch-callout:none}
 <style id="uji-css">.ujibox{border:1.5px dashed #d4a81f!important;background:rgba(250,204,21,.10)!important}.ujibd{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 10px;border-radius:6px;background:#fdf1c4;color:#7a5a00;margin-bottom:6px}.ujick{display:flex;align-items:center;gap:8px;font-size:13px;margin-top:10px;cursor:pointer}.ujilnk{display:block;margin:8px auto 0;padding:4px 8px;background:none;border:0;box-shadow:none;font:inherit;font-size:13px;font-weight:600;color:#c99a06;cursor:pointer;text-align:center}html[data-tema=gelap] .ujilnk{color:#facc15}html[data-tema=gelap] .ujibd{background:#4a3d0c;color:#fde68a}</style><style id="cekStyle">
 #v td:has(>input[type=checkbox]),#v th:has(>input[type=checkbox]){width:56px;min-width:56px;padding:14px 0!important;text-align:center;vertical-align:middle;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none}
 #v td:has(>input[type=checkbox]):active{background:rgba(31,169,91,.14)}
-#v td>input[type=checkbox],#v th>input[type=checkbox]{width:26px!important;height:26px!important;margin:0!important;accent-color:#1fa95b;cursor:pointer;vertical-align:middle;touch-action:manipulation}
+#v td>input[type=checkbox],#v th>input[type=checkbox]{width:20px!important;height:20px!important;margin:0!important;accent-color:#1fa95b;cursor:pointer;vertical-align:middle;touch-action:manipulation}
 </style>
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">Selamat Datang</h2><p class="mu" style="text-align:center;margin:0 0 16px">di Sistem Absensi. Silakan masukkan username dan kata sandi Anda.</p>
@@ -1805,7 +1805,7 @@ function mhTerapkan(){
    for(let i=0;i<ups.length;i+=MH_CHUNK){const part=ups.slice(i,i+MH_CHUNK);try{await dbq(db.from('absensi').upsert(part,{onConflict:'siswa_id,tanggal'}));ok+=part.length}catch(e){gagal.push('Data ke-'+(i+1)+' s/d '+(i+part.length)+': '+idErr((e&&e.message)||String(e)))}done+=part.length;prog()}
    for(const [d,ids] of hapus)for(let i=0;i<ids.length;i+=MH_DEL){const part=ids.slice(i,i+MH_DEL);try{await dbq(db.from('absensi').delete().eq('tanggal',d).in('siswa_id',part));ok+=part.length}catch(e){gagal.push('Hapus '+fmt(d)+': '+idErr((e&&e.message)||String(e)))}done+=part.length;prog()}
    await muatRange(a,b)});
-  draft=null;renderV();
+  draft=null;if(!gagal.length){mMulti=false;mSel.clear()}renderV();
   if(gagal.length)await konfirmasi(ok+' dari '+total+' data berhasil, '+gagal.length+' bagian gagal:\n\n'+gagal.slice(0,6).join('\n')+(gagal.length>6?'\n... dan '+(gagal.length-6)+' lainnya':'')+'\n\nSilakan periksa koneksi lalu ulangi proses untuk bagian yang gagal.',{judul:'Sebagian gagal disimpan',ikon:'⚠️',ya:'Tutup'});
   else toast((kosong?nHapus+' data dikosongkan':ok+' data absensi disimpan')+' untuk '+siswa.length+' anak')
  })()}
@@ -2236,7 +2236,7 @@ async function hapusSiswaBatch(ids){const j=await dbq(db.rpc('hapus_siswa_batch'
  j.fotoGagal=false;const ps=(j.foto||[]).filter(Boolean);if(ps.length){try{const r=await db.storage.from(FOTO_BUCKET).remove(ps);if(r&&r.error)j.fotoGagal=true}catch(e){j.fotoGagal=true}ps.forEach(p=>{FC.delete(p);FU.delete(p)})}return j}
 async function hapusSiswa(id){const s=S.siswa.find(x=>x.id===id);if(!s)return;if(!await konfirmasi('Hapus '+s.nama+'? Seluruh riwayat absensi, tabungan (termasuk saldo), foto, dan data walinya ikut terhapus dan tidak bisa dikembalikan. Bila hanya berhenti sekolah, lebih baik Nonaktifkan.',{judul:'Hapus data anak',ya:'Hapus',bahaya:1}))return;
  guard(async()=>{const j=await hapusSiswaBatch([id]);ssel.delete(id);S.absen={};S.tab=null;await muatDasar();toast('Data anak dihapus'+(j.wali?' beserta data wali':'')+(j.tabungan?' dan riwayat tabungan':'')+(j.fotoGagal?'. File foto gagal dihapus dari penyimpanan':''),!j.fotoGagal);renderV()})}
-async function hapusSiswaTerpilih(){const ids=[...ssel].filter(id=>S.siswa.some(s=>s.id===id));if(!ids.length)return toast('Belum ada siswa yang dipilih',false);if(!await konfirmasi('Hapus '+ids.length+' siswa terpilih? Seluruh riwayat absensi, tabungan (termasuk saldo), foto, dan wali yang sudah tidak dipakai akan ikut terhapus dan tidak bisa dikembalikan.',{judul:'Hapus siswa terpilih',ya:'Hapus semua',bahaya:1}))return;guard(async()=>{const j=await hapusSiswaBatch(ids);ssel.clear();S.absen={};S.tab=null;await muatDasar();toast(j.siswa+' anak dihapus'+(j.wali?', '+j.wali+' data wali ikut dihapus':'')+(j.tabungan?', '+j.tabungan+' catatan tabungan ikut dihapus':'')+(j.siswa<ids.length?' ('+(ids.length-j.siswa)+' anak tidak terhapus)':'')+(j.fotoGagal?'. File foto gagal dihapus dari penyimpanan':''),!j.fotoGagal);renderV()})}
+async function hapusSiswaTerpilih(){const ids=[...ssel].filter(id=>S.siswa.some(s=>s.id===id));if(!ids.length)return toast('Belum ada siswa yang dipilih',false);if(!await konfirmasi('Hapus '+ids.length+' siswa terpilih? Seluruh riwayat absensi, tabungan (termasuk saldo), foto, dan wali yang sudah tidak dipakai akan ikut terhapus dan tidak bisa dikembalikan.',{judul:'Hapus siswa terpilih',ya:'Hapus semua',bahaya:1}))return;guard(async()=>{const j=await hapusSiswaBatch(ids);ssel.clear();sHapusMode=false;S.absen={};S.tab=null;await muatDasar();toast(j.siswa+' anak dihapus'+(j.wali?', '+j.wali+' data wali ikut dihapus':'')+(j.tabungan?', '+j.tabungan+' catatan tabungan ikut dihapus':'')+(j.siswa<ids.length?' ('+(ids.length-j.siswa)+' anak tidak terhapus)':'')+(j.fotoGagal?'. File foto gagal dihapus dari penyimpanan':''),!j.fotoGagal);renderV()})}
 let impK='';
 function bukaPilihFile(k){impK=k;const f=$('#fx');f.value='';f.click()}
 function pilihXlsx(k){if(k!=='guru'||role==='Developer'||MB()||(izinKelola&&Date.now()<izinExp))return bukaPilihFile(k);
@@ -2739,7 +2739,7 @@ async function alHapusTerpilih(){
  const ids=[...AL.sel];if(!ids.length)return toast('Belum ada alumni yang dipilih',false);
  const nm=ids.map(id=>(AL.data.find(a=>a.id===id)||{}).nama).filter(Boolean);
  if(!await konfirmasi('Hapus PERMANEN '+ids.length+' data alumni?\n\n'+nm.slice(0,10).join('\n')+(nm.length>10?'\n... dan '+(nm.length-10)+' lainnya':'')+'\n\nData tidak bisa dikembalikan. Unduh dulu bila masih diperlukan.',{judul:'Hapus data alumni',ya:'Hapus permanen',bahaya:1}))return;
- guard(async()=>{const n=await dbq(db.rpc('alumni_hapus',{p_sekolah:SEK,p_ids:ids}));AL.sel.clear();await muatAlumni();renderV();toast(n+' data alumni dihapus')});
+ guard(async()=>{const n=await dbq(db.rpc('alumni_hapus',{p_sekolah:SEK,p_ids:ids}));AL.sel.clear();AL.mode=false;await muatAlumni();renderV();toast(n+' data alumni dihapus')});
 }
 V.alumni=()=>{
  if(!AL.data)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat data alumni...</div></div></div>';
