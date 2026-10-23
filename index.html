@@ -141,6 +141,16 @@ body.scan-kunci .kunci-info{display:block}
 .cbl input[type=checkbox]{margin:0;flex:0 0 auto;width:20px;height:20px;accent-color:#1fa95b}
 .tb.cbrow{align-items:center;flex-wrap:wrap;gap:8px 12px}
 .tb.cbrow input.input[type=time]{flex:0 0 auto;padding:8px 10px}
+.swp{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:5px 0;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap}
+.sw{position:relative;display:inline-block;flex:0 0 auto;width:80px;height:34px;border-radius:99px;background:linear-gradient(#fff,#dfe3e0);box-shadow:0 1px 3px rgba(0,0,0,.3),inset 0 -1px 2px rgba(0,0,0,.12)}
+.sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:2}
+.sw i{position:absolute;inset:3px;border-radius:99px;background:linear-gradient(#ff4b4b,#c40f0f);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);transition:background .25s}
+.sw i::before{content:"";position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#e4e4e4 60%,#c9c9c9);box-shadow:0 2px 4px rgba(0,0,0,.4);transform:translateX(46px);transition:transform .25s}
+.sw i::after{content:"OFF";position:absolute;inset:0;line-height:28px;padding-left:11px;text-align:left;color:#fff;font-size:12px;font-weight:900;letter-spacing:.5px;text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.sw input:checked+i{background:linear-gradient(#6fdc5b,#2a9d2a)}
+.sw input:checked+i::before{transform:translateX(0)}
+.sw input:checked+i::after{content:"ON";padding-left:0;padding-right:13px;text-align:right}
+.sw input:focus-visible+i{outline:2px solid #1fa95b;outline-offset:3px}
 .ci .ci-act{display:flex;flex-wrap:nowrap;gap:8px;flex:1 1 100%;width:100%}
 .ci .ci-act .btn{flex:1 1 0;min-width:0;white-space:nowrap;text-align:center;padding:8px 4px;font-size:clamp(11px,3.3vw,12.5px)}
 .ci .ci-act .btn:first-child{flex:2 1 0}
@@ -2399,19 +2409,15 @@ function panelNotifOrtu(){
 /* ---------- sakelar push per sekolah yang diatur Developer ---------- */
 function devPushDari(sid){const r=(S.devPush||[]).find(x=>Number(x.sekolah_id)===Number(sid));return r?{piket:r.push_piket!==false,absensi:r.push_absensi!==false,tabungan:r.push_tabungan!==false}:null}
 function devPushBadge(sid){const d=devPushDari(sid);if(!d)return '-';
- return `<div style="display:flex;gap:4px;flex-wrap:wrap">${[['piket','Piket'],['absensi','Absensi'],['tabungan','Tabungan']].map(([k,n])=>`<span class="badge ${d[k]?'Hadir':'Belum'}">${n}</span>`).join('')}</div>`}
-function devPushKartu(sid){if(!sid)return '';const d=devPushDari(sid);
- const kepala='<label class="l">📲 Notifikasi push (diatur Developer)</label>';
- if(!d)return `<div class="fd" style="margin-top:16px">${kepala}<div class="note" style="color:var(--rd)">Data sakelar push belum tersedia. Jalankan skrip SQL langkah-push-developer.sql di Supabase.</div></div>`;
- const J=[['piket','🧹 Pengingat piket ke orang tua'],['absensi','✅ Notifikasi absensi ke orang tua'],['tabungan','💰 Notifikasi tabungan ke orang tua']];
- return `<div class="fd" style="margin-top:16px">${kepala}<div class="note">Bila dimatikan, pilihan itu tidak tampil di Pengaturan sekolah dan push jenis itu berhenti dikirim. Centang yang sudah dipilih Kepala Sekolah tidak hilang, jadi saat dinyalakan lagi kembali seperti semula.</div>${J.map(([k,n])=>`<div class="tb cbrow"><label class="cbl"><input type="checkbox" ${d[k]?'checked':''} onchange="devAturPush(${sid},'${k}',this.checked)"> ${n}</label></div>`).join('')}</div>`}
+ return `<div style="display:flex;flex-direction:column;gap:4px;min-width:110px">${[['piket','🧹 Piket'],['absensi','✅ Absensi'],['tabungan','💰 Tabungan']].map(([k,n])=>`<label class="swp"><span>${n}</span><span class="sw"><input type="checkbox" ${d[k]?'checked':''} onchange="devAturPush(${sid},'${k}',this.checked)"><i></i></span></label>`).join('')}</div>`}
+function devPushCatatan(){return S.devPush?`<div class="note" style="margin-top:8px">Sakelar Push Notifikasi: bila dimatikan, pilihan itu tidak tampil di Pengaturan sekolah dan push jenis itu berhenti dikirim. Centang yang sudah dipilih Kepala Sekolah tidak hilang, jadi saat dinyalakan lagi kembali seperti semula.</div>`:`<div class="note" style="margin-top:8px;color:var(--rd)">Data sakelar push belum tersedia. Jalankan skrip SQL langkah-push-developer.sql di Supabase.</div>`}
 async function devAturPush(sid,jenis,on){
  const sk=(S.devSek||[]).find(x=>x.id===sid)||{},NM={piket:'pengingat piket',absensi:'notifikasi absensi',tabungan:'notifikasi tabungan'};
- if(!on&&!await konfirmasi('Matikan '+NM[jenis]+' untuk '+(sk.nama||'sekolah ini')+'? Pilihannya tidak akan tampil lagi di Pengaturan Kepala Sekolah, dan push jenis ini berhenti dikirim ke orang tua.',{judul:'Matikan notifikasi push',ya:'Matikan',bahaya:1})){tampilCfgModal();return}
+ if(!on&&!await konfirmasi('Matikan '+NM[jenis]+' untuk '+(sk.nama||'sekolah ini')+'? Pilihannya tidak akan tampil lagi di Pengaturan Kepala Sekolah, dan push jenis ini berhenti dikirim ke orang tua.',{judul:'Matikan notifikasi push',ya:'Matikan',bahaya:1})){renderV();return}
  guard(async()=>{try{await dbq(db.rpc('developer_atur_push',{p_sekolah:sid,p_jenis:jenis,p_aktif:!!on}));
   S.devPush=await dbq(db.rpc('developer_push_daftar')).catch(()=>S.devPush);
   toast((on?'Dinyalakan: ':'Dimatikan: ')+NM[jenis]+' untuk '+(sk.nama||'sekolah'))}
-  finally{renderV();tampilCfgModal()}})}
+  finally{renderV()}})}
 let CFG_SID=null;
 function panelWebhook(){return `<div class="panel"><div class="ph">🔗 Alamat Webhook</div><div class="pb"><div class="note">Satu alamat Webhook untuk semua akun Fonnte sekolah Anda: pasang alamat yang sama di setiap perangkat Fonnte. Alamat ini rahasia dan unik untuk sekolah Anda, jadi disembunyikan. Untuk melihatnya, masukkan kata sandi akun Anda.</div><div class="tb"><button class="btn success" onclick="mintaWebhook(false)">🔓 Tampilkan alamat</button><button class="btn danger" onclick="mintaWebhook(true)">♻ Buat ulang kunci</button></div></div></div>`}
 function cfgIsi(){const R=RHS||{},tks=R.tokens||[],grp=R.grup||[],ai=R.kunci_ai||{};
@@ -2429,7 +2435,7 @@ ${(()=>{const own=!CFG_SID&&adalahKepala(),nv=own?(nomorKepalaProfil()||R.nomor_
 <div class="fd" style="margin-top:16px"><label class="l">ID Group WhatsApp</label>${barisG}<button class="btn sm success" ${tks.length?'':'disabled'} onclick="tambahGrup()">+ ID Group</button>${tks.length?'':'<div class="mu">Tambahkan token Fonnte dulu.</div>'}</div>`}
 function panelKonfigurasi(){return `<div class="panel" id="pnKonfig"><div class="ph">⚙ Konfigurasi</div><div class="pb">${cfgIsi()}</div></div>`}
 async function segarCfg(){await muatRahasia();if(CFG_SID)setTimeout(tampilCfgModal,250);else renderV()}
-function tampilCfgModal(){const sk=(S.devSek||[]).find(x=>x.id===CFG_SID)||{};info('Konfigurasi - '+(sk.nama||''),cfgIsi()+devPushKartu(CFG_SID)+`<div class="tb" style="margin-top:14px;flex-wrap:wrap"><button class="btn soft" onclick="closeM();setTimeout(()=>mintaWebhook(false,${CFG_SID}),150)">🔓 Alamat Webhook</button><button class="btn danger" onclick="closeM();setTimeout(()=>mintaWebhook(true,${CFG_SID}),150)">♻ Buat ulang kunci</button></div>`)}
+function tampilCfgModal(){const sk=(S.devSek||[]).find(x=>x.id===CFG_SID)||{};info('Konfigurasi - '+(sk.nama||''),cfgIsi()+`<div class="tb" style="margin-top:14px;flex-wrap:wrap"><button class="btn soft" onclick="closeM();setTimeout(()=>mintaWebhook(false,${CFG_SID}),150)">🔓 Alamat Webhook</button><button class="btn danger" onclick="closeM();setTimeout(()=>mintaWebhook(true,${CFG_SID}),150)">♻ Buat ulang kunci</button></div>`)}
 function konfigSekolah(sid){CFG_SID=sid;RHS=null;tampilCfgModal();muatRahasia().then(()=>{if(CFG_SID===sid)tampilCfgModal()})}
 function simpanKoneksi(btn){const ai=$('#rhAI').value.trim(),nk=$('#rhNK').value.trim();const b={aksi:'simpan'};if(ai)b.kunci_ai=ai;
  const own=!CFG_SID&&adalahKepala();if(!own)b.nomor_kepala=nk;
@@ -3328,7 +3334,7 @@ function nomorSetujui(id){const el=$('#np_'+id),pid=el?el.value:'';if(!pid)retur
  const nama=el.options[el.selectedIndex].text;konfirmasi('Setujui permintaan ini untuk akun berikut?\n\n'+nama+'\n\nNomor, dan username atau kata sandi yang diajukan, langsung berlaku.',{judul:'Setujui nomor baru',ya:'Setujui',ikon:'✅'}).then(ok=>{if(!ok)return;guard(async()=>{await apiDev({aksi:'nomor_setujui',id,profil_id:pid});await muatDev();toast('Permintaan disetujui');renderV()})})}
 function nomorTolak(id){form('Tolak permintaan nomor',[{k:'alasan',l:'Alasan penolakan (dikirim ke nomor baru, boleh kosong)'}],async v=>{await apiDev({aksi:'nomor_tolak',id,alasan:v.alasan});await muatDev();toast('Permintaan ditolak');renderV()});$('#ms').textContent='Tolak'}
 function devSekolah(){const sk=S.devSek||[];
- return `<div class="panel"><div class="ph">🏫 Semua sekolah</div><div class="pb">${sk.length?tab(['Sekolah','Kota','Status','Kepala sekolah','Guru','Siswa','Push','Aksi'],sk.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${esc(x.kota||'-')}</td><td><span class="badge ${x.status==='aktif'?'Hadir':'Belum'}">${x.status==='aktif'?'Aktif':'Nonaktif'}</span></td><td>${esc(x.kepala_nama||'-')}<div class="mu">${esc(fmtWA(x.kepala_wa)||'')}</div></td><td>${x.jml_guru}</td><td>${x.jml_siswa}</td><td>${devPushBadge(x.id)}</td><td><div class="tb" style="margin:0;flex-wrap:wrap"><button class="btn sm success" onclick="pilihMasuk(${x.id})">🔑 Masuk sebagai</button><button class="btn sm soft" onclick="konfigSekolah(${x.id})">⚙ Konfigurasi</button><button class="btn sm ${x.status==='aktif'?'danger':'success'}" onclick="statusSekolah(${x.id})">${x.status==='aktif'?'Nonaktifkan':'Aktifkan'}</button><button class="btn sm soft" onclick="beritahuHapusSekolah(${x.id})">📢 Beritahu Kepala</button><button class="btn sm danger" onclick="hapusSekolah(${x.id})">🗑 Hapus permanen</button></div></td></tr>`).join('')):'<div class="mu">Belum ada sekolah.</div>'}</div></div>`}
+ return `<div class="panel"><div class="ph">🏫 Semua sekolah</div><div class="pb">${sk.length?tab(['Sekolah','Kota','Status','Kepala sekolah','Guru','Siswa','Push Notifikasi','Aksi'],sk.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${esc(x.kota||'-')}</td><td><span class="badge ${x.status==='aktif'?'Hadir':'Belum'}">${x.status==='aktif'?'Aktif':'Nonaktif'}</span></td><td>${esc(x.kepala_nama||'-')}<div class="mu">${esc(fmtWA(x.kepala_wa)||'')}</div></td><td>${x.jml_guru}</td><td>${x.jml_siswa}</td><td>${devPushBadge(x.id)}</td><td><div class="tb" style="margin:0;flex-wrap:wrap"><button class="btn sm success" onclick="pilihMasuk(${x.id})">🔑 Masuk sebagai</button><button class="btn sm soft" onclick="konfigSekolah(${x.id})">⚙ Konfigurasi</button><button class="btn sm ${x.status==='aktif'?'danger':'success'}" onclick="statusSekolah(${x.id})">${x.status==='aktif'?'Nonaktifkan':'Aktifkan'}</button><button class="btn sm soft" onclick="beritahuHapusSekolah(${x.id})">📢 Beritahu Kepala</button><button class="btn sm danger" onclick="hapusSekolah(${x.id})">🗑 Hapus permanen</button></div></td></tr>`).join('')):'<div class="mu">Belum ada sekolah.</div>'}${sk.length?devPushCatatan():''}</div></div>`}
 function beritahuHapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if(!x)return;
  if(!x.kepala_nama)return toast('Sekolah ini belum punya Kepala Sekolah aktif',false);
  form('Beritahu Kepala Sekolah - '+x.nama,[{k:'batas',l:'Batas waktu mengunduh rekap (opsional)',t:'date',min:TODAY}],async v=>{
