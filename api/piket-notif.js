@@ -6,6 +6,7 @@
 //      pukul 05.00 WIB  -> waktu = 'pagi'  : piket HARI INI
 //  - Dilindungi rahasia bersama: header "Authorization: Bearer <CRON_RAHASIA>".
 //  - Tanggal piket dihitung di server dari jam Jakarta, bukan dari kiriman pemanggil.
+//  - Hanya sekolah yang sakelar push piketnya tidak dimatikan Developer (kolom push_piket_diizinkan).
 //  - Hari libur (mingguan, nasional, tanggal, dikurangi pembatalan) dilewati per kelas.
 //  - Satu HP yang terdaftar untuk beberapa anak menerima SATU notifikasi gabungan.
 //  - Alamat push yang sudah mati (404/410) atau gagal 5 kali berturut-turut dihapus otomatis.
@@ -273,7 +274,7 @@ module.exports = async (req, res) => {
     const tanggal = waktu === 'pagi' ? hari : tglPlus(hari, 1);
     const paksa = b.paksa === true;
 
-    const peng = (await L.panggil('/rest/v1/pengaturan?piket_aktif=eq.true&notif_piket_aktif=eq.true&select=sekolah_id', 'GET')) || [];
+    const peng = (await L.panggil('/rest/v1/pengaturan?piket_aktif=eq.true&notif_piket_aktif=eq.true&push_piket_diizinkan=eq.true&select=sekolah_id', 'GET')) || [];
     const kandidat = peng.map((p) => Number(p.sekolah_id)).filter(Number.isInteger);
     let aktif = [];
     if (kandidat.length) {
