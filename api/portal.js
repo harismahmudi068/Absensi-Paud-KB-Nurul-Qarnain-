@@ -234,9 +234,10 @@ const tglValid = (t) => {
 
 // Jenis notifikasi push yang tersedia di sekolah (piket, absensi, tabungan)
 function notifTersedia(p) {
-  const piket = !!(p.piket_aktif && p.notif_piket_aktif);
-  const absensi = !!p.notif_absensi_aktif;
-  const tabungan = !!(p.tabungan_aktif && p.notif_tabungan_aktif);
+  // push_*_diizinkan = sakelar Developer per sekolah (kosong dianggap diizinkan)
+  const piket = !!(p.piket_aktif && p.notif_piket_aktif && p.push_piket_diizinkan !== false);
+  const absensi = !!(p.notif_absensi_aktif && p.push_absensi_diizinkan !== false);
+  const tabungan = !!(p.tabungan_aktif && p.notif_tabungan_aktif && p.push_tabungan_diizinkan !== false);
   return { piket, absensi, tabungan, ada: piket || absensi || tabungan };
 }
 
@@ -262,7 +263,7 @@ async function aksiPush(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    const peng = ((await L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=piket_aktif,notif_piket_aktif,notif_absensi_aktif,tabungan_aktif,notif_tabungan_aktif&limit=1`, 'GET')) || [])[0] || {};
+    const peng = ((await L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=piket_aktif,notif_piket_aktif,notif_absensi_aktif,tabungan_aktif,notif_tabungan_aktif,push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan&limit=1`, 'GET')) || [])[0] || {};
     if (!notifTersedia(peng).ada)
       return res.status(409).json({ error: 'Notifikasi belum diaktifkan oleh sekolah' });
     const lg = b.langganan && typeof b.langganan === 'object' ? b.langganan : {};
@@ -479,7 +480,7 @@ module.exports = async (req, res) => {
     const [sekRows, pengRows, kelasRows, trxData, absData, liburData, pkRows, jnData, itemData, setData] = await Promise.all([
       L.panggil(`/rest/v1/sekolah?id=eq.${sid}&select=id,nama,status&limit=1`, 'GET'),
       L.panggil(
-        `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif,notif_absensi_aktif,notif_tabungan_aktif&limit=1`,
+        `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif,notif_absensi_aktif,notif_tabungan_aktif,push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan&limit=1`,
         'GET'
       ),
       s.kelas_id
@@ -540,7 +541,7 @@ module.exports = async (req, res) => {
         ? (notifTersedia(peng).ada && VAPID_PUB ? { aktif: true, vapid: VAPID_PUB, jenis: { piket: notifTersedia(peng).piket, absensi: notifTersedia(peng).absensi, tabungan: notifTersedia(peng).tabungan } } : { aktif: false })
         : undefined,
       // Fitur yang aktif di sekolah ini (menentukan menu Piket dan Hafalan di halaman siswa)
-      fitur: { piket: !!peng.piket_aktif, hafalan: !!peng.hafalan_aktif, notif_piket: !!peng.notif_piket_aktif }
+      fitur: { piket: !!peng.piket_aktif, hafalan: !!peng.hafalan_aktif, notif_piket: !!peng.notif_piket_aktif && peng.push_piket_diizinkan !== false, push: notifTersedia(peng).ada }
     };
 
     const petaAbs = (a) => ({
