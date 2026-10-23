@@ -7,6 +7,7 @@
 //  - Dilindungi rahasia bersama: header "Authorization: Bearer <CRON_RAHASIA>" (sama dengan piket-notif).
 //  - Isi notifikasi dibaca dari database SAAT DIKIRIM, jadi selalu status/jumlah terbaru.
 //  - Satu notifikasi per anak. Notifikasi absensi hari yang sama saling menggantikan (tag sama).
+//  - Sakelar Developer per sekolah (push_absensi_diizinkan, push_tabungan_diizinkan) diperiksa saat kirim; bila mati, antrean dilewati.
 //  - Alamat push yang mati (404/410) atau gagal 5 kali berturut-turut dihapus otomatis.
 //
 // Variabel lingkungan: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, CRON_RAHASIA,
@@ -110,7 +111,7 @@ async function proses(klaim) {
   const barisTabungan = klaim.filter((r) => r.jenis === 'tabungan');
 
   const [pengRows, sekRows, siswaRows, langgananRows] = await Promise.all([
-    L.panggil(`/rest/v1/pengaturan?sekolah_id=in.(${sekolahIds.join(',')})&select=sekolah_id,notif_absensi_aktif,notif_tabungan_aktif,tabungan_aktif`, 'GET'),
+    L.panggil(`/rest/v1/pengaturan?sekolah_id=in.(${sekolahIds.join(',')})&select=sekolah_id,notif_absensi_aktif,notif_tabungan_aktif,tabungan_aktif,push_absensi_diizinkan,push_tabungan_diizinkan`, 'GET'),
     L.panggil(`/rest/v1/sekolah?id=in.(${sekolahIds.join(',')})&status=eq.aktif&select=id`, 'GET'),
     perPaket(siswaIds, 150, (c) => semua(`/rest/v1/siswa?id=in.(${c.join(',')})&aktif=eq.true&select=id,sekolah_id,nama,nama_panggilan,kode_qr&order=id.asc`)),
     perPaket(siswaIds, 150, (c) => semua(`/rest/v1/push_langganan?siswa_id=in.(${c.join(',')})&select=id,siswa_id,endpoint,p256dh,auth,gagal,terima_absensi,terima_tabungan&order=id.asc`))
@@ -179,6 +180,7 @@ async function proses(klaim) {
     let judul, isi, ikon, url, tag, bendera;
     const nm = namaAnak(s);
     if (r.jenis === 'absensi') {
+      if (p.push_absensi_diizinkan === false) return lewati('Notifikasi absensi dimatikan Developer');
       if (!p.notif_absensi_aktif) return lewati('Notifikasi absensi dimatikan sekolah');
       const a = absMap.get(anakId + '|' + r.tanggal);
       if (!a) return lewati('Data absensi sudah tidak ada');
@@ -189,6 +191,7 @@ async function proses(klaim) {
       tag = 'absen-' + anakId + '-' + r.tanggal;
       bendera = 'terima_absensi';
     } else {
+      if (p.push_tabungan_diizinkan === false) return lewati('Notifikasi tabungan dimatikan Developer');
       if (!p.tabungan_aktif || !p.notif_tabungan_aktif) return lewati('Notifikasi tabungan dimatikan sekolah');
       const t = trxMap.get(Number(r.ref_id));
       if (!t) return lewati('Transaksi sudah tidak ada');
