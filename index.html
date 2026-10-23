@@ -1534,20 +1534,25 @@ V.siswa=()=>{
  const shown=S.siswa.filter(s=>sk&&(sk==='*'||s.kelas===sk)&&(s.nama.toLowerCase().includes(q.toLowerCase())||String(s.nisn||'').includes(q.trim())));
  const all=shown.length>0&&shown.every(s=>ssel.has(s.id));
  const aksi=sHapusMode
-   ? `<button class="btn danger sm" ${ssel.size?'':'disabled'} onclick="hapusSiswaTerpilih()">🗑 Hapus terpilih (${ssel.size})</button><button class="btn soft sm" onclick="batalHapusSiswa()">✖ Batal</button>`
+   ? `<button id="sHapusBtn" class="btn danger sm" ${ssel.size?'':'disabled'} onclick="hapusSiswaTerpilih()">🗑 Hapus terpilih (${ssel.size})</button><button class="btn soft sm" onclick="batalHapusSiswa()">✖ Batal</button>`
    : `<button class="btn danger sm" onclick="bukaHapusSiswa()">🗑 Hapus</button>`;
  const head=sHapusMode
-   ? ['<input type="checkbox" '+(all?'checked':'')+' onchange="pilihSemuaSiswa(this.checked)">','No','Nama','NISN','Kelas','Tgl Lahir','JK','Alamat','Tahun Masuk','WhatsApp Ortu','Status','Aksi']
+   ? ['<input type="checkbox" '+(all?'checked':'')+' id="sCekAll" onchange="pilihSemuaSiswa(this.checked)">','No','Nama','NISN','Kelas','Tgl Lahir','JK','Alamat','Tahun Masuk','WhatsApp Ortu','Status','Aksi']
    : ['No','Nama','NISN','Kelas','Tgl Lahir','JK','Alamat','Tahun Masuk','WhatsApp Ortu','Status','Aksi'];
  return `<div class="panel"><div class="ph">👥 Data Siswa <span class="tb tbgrid" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('siswa')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('siswa')">⬆ Impor XLSX</button><button class="btn success sm add" onclick="addSiswa()">+ Siswa</button></span></div><div class="pb"><div class="tb"><select class="select" onchange="sk=this.value;ssel.clear();renderV()">${kopt3(sk)}</select><input id="q" class="input grow search-smooth" placeholder="Cari nama atau NISN..." value="${esc(q)}" oninput="cariSiswaInput(this)"></div><div class="tb"><button class="btn success sm dl" onclick="unduhSiswa('pdf',this,sk||'*')">⬇ PDF</button><button class="btn sm dl pdf" onclick="unduhSiswa('xlsx',this,sk||'*')">⬇ XLSX</button></div><div class="note">File XLSX dapat diedit kembali dan dipisahkan menjadi <b>sheet per kelas</b>. Pilih <b>Semua kelas</b> untuk seluruh data. Tombol ini tersedia untuk semua guru.</div>${tab(head,'<tbody id="sb"></tbody>').replace('<tbody><tbody id="sb"></tbody></tbody>','<tbody id="sb">'+siswaRows()+'</tbody>')}</div></div>`;
 };
 function siswaRows(){if(!sk)return '<tr><td colspan="12" class="mu" style="text-align:center">'+PKM+'</td></tr>';return S.siswa.filter(s=>(sk==='*'||s.kelas===sk)&&(s.nama.toLowerCase().includes(q.toLowerCase())||String(s.nisn||'').includes(q.trim()))).map((s,i)=>{
- const pilih=sHapusMode?`<td><input type="checkbox" ${ssel.has(s.id)?'checked':''} onchange="pilihSiswa(${s.id},this.checked)"></td>`:'';
+ const pilih=sHapusMode?`<td><input type="checkbox" class="cks" data-id="${s.id}" ${ssel.has(s.id)?'checked':''} onchange="pilihSiswa(${s.id},this.checked)"></td>`:'';
  return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan)}</div></td><td>${esc(s.nisn||'-')}</td><td>${esc(s.kelas)}</td><td>${tglDMY(s.tgl)||'-'}</td><td>${jkNama(s.jk)||'-'}</td><td>${esc(s.alamat||'-')}</td><td>${s.masuk||'-'}</td><td>${esc(s.wa)}</td><td>${s.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td><button class="btn sm soft aksi-btn" aria-label="Aksi" onclick="aksiSiswa(${s.id},this)">✏️</button></td></tr>`;
 }).join('')}
 function cariSiswaInput(el){q=el.value;const tb=$('#sb');if(tb)tb.innerHTML=siswaRows();}
-function pilihSiswa(id,on){on?ssel.add(id):ssel.delete(id);renderV()}
-function pilihSemuaSiswa(on){const shown=S.siswa.filter(s=>(sk==='*'||s.kelas===sk)&&s.nama.toLowerCase().includes(q.toLowerCase()));if(on)shown.forEach(s=>ssel.add(s.id));else shown.forEach(s=>ssel.delete(s.id));renderV()}
+/* centang cepat: hanya ubah kotak, hitungan, dan tombol yang terlihat (tanpa membangun ulang halaman) */
+function cekHdr(id,tot,n){const a=document.getElementById(id);if(a){a.checked=tot>0&&n===tot;a.indeterminate=n>0&&n<tot}}
+function cekBtn(id,n,t){const b=document.getElementById(id);if(b){b.disabled=!n;b.textContent=t+' ('+n+')'}}
+function cekBaris(sel){return [...document.querySelectorAll(sel)]}
+function siswaCekUI(){const r=cekBaris('#sb .cks');cekHdr('sCekAll',r.length,r.filter(x=>x.checked).length);cekBtn('sHapusBtn',ssel.size,'🗑 Hapus terpilih')}
+function pilihSiswa(id,on){on?ssel.add(id):ssel.delete(id);siswaCekUI()}
+function pilihSemuaSiswa(on){cekBaris('#sb .cks').forEach(x=>{x.checked=on;const i=+x.dataset.id;on?ssel.add(i):ssel.delete(i)});siswaCekUI()}
 async function setWali(sid,wa){await dbq(db.from('siswa_wali').delete().eq('siswa_id',sid));if(!wa)return;const w=await dbq(db.from('wali').upsert({no_wa:wa},{onConflict:'no_wa'}).select().single());await dbq(db.from('siswa_wali').insert({siswa_id:sid,wali_id:w.id}))}
 const kid=n=>(S.kelas.find(k=>k.nama.toLowerCase()===String(n||'').trim().toLowerCase())||{}).id||null;
 function belumAdaKelas(){if(!kelola())return toast('Belum ada kelas. Minta Kepala Sekolah menambahkannya di menu Pengaturan',false);info('Belum ada kelas','<div style="text-align:center;padding:6px 4px"><div style="font-size:42px">🏫</div><p>Siswa harus dimasukkan ke dalam kelas. Tambahkan kelas terlebih dahulu.</p><button class="btn success" style="width:100%" onclick="closeM();addKelas()">+ Tambah Kelas</button><button class="btn soft" style="width:100%;margin-top:8px" onclick="lompatPengaturan(\'pnKelas\')">Buka Pengaturan Kelas</button></div>')}
@@ -1565,8 +1570,9 @@ let gHapusMode=false;
 function bolehHapusGuru(){return adalahKepala()||role==='Developer'}
 function bukaHapusGuru(){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Operator, atau Developer yang dapat menghapus akun guru',false);gHapusMode=true;gsel.clear();renderV()}
 function batalHapusGuru(){gHapusMode=false;gsel.clear();renderV()}
-function pilihGuru(id,on){if(!bolehHapusGuru())return;on?gsel.add(id):gsel.delete(id);renderV()}
-function pilihSemuaGuru(on){if(!bolehHapusGuru())return;const shown=S.guru.filter(g=>g.id!==me&&!(g.role==='kepala_sekolah'&&role!=='Developer'));if(on)shown.forEach(g=>gsel.add(g.id));else shown.forEach(g=>gsel.delete(g.id));renderV()}
+function guruCekUI(){const r=cekBaris('#v .ckg');cekHdr('gCekAll',r.length,r.filter(x=>x.checked).length);cekBtn('gHapusBtn',gsel.size,'🗑 Keluarkan terpilih')}
+function pilihGuru(id,on){if(!bolehHapusGuru())return;on?gsel.add(id):gsel.delete(id);guruCekUI()}
+function pilihSemuaGuru(on){if(!bolehHapusGuru())return;cekBaris('#v .ckg').forEach(x=>{x.checked=on;on?gsel.add(x.dataset.id):gsel.delete(x.dataset.id)});guruCekUI()}
 async function hapusGuruTerpilih(){
  if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Operator, atau Developer yang dapat menghapus akun guru',false);
  const ids=[...gsel].filter(id=>id!==me);
@@ -1584,7 +1590,7 @@ async function hapusGuruTerpilih(){
 function guruRows(shown,bh,kel,dev,kunci){
  return shown.map((g,i)=>{
   const mine=g.id===me;
-  const pilih=gHapusMode&&bh&&!mine&&!kunci(g)?`<td><input type="checkbox" ${gsel.has(g.id)?'checked':''} onchange="pilihGuru('${g.id}',this.checked)"></td>`:(gHapusMode&&bh?'<td></td>':'');
+  const pilih=gHapusMode&&bh&&!mine&&!kunci(g)?`<td><input type="checkbox" class="ckg" data-id="${g.id}" ${gsel.has(g.id)?'checked':''} onchange="pilihGuru('${g.id}',this.checked)"></td>`:(gHapusMode&&bh?'<td></td>':'');
   const wa=(S.nomor||{})[g.id];
   return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${wa?esc(fmtWA(wa)):(mine?'<span class="mu">Belum diisi</span>':'<span class="mu">-</span>')}</td><td>${esc(g.username)}</td><td>${kel&&!mine&&!kunci(g)?`<select class="select" onchange="setGuruRole('${g.id}',this.value)">${(role==='Operator'?['kepala_sekolah','wakil_kepala','guru']:['kepala_sekolah','wakil_kepala','operator','guru']).map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role]||g.role)}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td>${mine?`<button class="btn sm soft" onclick="go('profil')">👤 Buka Profil Saya</button>`:'<span class="mu">-</span>'}${kel&&!mine&&!kunci(g)?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`
  }).join('');
@@ -1611,11 +1617,11 @@ V.guru=()=>{
  const all=selectable.length>0&&selectable.every(g=>gsel.has(g.id));
  const aksi=bh
    ? (gHapusMode
-      ? `<button class="btn danger sm" ${gsel.size?'':'disabled'} onclick="hapusGuruTerpilih()">🗑 Keluarkan terpilih (${gsel.size})</button><button class="btn soft sm" onclick="batalHapusGuru()">✖ Batal</button>`
+      ? `<button id="gHapusBtn" class="btn danger sm" ${gsel.size?'':'disabled'} onclick="hapusGuruTerpilih()">🗑 Keluarkan terpilih (${gsel.size})</button><button class="btn soft sm" onclick="batalHapusGuru()">✖ Batal</button>`
       : `<button class="btn danger sm" onclick="bukaHapusGuru()">🗑 Keluarkan Guru</button>`)
    : '';
  const head=gHapusMode&&bh
-   ? ['<input type="checkbox" '+(all?'checked':'')+' onchange="pilihSemuaGuru(this.checked)">','No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Aksi']
+   ? ['<input type="checkbox" '+(all?'checked':'')+' id="gCekAll" onchange="pilihSemuaGuru(this.checked)">','No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Aksi']
    : ['No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Aksi'];
  const emptyCol=gHapusMode&&bh?9:8;
  return `<div class="panel"><div class="ph">👨‍🏫 Data Guru ${kel?`<span class="tb tbgrid" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('guru')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('guru')">⬆ Impor XLSX</button><button class="btn success sm add" onclick="addGuru()">+ Guru</button></span>`:''}</div><div class="pb"><div class="tb"><input id="guruCari" class="input grow search-smooth" placeholder="Cari nama atau NIP guru..." value="${esc(gQ)}" oninput="cariGuruInput(this)"></div><div class="note">${kel?'Kepala Sekolah, Wakil Kepala Sekolah, Operator, atau Developer dapat menambah guru, mengubah peran, dan mengaktifkan atau menonaktifkan guru di sekolah ini. Menambah atau mengimpor guru meminta kode yang dikirim ke WhatsApp Anda sebagai bukti kepemilikan. Mengganti Kepala Sekolah: pilih peran Kepala Sekolah pada guru yang dituju, maka Kepala Sekolah lama otomatis menjadi Guru. Tombol Keluarkan hanya mengeluarkan guru dari sekolah ini. Username, kata sandi, nomor WhatsApp, dan passkey diubah oleh pemilik akunnya sendiri lewat menu Profil Saya.':'Profil, kata sandi, nomor WhatsApp, dan passkey Anda diubah lewat menu Profil Saya. Nomor WhatsApp guru lain tidak ditampilkan.'}</div><div class="tw"><table><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody id="guruBody">${guruRows(shown,bh,kel,dev,kunci)||`<tr><td colspan="${emptyCol}" class="mu">Guru tidak ditemukan.</td></tr>`}</tbody></table></div></div></div>`;
@@ -2337,9 +2343,10 @@ function addLibur(){form('Tambah Libur',[{k:'tgl',l:'Mulai tanggal',t:'date',v:T
 async function delLibur(id){if(!await konfirmasi('Hapus jadwal libur ini?',{judul:'Hapus jadwal libur',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.from('libur_tanggal').delete().eq('id',id));await muatDasar();await segarkan();renderV()})}
 /* ---------- pesan WA ---------- */
 let psel=new Set();
-V.pesan=()=>{const all=S.pesan.length&&S.pesan.every(p=>psel.has(p.id));return `<div class="panel"><div class="ph">💬 Pesan WhatsApp Masuk <button class="btn danger sm" ${psel.size?'':'disabled'} onclick="hapusPesan()">🗑 Hapus terpilih (${psel.size})</button></div><div class="pb"><div class="note">Semua pesan dari orang tua tercatat di sini (100 terbaru). Centang pesan yang ingin dihapus, atau centang kotak di judul kolom untuk memilih semua.</div>${tab(['<input type="checkbox" '+(all?'checked':'')+' onchange="pilihSemuaPesan(this.checked)">','Waktu','Dari','Isi','Hasil','Aksi'],S.pesan.map(p=>`<tr><td><input type="checkbox" ${psel.has(p.id)?'checked':''} onchange="pilihPesan(${p.id},this.checked)"></td><td>${esc(p.waktu)}</td><td>${esc(p.dari)}</td><td>${esc(p.isi)}</td><td>${esc(p.hasil)}</td><td>${p.cek?`<button class="btn sm orange" onclick="doneMsg(${p.id})">Tandai selesai</button>`:'<span class="mu">Selesai</span>'}</td></tr>`).join(''))}</div></div>`};
-function pilihPesan(id,on){on?psel.add(id):psel.delete(id);renderV()}
-function pilihSemuaPesan(on){psel=new Set(on?S.pesan.map(p=>p.id):[]);renderV()}
+V.pesan=()=>{const all=S.pesan.length&&S.pesan.every(p=>psel.has(p.id));return `<div class="panel"><div class="ph">💬 Pesan WhatsApp Masuk <button id="pHapusBtn" class="btn danger sm" ${psel.size?'':'disabled'} onclick="hapusPesan()">🗑 Hapus terpilih (${psel.size})</button></div><div class="pb"><div class="note">Semua pesan dari orang tua tercatat di sini (100 terbaru). Centang pesan yang ingin dihapus, atau centang kotak di judul kolom untuk memilih semua.</div>${tab(['<input type="checkbox" '+(all?'checked':'')+' id="pCekAll" onchange="pilihSemuaPesan(this.checked)">','Waktu','Dari','Isi','Hasil','Aksi'],S.pesan.map(p=>`<tr><td><input type="checkbox" class="ckp" ${psel.has(p.id)?'checked':''} onchange="pilihPesan(${p.id},this.checked)"></td><td>${esc(p.waktu)}</td><td>${esc(p.dari)}</td><td>${esc(p.isi)}</td><td>${esc(p.hasil)}</td><td>${p.cek?`<button class="btn sm orange" onclick="doneMsg(${p.id})">Tandai selesai</button>`:'<span class="mu">Selesai</span>'}</td></tr>`).join(''))}</div></div>`};
+function pesanCekUI(){const r=cekBaris('#v .ckp');cekHdr('pCekAll',r.length,r.filter(x=>x.checked).length);cekBtn('pHapusBtn',psel.size,'🗑 Hapus terpilih')}
+function pilihPesan(id,on){on?psel.add(id):psel.delete(id);pesanCekUI()}
+function pilihSemuaPesan(on){psel=new Set(on?S.pesan.map(p=>p.id):[]);cekBaris('#v .ckp').forEach(x=>x.checked=on);pesanCekUI()}
 async function hapusPesan(){const ids=[...psel];if(!ids.length||!await konfirmasi('Hapus '+ids.length+' pesan terpilih? Tidak bisa dikembalikan.',{judul:'Hapus pesan',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.from('pesan_masuk').delete().in('id',ids));psel.clear();await muatPesan();toast(ids.length+' pesan dihapus');renderV()})}
 
 function doneMsg(id){guard(async()=>{await dbq(db.from('pesan_masuk').update({perlu_dicek:false}).eq('id',id));await muatPesan();renderV()})}
@@ -2534,14 +2541,14 @@ const klTujuanList=()=>{const a=S.kelas.find(k=>String(k.id)===String(KL.asal));
 const klSiswa=()=>{const z=KL.q.toLowerCase().trim();return S.siswa.filter(s=>s.aktif&&!klKunci(s)&&KL.asal&&String(s.kelas_id)===String(KL.asal)&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z))).sort((a,b)=>a.nama.localeCompare(b.nama,'id'))};
 const klKunci=s=>{const d=KL.map.get(s.id);return !!d&&d.status!=='sementara'};
 const klInfo=d=>kb(KJC[d.jenis],KJ[d.jenis])+(d.jenis==='naik'&&d.kelas_tujuan_nama?' → '+esc(d.kelas_tujuan_nama):'')+' '+kb(KSC[d.status],KST[d.status]);
-const klListHtml=()=>tab(['','No','Nama','NISN','Keputusan'],klSiswa().map((s,i)=>{const d=KL.map.get(s.id);return `<tr><td><input type="checkbox" ${KL.sel.has(s.id)?'checked':''} ${klKunci(s)?'disabled':''} onchange="klPilih(${s.id},this.checked)"></td><td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan||'')}</div></td><td>${esc(s.nisn||'-')}</td><td>${d?klInfo(d):'<span class="mu">Belum diputuskan</span>'}</td></tr>`}).join(''),KL.asal?'Tidak ada siswa aktif yang cocok di kelas ini.':'<span class="pk-warn">⚠️ Pilih kelas asal terlebih dahulu</span>');
+const klListHtml=()=>tab(['','No','Nama','NISN','Keputusan'],klSiswa().map((s,i)=>{const d=KL.map.get(s.id);return `<tr><td><input type="checkbox" class="ckkl" ${KL.sel.has(s.id)?'checked':''} ${klKunci(s)?'disabled':''} onchange="klPilih(${s.id},this.checked)"></td><td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan||'')}</div></td><td>${esc(s.nisn||'-')}</td><td>${d?klInfo(d):'<span class="mu">Belum diputuskan</span>'}</td></tr>`}).join(''),KL.asal?'Tidak ada siswa aktif yang cocok di kelas ini.':'<span class="pk-warn">⚠️ Pilih kelas asal terlebih dahulu</span>');
 const klRingkasHtml=()=>{const n=KL.sel.size,nm=[...KL.sel].map(id=>(S.siswa.find(s=>s.id===id)||{}).nama).filter(Boolean);return `<b>${n} siswa dipilih</b>`+(n?'<div class="mu" style="margin-top:4px">'+nm.slice(0,10).map(esc).join(', ')+(nm.length>10?', dan '+(nm.length-10)+' lainnya':'')+'</div>':'')};
 const klRefresh=()=>{const a=$('#klList'),b=$('#klRingkas');if(a)a.innerHTML=klListHtml();if(b)b.innerHTML=klRingkasHtml()};
 function klTab(t){KL.tab=t;KL.asal='';KL.tujuan='';KL.q='';KL.sel.clear();renderV()}
 function klAsal(v){KL.asal=v;KL.tujuan='';KL.sel.clear();renderV()}
 function klTujuan(v){KL.tujuan=v}
 function klPilih(id,on){on?KL.sel.add(id):KL.sel.delete(id);const b=$('#klRingkas');if(b)b.innerHTML=klRingkasHtml()}
-function klSemua(on){klSiswa().filter(s=>!klKunci(s)).forEach(s=>on?KL.sel.add(s.id):KL.sel.delete(s.id));renderV()}
+function klSemua(on){klSiswa().filter(s=>!klKunci(s)).forEach(s=>on?KL.sel.add(s.id):KL.sel.delete(s.id));cekBaris('#v .ckkl:not(:disabled)').forEach(x=>x.checked=on);const b=$('#klRingkas');if(b)b.innerHTML=klRingkasHtml()}
 function klCari(el){KL.q=el.value;klRefresh()}
 function klCariDaftar(el){KL.dq=el.value;const a=$('#klDaftar');if(a)a.innerHTML=klDaftarHtml()}
 const klJudul={naik:['Proses Kenaikan Kelas','Pilih kelas asal dan kelas tujuan, lalu centang siswa yang naik. Guru bebas memilih kelas tujuan yang berurutan lebih tinggi, tidak harus mengikuti urutan otomatis.'],tinggal:['Proses Tinggal Kelas','Pilih kelas asal, lalu centang siswa yang tetap berada di kelas yang sama pada tahun ajaran berikutnya.'],lulus:['Proses Kelulusan','Pilih kelas akhir, lalu centang siswa yang dinyatakan lulus. Data siswa lulus tidak langsung berubah.'],pindah:['Pindah Kelas','Pindahkan siswa ke kelas lain yang urutannya SAMA (misalnya kelas urutan 1 hanya ke kelas urutan 1). Berlaku langsung, bukan keputusan akhir tahun.']};
@@ -2556,7 +2563,7 @@ function klProsesHtml(){
  return `<div class="note">${klJudul[t][1]}${t==='pindah'?' Siswa langsung berpindah kelas.':' Keputusan disimpan sebagai <b>sementara</b>, siswa belum dipindahkan.'}</div>${w}
 <div class="tb${(t==='naik'||t==='pindah')?'':' tb-full'}"><select class="select grow" onchange="klAsal(this.value)">${klOpsi(as,KL.asal,t==='lulus'?'- Kelas akhir -':'- Kelas asal -')}</select>${(t==='naik'||t==='pindah')?`<select class="select grow" onchange="klTujuan(this.value)">${klOpsi(klTujuanList(),KL.tujuan,'- Kelas tujuan -')}</select>`:''}</div>
 <div class="tb"><input class="input grow" style="flex:1 1 100%;width:100%" placeholder="Cari nama atau NISN" value="${esc(KL.q)}" oninput="klCari(this)"></div>
-<label class="mu" style="display:flex;gap:8px;align-items:center;margin:0 0 10px"><input type="checkbox" ${sem?'checked':''} onchange="klSemua(this.checked)"> Pilih semua yang terlihat</label>
+<label class="mu" style="display:flex;gap:8px;align-items:center;margin:0 0 10px"><input type="checkbox" id="klCekAll" ${sem?'checked':''} onchange="klSemua(this.checked)"> Pilih semua yang terlihat</label>
 <div id="klList">${klListHtml()}</div><div class="note" id="klRingkas" style="margin-top:12px">${klRingkasHtml()}</div>
 <button class="btn success" onclick="klProses()">${btn}</button>`;
 }
@@ -2706,19 +2713,20 @@ const alFilter=semua=>{const z=AL.q.toLowerCase().trim();return(AL.data||[]).fil
 const alListHtml=()=>{
  if(!alTerbuka())return `<div class="note">📂 Daftar alumni dilipat. Pilih tahun lulus untuk menampilkannya (${(AL.data||[]).length} alumni tersimpan).</div>`;
  const l=alFilter(),m=AL.mode;
- return tab((m?['']:[]).concat(['No','Nama','Tgl Lahir','JK','Alamat','Tahun Masuk','Tahun Lulus','Kepala Sekolah']),l.map((a,i)=>`<tr>${m?`<td><input type="checkbox" ${AL.sel.has(a.id)?'checked':''} onchange="alPilih(${a.id},this.checked)"></td>`:''}<td>${i+1}</td><td><b>${esc(a.nama)}</b></td><td>${tglDMY(a.tgl_lahir)||'-'}</td><td>${jkNama(a.jenis_kelamin)||'-'}</td><td>${esc(a.alamat||'-')}</td><td>${a.tahun_masuk||'-'}</td><td>${a.tahun_lulus}</td><td>${esc(a.kepala_sekolah||'-')}</td></tr>`).join(''),'Tidak ada alumni yang cocok.')};
+ return tab((m?['']:[]).concat(['No','Nama','Tgl Lahir','JK','Alamat','Tahun Masuk','Tahun Lulus','Kepala Sekolah']),l.map((a,i)=>`<tr>${m?`<td><input type="checkbox" class="ckal" ${AL.sel.has(a.id)?'checked':''} onchange="alPilih(${a.id},this.checked)"></td>`:''}<td>${i+1}</td><td><b>${esc(a.nama)}</b></td><td>${tglDMY(a.tgl_lahir)||'-'}</td><td>${jkNama(a.jenis_kelamin)||'-'}</td><td>${esc(a.alamat||'-')}</td><td>${a.tahun_masuk||'-'}</td><td>${a.tahun_lulus}</td><td>${esc(a.kepala_sekolah||'-')}</td></tr>`).join(''),'Tidak ada alumni yang cocok.')};
 const alHapusBtn=()=>{if(AL.mode||!adalahKepala()||!alTerbuka()||!alFilter().length)return '';return `<button class="btn danger sm" onclick="alMode(true)">🗑 Hapus</button>`};
 const alBarHtml=()=>{if(!adalahKepala()||!alTerbuka())return '';const l=alFilter();if(!l.length)return '';
  if(!AL.mode)return '';
  const semua=l.every(a=>AL.sel.has(a.id));
- return `<div class="tb"><label class="mu" style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${semua?'checked':''} onchange="alSemua(this.checked)"> Pilih semua (${l.length})</label><button class="btn danger sm" onclick="alHapusTerpilih()">🗑 Hapus terpilih (<span id="alSel">${AL.sel.size}</span>)</button><button class="btn soft sm" onclick="alMode(false)">Batal</button></div>`};
+ return `<div class="tb"><label class="mu" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="alCekAll" ${semua?'checked':''} onchange="alSemua(this.checked)"> Pilih semua (${l.length})</label><button class="btn danger sm" onclick="alHapusTerpilih()">🗑 Hapus terpilih (<span id="alSel">${AL.sel.size}</span>)</button><button class="btn soft sm" onclick="alMode(false)">Batal</button></div>`};
 const alJmlText=()=>alTerbuka()?alFilter().length+' dari '+(AL.data||[]).length+' alumni':(AL.data||[]).length+' alumni tersimpan';
 const alRefresh=()=>{const a=$('#alList'),b=$('#alJml'),c=$('#alBar'),h=$('#alHapusSlot');if(h)h.innerHTML=alHapusBtn();if(a)a.innerHTML=alListHtml();if(b)b.textContent=alJmlText();if(c)c.innerHTML=alBarHtml()};
 function alCari(el){AL.q=el.value;alRefresh()}
 function alTahun(v){AL.th=v;AL.sel.clear();renderV()}
 function alMode(on){AL.mode=on;AL.sel.clear();renderV()}
-function alPilih(id,on){on?AL.sel.add(id):AL.sel.delete(id);const c=$('#alSel');if(c)c.textContent=AL.sel.size}
-function alSemua(on){alFilter().forEach(a=>on?AL.sel.add(a.id):AL.sel.delete(a.id));renderV()}
+function alCekUI(){const c=$('#alSel');if(c)c.textContent=AL.sel.size;const l=alFilter();const a=document.getElementById('alCekAll');if(a)a.checked=l.length>0&&l.every(x=>AL.sel.has(x.id))}
+function alPilih(id,on){on?AL.sel.add(id):AL.sel.delete(id);alCekUI()}
+function alSemua(on){alFilter().forEach(a=>on?AL.sel.add(a.id):AL.sel.delete(a.id));cekBaris('#v .ckal').forEach(x=>x.checked=on);alCekUI()}
 async function alHapusTerpilih(){
  if(!adalahKepala())return toast('Hanya Kepala Sekolah atau Wakil yang dapat menghapus data alumni',false);
  const ids=[...AL.sel];if(!ids.length)return toast('Belum ada alumni yang dipilih',false);
@@ -3204,9 +3212,10 @@ function kalReset(){kalMode=false;kalSel.clear()}
 function kalRender(){const y=window.scrollY;renderV();window.scrollTo(0,y)}
 function kalMulaiHapus(){kalMode=true;kalSel.clear();renderV()}
 function kalBatal(){kalReset();renderV()}
-function kalPilih(t,on){on?kalSel.add(t):kalSel.delete(t);kalRender()}
-function kalPilihSemua(on){(S.devKal||[]).forEach(r=>on?kalSel.add(r.tanggal):kalSel.delete(r.tanggal));kalRender()}
-function kalPilihBulan(b,on){(S.devKal||[]).filter(r=>r.tanggal.slice(0,7)===b).forEach(r=>on?kalSel.add(r.tanggal):kalSel.delete(r.tanggal));kalRender()}
+function kalCekUI(){const l=S.devKal||[],r=cekBaris('#v .ckk');r.forEach(x=>x.checked=kalSel.has(x.dataset.t));cekBaris('#v .ckkb').forEach(x=>{const ts=l.filter(q=>q.tanggal.slice(0,7)===x.dataset.b);x.checked=ts.length>0&&ts.every(q=>kalSel.has(q.tanggal))});const a=document.getElementById('kalCekAll');if(a)a.checked=l.length>0&&l.every(q=>kalSel.has(q.tanggal));cekBtn('kalHapusBtn',kalSel.size,'🗑 Hapus terpilih')}
+function kalPilih(t,on){on?kalSel.add(t):kalSel.delete(t);kalCekUI()}
+function kalPilihSemua(on){(S.devKal||[]).forEach(r=>on?kalSel.add(r.tanggal):kalSel.delete(r.tanggal));kalCekUI()}
+function kalPilihBulan(b,on){(S.devKal||[]).filter(r=>r.tanggal.slice(0,7)===b).forEach(r=>on?kalSel.add(r.tanggal):kalSel.delete(r.tanggal));kalCekUI()}
 async function kalHapusTerpilih(){
  const ada=new Set((S.devKal||[]).map(r=>r.tanggal)),ts=[...kalSel].filter(t=>ada.has(t)).sort();
  if(!ts.length)return;
@@ -3220,13 +3229,13 @@ async function kalHapusTerpilih(){
 function devKalender(){
  const rows=S.devKal||[],n=kalSel.size,semua=rows.length>0&&rows.every(r=>kalSel.has(r.tanggal));let last='';
  const bln={};rows.forEach(r=>{const b=r.tanggal.slice(0,7);(bln[b]=bln[b]||[]).push(r.tanggal)});
- const body=rows.map((r,i)=>{const bl=r.tanggal.slice(0,7);let h='';if(bl!==last){last=bl;const pb=kalMode?`<input type="checkbox" ${bln[bl].every(t=>kalSel.has(t))?'checked':''} onchange="kalPilihBulan('${bl}',this.checked)" style="margin-right:8px">`:'';h=`<tr><td colspan="${kalMode?5:4}" style="background:#eef7f1;font-weight:800">${pb}${fmtB(bl)}</td></tr>`}
-  const cb=kalMode?`<td><input type="checkbox" ${kalSel.has(r.tanggal)?'checked':''} onchange="kalPilih('${r.tanggal}',this.checked)"></td>`:'';
+ const body=rows.map((r,i)=>{const bl=r.tanggal.slice(0,7);let h='';if(bl!==last){last=bl;const pb=kalMode?`<input type="checkbox" class="ckkb" data-b="${bl}" ${bln[bl].every(t=>kalSel.has(t))?'checked':''} onchange="kalPilihBulan('${bl}',this.checked)" style="margin-right:8px">`:'';h=`<tr><td colspan="${kalMode?5:4}" style="background:#eef7f1;font-weight:800">${pb}${fmtB(bl)}</td></tr>`}
+  const cb=kalMode?`<td><input type="checkbox" class="ckk" data-t="${r.tanggal}" ${kalSel.has(r.tanggal)?'checked':''} onchange="kalPilih('${r.tanggal}',this.checked)"></td>`:'';
   const aksi=kalMode?'<span class="mu">-</span>':`<button class="btn soft sm" onclick="ubahLiburNas('${r.tanggal}')">Ubah</button> <button class="btn sm danger" onclick="hapusLiburNas('${r.tanggal}')">Hapus</button>`;
   return h+`<tr>${cb}<td>${i+1}</td><td>${fmt(r.tanggal)} <span class="mu">${HR[wd(r.tanggal)]}</span></td><td>${esc(r.keterangan||'')}</td><td>${aksi}</td></tr>`}).join('');
- const head=kalMode?['<input type="checkbox" '+(semua?'checked':'')+' onchange="kalPilihSemua(this.checked)">','No','Tanggal','Keterangan','Aksi']:['No','Tanggal','Keterangan','Aksi'];
+ const head=kalMode?['<input type="checkbox" '+(semua?'checked':'')+' id="kalCekAll" onchange="kalPilihSemua(this.checked)">','No','Tanggal','Keterangan','Aksi']:['No','Tanggal','Keterangan','Aksi'];
  const aksiHead=kalMode
-  ?`<button class="btn danger sm" ${n?'':'disabled'} onclick="kalHapusTerpilih()">🗑 Hapus terpilih (${n})</button> <button class="btn soft sm" onclick="kalBatal()">✖ Batal</button>`
+  ?`<button id="kalHapusBtn" class="btn danger sm" ${n?'':'disabled'} onclick="kalHapusTerpilih()">🗑 Hapus terpilih (${n})</button> <button class="btn soft sm" onclick="kalBatal()">✖ Batal</button>`
   :`<button class="btn success sm" onclick="tambahLiburNas()">＋ Libur nasional</button> <button class="btn soft sm" onclick="unduhTemplateLibur(this)">⬇ Template (XLSX)</button> <button class="btn orange sm" onclick="document.getElementById('imporLiburFile').click()">⬆ Impor (XLSX)</button> <button class="btn danger sm" ${rows.length?'':'disabled'} onclick="kalMulaiHapus()">🗑 Hapus banyak</button>`;
  const bar=kalMode?`<div class="tb" style="margin-bottom:8px"><button class="btn soft sm" onclick="kalPilihSemua(${!semua})">${semua?'☐ Kosongkan pilihan':'☑ Pilih semua ('+rows.length+')'}</button><span class="mu">${n} dari ${rows.length} tanggal dipilih</span></div>`:'';
  return `<div class="panel"><div class="ph">📅 Kalender Libur Nasional <span class="mu">${rows.length} tanggal</span> ${aksiHead}<input type="file" id="imporLiburFile" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden onchange="imporLiburDipilih(this)"></div><div class="pb"><div class="note">Berlaku untuk semua sekolah dan semua kelas. Impor XLSX mengganti seluruh daftar ini. Tombol Ubah dan Hapus mengubah satu tanggal; tombol Hapus banyak dipakai untuk mencentang beberapa tanggal (atau semuanya) lalu menghapusnya sekaligus. Tanggal yang sudah lewat dihapus otomatis setiap tengah malam. Perubahan untuk hari ini baru tercermin di absensi pada penyegaran libur berikutnya.</div>${bar}${tab(head,body,'Belum ada libur nasional. Tambah satu per satu atau impor dari XLSX.')}</div></div>`}
