@@ -239,7 +239,7 @@ const tgl=d=>{const p=String(d).split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]
 const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jakarta'}):'';
 const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
 const m=location.pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);
-const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['libur','🎉','Kalender Hari Libur'],['notifikasi','🔔','Notifikasi']];
+const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['libur','🎉','Kalender Hari Libur'],['notifikasi','🔔','Notifikasi','push']];
 const C={},S={},LAP={st:'',busy:0};let cur='',tok=0;
 const segar=v=>C[v];
 
