@@ -25,7 +25,9 @@ self.addEventListener('push', (e) => {
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const tujuan = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin);
+  let tujuan;
+  try { tujuan = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin); }
+  catch (_) { tujuan = new URL('/', self.location.origin); } // alamat rusak: buka beranda
   // hanya alamat di situs ini yang boleh dibuka
   if (tujuan.origin !== self.location.origin) return;
   e.waitUntil((async () => {
@@ -43,3 +45,15 @@ self.addEventListener('notificationclick', (e) => {
   })());
 });
 
+// Browser kadang mengganti alamat langganan push. Langganan baru dibuat ulang di sini;
+// server mengetahuinya saat orang tua membuka Halaman Siswa berikutnya (halaman mendaftarkan ulang otomatis).
+self.addEventListener('pushsubscriptionchange', (e) => {
+  e.waitUntil((async () => {
+    try {
+      const lama = e.oldSubscription;
+      if (!e.newSubscription && lama && lama.options && lama.options.applicationServerKey) {
+        await self.registration.pushManager.subscribe(lama.options);
+      }
+    } catch (_) { /* didaftarkan ulang saat halaman dibuka */ }
+  })());
+});
