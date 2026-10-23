@@ -10,6 +10,8 @@
 //  - Hari libur (mingguan, nasional, tanggal, dikurangi pembatalan) dilewati per kelas.
 //  - Satu HP yang terdaftar untuk beberapa anak menerima SATU notifikasi gabungan.
 //  - Alamat push yang sudah mati (404/410) atau gagal 5 kali berturut-turut dihapus otomatis.
+//  - Beberapa sekolah diproses bersamaan (SEKOLAH_PARALEL) agar tidak melewati batas waktu fungsi bila sekolah bertambah banyak;
+//    kegagalan satu sekolah tidak menghentikan sekolah lain.
 //  - Setiap sekolah dicatat di tabel piket_notif_log (anti kiriman ganda + bahan pemantauan Developer).
 //
 // Variabel lingkungan: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT (mis. mailto:admin@sekolah.sch.id),
@@ -23,6 +25,7 @@ const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu
 const TTL_DETIK = 6 * 3600; // pesan yang tidak sempat sampai dalam 6 jam dibuang oleh layanan push
 const BATAS_GAGAL = 5;
 const PARALEL = 25;
+const SEKOLAH_PARALEL = 3; // jumlah sekolah yang diproses bersamaan (tiap sekolah masih mengirim maks. PARALEL push sekaligus)
 const MACET_MENIT = 30; // catatan 'berjalan' lebih lama dari ini dianggap macet dan boleh diambil alih
 
 const hariJakarta = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
@@ -47,7 +50,9 @@ function rahasiaCocok(header) {
 async function semua(path) {
   const hasil = [];
   for (let off = 0; off < 100000; off += 1000) {
-    const r = (await L.panggil(path + (path.includes('?') ? '&' : '?') + 'limit=1000&offset=' + off, 'GET')) || [];
+    // urutan tetap (id) agar pembacaan per 1000 baris tidak tumpang tindih atau terlewat
+    const urut = path.includes('order=') ? '' : '&order=id.asc';
+    const r = (await L.panggil(path + (path.includes('?') ? '&' : '?') + 'limit=1000&offset=' + off + urut, 'GET')) || [];
     hasil.push(...r);
     if (r.length < 1000) break;
   }
@@ -281,12 +286,26 @@ module.exports = async (req, res) => {
       aktif = ((await L.panggil(`/rest/v1/sekolah?status=eq.aktif&id=in.(${kandidat.join(',')})&select=id`, 'GET')) || []).map((x) => Number(x.id));
     }
 
-    const ringkas = [];
-    for (const sid of aktif) ringkas.push(await prosesSekolah(sid, waktu, tanggal, paksa));
+    // kumpulan pekerja: tiap pekerja mengambil sekolah berikutnya sampai habis; hasil tetap berurutan
+    const ringkas = new Array(aktif.length);
+    let giliran = 0;
+    const pekerja = async () => {
+      while (giliran < aktif.length) {
+        const i = giliran++;
+        try {
+          ringkas[i] = await prosesSekolah(aktif[i], waktu, tanggal, paksa);
+        } catch (e) {
+          console.error('piket-notif sekolah', aktif[i], e && e.message);
+          ringkas[i] = { sekolah_id: aktif[i], error: true };
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(SEKOLAH_PARALEL, aktif.length) }, pekerja));
     const jml = (k) => ringkas.reduce((a, x) => a + (x[k] || 0), 0);
     return res.status(200).json({
       ok: true, waktu, tanggal, sekolah: aktif.length,
-      terkirim: jml('terkirim'), gagal: jml('gagal'), dibuang: jml('dibuang')
+      terkirim: jml('terkirim'), gagal: jml('gagal'), dibuang: jml('dibuang'),
+      sekolah_error: ringkas.filter((x) => x && x.error).length
     });
   } catch (e) {
     console.error('piket-notif:', e && e.message);
