@@ -263,12 +263,17 @@ document.addEventListener('click',()=>{ddTutup();mTutup()});
 /* ---------- pemuatan per halaman ---------- */
 function pesan(j,t){$('#isi').innerHTML='<div class="msg"><div style="font-size:44px">'+j+'</div><h2>'+esc(t[0])+'</h2><div class="mu">'+esc(t[1])+'</div></div>'}
 function loading(){$('#isi').innerHTML='<div class="sk"></div><div class="sk" style="height:140px"></div><div class="sk"></div>'}
+/* Daftar libur dari server dikirim ringkas (tanggal khusus + hari mingguan + pembatalan); di sini disusun ulang jadi daftar lengkap */
+function liburUrai(d){const th=+d.hari_ini.slice(0,4),h=new Set(d.libur_mgg),b=new Set(d.libur_batal||[]),k={},o=[];d.libur.forEach(x=>{k[x.tanggal]=x});
+ for(let t=Date.UTC(th-1,0,1);t<=Date.UTC(th+1,11,31);t+=864e5){const z=new Date(t),s=z.toISOString().slice(0,10);
+  if(k[s])o.push(k[s]);else if(h.has(z.getUTCDay())&&!b.has(s))o.push({tanggal:s,ket:'Libur mingguan',jenis:'mingguan'})}
+ return o}
 async function ambil(v){
  if(segar(v))return C[v];
  if(v==='notifikasi'){const d=await ambil('dashboard');C.notifikasi=d;return d}
  const r=await fetch('/api/portal?k='+m[1]+'&v='+v,{cache:'no-store'});
  if(r.status===404){const e=new Error('404');e.nf=1;throw e}
- if(!r.ok)throw 0;const d=await r.json();C[v]=d;S.siswa=d.siswa;S.sekolah=d.sekolah;S.hari=d.hari_ini;if(d.fitur)S.fitur=d.fitur;if(d.push&&d.push.vapid)S.vapid=d.push.vapid;if(d.libur)S.libur=d.libur;
+ if(!r.ok)throw 0;const d=await r.json();if(d.libur_mgg)d.libur=liburUrai(d);C[v]=d;S.siswa=d.siswa;S.sekolah=d.sekolah;S.hari=d.hari_ini;if(d.fitur)S.fitur=d.fitur;if(d.push&&d.push.vapid)S.vapid=d.push.vapid;if(d.libur)S.libur=d.libur;
  $('#nm').textContent=d.siswa.nama||'';if(d.v==='dashboard')sapa(d);document.title=(d.sekolah.nama?d.sekolah.nama+' - ':'')+'Halaman Siswa';return d}
 async function go(v){
  mTutup();ddTutup();
