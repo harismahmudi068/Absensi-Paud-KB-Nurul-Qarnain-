@@ -642,7 +642,35 @@ const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j
    b.classList.add('busy');
    const cek=()=>{if(!b.isConnected)return;if(n>0||Date.now()-t0<700)setTimeout(cek,120);else b.classList.remove('busy')};
    setTimeout(cek,120);setTimeout(()=>b.classList.remove('busy'),20000)},0)},true)})();
-const db=supabase.createClient(URL_SB,KEY_SB,{auth:{experimental:{passkey:true}}});
+/* ---------- penyimpanan sementara (cache) pembacaan data ----------
+   Data menu disimpan CM_TTL (2 menit). Setiap penulisan dari perangkat ini (simpan/ubah/hapus ke database,
+   penyimpanan file, atau /api) menaikkan cmVer sehingga semua cache otomatis dianggap basi. */
+const CM_TTL=120000,CM=new Map();let cmVer=0;
+const RPC_BACA=/^(developer_(alpa|alumni_daftar|alumni_per_sekolah|alumni_ringkas|guru|jam_notif_siswa|log|notif_libur|notif_piket|notif_siswa|pendaftaran|permintaan_nomor|push_daftar|sekolah)|keputusan_validasi|nomor_wa_(guru|kepala|operator)|tabungan_saldo|tahun_baru_ringkasan|email_dari_username)$/;
+function cmTulis(u,m){m=String(m||'GET').toUpperCase();if(m==='GET'||m==='HEAD'||m==='OPTIONS')return false;
+ const s=String((u&&u.url)||u||''),r=s.match(/\/rest\/v1\/rpc\/([A-Za-z0-9_]+)/);
+ if(r)return !RPC_BACA.test(r[1]);
+ if(/\/auth\/v1\/(token|logout)/.test(s))return false;
+ return /\/(rest\/v1|storage\/v1|auth\/v1|api)\//.test(s)}
+const _fetchAsli=window.fetch.bind(window);
+function cmFetch(u,o){const w=cmTulis(u,(o&&o.method)||(u&&u.method));if(w)cmVer++;const p=_fetchAsli(u,o);if(w)p.then(()=>{cmVer++},()=>{cmVer++});return p}
+window.fetch=cmFetch;
+const cmOk=(k,ttl)=>{const e=CM.get(k);return !!e&&e.v===cmVer&&Date.now()-e.t<(ttl||CM_TTL)};
+const cmCatat=(k,v0)=>CM.set(k,{t:Date.now(),v:v0});
+function cmKosong(){CM.clear();cmVer++}
+/* menu yang boleh memakai cache: [kunci, umur]. Scan dan Absensi hari ini, Tabungan, Pengaturan selalu dibaca segar. */
+function cmKunci(id){
+ if(role==='Developer')return null;
+ const hb=hariIni().slice(0,7);
+ switch(id){
+  case 'dashboard':return ['dash|'+TODAY,CM_TTL];
+  case 'absensi':return attDate===TODAY?null:['abs|'+attDate,CM_TTL];
+  case 'rekap':return ['bln|'+bulan,bulan<hb?600000:CM_TTL];
+  case 'laporanortu':return ['bln|'+lb,lb<hb?600000:CM_TTL];
+  case 'guru':case 'pesan':case 'piket':case 'hafalan':case 'alumni':case 'kelola':case 'profil':return [id,CM_TTL];
+ }
+ return null}
+const db=supabase.createClient(URL_SB,KEY_SB,{auth:{experimental:{passkey:true}},global:{fetch:cmFetch}});
 /* ---------- multi-sekolah: sekolah aktif + pembungkus tabel ---------- */
 let SEK=null,MEMB=[],PROFIL=null;
 const TENANT=new Set(['absensi','kelas','laporan_ortu','libur_batal','libur_mingguan','libur_tanggal','pengaturan','percakapan_tertunda','pesan_masuk','siswa','wali','tabungan_transaksi','piket_jenis','piket_jadwal','hafalan_jenis','hafalan_item','hafalan_setoran']);
@@ -869,7 +897,7 @@ const _sinkNK={};
 async function sinkronNomorKepala(){try{if(!adalahKepala()||CFG_SID||!RHS||RHS.error)return;const n=nomorKepalaProfil();if(!n)return;
  if(normWA(RHS.nomor_kepala||'')===normWA(n)||_sinkNK[SEK]===n)return;_sinkNK[SEK]=n;
  await apiPengaturan({aksi:'simpan',nomor_kepala:fmtWA(n)});RHS=await apiPengaturan({aksi:'baca'});if(view==='pengaturan'||view==='dashboard')renderV()}catch(e){console.warn('Sinkron nomor kepala sekolah gagal',e)}}
-const LOAD={profil:()=>muatProfilSaya(),dashboard:()=>role==='Developer'?Promise.all([muatDev(),muatProfilSaya()]):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil(),muatRingDash()]).then(r=>{_dashT=Date.now();return r}),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:muatDev,tabungan:muatTabungan,kelola:()=>muatKelola(),alumni:()=>muatAlumni(),piket:()=>muatPiket(),hafalan:()=>muatHafalan()};
+const LOAD={profil:p=>role==='Developer'?devPastikan(devButuh(),p):muatProfilSaya(),dashboard:p=>role==='Developer'?devPastikan(devButuh(),p):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil(),muatRingDash()]).then(r=>{_dashT=Date.now();return r}),absensi:()=>muatRange(attDate,attDate),scan:()=>muatRange(TODAY,TODAY),rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{try{const r=await dbq(db.from('pengaturan').select('push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan').maybeSingle());if(r)Object.assign(S.set,r)}catch(e){}if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:p=>devPastikan(devButuh(),p),tabungan:muatTabungan,kelola:()=>muatKelola(),alumni:()=>muatAlumni(),piket:()=>muatPiket(),hafalan:()=>muatHafalan()};
 /* ---------- libur ---------- */
 const batalAda=(d,k)=>{const b=S.batal;if(!b||!b.size)return false;if(b.has(d+'|0'))return true;const kl=S.kelas.find(x=>x.nama===k);return !!kl&&b.has(d+'|'+kl.id)};
 async function muatBatal(){S.batal=new Set();try{const r=await dbq(db.from('libur_batal').select('tanggal,kelas_id'));(r||[]).forEach(x=>S.batal.add(x.tanggal+'|'+x.kelas_id))}catch(e){peringatan('Data pembatalan libur gagal dimuat',e)}}
@@ -1244,12 +1272,12 @@ async function mulai(){const {data:{session}}=await db.auth.getSession();if(!ses
   const pilih=MEMB.length===1?MEMB[0]:MEMB.find(m=>m.sekolah_id===ingat);
   if(pilih)await masukSekolah(pilih);else tampilPilihSekolah()}
  catch(e){await gagalMuat(e)}}
-async function masukDeveloper(){try{SEK=null;role='Developer';meNama=PROFIL.nama;
+async function masukDeveloper(){try{cmKosong();SEK=null;role='Developer';meNama=PROFIL.nama;
   S.absen={};S.pesan=[];S.siswa=[];S.kelas=[];S.guru=[];S.libur=[];S.nasional=[];S.nasMap=new Map();S.mingguan=[];S.set={};RHS=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
   try{sessionStorage.removeItem('sekolah_aktif');sessionStorage.removeItem('bukaView')}catch(e){}
   terapNama();$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');view='dashboard';pasangBanner();await go('dashboard')}
  catch(e){await gagalMuat(e)}}
-async function masukSekolah(m){try{SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
+async function masukSekolah(m){try{cmKosong();SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
   S.absen={};S.pesan=[];RHS=null;CFG_SID=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;mMulti=false;mSel.clear();attKelas='';scanKelas='';kk='';rk='';lo='';q='';gQ='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
   KONFIG_NANTI=false;await muatDasar();if(adalahKepala()||role==='Developer')muatRahasia().then(()=>{if(view==='dashboard'&&!$('#ap').classList.contains('hid'))renderV()});$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');
   const bv=sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView');view=(bv&&allowed(bv))?bv:'dashboard';pasangBanner();await go(view);if(adalahKepala())setTimeout(sapaAwal,300)}
@@ -1347,8 +1375,8 @@ let drwT=null;
 function drw(o){const d=$('#drw');if(o){clearTimeout(drwT);d.classList.remove('closing');d.classList.add('show');return}
  if(!d.classList.contains('show')||d.classList.contains('closing'))return;
  d.classList.add('closing');clearTimeout(drwT);drwT=setTimeout(()=>d.classList.remove('show','closing'),310)}
-async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();tpTutup();usbStop(true);await stopScan();TODAY=hariIni();view=id;if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
- try{if(LOAD[id])await LOAD[id]()}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
+async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
+ try{if(LOAD[id]){const ck=cmKunci(id);if(!(ck&&!paksa&&cmOk(ck[0],ck[1]))){const v0=cmVer;await LOAD[id](paksa);if(ck&&v0===cmVer)cmCatat(ck[0],v0)}}}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),bt=m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`;let h;
  if(role==='Developer')h=ms.map(bt).join('');
@@ -2007,12 +2035,24 @@ async function unduhSatu(id,btn){if(!setUnduhBusy(btn,true,'Menyiapkan kartu...'
 /* ---------- FOTO SISWA (Supabase Storage, bucket privat 'foto-siswa') ---------- */
 const FOTO_BUCKET='foto-siswa',FOTO_MAX=80000,FC=new Map(),FU=new Map();
 const fotoMuat=s=>{const p=s&&s.foto_path;return p&&FC.has(p)?FC.get(p):null};
+/* cache foto di penyimpanan browser (Cache Storage), 30 hari. Nama berkas foto selalu baru saat foto diganti, jadi aman disimpan lama.
+   Dibersihkan otomatis saat keluar akun (keluar() mengosongkan seluruh Cache Storage). */
+const FOTO_CS='foto-kartu-v1',FOTO_UMUR=30*864e5,FOTO_CS_MAX=300;
+const fotoCsAda=()=>typeof caches!=='undefined'&&/^https?:$/.test(location.protocol);
+const fotoCsKunci=p=>location.origin+'/__foto/'+encodeURIComponent(p);
+async function fotoCsAmbil(p){if(!fotoCsAda())return null;try{const c=await caches.open(FOTO_CS),k=fotoCsKunci(p),r=await c.match(k);if(!r)return null;
+ const t=Number(r.headers.get('x-simpan'))||0;if(!t||Date.now()-t>FOTO_UMUR){await c.delete(k);return null}return await r.blob()}catch(e){return null}}
+async function fotoCsSimpan(p,blob){if(!fotoCsAda()||!blob)return;try{const c=await caches.open(FOTO_CS);
+ await c.put(fotoCsKunci(p),new Response(blob,{headers:{'Content-Type':blob.type||'image/jpeg','x-simpan':String(Date.now())}}));
+ const ks=await c.keys();if(ks.length>FOTO_CS_MAX)await Promise.all(ks.slice(0,ks.length-FOTO_CS_MAX).map(k=>c.delete(k)))}catch(e){}}
+async function fotoCsHapus(ps){if(!fotoCsAda())return;try{const c=await caches.open(FOTO_CS);await Promise.all((ps||[]).filter(Boolean).map(p=>c.delete(fotoCsKunci(p))))}catch(e){}}
 async function fotoSiap(s){const p=s&&s.foto_path;if(!p)return null;if(FC.has(p))return FC.get(p);
- try{const r=await db.storage.from(FOTO_BUCKET).download(p);if(r.error||!r.data)throw r.error||new Error('kosong');
-  const u=URL.createObjectURL(r.data),im=new Image();im.src=u;await im.decode();
+ const pasang=async bl=>{const u=URL.createObjectURL(bl),im=new Image();im.src=u;try{await im.decode()}catch(e){URL.revokeObjectURL(u);throw e}
   if(FC.size>=150){const k=FC.keys().next().value;FC.delete(k);const o=FU.get(k);if(o)URL.revokeObjectURL(o);FU.delete(k)}
-  FC.set(p,im);FU.set(p,u);return im}catch(e){return null}}
-async function fotoHapusBerkas(ps){ps=(ps||[]).filter(Boolean);if(!ps.length)return;try{await db.storage.from(FOTO_BUCKET).remove(ps)}catch(e){console.warn('Berkas foto belum terhapus dari penyimpanan',e)}ps.forEach(p=>{FC.delete(p);FU.delete(p)})}
+  FC.set(p,im);FU.set(p,u);return im};
+ try{const c=await fotoCsAmbil(p);if(c){try{return await pasang(c)}catch(e){await fotoCsHapus([p])}}}catch(e){}
+ try{const r=await db.storage.from(FOTO_BUCKET).download(p);if(r.error||!r.data)throw r.error||new Error('kosong');const im=await pasang(r.data);fotoCsSimpan(p,r.data);return im}catch(e){return null}}
+async function fotoHapusBerkas(ps){ps=(ps||[]).filter(Boolean);if(!ps.length)return;try{await db.storage.from(FOTO_BUCKET).remove(ps)}catch(e){console.warn('Berkas foto belum terhapus dari penyimpanan',e)}ps.forEach(p=>{FC.delete(p);FU.delete(p)});fotoCsHapus(ps)}
 /* pengecilan bertahap supaya hasil tajam */
 function skalaFoto(img,sx,sy,sw,sh,W,H){let cur=img,csx=sx,csy=sy,csw=sw,csh=sh;
  while(csw/2>=W&&csh/2>=H){const n=document.createElement('canvas');n.width=Math.floor(csw/2);n.height=Math.floor(csh/2);const x=n.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(cur,csx,csy,csw,csh,0,0,n.width,n.height);cur=n;csx=0;csy=0;csw=n.width;csh=n.height}
@@ -2243,7 +2283,7 @@ async function kirimSemua(){if(!lo)return toast(PK,false);const l=act().filter(s
 async function kirimSatu(id){const s=S.siswa.find(x=>x.id===id);if(await konfirmasi('Kirim laporan '+fmtB(lb)+' '+s.pan+' ke '+s.wa+'?',{judul:'Kirim laporan',ikon:'📤',ya:'Kirim'}))kirimList([s])}
 async function hapusWaliYatim(wids){const ids=[...new Set(wids||[])];if(!ids.length)return 0;const r=await dbq(db.from('siswa_wali').select('wali_id').in('wali_id',ids));const used=new Set((r||[]).map(x=>x.wali_id));const orphan=ids.filter(id=>!used.has(id));if(!orphan.length)return 0;await dbq(db.from('wali').delete().in('id',orphan));return orphan.length}
 async function hapusSiswaBatch(ids){const j=await dbq(db.rpc('hapus_siswa_batch',{p_sekolah:SEK,p_ids:ids}));if(!j||!j.siswa)throw new Error('Tidak ada data yang terhapus. Anda mungkin tidak punya izin, atau data sudah tidak ada.');
- j.fotoGagal=false;const ps=(j.foto||[]).filter(Boolean);if(ps.length){try{const r=await db.storage.from(FOTO_BUCKET).remove(ps);if(r&&r.error)j.fotoGagal=true}catch(e){j.fotoGagal=true}ps.forEach(p=>{FC.delete(p);FU.delete(p)})}return j}
+ j.fotoGagal=false;const ps=(j.foto||[]).filter(Boolean);if(ps.length){try{const r=await db.storage.from(FOTO_BUCKET).remove(ps);if(r&&r.error)j.fotoGagal=true}catch(e){j.fotoGagal=true}ps.forEach(p=>{FC.delete(p);FU.delete(p)});fotoCsHapus(ps)}return j}
 async function hapusSiswa(id){const s=S.siswa.find(x=>x.id===id);if(!s)return;if(!await konfirmasi('Hapus '+s.nama+'? Seluruh riwayat absensi, tabungan (termasuk saldo), foto, dan data walinya ikut terhapus dan tidak bisa dikembalikan. Bila hanya berhenti sekolah, lebih baik Nonaktifkan.',{judul:'Hapus data anak',ya:'Hapus',bahaya:1}))return;
  guard(async()=>{const j=await hapusSiswaBatch([id]);ssel.delete(id);S.absen={};S.tab=null;await muatDasar();toast('Data anak dihapus'+(j.wali?' beserta data wali':'')+(j.tabungan?' dan riwayat tabungan':'')+(j.fotoGagal?'. File foto gagal dihapus dari penyimpanan':''),!j.fotoGagal);renderV()})}
 async function hapusSiswaTerpilih(){const ids=[...ssel].filter(id=>S.siswa.some(s=>s.id===id));if(!ids.length)return toast('Belum ada siswa yang dipilih',false);if(!await konfirmasi('Hapus '+ids.length+' siswa terpilih? Seluruh riwayat absensi, tabungan (termasuk saldo), foto, dan wali yang sudah tidak dipakai akan ikut terhapus dan tidak bisa dikembalikan.',{judul:'Hapus siswa terpilih',ya:'Hapus semua',bahaya:1}))return;guard(async()=>{const j=await hapusSiswaBatch(ids);ssel.clear();sHapusMode=false;S.absen={};S.tab=null;await muatDasar();toast(j.siswa+' anak dihapus'+(j.wali?', '+j.wali+' data wali ikut dihapus':'')+(j.tabungan?', '+j.tabungan+' catatan tabungan ikut dihapus':'')+(j.siswa<ids.length?' ('+(ids.length-j.siswa)+' anak tidak terhapus)':'')+(j.fotoGagal?'. File foto gagal dihapus dari penyimpanan':''),!j.fotoGagal);renderV()})}
@@ -2546,7 +2586,7 @@ async function tbMulai(){const lb=($('#tbLabel')||{}).value.trim(),ok=($('#tbOk'
  const rg=TB.rg,pt=TB.rows.length?TB.mode:null,b=$('#ms');b.disabled=true;
  try{ld(1);const fotoSebelum=S.siswa.map(x=>x.foto_path).filter(Boolean);await dbq(db.rpc('mulai_tahun_ajaran',{label:lb,p_sekolah:SEK,p_tabungan:pt}));closeM();
   S.absen={};S.tab=null;KL.data=null;AL.data=null;KL.sel.clear();await muatDasar();
-  try{const pakai=new Set(S.siswa.map(x=>x.foto_path).filter(Boolean)),yatim=fotoSebelum.filter(p=>!pakai.has(p));if(yatim.length){await db.storage.from(FOTO_BUCKET).remove(yatim);yatim.forEach(p=>{FC.delete(p);FU.delete(p)})}}catch(e){console.warn('Foto siswa lulus belum terhapus dari penyimpanan',e)}
+  try{const pakai=new Set(S.siswa.map(x=>x.foto_path).filter(Boolean)),yatim=fotoSebelum.filter(p=>!pakai.has(p));if(yatim.length){await db.storage.from(FOTO_BUCKET).remove(yatim);yatim.forEach(p=>{FC.delete(p);FU.delete(p)});fotoCsHapus(yatim)}}catch(e){console.warn('Foto siswa lulus belum terhapus dari penyimpanan',e)}
   toast('Tahun ajaran baru dimulai. Keputusan diterapkan: '+rg.naik+' naik kelas, '+rg.tinggal+' tinggal kelas, '+(rg.lulus||0)+' lulus (masuk menu Alumni)'+(pt==='bawa'?'. Saldo tabungan siswa yang lanjut dibawa, tabungan siswa lulus dihapus':pt==='tutup'?'. Seluruh tabungan siswa dihapus (tutup buku)':''));renderAll()}
  catch(e){toast((e&&e.message)||String(e),false);b.disabled=false;tbCek()}finally{ld(0)}}
 async function tahunBaru(){
@@ -3242,12 +3282,39 @@ let devTab='ringkas';
 const MB=()=>{try{return !!sessionStorage.getItem('mode_bantuan')}catch(e){return false}};
 const hBT=()=>{try{const m=JSON.parse(sessionStorage.getItem('mode_bantuan')||'null'),t=m&&m.bantuan;return t?{'X-Bantuan':t}:{}}catch(e){return {}}};
 async function apiDev(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/developer',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/developer tidak ditemukan (404). Pastikan file api/developer.js sudah di-deploy');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
-async function muatDev(){const [g,sk,pd,pn,lg,sm,al,nl,np,ns,nj,pu]=await Promise.all([dbq(db.rpc('developer_guru')),dbq(db.rpc('developer_sekolah')),dbq(db.rpc('developer_pendaftaran')),dbq(db.rpc('developer_permintaan_nomor')),dbq(db.rpc('developer_log',{p_batas:100})),dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_alpa')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_libur')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_piket')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_notif_siswa')).catch(e=>({error:(e&&e.message)||String(e)})),dbq(db.rpc('developer_jam_notif_siswa')).catch(()=>null),dbq(db.rpc('developer_push_daftar')).catch(()=>null)]);S.devPush=pu;S.devNP=np;S.devNS=ns;S.devNSJam=nj;S.devGuru=g;S.devSek=sk;S.devPend=pd;S.devNomor=pn;S.devLog=lg;S.devSimpan=sm;S.devAlpa=al;S.devNL=nl;S.devAlRing=await dbq(db.rpc('developer_alumni_ringkas')).catch(()=>null);S.devAlTh='';S.devAlList=[];await muatKalNas().catch(()=>{})}
+/* Data Developer dimuat per dataset: tiap tab hanya membaca yang dibutuhkan, dan dipakai bersama selama masih segar (2 menit) */
+const ERR=e=>({error:(e&&e.message)||String(e)});
+const DEVSET={
+ guru:async()=>{S.devGuru=await dbq(db.rpc('developer_guru'))},
+ sek:async()=>{S.devSek=await dbq(db.rpc('developer_sekolah'))},
+ pend:async()=>{S.devPend=await dbq(db.rpc('developer_pendaftaran'))},
+ nomor:async()=>{S.devNomor=await dbq(db.rpc('developer_permintaan_nomor'))},
+ log:async()=>{S.devLog=await dbq(db.rpc('developer_log',{p_batas:100}))},
+ simpan:async()=>{S.devSimpan=await dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(ERR)},
+ alpa:async()=>{S.devAlpa=await dbq(db.rpc('developer_alpa')).catch(ERR)},
+ nl:async()=>{S.devNL=await dbq(db.rpc('developer_notif_libur')).catch(ERR)},
+ np:async()=>{S.devNP=await dbq(db.rpc('developer_notif_piket')).catch(ERR)},
+ ns:async()=>{S.devNS=await dbq(db.rpc('developer_notif_siswa')).catch(ERR)},
+ nj:async()=>{S.devNSJam=await dbq(db.rpc('developer_jam_notif_siswa')).catch(()=>null)},
+ push:async()=>{S.devPush=await dbq(db.rpc('developer_push_daftar')).catch(()=>null)},
+ alring:async()=>{S.devAlRing=await dbq(db.rpc('developer_alumni_ringkas')).catch(()=>null);S.devAlTh='';S.devAlList=[]},
+ kal:async()=>{await muatKalNas().catch(()=>{})},
+ profil:async()=>{await muatProfilSaya()}
+};
+const DEV_BUTUH={dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],hapus:['alring','log','sek'],log:['log'],sistem:[],kalender:['kal']};
+const DEVT={};
+function devButuh(){const t=devTab==='ringkas'?'setuju':devTab;
+ const b=view==='developer'?(DEV_BUTUH[t]||[]):view==='dashboard'?DEV_BUTUH.dashboard:view==='profil'?['profil']:[];
+ return [...new Set(b.concat(['nomor','pend']))]}
+const devSegar=k=>{const e=DEVT[k];return !!e&&e.v===cmVer&&Date.now()-e.t<CM_TTL};
+async function devPastikan(keys,paksa){const perlu=keys.filter(k=>paksa||!devSegar(k));if(!perlu.length)return false;
+ const v0=cmVer;await Promise.all(perlu.map(async k=>{await DEVSET[k]();DEVT[k]={t:Date.now(),v:v0}}));return true}
+async function muatDev(){await devPastikan(devButuh(),true)}
 const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['hapus','🗑 Hapus Data'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
-function devBuka(k){drw(0);kalReset();devTab=k;if(view==='developer'){renderAll();scrollTo(0,0);kedipHalaman()}else go('developer').then(kedipHalaman)}
+function devBuka(k){drw(0);kalReset();devTab=k;if(view==='developer'){const b=devButuh();if(b.every(devSegar)){renderAll();scrollTo(0,0);kedipHalaman()}else guard(async()=>{await devPastikan(b);renderAll();scrollTo(0,0);kedipHalaman()})}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
-function bukaKalenderNas(){drw(0);kalReset();devTab='kalender';if(view!=='developer')return go('developer').then(kedipHalaman);guard(async()=>{await muatKalNas();renderAll();scrollTo(0,0);kedipHalaman()})}
+function bukaKalenderNas(){drw(0);kalReset();devTab='kalender';if(view!=='developer')return go('developer').then(kedipHalaman);guard(async()=>{await devPastikan(devButuh());renderAll();scrollTo(0,0);kedipHalaman()})}
 let kalMode=false,kalSel=new Set();
 function kalReset(){kalMode=false;kalSel.clear()}
 function kalRender(){const y=window.scrollY;renderV();window.scrollTo(0,y)}
@@ -3287,7 +3354,7 @@ function devKalender(){
 function tambahLiburNas(){form('Tambah Libur Nasional',[{k:'tgl',l:'Mulai tanggal',t:'date',v:TODAY},{k:'sampai',l:'Sampai tanggal (kosongkan bila satu hari)',t:'date'},{k:'ket',l:'Keterangan (contoh: Cuti bersama Idulfitri)'}],async v=>{if(!v.tgl)throw new Error('Pilih tanggal mulai');if(v.sampai&&v.sampai<v.tgl)throw new Error('Tanggal akhir sebelum tanggal mulai');const r=await dbq(db.rpc('libur_nasional_simpan',{p_mulai:v.tgl,p_sampai:v.sampai||v.tgl,p_keterangan:v.ket}));await muatKalNas();renderV();toast('Tersimpan: tambah '+r.tambah+', ubah '+r.ubah)})}
 function ubahLiburNas(t){const r=(S.devKal||[]).find(x=>x.tanggal===t);if(!r)return;form('Ubah Libur Nasional',[{k:'tgl',l:'Tanggal',t:'date',v:t},{k:'ket',l:'Keterangan',v:r.keterangan||''}],async v=>{if(!v.tgl)throw new Error('Pilih tanggal');await dbq(db.rpc('libur_nasional_ubah',{p_lama:t,p_baru:v.tgl,p_keterangan:v.ket}));await muatKalNas();renderV();toast('Libur nasional diperbarui')})}
 async function hapusLiburNas(t){if(!await konfirmasi('Hapus libur nasional '+fmt(t)+'?',{judul:'Hapus libur nasional',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.rpc('libur_nasional_hapus',{p_tanggal:t}));await muatKalNas();renderV();toast('Libur nasional dihapus')})}
-function segarDev(){drw(0);guard(async()=>{await muatDev();renderV();toast('Data diperbarui')})}
+function segarDev(){drw(0);guard(async()=>{cmKosong();await muatDev();renderV();toast('Data diperbarui')})}
 V.developer=()=>{if(devTab==='ringkas')devTab='setuju';
  return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,hapus:devHapus,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
 function renderNavDev(){
@@ -3343,7 +3410,7 @@ function beritahuHapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if
    ld(1,'Mengirim pemberitahuan ke '+x.kepala_nama+'...');
    try{const j=await apiDev({aksi:'beritahu_hapus_sekolah',sekolah_id:sid,batas});
     if(!j||!j.terkirim)throw new Error('Pemberitahuan gagal terkirim. Periksa perangkat Fonnte Developer');
-    await muatDev();devTab='sekolah';renderAll();toast('✅ Pemberitahuan berhasil dikirim ke '+x.kepala_nama)}
+    devTab='sekolah';await muatDev();renderAll();toast('✅ Pemberitahuan berhasil dikirim ke '+x.kepala_nama)}
    catch(e){toast((e&&e.message)||String(e),false)}
    finally{ld(0)}},150)});$('#ms').textContent='Kirim'}
 function hapusSekolah(sid){const x=(S.devSek||[]).find(v=>v.id===sid);if(!x)return;
@@ -3569,7 +3636,7 @@ mulai();
 let _dashBusy=false;
 async function dashSegarkan(){
  if(_dashBusy||!me||view!=='dashboard'||role==='Developer'||document.hidden||scanKunci())return;
- if(Date.now()-_dashT<15000)return;
+ if(Date.now()-_dashT<CM_TTL)return;
  _dashBusy=true;
  try{
   const h=hariIni();if(h!==TODAY){TODAY=h;liburPrompted={};okL={}}
