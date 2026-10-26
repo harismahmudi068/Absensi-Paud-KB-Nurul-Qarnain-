@@ -4,6 +4,8 @@
 (function(g){
 'use strict';
 const DOMAIN_PORTAL='https://absensi-1486.vercel.app';
+const BLN_ID=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const tglPanjang=iso=>{const p=String(iso||'').split('-');return p.length===3&&BLN_ID[+p[1]-1]?(+p[2])+' '+BLN_ID[+p[1]-1]+' '+p[0]:''};
 const tglDMY=iso=>iso?String(iso).slice(8,10)+'/'+String(iso).slice(5,7)+'/'+String(iso).slice(0,4):'';
 const jkNama=x=>x==='L'?'Laki-laki':x==='P'?'Perempuan':'';
 /* isi QR: URL portal. Pemindai absensi mengembalikannya menjadi kode lewat kodeDariQR */
@@ -89,7 +91,7 @@ function buatKartu(s,opt){
  c.lineWidth=2;c.strokeStyle='#e9c13a';c.beginPath();c.moveTo(iw,171);c.lineTo(iw+42,171);c.stroke();
  c.lineWidth=1.2;c.strokeStyle='#1b7a5a';c.beginPath();c.moveTo(iw+46,171);c.lineTo(417,171);c.stroke();
  const wa=s.wa?('0'+String(s.wa).replace(/\D/g,'').replace(/^62/,'').replace(/^0+/,'')).replace(/(\d{4})(?=\d)/g,'$1-'):'-';
- const rows=[['Kelas',s.kelas||'-',IK.topi],['NISN',s.nisn||'-',IK.kartu],['Tanggal Lahir',tglDMY(s.tgl)||'-',IK.kalender],['Jenis Kelamin',jkNama(s.jk)||'-',IK.pria],['Alamat',s.alamat||'-',IK.lokasi],['WA Ortu',wa,IK.telepon]];
+ const rows=[['Kelas',s.kelas||'-',IK.topi],['NISN',s.nisn||'-',IK.kartu],['Tanggal Lahir',tglPanjang(s.tgl)||'-',IK.kalender],['Jenis Kelamin',jkNama(s.jk)||'-',IK.pria],['Alamat',s.alamat||'-',IK.lokasi],['WA Ortu',wa,IK.telepon]];
  rows.forEach((p,i)=>{const y=183+i*30.6;
   rr(c,25,y,401,26,13);gr=c.createLinearGradient(0,y,0,y+26);gr.addColorStop(0,'#ffffff');gr.addColorStop(1,'#e9f6f0');c.fillStyle=gr;c.fill();c.lineWidth=1.2;c.strokeStyle='#b4dccb';c.stroke();
   rr(c,25,y,40,26,13);c.fillStyle=HJ;c.fill();p[2](c,45,y+13);
