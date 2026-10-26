@@ -393,7 +393,7 @@ R.siswa=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
  return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
  '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><img class="kimg" id="kimg" alt="Kartu anak, sisi depan"><img class="kimg" id="kimg2" alt="Kartu anak, sisi belakang" style="margin-top:10px"><button class="btn fx" id="kunduh" onclick="unduh()">⬇ Unduh kartu (depan &amp; belakang)</button>'+(d.sekolah&&d.sekolah.izin_foto===false?'<div class="mu" style="margin-top:10px;text-align:center">Foto anak diatur oleh sekolah.</div>':'<button type="button" class="btn fx" id="kfoto" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button>')+'<button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'+
  '<div class="panel"><div class="ph">👤 Profil</div><div class="pb">'+
- [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-','pan'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tanggal lahir',s.tgl?tgl(s.tgl):'-','tgl'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-','jk'],['Alamat',s.alamat||'-','alamat'],['WA orang tua',wa,'wa'],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"'+(x[2]?' data-f="'+x[2]+'"':'')+'><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
+ [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-','pan'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tanggal lahir',s.tgl?(tgFmt(s.tgl)||tgl(s.tgl)):'-','tgl'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-','jk'],['Alamat',s.alamat||'-','alamat'],['WA orang tua',wa,'wa'],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"'+(x[2]?' data-f="'+x[2]+'"':'')+'><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
  '<div class="panel"><div class="pb" style="padding-top:14px"><button type="button" class="btn fx" style="margin-top:0" onclick="profilBuka()">✏️ Ubah profil</button><div class="mu" style="margin-top:8px;text-align:center">Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</div></div></div>'};
 function kartuRender(){const d=S.kd;if(!d)return Promise.resolve();const s=d.siswa,k=d.sekolah||{};
  return Promise.all([Kartu.siapkanLogo(k.logo||null).catch(()=>null),Kartu.siapkanLogo(s.foto||null).catch(()=>null)]).then(r=>{S.fotoImg=r[1];
@@ -406,7 +406,7 @@ function unduh(){const dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-'),dl=(u,
 /* Ubah profil oleh orang tua (kecuali kelas, NISN, tahun masuk) */
 const PF={busy:0},normWA=n=>{let d=String(n||'').replace(/\D/g,'');if(d[0]==='0')d='62'+d.slice(1);else if(d[0]==='8')d='62'+d;return d},waLokal=w=>w?'0'+String(w).replace(/^62/,''):'';
 const PC={y:0,m:0,mode:'d'};
-function tgFmt(v){const a=String(v||'').split('-');return a.length===3&&BLN[+a[1]-1]?(+a[2])+' '+BLN[+a[1]-1]+' '+a[0]:''}
+function tgFmt(v){const a=String(v||'').split('-');return a.length===3&&BLN[+a[1]-1]?HRL[new Date(Date.UTC(+a[0],+a[1]-1,+a[2])).getUTCDay()]+', '+(+a[2])+' '+BLN[+a[1]-1]+' '+a[0]:''}
 function tgField(v){v=tgFmt(v)?v:'';return '<label>Tanggal lahir (opsional)</label><div class="tg" id="tgbox"><input type="hidden" id="ftg" value="'+esc(v)+'"><button type="button" class="tgb fx" onclick="tgT(event)"><span id="tgval"'+(v?'':' class="ph"')+'>'+(v?esc(tgFmt(v)):'Pilih tanggal lahir')+'</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button><div class="tgp" id="tgpop"></div></div>'}
 function tgT(e){e.stopPropagation();ddTutup();const el=$('#tgbox');if(el.classList.contains('open')){el.classList.remove('open');return}
  const v=$('#ftg').value,my=+S.hari.slice(0,4),mm=+S.hari.slice(5,7),a=v?v.split('-').map(Number):[my-5,mm,1];PC.y=Math.min(my,Math.max(1990,a[0]));PC.m=Math.max(0,Math.min(11,a[1]-1));if(PC.y===my&&PC.m>mm-1)PC.m=mm-1;PC.mode='d';tgR();el.classList.add('open');setTimeout(()=>$('#tgpop').scrollIntoView({block:'nearest',behavior:'smooth'}),60)}
@@ -601,7 +601,7 @@ const PK_PIL='pk_pil_'+(m?m[1]:'');
 const pkPilihan=()=>{let o={};try{o=JSON.parse(localStorage.getItem(PK_PIL)||'{}')||{}}catch(_){}return{piket:o.piket!==false,absensi:o.absensi!==false,tabungan:o.tabungan!==false}};
 const PK_NAMA={piket:'Pengingat piket',absensi:'Absensi harian anak',tabungan:'Tabungan (nominal dan saldo akhir)'};
 const pkJenis=d=>{const j=(d&&d.push&&d.push.jenis)||{};return['absensi','tabungan','piket'].filter(k=>j[k])};
-function pushBanner(st,daftar,galat){if(st==='aktif'||st==='nosupport')return '';
+function pushBanner(st,daftar,galat){if(st==='aktif'||st==='nosupport'||st==='denied')return '';
  const lihat='<button type="button" class="btn fx" onclick="go(\'notifikasi\')">Lihat caranya</button>';
  let t,b;
  if(st==='mati'){t='Aktifkan agar tidak ketinggalan kabar anak di HP ini: '+esc(daftar)+'.';b='<button type="button" class="btn fx" onclick="pushAktifkan()">🔔 Aktifkan notifikasi</button>'}
