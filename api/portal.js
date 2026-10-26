@@ -625,7 +625,7 @@ module.exports = async (req, res) => {
       return { aktif: true, libur, hari_ini: libur ? [] : pada(hariIni), berikut, ada: rows.length > 0 };
     };
     // Piket: jadwal satu pekan (Senin sampai Minggu) untuk kelas anak, lengkap dengan hari libur pekan ini
-    // dan libur 30 hari ke depan. Nama anak memakai nama panggilan.
+    // dan libur 30 hari ke depan. Nama anak memakai nama lengkap.
     const muatPiketHalaman = () => {
       if (!peng.piket_aktif) return { aktif: false };
       const rows = pkRows || [];
@@ -642,7 +642,7 @@ module.exports = async (req, res) => {
           const g = grup.get(key);
           if (r.siswa_id) {
             const sw = r.siswa || {};
-            const nm = String(sw.nama_panggilan || '').trim() || String(sw.nama || '').trim().split(' ')[0] || '-';
+            const nm = String(sw.nama || '').trim() || String(sw.nama_panggilan || '').trim() || '-';
             g.anak.push({ nama: nm, saya: Number(r.siswa_id) === id });
             if (r.catatan && !g.entri.some((e) => e.catatan === r.catatan)) g.entri.push({ kelas: null, catatan: r.catatan });
           } else {
