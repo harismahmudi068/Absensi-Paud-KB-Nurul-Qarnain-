@@ -607,6 +607,7 @@ button,a,summary,label,[onclick]{-webkit-touch-callout:none}
 #v td:has(>input[type=checkbox]):active{background:rgba(31,169,91,.14)}
 #v td>input[type=checkbox],#v th>input[type=checkbox]{width:20px!important;height:20px!important;margin:0!important;accent-color:#1fa95b;cursor:pointer;vertical-align:middle;touch-action:manipulation}
 </style>
+<style id="suara-css">.suarabox{margin:10px 0;border:1px solid var(--bd);border-radius:11px;padding:8px 12px;text-align:left}.suarabox summary{cursor:pointer;font-weight:700;font-size:13px}.suarabd{display:grid;gap:6px;margin-top:8px}.suarabd input[type=range]{width:100%}.suarabd .select{width:100%}</style>
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">Selamat Datang</h2><p class="mu" style="text-align:center;margin:0 0 16px">di Sistem Absensi. Silakan masukkan username dan kata sandi Anda.</p>
 <label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
@@ -1317,7 +1318,7 @@ async function keluar(){
 
   // 2. Bersihkan sessionStorage dan localStorage aplikasi.
   try{sessionStorage.clear()}catch(e){}
-  const _pks={};try{['pk_aktif','pk_akun','tema_ui','logo_sekolah'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
+  const _pks={};try{['pk_aktif','pk_akun','tema_ui','logo_sekolah','suara_scanner'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
   try{Object.keys(localStorage).filter(k=>/^pk_(off|pil)_/.test(k)).forEach(k=>{_pks[k]=localStorage.getItem(k)})}catch(e){}
   try{localStorage.clear()}catch(e){}
   try{Object.keys(_pks).forEach(k=>localStorage.setItem(k,_pks[k]))}catch(e){}
@@ -1900,11 +1901,11 @@ async function usbUjiScan(mentah){
  try{
   const cr=cariKode(mentah),s=cr.s&&cr.s.aktif?cr.s:null;
   usbUjiOto=usbOtoNext;usbOtoNext=false;
-  if(cr.uji){usbUjiNama='uji';usbOn=false;usbPh='siap';usbQ=[];usbRes=null;renderV();beep(true);tanda(true);return}
+  if(cr.uji){usbUjiNama='uji';usbOn=false;usbPh='siap';usbQ=[];usbRes=null;renderV();if(!ucap('pengujian berhasil'))beep(true);tanda(true);return}
   if(!s){const pesan=cr.s?(cr.s.pan||cr.s.nama)+' berstatus nonaktif, kartunya tidak bisa dipakai.':'Kode '+cr.k.slice(0,8)+'... tidak ada di data siswa. Coba kartu anak lain.';
    usbRes={ok:false,t:'Uji gagal',m:pesan,tetap:1};usbLayRender();
-   beep(false);getarGagal();return}
-  usbUjiNama=s.pan||s.nama;usbOn=false;usbPh='siap';usbQ=[];usbRes=null;renderV();beep(true);tanda(true)
+   if(!ucap('Gagal'))beep(false);getarGagal();return}
+  usbUjiNama=s.pan||s.nama;usbOn=false;usbPh='siap';usbQ=[];usbRes=null;renderV();if(!ucap('pengujian berhasil'))beep(true);tanda(true)
  }catch(e){usbRes={ok:false,t:'Uji gagal',m:String((e&&e.message)||e),tetap:1};usbLayRender()}}
 function usbStop(jangan,fase){if(!usbOn&&usbPh==='idle'&&!fase)return;const aktif=usbOn;usbOn=false;usbPh=fase||'idle';usbQ=[];clearTimeout(usbT);clearTimeout(usbRT);clearTimeout(usbResT);usbRes=null;if(aktif){const u=scanUbah;scanUbah=[];if(u.length)ringkasUbah(u)}if(!jangan)renderV()}
 function usbKd(e){if(e.key!=='Enter')return;e.preventDefault();clearTimeout(usbT);const v=e.target.value;e.target.value='';usbKirim(v)}
@@ -1930,7 +1931,7 @@ const usbInfo=m=>{const n=$('#usbNote');if(n)n.textContent=m};
 let scanKelas='';
 const histHTML=()=>{const h=Object.entries(A(TODAY)).filter(e=>e[1].cara==='scan').map(e=>({s:S.siswa.find(x=>x.id==e[0]),r:e[1]})).filter(x=>x.s&&(!scanKelas||scanKelas==='*'||x.s.kelas===scanKelas)).sort((a,b)=>(b.r.jam||'').localeCompare(a.r.jam||''));
  return `<div class="ph">🕘 Riwayat Scan Hari Ini <span class="mu">${fmt(TODAY)} - ${h.length} anak</span></div><div class="pb">${tab(['Jam','Anak','Kelas','Status'],h.map(x=>`<tr><td><b>${esc(x.r.jam||'-')}</b></td><td>${esc(x.s.pan)}<div class="mu">${esc(x.s.nama)}</div></td><td>${esc(x.s.kelas)}</td><td>${badge(x.r.st)}</td></tr>`).join(''))}</div>`};
-V.scan=()=>`<div class="panel"><div class="ph">📷 Scan Kartu</div><div class="pb"><div class="sc-only scclk"><b id="scJam">${scWaktu()[0]}</b><span id="scTgl">${scWaktu()[1]}</span></div>${segHTML()}<div class="tb tb-full" style="justify-content:center">${cpick('scanKelasPick','kelas',scanKelas,S.kelas.map(k=>({value:k.nama,label:k.nama})).concat([{value:'*',label:'Semua kelas'}]),'setScanKelas','Pilih kelas')}</div>${scanKelas?'':PKH}${scanMode==='kamera'?kameraHTML():usbPanel()}<div id="hasil" style="margin-top:10px;font-weight:700;text-align:center"></div>${scDet()}</div></div><div class="panel" id="hist">${histHTML()}</div>`;
+V.scan=()=>`<div class="panel"><div class="ph">📷 Scan Kartu</div><div class="pb"><div class="sc-only scclk"><b id="scJam">${scWaktu()[0]}</b><span id="scTgl">${scWaktu()[1]}</span></div>${segHTML()}<div class="tb tb-full" style="justify-content:center">${cpick('scanKelasPick','kelas',scanKelas,S.kelas.map(k=>({value:k.nama,label:k.nama})).concat([{value:'*',label:'Semua kelas'}]),'setScanKelas','Pilih kelas')}</div>${scanKelas?'':PKH}${scanMode==='scanner'&&usbPh==='scan'?'':suaraPanel()}${scanMode==='kamera'?kameraHTML():usbPanel()}<div id="hasil" style="margin-top:10px;font-weight:700;text-align:center"></div>${scDet()}</div></div><div class="panel" id="hist">${histHTML()}</div>`;
 async function setScanKelas(v){document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));if((v||'')===scanKelas)return;if(scanKunci())return tolakKunci();await stopScan();usbStop(true);scanKelas=v||'';liburPrompted={};renderV();usbFokus()}
 let AC=null;const unlockAC=()=>{try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}};
 function beep(ok){try{unlockAC();const t=AC.currentTime,nada=(f,m,d,jenis,v,f2)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=jenis;o.frequency.setValueAtTime(f,t+m);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+m+d);g.gain.setValueAtTime(.0001,t+m);g.gain.exponentialRampToValueAtTime(v,t+m+.012);g.gain.exponentialRampToValueAtTime(.0001,t+m+d);o.connect(g);g.connect(AC.destination);o.start(t+m);o.stop(t+m+d+.03)};
@@ -1938,7 +1939,23 @@ function beep(ok){try{unlockAC();const t=AC.currentTime,nada=(f,m,d,jenis,v,f2)=
  else{nada(440,0,.22,'sawtooth',.4,330);nada(330,.25,.5,'sawtooth',.4,220);nada(880,0,.22,'square',.06,660)}}catch(e){}}
 const CEK='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff" fill-opacity=".92"/><path d="M28 52 L44 68 L73 34"/></svg>',SIL='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff" fill-opacity=".92"/><path d="M33 33 L67 67 M67 33 L33 67"/></svg>';let fbT=null;
 function tanda(ok){const f=$('#fb');if(!f)return;clearTimeout(fbT);f.className='fb';f.innerHTML=ok?CEK:SIL;void f.offsetWidth;f.className='fb show '+(ok?'ok':'no');fbT=setTimeout(()=>{f.className='fb'},ok?700:900)}
-function hasil(m,ok){const h=$('#hasil');if(!h)return;beep(ok);if(!ok)getarGagal();scTampil(m,ok);
+/* suara ucapan nama panggilan + status (Hadir/Terlambat); bila peramban tidak mendukung, kembali ke bunyi beep */
+const SUARA_K='suara_scanner';
+function suaraMuat(){try{const o=JSON.parse(localStorage.getItem(SUARA_K)||'{}');return{v:String(o.v||''),r:Math.min(1.5,Math.max(.6,+o.r||.95)),p:Math.min(1.8,Math.max(.6,+o.p||1))}}catch(e){return{v:'',r:.95,p:1}}}
+let SUARA=suaraMuat(),suaraOpen=false;
+const suaraSimpan=()=>{try{localStorage.setItem(SUARA_K,JSON.stringify(SUARA))}catch(e){}};
+function suaraDaftar(){try{return(window.speechSynthesis.getVoices()||[]).filter(v=>/^id/i.test(v.lang))}catch(e){return[]}}
+function suaraPilih(){const l=suaraDaftar();return l.find(v=>v.voiceURI===SUARA.v)||l.find(v=>/^id[-_]ID/i.test(v.lang))||l[0]||null}
+function ucap(teks){try{const ss=window.speechSynthesis;if(!ss||!window.SpeechSynthesisUtterance)return false;
+ const u=new SpeechSynthesisUtterance(teks);u.lang='id-ID';u.rate=SUARA.r;u.pitch=SUARA.p;u.volume=1;const v=suaraPilih();if(v)u.voice=v;
+ ss.cancel();ss.speak(u);return true}catch(e){return false}}
+function suaraOpsi(){const l=suaraDaftar(),c=suaraPilih();return l.length?l.map(v=>`<option value="${esc(v.voiceURI)}"${c&&c.voiceURI===v.voiceURI?' selected':''}>${esc(v.name)}</option>`).join(''):'<option value="">Suara bawaan perangkat</option>'}
+const suaraPanel=()=>`<details class="suarabox"${suaraOpen?' open':''} ontoggle="suaraOpen=this.open"><summary>🔊 Pengaturan suara</summary><div class="suarabd"><label class="mu">Suara</label><select id="suaraSel" class="select" onchange="suaraUbah('v',this.value)">${suaraOpsi()}</select><label class="mu">Kecepatan: <b id="suaraRv">${SUARA.r.toFixed(2)}</b>×</label><input id="suaraR" type="range" min="0.6" max="1.5" step="0.05" value="${SUARA.r}" oninput="suaraUbah('r',this.value)"><label class="mu">Nada: <b id="suaraPv">${SUARA.p.toFixed(2)}</b></label><input id="suaraP" type="range" min="0.6" max="1.8" step="0.05" value="${SUARA.p}" oninput="suaraUbah('p',this.value)"><div class="tb" style="justify-content:center"><button type="button" class="btn soft sm" onclick="suaraCoba()">▶ Coba suara</button><button type="button" class="btn soft sm" onclick="suaraReset()">Atur ulang</button></div></div></details>`;
+function suaraUbah(k,v){if(k==='v')SUARA.v=String(v);else SUARA[k]=+v;const r=$('#suaraRv'),p=$('#suaraPv');if(r)r.textContent=SUARA.r.toFixed(2);if(p)p.textContent=SUARA.p.toFixed(2);suaraSimpan()}
+function suaraCoba(){unlockAC();if(!ucap('absensi siap'))toast('Perangkat ini tidak mendukung suara ucapan.',false)}
+function suaraReset(){SUARA={v:'',r:.95,p:1};suaraSimpan();const s=$('#suaraSel'),r=$('#suaraR'),p=$('#suaraP');if(s)s.innerHTML=suaraOpsi();if(r)r.value=SUARA.r;if(p)p.value=SUARA.p;suaraUbah('r',SUARA.r);suaraUbah('p',SUARA.p)}
+try{if(window.speechSynthesis)speechSynthesis.onvoiceschanged=()=>{const s=$('#suaraSel');if(s)s.innerHTML=suaraOpsi()}}catch(e){}
+function hasil(m,ok,sw){const h=$('#hasil');if(!h)return;if(ok?!(scLast&&ucap((scLast.s.pan||scLast.s.nama)+' '+scLast.st.toLowerCase())):!ucap(sw||'Gagal'))beep(ok);if(!ok)getarGagal();scTampil(m,ok);
  if(scanMode==='scanner'&&usbPh==='scan'&&$('#usbLay')){h.textContent='';return}
  h.textContent=m;h.style.color=ok?'var(--g)':'var(--rd)';tanda(ok)}
 function ovHapus(){const o=document.querySelector('#rw .camov');if(o)o.remove()}
@@ -1993,7 +2010,7 @@ async function onScan(mentah){const cr=cariKode(mentah),kode=cr.s?String(cr.s.ko
   if(scanKelas&&scanKelas!=='*'&&s.kelas!==scanKelas)return hasil(`${s.pan} bukan siswa kelas ${scanKelas} (kelas ${s.kelas||'-'}).`,false);
   if(!await okLib(s.kelas,TODAY))return hasil('Kelas '+(s.kelas||'-')+' libur hari ini, absensi tidak dicatat.',false);
   const r=await dbq(db.from('absensi').select('*').eq('siswa_id',s.id).eq('tanggal',TODAY).maybeSingle()),ada=r?fromRow(r):null;
-  if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat'))return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false);
+  if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat'))return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false,'sudah tercatat');
   const iso=new Date().toISOString(),jm=jamJkt(iso),lim=(S.kelas.find(k=>k.nama===s.kelas)||{jam:'23:59'}).jam,st=jm>lim?'Terlambat':'Hadir';
   await dbq(db.from('absensi').upsert({siswa_id:s.id,tanggal:TODAY,status:low(st),cara:'scan',catatan:null,jam_datang:iso,diubah:iso,diubah_oleh:me},{onConflict:'siswa_id,tanggal'}));
   (S.absen[TODAY]=S.absen[TODAY]||{})[s.id]={st,cara:'scan',cat:'',jam:jm,iso};if(ada)scanUbah.push({pan:s.pan,nama:s.nama,dari:ada.st,ke:st,jam:jm});scLast={s,st,jm};hasil(`${s.pan} ${st.toLowerCase()}, jam ${jm}.`+(ada?` (sebelumnya ${ada.st.toLowerCase()})`:''),true);const h=$('#hist');if(h)h.innerHTML=histHTML();scRefresh()}
