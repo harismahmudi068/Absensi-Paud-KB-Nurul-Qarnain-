@@ -393,7 +393,7 @@ R.siswa=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
  return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
  '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><img class="kimg" id="kimg" alt="Kartu anak, sisi depan"><img class="kimg" id="kimg2" alt="Kartu anak, sisi belakang" style="margin-top:10px"><button class="btn fx" id="kunduh" onclick="unduh()">⬇ Unduh kartu (depan &amp; belakang)</button>'+(d.sekolah&&d.sekolah.izin_foto===false?'<div class="mu" style="margin-top:10px;text-align:center">Foto anak diatur oleh sekolah.</div>':'<button type="button" class="btn fx" id="kfoto" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button>')+'<button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'+
  '<div class="panel"><div class="ph">👤 Profil</div><div class="pb">'+
- [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-','pan'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tanggal lahir',s.tgl?(tgFmt(s.tgl)||tgl(s.tgl)):'-','tgl'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-','jk'],['Alamat',s.alamat||'-','alamat'],['WA orang tua',wa,'wa'],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"'+(x[2]?' data-f="'+x[2]+'"':'')+'><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
+ [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-','pan'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tempat, tanggal lahir',ttlTampil(s.tempat,s.tgl),'tgl'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-','jk'],['Alamat',s.alamat||'-','alamat'],['WA orang tua',wa,'wa'],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"'+(x[2]?' data-f="'+x[2]+'"':'')+'><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
  '<div class="panel"><div class="pb" style="padding-top:14px"><button type="button" class="btn fx" style="margin-top:0" onclick="profilBuka()">✏️ Ubah profil</button><div class="mu" style="margin-top:8px;text-align:center">Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</div></div></div>'};
 function kartuRender(){const d=S.kd;if(!d)return Promise.resolve();const s=d.siswa,k=d.sekolah||{};
  return Promise.all([Kartu.siapkanLogo(k.logo||null).catch(()=>null),Kartu.siapkanLogo(s.foto||null).catch(()=>null)]).then(r=>{S.fotoImg=r[1];
@@ -406,6 +406,7 @@ function unduh(){const dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-'),dl=(u,
 /* Ubah profil oleh orang tua (kecuali kelas, NISN, tahun masuk) */
 const PF={busy:0},normWA=n=>{let d=String(n||'').replace(/\D/g,'');if(d[0]==='0')d='62'+d.slice(1);else if(d[0]==='8')d='62'+d;return d},waLokal=w=>w?'0'+String(w).replace(/^62/,''):'';
 const PC={y:0,m:0,mode:'d'};
+function ttlTampil(t,d){t=String(t||'').trim();const a=String(d||'').split('-'),p=a.length===3&&BLN[+a[1]-1]?(+a[2])+' '+BLN[+a[1]-1]+' '+a[0]:'';return t&&p?t+', '+p:(p||t||'-')}
 function tgFmt(v){const a=String(v||'').split('-');return a.length===3&&BLN[+a[1]-1]?HRL[new Date(Date.UTC(+a[0],+a[1]-1,+a[2])).getUTCDay()]+', '+(+a[2])+' '+BLN[+a[1]-1]+' '+a[0]:''}
 function tgField(v){v=tgFmt(v)?v:'';return '<label>Tanggal lahir (opsional)</label><div class="tg" id="tgbox"><input type="hidden" id="ftg" value="'+esc(v)+'"><button type="button" class="tgb fx" onclick="tgT(event)"><span id="tgval"'+(v?'':' class="ph"')+'>'+(v?esc(tgFmt(v)):'Pilih tanggal lahir')+'</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button><div class="tgp" id="tgpop"></div></div>'}
 function tgT(e){e.stopPropagation();ddTutup();const el=$('#tgbox');if(el.classList.contains('open')){el.classList.remove('open');return}
@@ -495,6 +496,7 @@ function profilBuka(){const s=S.siswa,o=$('#fo');
  const f=(id,l,v,x)=>'<label for="'+id+'">'+l+'</label><input id="'+id+'" value="'+esc(v)+'" '+(x||'')+'>',ro=(l,v)=>'<label>'+l+'</label><input disabled value="'+esc(v||'-')+'">';
  o.innerHTML='<div class="fd" role="dialog" aria-modal="true"><div class="fh"><h3>✏️ Ubah profil</h3><p class="fs">Perbarui data anak Anda. Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</p></div>'+fotoBlokP()+
   f('fnm','Nama lengkap',s.nama,'maxlength="100" autocomplete="off"')+f('fpn','Nama panggilan',s.pan,'maxlength="30" autocomplete="off"')+
+  f('ftp','Tempat lahir (opsional)',s.tempat,'maxlength="50" autocomplete="off"')+
   tgField(s.tgl)+
   '<label>Jenis kelamin</label>'+dd('jk',[{v:'',t:'Belum dipilih'},{v:'L',t:'Laki-laki'},{v:'P',t:'Perempuan'}],s.jk||'',()=>{})+
   f('fal','Alamat (opsional)',s.alamat,'maxlength="200" autocomplete="off"')+
@@ -505,7 +507,7 @@ function profilBuka(){const s=S.siswa,o=$('#fo');
  void o.offsetWidth;o.classList.add('on')}
 function profilTutup(){const o=$('#fo');o.classList.remove('on');setTimeout(()=>{if(!o.classList.contains('on'))o.innerHTML=''},500)}
 async function profilSimpan(){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$('#fya'),bt=$('#fbt'),v=id=>$('#'+id).value.trim().replace(/\s+/g,' ');
- const nama=v('fnm'),pan=v('fpn'),tg=$('#ftg').value,jk=DD.jk.val||'',alamat=v('fal'),raw=$('#fwa').value.trim(),wa=raw?normWA(raw):'',lama=String(s.wa||'');
+ const nama=v('fnm'),pan=v('fpn'),tempat=v('ftp'),tg=$('#ftg').value,jk=DD.jk.val||'',alamat=v('fal'),raw=$('#fwa').value.trim(),wa=raw?normWA(raw):'',lama=String(s.wa||'');
  fe.textContent='';const salah=t=>{fe.textContent=t};
  if(nama.length<2)return salah('Nama lengkap wajib diisi');
  if(!pan)return salah('Nama panggilan wajib diisi');
@@ -515,7 +517,7 @@ async function profilSimpan(){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$
  PF.busy=1;const fo=$('#fo');fo.classList.remove('on');await slp(RM?0:450);
  if(!await konfirm({ikon:'📝',judul:'Simpan perubahan profil?',isi:'Pastikan data anak Anda sudah benar sebelum disimpan dan diperbarui.',batal:'Cek lagi',ya:'Ya, simpan',warna:'#159447',cat:wa!==lama?['Nomor WhatsApp diganti','Nomor '+waLokal(wa)+' harus terdaftar di grup WhatsApp sekolah supaya izin lewat WhatsApp tetap bisa dilakukan. Pastikan nomor ini sudah terdaftar.']:null})){fo.classList.add('on');PF.busy=0;return}
  PF.busy=1;y.disabled=true;bt.disabled=true;
- const body=JSON.stringify({k:m[1],nama,pan,tgl:tg,jk,alamat,wa});
+ const body=JSON.stringify({k:m[1],nama,pan,tempat,tgl:tg,jk,alamat,wa});
  try{for(;;){
   const o=poBuka(),q=t=>o.querySelector(t),pc=q('.pc');
   const pr=fetch('/api/portal',{method:'PATCH',headers:{'Content-Type':'application/json'},cache:'no-store',body}).then(async r=>({r,j:await r.json().catch(()=>({}))})).catch(()=>null);
