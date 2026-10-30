@@ -330,7 +330,7 @@ async function ubahProfil(req, res) {
   const k = String(b.k || '').trim();
   if (!RE_KODE.test(k)) return res.status(404).json(TIDAK_ADA);
 
-  const nama = bersih(b.nama), pan = bersih(b.pan), alamat = bersih(b.alamat);
+  const nama = bersih(b.nama), pan = bersih(b.pan), alamat = bersih(b.alamat), tempat = bersih(b.tempat);
   const tgl = String(b.tgl || '').trim(), jk = String(b.jk || '').trim();
   const waMasuk = String(b.wa == null ? '' : b.wa).trim();
   const wa = waMasuk ? normWA(waMasuk) : '';
@@ -339,12 +339,13 @@ async function ubahProfil(req, res) {
   if (nama.length < 2 || nama.length > 100) return res.status(400).json({ error: 'Nama lengkap wajib diisi (maksimal 100 karakter)' });
   if (!pan || pan.length > 30) return res.status(400).json({ error: 'Nama panggilan wajib diisi (maksimal 30 karakter)' });
   if (alamat.length > 200) return res.status(400).json({ error: 'Alamat maksimal 200 karakter' });
+  if (tempat.length > 50) return res.status(400).json({ error: 'Tempat lahir maksimal 50 karakter' });
   if (jk !== '' && jk !== 'L' && jk !== 'P') return res.status(400).json({ error: 'Jenis kelamin tidak valid' });
   if (tgl && (!tglValid(tgl) || tgl < '1990-01-01' || tgl > hariIni)) return res.status(400).json({ error: 'Tanggal lahir tidak valid' });
   if (waMasuk && !/^62\d{8,13}$/.test(wa)) return res.status(400).json({ error: 'Nomor WhatsApp tidak valid. Contoh: 081234567890' });
 
   try {
-    const s = await cariAktif(k, 'id,sekolah_id,aktif,nama,nama_panggilan,tgl_lahir,jenis_kelamin,alamat,siswa_wali(wali_id,wali(no_wa))');
+    const s = await cariAktif(k, 'id,sekolah_id,aktif,nama,nama_panggilan,tempat_lahir,tgl_lahir,jenis_kelamin,alamat,siswa_wali(wali_id,wali(no_wa))');
     if (!s) return res.status(404).json(TIDAK_ADA);
     const sid = Number(s.sekolah_id), id = Number(s.id);
     if (!Number.isInteger(sid) || !Number.isInteger(id)) return res.status(404).json(TIDAK_ADA);
@@ -353,10 +354,11 @@ async function ubahProfil(req, res) {
     const lama = (links.map((w) => w.wali && w.wali.no_wa).filter(Boolean))[0] || '';
     if (!wa && lama) return res.status(400).json({ error: 'Nomor WhatsApp tidak boleh dikosongkan' });
 
-    const hasilSiswa = { nama, pan, tgl, jk, alamat, wa };
+    const hasilSiswa = { nama, pan, tempat, tgl, jk, alamat, wa };
     const ubah = [];
     if (nama !== s.nama) ubah.push('nama');
     if (pan !== (s.nama_panggilan || '')) ubah.push('panggilan');
+    if (tempat !== (s.tempat_lahir || '')) ubah.push('tempat_lahir');
     if (tgl !== (s.tgl_lahir || '')) ubah.push('tgl_lahir');
     if (jk !== (s.jenis_kelamin || '')) ubah.push('jenis_kelamin');
     if (alamat !== (s.alamat || '')) ubah.push('alamat');
@@ -367,7 +369,7 @@ async function ubahProfil(req, res) {
     // 1) Data anak. Kelas, NISN, dan tahun masuk sengaja tidak ada di sini.
     if (dataBerubah) {
       const r = await L.panggil(`/rest/v1/siswa?id=eq.${id}&sekolah_id=eq.${sid}`, 'PATCH',
-        { nama, nama_panggilan: pan, tgl_lahir: tgl || null, jenis_kelamin: jk || null, alamat: alamat || null },
+        { nama, nama_panggilan: pan, tempat_lahir: tempat || null, tgl_lahir: tgl || null, jenis_kelamin: jk || null, alamat: alamat || null },
         { Prefer: 'return=representation' });
       if (!Array.isArray(r) || !r.length) return res.status(404).json(TIDAK_ADA);
     }
@@ -437,7 +439,7 @@ module.exports = async (req, res) => {
     const cari =
       (await L.panggil(
         `/rest/v1/siswa?kode_qr=eq.${encodeURIComponent(k)}` +
-          `&select=id,sekolah_id,nama,nama_panggilan,nisn,kelas_id,aktif,tgl_lahir,jenis_kelamin,alamat,tahun_masuk,foto_path,siswa_wali(wali(no_wa)),sekolah:sekolah(nama,status)&limit=2`,
+          `&select=id,sekolah_id,nama,nama_panggilan,nisn,kelas_id,aktif,tempat_lahir,tgl_lahir,jenis_kelamin,alamat,tahun_masuk,foto_path,siswa_wali(wali(no_wa)),sekolah:sekolah(nama,status)&limit=2`,
         'GET'
       )) || [];
     if (cari.length !== 1) {
@@ -562,6 +564,7 @@ module.exports = async (req, res) => {
         pan: s.nama_panggilan || '',
         nisn: s.nisn || '',
         kelas: kelas.nama || '',
+        tempat: s.tempat_lahir || '',
         tgl: s.tgl_lahir || '',
         jk: s.jenis_kelamin || '',
         alamat: s.alamat || '',
