@@ -551,7 +551,7 @@ module.exports = async (req, res) => {
         ? semua(`/rest/v1/hafalan_setoran?siswa_id=eq.${id}&sekolah_id=eq.${sid}&hafalan_id=not.is.null&select=${v === 'dashboard' ? 'hafalan_id,hasil' : 'hafalan_id,hasil,tanggal'}&order=id.asc`)
         : null,
       v === 'rapor'
-        ? semua(`/rest/v1/rapor?siswa_id=eq.${id}&sekolah_id=eq.${sid}&status=eq.terbit&select=id,tahun_ajaran,semester,jenis,kelas_nama,nilai,sakit,izin,alpa,catatan,keputusan,kelas_tujuan,wali_nama,wali_nip,kepsek_nama,kepsek_nip&order=tahun_ajaran.desc,semester.desc,jenis.desc`)
+        ? semua(`/rest/v1/rapor?siswa_id=eq.${id}&sekolah_id=eq.${sid}&status=eq.terbit&select=id,tahun_ajaran,semester,jenis,kelas_nama,nilai,sakit,izin,alpa,catatan,keputusan,kelas_tujuan,wali_nama,wali_nip,kepsek_nama,kepsek_nip&order=tahun_ajaran.desc,semester.desc,jenis.asc`)
         : null
     ]);
     const peng = (pengRows || [])[0] || {};
