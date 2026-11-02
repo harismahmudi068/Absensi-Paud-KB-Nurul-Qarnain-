@@ -91,10 +91,16 @@ const Rapor = (() => {
     if (D.logo) { const m = 24, sc = Math.min(m / D.logo.w, m / D.logo.h), w = D.logo.w * sc, h = D.logo.h * sc; doc.addImage(D.logo.url, 'PNG', L + 2 + (m - w) / 2, 17 + (m - h) / 2, w, h); }
     doc.setFont('times', 'bold'); doc.setFontSize(15); doc.setTextColor(...NV);
     const nl = doc.splitTextToSize(String(D.sekolah || '').toUpperCase(), 118);
-    nl.forEach((t, i) => doc.text(t, 105, 25 + i * 6.5, { align: 'center' }));
-    const yy = 25 + (nl.length - 1) * 6.5;
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GR);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
     const al = D.alamat ? doc.splitTextToSize(String(D.alamat), 118) : [];
+    /* blok teks (nama sekolah + alamat) dipusatkan vertikal terhadap logo (pusat logo y = 29) */
+    const LY = 17, LM = 24, pusatLogo = LY + LM / 2;
+    const tinggi = (nl.length - 1) * 6.5 + (al.length ? 5.5 + (al.length - 1) * 4 : 0);
+    const y0 = Math.max(24, pusatLogo - (tinggi - 3.8) / 2);
+    doc.setFont('times', 'bold'); doc.setFontSize(15); doc.setTextColor(...NV);
+    nl.forEach((t, i) => doc.text(t, 105, y0 + i * 6.5, { align: 'center' }));
+    const yy = y0 + (nl.length - 1) * 6.5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...GR);
     al.forEach((t, i) => doc.text(t, 105, yy + 5.5 + i * 4, { align: 'center' }));
     const ry = Math.max(44, yy + 5.5 + al.length * 4 + 3);
     doc.setDrawColor(...NV); doc.setLineWidth(.8); doc.line(L, ry, R, ry); doc.setLineWidth(.25); doc.line(L, ry + 1.6, R, ry + 1.6);
