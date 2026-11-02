@@ -13,7 +13,8 @@
 //  - Satu-satunya masukan dari pengunjung adalah kode QR (UUID).
 //  - sekolah_id DIAMBIL dari baris siswa hasil pencarian kode, tidak pernah dari input.
 //  - Setiap query lanjutan memakai siswa_id DAN sekolah_id dari baris itu.
-//  - Parameter v (dashboard|siswa|absensi|tabungan|piket|hafalan|libur) membatasi data yang dimuat per menu.
+//  - Parameter v (dashboard|siswa|absensi|tabungan|piket|hafalan|rapor|libur) membatasi data yang dimuat per menu.
+//  - Halaman rapor HANYA memuat raport berstatus 'terbit' milik siswa itu (siswa_id dan sekolah_id dari baris siswa).
 //  - Kode tidak dikenal, siswa nonaktif, atau sekolah nonaktif dijawab 404 yang sama.
 
 const L = require('./_lib');
@@ -430,8 +431,8 @@ module.exports = async (req, res) => {
       ]
     }));
   }
-  // Halaman yang diminta: dashboard | siswa | absensi | tabungan | piket | hafalan | libur
-  const HALAMAN = ['dashboard', 'siswa', 'absensi', 'tabungan', 'piket', 'hafalan', 'libur'];
+  // Halaman yang diminta: dashboard | siswa | absensi | tabungan | piket | hafalan | rapor | libur
+  const HALAMAN = ['dashboard', 'siswa', 'absensi', 'tabungan', 'piket', 'hafalan', 'rapor', 'libur'];
   const v = HALAMAN.includes(String((req.query && req.query.v) || '')) ? String(req.query.v) : 'dashboard';
 
   try {
@@ -511,7 +512,7 @@ module.exports = async (req, res) => {
 
     // Logo sekolah: hanya untuk halaman kartu (siswa), diambil terpisah agar halaman tetap jalan
     // walau kolom pengaturan.logo belum ada. Hanya data URL gambar yang diterima.
-    const logoP = v === 'siswa'
+    const logoP = v === 'siswa' || v === 'rapor'
       ? L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=logo&limit=1`, 'GET')
           .then(r => { const x = r && r[0] && r[0].logo; return (typeof x === 'string' && x.length <= 150000 && /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+\/=]+$/.test(x)) ? x : ''; })
           .catch(() => '')
@@ -520,7 +521,7 @@ module.exports = async (req, res) => {
     const fotoP = v === 'siswa' ? fotoAmbil(String(s.foto_path || ''), sid, id).catch(() => '') : Promise.resolve('');
     const izinP = v === 'siswa' ? izinFotoOrtu(sid) : Promise.resolve(true);
     // 2-3. Pengaturan, kelas, dan data halaman diambil BERSAMAAN (satu putaran ke database).
-    const [pengRows, kelasRows, trxData, absData, liburData, pkRows, jnData, itemData, setData] = await Promise.all([
+    const [pengRows, kelasRows, trxData, absData, liburData, pkRows, jnData, itemData, setData, raporData] = await Promise.all([
       L.panggil(
         `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif,notif_absensi_aktif,notif_tabungan_aktif,push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan&limit=1`,
         'GET'
@@ -548,6 +549,9 @@ module.exports = async (req, res) => {
         : null,
       v === 'dashboard' || v === 'hafalan'
         ? semua(`/rest/v1/hafalan_setoran?siswa_id=eq.${id}&sekolah_id=eq.${sid}&hafalan_id=not.is.null&select=${v === 'dashboard' ? 'hafalan_id,hasil' : 'hafalan_id,hasil,tanggal'}&order=id.asc`)
+        : null,
+      v === 'rapor'
+        ? semua(`/rest/v1/rapor?siswa_id=eq.${id}&sekolah_id=eq.${sid}&status=eq.terbit&select=id,tahun_ajaran,semester,jenis,kelas_nama,nilai,sakit,izin,alpa,catatan,keputusan,kelas_tujuan,wali_nama,wali_nip,kepsek_nama,kepsek_nip&order=tahun_ajaran.desc,semester.desc,jenis.desc`)
         : null
     ]);
     const peng = (pengRows || [])[0] || {};
@@ -702,6 +706,25 @@ module.exports = async (req, res) => {
       out.piket = muatPiketHalaman();
     } else if (v === 'hafalan') {
       out.hafalan = muatHafalanData(true);
+    } else if (v === 'rapor') {
+      out.rapor = (raporData || []).map((r) => ({
+        id: r.id,
+        tahun_ajaran: r.tahun_ajaran,
+        semester: r.semester,
+        jenis: r.jenis,
+        kelas_nama: r.kelas_nama || '',
+        nilai: Array.isArray(r.nilai) ? r.nilai : [],
+        sakit: r.sakit || 0,
+        izin: r.izin || 0,
+        alpa: r.alpa || 0,
+        catatan: r.catatan || '',
+        keputusan: r.keputusan || '',
+        kelas_tujuan: r.kelas_tujuan || '',
+        wali_nama: r.wali_nama || '',
+        wali_nip: r.wali_nip || '',
+        kepsek_nama: r.kepsek_nama || '',
+        kepsek_nip: r.kepsek_nip || ''
+      }));
     } else if (v === 'libur') {
       Object.assign(out, liburRingkas(liburData));
     }
