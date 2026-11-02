@@ -92,7 +92,7 @@ const Rapor = (() => {
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
     const al = D.alamat ? doc.splitTextToSize(String(D.alamat), 118) : [];
     /* seluruh blok teks kop (judul + nama sekolah + alamat) dipusatkan vertikal terhadap logo */
-    const JARAK = 10; /* judul -> nama sekolah */
+    const JARAK = 7.5; /* judul -> nama sekolah */
     const tinggi = JARAK + (nl.length - 1) * 6.5 + (al.length ? 5.5 + (al.length - 1) * 4 : 0);
     const ty = Math.max(14, pusatLogo - (tinggi - 2.7) / 2);
     doc.setFont('times', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...NV);
@@ -107,12 +107,8 @@ const Rapor = (() => {
     const ry = Math.max(44, yy + 5.5 + al.length * 4 + 3);
     doc.setDrawColor(...NV); doc.setLineWidth(.8); doc.line(L, ry, R, ry); doc.setLineWidth(.25); doc.line(L, ry + 1.6, R, ry + 1.6);
 
-    /* --- Bilah judul --- */
-    const by = ry + 6; doc.setFillColor(...NV); doc.rect(L, by, W, 9, 'F');
-    doc.setFont('times', 'bold'); doc.setFontSize(11); doc.setTextColor(255, 255, 255); spasi('LAPORAN HASIL BELAJAR SISWA', 105, by + 6.1, 1.6);
-
     /* --- Identitas siswa --- */
-    const iy = by + 16, F = [['Nama Siswa', D.nama, 'NISN / NIS', D.nisn], ['Kelas', D.kelas, 'Semester', D.semTxt], ['Tahun Ajaran', D.ta, 'Nama Wali Kelas', (D.wali || {}).nama]];
+    const iy = ry + 12, F = [['Nama Siswa', D.nama, 'NISN / NIS', D.nisn], ['Kelas', D.kelas, 'Semester', D.semTxt], ['Tahun Ajaran', D.ta, 'Nama Wali Kelas', (D.wali || {}).nama]];
     F.forEach((x, i) => {
       const y = iy + i * 7; doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...NV); doc.text(x[0], L, y); doc.text(x[2], L + 96, y);
       doc.setFont('helvetica', 'bold'); doc.setTextColor(30, 30, 30);
