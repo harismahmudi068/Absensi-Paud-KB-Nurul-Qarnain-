@@ -257,6 +257,7 @@ button[onclick="go('rekap')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://
 button[onclick="go('laporanortu')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%223%22 y=%225%22 width=%2218%22 height=%2214%22 rx=%222%22/%3E%3Cpath d=%22M3 7l9 6 9-6%22/%3E%3C/svg%3E")}
 button[onclick="go('penilaian')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%225%22 y=%224%22 width=%2214%22 height=%2217%22 rx=%222%22/%3E%3Cpath d=%22M9 4V3h6v1%22/%3E%3Cpath d=%22M9 13l2 2 4-4%22/%3E%3C/svg%3E")}
 .pnrow{display:flex;align-items:center;gap:10px;padding:10px 0 4px}.pnm{flex:1;min-width:0}.pnin{width:92px!important;text-align:center;flex:0 0 auto}.pnrow .badge{min-width:30px;text-align:center}.pnd{padding:0 0 8px;border-bottom:1px solid var(--bd)}.pnd summary{cursor:pointer;font-size:12px;padding:2px 0}.pnd textarea{margin-top:6px;width:100%}
+.pnka{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:132px}.pnk{display:flex!important;align-items:center;justify-content:center;gap:6px;width:100%;min-width:132px;height:34px;padding:0 14px!important;border-radius:999px!important;font-size:12.5px!important;font-weight:700;white-space:nowrap;line-height:1;box-sizing:border-box}.pntb{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}.pntb .pnk{flex:1 1 200px;width:auto;height:40px;font-size:13px!important}
 button[onclick="go('pesan')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d=%22M4 5h16v11H9l-5 4z%22/%3E%3C/svg%3E")}
 button[onclick="go('libur')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x=%224%22 y=%225%22 width=%2216%22 height=%2215%22 rx=%222%22/%3E%3Cpath d=%22M4 10h16M9 3v4M15 3v4%22/%3E%3C/svg%3E")}
 button[onclick="go('profil')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Ccircle cx=%2212%22 cy=%2210%22 r=%223%22/%3E%3Cpath d=%22M6 19c1.2-2.6 3.2-3.8 6-3.8s4.8 1.2 6 3.8%22/%3E%3C/svg%3E")}
@@ -3109,18 +3110,30 @@ function pnSimpan(lanjut){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl))return;let d;t
  guard(async()=>{await pnTry(()=>dbq(db.from('rapor').upsert({siswa_id:pnSis,kelas_id:kl.id,kelas_nama:kl.nama,tahun_ajaran:S.set.tahun_ajaran,semester:pnSem,jenis:pnJenis,status:'draf',nilai:d.nilai,sakit:d.sakit,izin:d.izin,alpa:d.alpa,catatan:d.catatan},{onConflict:'siswa_id,tahun_ajaran,semester,jenis'})));
   await pnMuat();
   if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama)}else{closeM();renderV();toast('Draf nilai tersimpan')}})}
+function pnKepTanpa(rows){return rows.filter(r=>!pnKepKep.get(r.siswa_id)).map(r=>(S.siswa.find(x=>x.id===r.siswa_id)||{}).nama||'')}
+/* inti penerbitan: dipanggil di dalam guard(). UAS Semester 2 membawa keputusan akhir ke dalam raport */
+async function pnTerbitInti(ids){const kl=pnKl(pnK),rows=pnRap.filter(r=>ids.includes(r.id)),w=ttdWali(kl.nama)||{},k=ttdKepsek()||{};
+ const ttd={wali_nama:w.nama||null,wali_nip:w.nip||null,kepsek_nama:k.nama||null,kepsek_nip:k.nip||null};
+ if(pnUas2()){const baris=rows.map(r=>{const kp=pnKepKep.get(r.siswa_id);return{siswa_id:r.siswa_id,kelas_id:r.kelas_id,kelas_nama:r.kelas_nama,tahun_ajaran:r.tahun_ajaran,semester:r.semester,jenis:r.jenis,status:'terbit',nilai:r.nilai,sakit:r.sakit,izin:r.izin,alpa:r.alpa,catatan:r.catatan,keputusan:kp.jenis,kelas_tujuan:kp.jenis==='naik'?(kp.kelas_tujuan_nama||null):null,...ttd}});
+  await pnTry(()=>dbq(db.from('rapor').upsert(baris,{onConflict:'siswa_id,tahun_ajaran,semester,jenis'})))}
+ else await pnTry(()=>dbq(db.from('rapor').update({status:'terbit',...ttd}).in('id',ids)));
+ await pnMuat()}
 async function pnTerbit(ids){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl)||!ids.length)return;
  const rows=pnRap.filter(r=>ids.includes(r.id));if(!rows.length)return;
- if(pnUas2()){const tanpa=rows.filter(r=>!pnKepKep.get(r.siswa_id)).map(r=>(S.siswa.find(x=>x.id===r.siswa_id)||{}).nama||'');
+ if(pnUas2()){const tanpa=pnKepTanpa(rows);
   if(tanpa.length)return info('Keputusan akhir belum ada','<div class="note">Raport UAS Semester 2 memuat keputusan naik, tinggal, atau lulus. Proses dulu di menu <b>Kelola Siswa</b> untuk:</div><div class="mu">'+tanpa.map(esc).join('<br>')+'</div>')}
- const w=ttdWali(kl.nama)||{},k=ttdKepsek()||{};
  if(!await konfirmasi('Terbitkan raport '+ids.length+' siswa kelas '+kl.nama+'? Setelah terbit, raport terkunci dan dapat dilihat orang tua di portal anak. Untuk mengubahnya, penerbitan harus dibatalkan dulu.',{judul:'Terbitkan raport',ya:'Terbitkan',ikon:'🚀'}))return;
- const ttd={wali_nama:w.nama||null,wali_nip:w.nip||null,kepsek_nama:k.nama||null,kepsek_nip:k.nip||null};
- guard(async()=>{
-  if(pnUas2()){const baris=rows.map(r=>{const kp=pnKepKep.get(r.siswa_id);return{siswa_id:r.siswa_id,kelas_id:r.kelas_id,kelas_nama:r.kelas_nama,tahun_ajaran:r.tahun_ajaran,semester:r.semester,jenis:r.jenis,status:'terbit',nilai:r.nilai,sakit:r.sakit,izin:r.izin,alpa:r.alpa,catatan:r.catatan,keputusan:kp.jenis,kelas_tujuan:kp.jenis==='naik'?(kp.kelas_tujuan_nama||null):null,...ttd}});
-   await pnTry(()=>dbq(db.from('rapor').upsert(baris,{onConflict:'siswa_id,tahun_ajaran,semester,jenis'})))}
-  else await pnTry(()=>dbq(db.from('rapor').update({status:'terbit',...ttd}).in('id',ids)));
-  await pnMuat();renderV();toast(ids.length+' raport diterbitkan')})}
+ guard(async()=>{await pnTerbitInti(ids);renderV();toast(ids.length+' raport diterbitkan')})}
+/* terbitkan ulang: tarik ke draf lalu terbitkan lagi dengan data terbaru (nilai, kehadiran, keputusan, nama wali kelas dan kepala sekolah) */
+async function pnTerbitUlang(ids){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl)||!ids.length)return;
+ const rows=pnRap.filter(r=>ids.includes(r.id)&&r.status==='terbit');if(!rows.length)return;
+ if(pnUas2()){const tanpa=pnKepTanpa(rows);
+  if(tanpa.length)return info('Keputusan akhir tidak ditemukan','<div class="note">Keputusan akhir untuk siswa berikut tidak ditemukan, jadi raport tidak bisa diterbitkan ulang:</div><div class="mu">'+tanpa.map(esc).join('<br>')+'</div>')}
+ if(!await konfirmasi('Terbitkan ulang raport '+rows.length+' siswa kelas '+kl.nama+'? Raport ditarik ke draf lalu langsung diterbitkan lagi dengan data terbaru. Status "Terkirim" akan diulang dari awal, jadi tautan perlu dikirim lagi bila diperlukan.',{judul:'Terbitkan ulang raport',ya:'Terbitkan ulang',ikon:'🔄'}))return;
+ const idr=rows.map(r=>r.id);
+ guard(async()=>{await pnTry(()=>dbq(db.from('rapor').update({status:'draf'}).in('id',idr)));await pnMuat();
+  try{await pnTerbitInti(idr)}catch(e){renderV();throw new Error('Raport sudah ditarik ke draf tetapi gagal diterbitkan ulang ('+(e.message||e)+'). Tekan Terbitkan untuk mengulang.')}
+  renderV();toast(idr.length+' raport diterbitkan ulang')})}
 async function pnBatal(id){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl))return;
  if(!await konfirmasi('Batalkan penerbitan raport ini? Raport kembali menjadi draf dan tidak lagi tampil di portal orang tua sampai diterbitkan ulang.',{bahaya:1,judul:'Batalkan penerbitan',ya:'Batalkan',ikon:'↩️'}))return;
  guard(async()=>{await pnTry(()=>dbq(db.from('rapor').update({status:'draf'}).eq('id',id)));await pnMuat();closeM();renderV();toast('Penerbitan dibatalkan, raport kembali menjadi draf')})}
@@ -3135,21 +3148,21 @@ function pnKepHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK
  if(!S.set.tahun_ajaran)return pil+'<div class="note">Tahun ajaran belum diatur. Isi dulu di menu Pengaturan.</div>';
  if(pnKey!==pnKunci())return pil+'<div class="note">⏳ Memuat...</div>';
  const b=pnBoleh(kl),sis=pnDaftar();if(!sis.length)return pil+'<div class="note">Belum ada siswa aktif di kelas ini.</div>';
- const map=new Map(pnRap.map(r=>[r.siswa_id,r]));let siap=[],nt=0,nk=0;
+ const map=new Map(pnRap.map(r=>[r.siswa_id,r]));let siap=[],ulang=[],nt=0,nk=0;
  const rows=sis.map((s,i)=>{const r=map.get(s.id),k=pnKepKep.get(s.id),terbit=!!r&&r.status==='terbit',lk=pnLengkap(r);if(k)nk++;
   const kt=k?'<b>'+esc(KEPT[k.jenis]||k.jenis)+'</b>'+(k.jenis==='naik'&&k.kelas_tujuan_nama?' → '+esc(k.kelas_tujuan_nama):'')+'<div class="mu">'+esc(KEPS[k.status]||k.status)+'</div>':'<span class="mu">Belum diputuskan</span>';
-  let st;
-  if(terbit){nt++;const beda=k&&(r.keputusan!==k.jenis||(k.jenis==='naik'&&(r.kelas_tujuan||'')!==(k.kelas_tujuan_nama||'')));
+  let st,aksi='';const beda=terbit&&k&&(r.keputusan!==k.jenis||(k.jenis==='naik'&&(r.kelas_tujuan||'')!==(k.kelas_tujuan_nama||'')));
+  if(terbit){nt++;if(k)ulang.push(r.id);if(b&&k)aksi=`<div class="pnka"><button class="btn pnk ${beda?'success':'soft'}" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button></div>`;
    st='<span class="badge hadir">Terbit</span>'+(beda?'<div class="mu" style="color:var(--rd)">⚠ Berbeda dengan keputusan terbaru. Batalkan penerbitan lalu terbitkan ulang.</div>':'')}
   else if(!r)st='<span class="mu">Nilai belum diisi</span>';
   else if(!lk)st='<span class="badge terlambat">Draf</span><div class="mu">Nilai belum lengkap</div>';
   else if(!k)st='<span class="badge terlambat">Draf</span><div class="mu">Menunggu keputusan</div>';
-  else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan</div>';siap.push(r.id)}
-  return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td></tr>`}).join('');
+  else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
+  return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}</td></tr>`}).join('');
  let h=pil+`<div class="note">Raport <b>UAS Semester 2</b> kelas <b>${esc(kl.nama)}</b> memuat keputusan naik, tinggal, atau lulus. Keputusan diambil dari menu <b>Kelola Siswa</b> (tidak perlu diisi dua kali). Diputuskan: <b>${nk}</b> dari ${sis.length} siswa. Raport terbit: <b>${nt}</b>.</div>`;
  if(!pnKepOk)h+='<div class="note" style="color:var(--rd)">Data keputusan tidak dapat dibaca. Hubungi Kepala Sekolah atau muat ulang halaman.</div>';
- h+=`<div class="tb" style="flex-wrap:wrap">${b&&siap.length?`<button class="btn success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan raport yang siap (${siap.length})</button>`:''}<button class="btn soft" onclick="go('kelola')">🎓 Buka Kelola Siswa</button></div>`;
- return h+tab(['No','Nama','Keputusan akhir','Raport UAS Sem. 2'],rows)}
+ h+=`<div class="pntb">${b&&siap.length?`<button class="btn pnk success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan yang siap (${siap.length})</button>`:''}${b&&ulang.length?`<button class="btn pnk soft" onclick="pnTerbitUlang([${ulang.join(',')}])">🔄 Terbitkan ulang semua (${ulang.length})</button>`:''}<button class="btn pnk soft" onclick="go('kelola')">🎓 Buka Kelola Siswa</button></div>`;
+ return h+tab(['No','Nama','Keputusan akhir','Raport UAS Sem. 2','Aksi'],rows)}
 
 /* ---- Tab Kirim laporan: kirim TAUTAN raport lewat WhatsApp (Fonnte), bukan lampiran file ---- */
 function pnPesan(arr){const sk=ns(),per=pnJenisTxt(pnJenis)+' Semester '+pnSem+' · TA '+S.set.tahun_ajaran;let isi;
@@ -3173,11 +3186,11 @@ function pnKirimHTML(){const pil=pnPilK()+pnPeriode();if(!pnK)return pil+PKH;con
  const {g,tanpa}=grupLink(belum);
  const rows=sis.map((s,i)=>{const r=map.get(s.id),ok=!!r&&r.status==='terbit';
   const st=!ok?'<span class="mu">Belum terbit</span>':r.dikirim_pada?'<span class="badge hadir">Terkirim</span><div class="mu">'+fmt(String(r.dikirim_pada).slice(0,10))+'</div>':'<span class="badge terlambat">Belum dikirim</span>';
-  const lihat=ok&&s.kode_qr?` <button class="btn sm soft" onclick="pnLihatPesan(${s.id})">👁 Lihat pesan</button>`:'';
-  const aksi=ok&&b?(s.wa&&s.kode_qr?`<button class="btn sm success" onclick="pnKirimSatu(${s.id})">📤 Kirim</button> <button class="btn sm soft" onclick="pnSalinLink(${s.id})">🔗</button>`:'<span class="mu">Tanpa nomor WA</span>')+lihat:lihat;
+  const kirim=ok&&b?(s.wa&&s.kode_qr?`<button class="btn pnk success" onclick="pnKirimSatu(${s.id})">${r.dikirim_pada?'📤 Kirim ulang':'📤 Kirim'}</button><button class="btn pnk soft" onclick="pnSalinLink(${s.id})">🔗 Salin tautan</button>`:'<span class="mu" style="text-align:center">Tanpa nomor WA</span>'):'';
+  const aksi=ok?`<div class="pnka">${kirim}${s.kode_qr?`<button class="btn pnk soft" onclick="pnLihatPesan(${s.id})">👁 Lihat pesan</button>`:''}</div>`:'';
   return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${s.wa?esc(waLokal(s.wa)):'<span class="mu">-</span>'}</td><td>${st}</td><td>${aksi}</td></tr>`}).join('');
  let h=pil+`<div class="note">Kelas <b>${esc(kl.nama)}</b> · Semester ${pnSem} · ${pnJenis}. Yang dikirim hanya <b>tautan</b> raport lewat WhatsApp. Orang tua membuka tautan lalu langsung masuk ke halaman Rapor anak. Raport terbit: <b>${terbit.length}</b> · belum dikirim: <b>${belum.length}</b>${tanpa.length?' · tanpa nomor WA: <b>'+tanpa.length+'</b>':''}.${b?'':'<br>Hanya wali kelas, Kepala Sekolah, atau Wakil yang dapat mengirim.'}</div>`;
- if(terbit.length)h+=`<div class="tb" style="flex-wrap:wrap">${b&&g.length?`<button class="btn success" onclick="pnKirimBelum()">📤 Kirim ke yang belum dikirim (${g.length} nomor)</button>`:''}<button class="btn soft" onclick="pnLihatPesan(0)">👁 Lihat pesan</button></div>`;
+ if(terbit.length)h+=`<div class="pntb">${b&&g.length?`<button class="btn pnk success" onclick="pnKirimBelum()">📤 Kirim ke yang belum dikirim (${g.length} nomor)</button>`:''}<button class="btn pnk soft" onclick="pnLihatPesan(0)">👁 Lihat pesan</button></div>`;
  return h+tab(['No','Nama','Nomor WA','Status','Aksi'],rows)}
 async function pnKirimGrup(g,judul){const kl=pnKl(pnK);let ok=0,gagal=[],ids=[];ld(1);
  try{for(let i=0;i<g.length;i++){const x=g[i];$('#ldt').textContent='Mengirim '+(i+1)+' dari '+g.length+'...';
