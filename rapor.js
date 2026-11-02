@@ -86,17 +86,19 @@ const Rapor = (() => {
     if (D.draf) { doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(200, 50, 50); doc.text('DRAF', R, 12, { align: 'right' }); }
 
     /* --- Kop: judul atas, nama sekolah tepat di tengah halaman, alamat --- */
-    doc.setFont('times', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...NV);
-    spasi('LAPORAN HASIL PENILAIAN UJIAN', 105, 15, 1.1);
-    if (D.logo) { const m = 24, sc = Math.min(m / D.logo.w, m / D.logo.h), w = D.logo.w * sc, h = D.logo.h * sc; doc.addImage(D.logo.url, 'PNG', L + 2 + (m - w) / 2, 17 + (m - h) / 2, w, h); }
-    doc.setFont('times', 'bold'); doc.setFontSize(15); doc.setTextColor(...NV);
+    const LY = 17, LM = 24, pusatLogo = LY + LM / 2;
+    doc.setFont('times', 'bold'); doc.setFontSize(15);
     const nl = doc.splitTextToSize(String(D.sekolah || '').toUpperCase(), 118);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
     const al = D.alamat ? doc.splitTextToSize(String(D.alamat), 118) : [];
-    /* blok teks (nama sekolah + alamat) dipusatkan vertikal terhadap logo (pusat logo y = 29) */
-    const LY = 17, LM = 24, pusatLogo = LY + LM / 2;
-    const tinggi = (nl.length - 1) * 6.5 + (al.length ? 5.5 + (al.length - 1) * 4 : 0);
-    const y0 = Math.max(24, pusatLogo - (tinggi - 3.8) / 2);
+    /* seluruh blok teks kop (judul + nama sekolah + alamat) dipusatkan vertikal terhadap logo */
+    const JARAK = 10; /* judul -> nama sekolah */
+    const tinggi = JARAK + (nl.length - 1) * 6.5 + (al.length ? 5.5 + (al.length - 1) * 4 : 0);
+    const ty = Math.max(14, pusatLogo - (tinggi - 2.7) / 2);
+    doc.setFont('times', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...NV);
+    spasi('LAPORAN HASIL PENILAIAN UJIAN', 105, ty, 1.1);
+    if (D.logo) { const m = LM, sc = Math.min(m / D.logo.w, m / D.logo.h), w = D.logo.w * sc, h = D.logo.h * sc; doc.addImage(D.logo.url, 'PNG', L + 2 + (m - w) / 2, LY + (m - h) / 2, w, h); }
+    const y0 = ty + JARAK;
     doc.setFont('times', 'bold'); doc.setFontSize(15); doc.setTextColor(...NV);
     nl.forEach((t, i) => doc.text(t, 105, y0 + i * 6.5, { align: 'center' }));
     const yy = y0 + (nl.length - 1) * 6.5;
