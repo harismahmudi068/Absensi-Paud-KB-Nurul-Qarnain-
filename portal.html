@@ -221,33 +221,16 @@ html.rg .scene *,html.rg .cal .d{animation:none!important}
 html.rg .panel,html.rg .mbtn,html.rg .pill{backdrop-filter:none;-webkit-backdrop-filter:none}
 html.rg .panel:not(.pk),html.rg .mbtn{background:var(--c2)}
 html.rg .pill{background:rgba(8,40,22,.88)}
-/* ---- Rapor ---- */
-.rpr,.rpr *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.rpr{background:#fff;color:#28303c;border:3px solid #1e3a5f;border-radius:4px;padding:5px;margin-top:12px}
-.rpr .in{border:1px solid #c9962b;padding:14px 14px 18px}
-.rpr .kop{display:flex;align-items:center;gap:12px;text-align:center}.rpr .kop img{width:56px;height:56px;object-fit:contain;flex:0 0 auto}.rpr .kop>div{flex:1}
-.rpr h3{margin:0;font-family:Georgia,'Times New Roman',serif;color:#1e3a5f;font-size:17px;line-height:1.25;text-transform:uppercase}
-.rpr .al{font-size:11px;color:#5a6473;margin-top:3px}
-.rpr .gr{border-top:3px solid #1e3a5f;border-bottom:1px solid #1e3a5f;height:6px;margin:10px 0}
-.rpr .jd{background:#1e3a5f;color:#fff;text-align:center;font-family:Georgia,'Times New Roman',serif;font-weight:700;letter-spacing:.14em;font-size:13px;padding:8px 6px;margin-bottom:12px}
-.rpr .if{display:grid;grid-template-columns:1fr 1fr;gap:7px 22px;margin-bottom:6px}.rpr .if>div{display:flex;gap:8px;align-items:baseline;font-size:12px}
-.rpr .if span{color:#1e3a5f;flex:0 0 92px}.rpr .if b{flex:1;border-bottom:1px dotted #5a6473;padding-bottom:1px;word-break:break-word}
-.rpr .sh{display:flex;align-items:center;gap:7px;font-family:Georgia,'Times New Roman',serif;font-weight:700;color:#1e3a5f;font-size:13px;margin:14px 0 6px}.rpr .sh:before{content:'';width:4px;height:15px;background:#c9962b}
-.rpr table{width:100%;border-collapse:collapse;font-size:12px;background:#fff}.rpr th{background:#1e3a5f;color:#fff;padding:7px 6px;font-size:12px}
-.rpr td{border:1px solid #c4cdda;padding:7px 6px;vertical-align:middle;color:#28303c}.rpr tbody tr:nth-child(odd) td{background:#f1f4f9}.rpr td.c{text-align:center}
-.rpr .bc{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:14px}
-.rpr .cat{border:1px solid #c4cdda;background:#f1f4f9;padding:8px 10px;font-size:12px;min-height:88px;white-space:pre-wrap;word-break:break-word}
-.rpr .kp{margin-top:12px;border:1px solid #c9962b;background:#faf6eb;padding:9px 12px;font-size:12px}
-.rpr .tt{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:20px;text-align:center;font-size:12px}.rpr .tt i{display:block;height:54px}.rpr .tt small{display:block;color:#5a6473;margin-top:2px}
-@media(max-width:560px){.rpr .in{padding:12px 10px 16px}.rpr .if,.rpr .bc{grid-template-columns:1fr}.rpr .tt{font-size:11px}
- .rpr table.rpn thead{display:none}.rpr table.rpn tr{display:grid;grid-template-columns:1fr auto auto;gap:2px 14px;padding:8px 6px;border:1px solid #c4cdda;border-top:0}.rpr table.rpn tbody tr:nth-child(odd){background:#f1f4f9}
- .rpr table.rpn td,.rpr table.rpn tbody tr:nth-child(odd) td{display:block;border:0;padding:0;background:none}.rpr table.rpn td.no{display:none}.rpr table.rpn td.m{font-weight:700}.rpr table.rpn td.n:before{content:'Nilai ';color:#5a6473;font-weight:400}.rpr table.rpn td.p:before{content:'Predikat ';color:#5a6473;font-weight:400}.rpr table.rpn td.d{grid-column:1/-1;color:#5a6473;font-size:11.5px}}
-@media print{body{background:#fff!important}body *{visibility:hidden}#rpS,#rpS *{visibility:visible}#rpS{position:absolute;left:0;top:0;width:100%}.rpr{margin:0}@page{size:A4;margin:8mm}}
+/* ---- Rapor (tampilan kanvas dari /rapor.js, bisa digeser) ---- */
+.rpv{overflow:auto;-webkit-overflow-scrolling:touch;max-height:78vh;margin-top:12px;border-radius:14px;background:rgba(255,255,255,.35);padding:10px;touch-action:pan-x pan-y pinch-zoom}
+.rpv canvas{display:block;margin:0 auto 12px;box-shadow:0 2px 12px rgba(0,0,0,.2);background:#fff;max-width:none}
+.rpz{display:flex;gap:8px;margin-top:10px}.rpz button{flex:1;border:1px solid var(--ln);background:var(--c2);color:var(--tx);border-radius:10px;padding:9px 6px;font:inherit;font-weight:700;cursor:pointer}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet"></noscript>
 <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script defer src="/kartu.js"></script>
+<script defer src="/rapor.js"></script>
 </head><body>
 <div class="scene" id="scene"></div>
 <div class="top"><div class="hd" id="hd"></div><div class="as">Assalamualaikum</div><div class="nm" id="nm">&nbsp;</div><div class="gt" id="gt">&nbsp;</div></div>
@@ -614,28 +597,23 @@ R.hafalan=d=>{const h=d.hafalan;if(!h||!h.aktif)return pesanFitur('📖','Hafala
  const pct=Math.round(h.lancar*100/h.total),nm=esc(d.siswa.pan||d.siswa.nama);
  return '<div class="panel ct"><div class="ph">📖 Hafalan '+nm+'</div><div class="pb"><div class="saldo">'+h.lancar+' <span class="hs">dari '+h.total+' hafalan lancar</span></div><div class="hbar"><i style="width:'+pct+'%"></i></div>'+(h.ulang?'<div class="mu">'+h.ulang+' hafalan perlu diulang</div>':'')+'<div class="mu">'+(h.total-h.lancar-h.ulang)+' hafalan belum disetor</div></div></div>'+
   h.jenis.map(g=>'<div class="panel"><div class="ph">'+esc(g.nama)+' <span class="mu">· '+(g.cakupan==='wajib'?'Wajib semua kelas':(d.siswa.kelas?'Kelas '+esc(d.siswa.kelas):'Per kelas'))+'</span></div><div class="pb">'+g.item.map(i=>{const t=HST[i.status]||HST.belum;return '<div class="li"><div><b>'+esc(i.judul)+'</b>'+(i.target?'<small>'+esc(i.target)+'</small>':'')+'</div><span class="bd" style="background:'+t[1]+';color:'+t[2]+'">'+t[0]+(i.tanggal?' · '+tgl(i.tanggal):'')+'</span></div>'}).join('')+'</div></div>').join('')};
-/* ---------- Rapor (hanya yang sudah diterbitkan wali kelas) ---------- */
-const RP={i:0};
-const rpPred=(n,k)=>{if(n==null)return '';const i=(100-k)/3;return n<k?'D':n<k+i?'C':n<k+2*i?'B':'A'};
-const rpDesk=(p,m)=>({A:'Sangat baik dalam memahami materi '+m+'.',B:'Baik dalam memahami materi '+m+'.',C:'Cukup memahami materi '+m+', perlu ditingkatkan.',D:'Belum mencapai ketuntasan pada materi '+m+', perlu bimbingan lebih lanjut.'})[p]||'';
-const rpAngka=n=>n==null?'':String(n).replace('.',',');
-const rpNIP=s=>{const a=String(s||'').replace(/\D/g,'');return a.length===18?a.slice(0,8)+' '+a.slice(8,14)+' '+a.slice(14,15)+' '+a.slice(15):String(s||'').trim()};
-function rpLembar(r,d){const sk=d.sekolah||{},sw=d.siswa||{},t=r.nilai||[];
- const baris=t.map((x,i)=>{const p=rpPred(x.n,x.k);return '<tr><td class="c no">'+(i+1)+'</td><td class="m">'+esc(x.m)+'</td><td class="c n">'+rpAngka(x.n)+'</td><td class="c p"><b>'+p+'</b></td><td class="d">'+esc(x.d||(p?rpDesk(p,x.m):''))+'</td></tr>'}).join('');
- const sem=r.semester+' ('+(r.semester===1?'Ganjil':'Genap')+') - '+r.jenis;
- const kep=r.keputusan==='naik'?'Keputusan: siswa ditetapkan <b>NAIK</b> ke kelas '+esc(r.kelas_tujuan||'........'):r.keputusan==='tinggal'?'Keputusan: siswa ditetapkan <b>TIDAK NAIK</b> (tetap di kelas '+esc(r.kelas_nama)+')':r.keputusan==='lulus'?'Keputusan: siswa dinyatakan <b>LULUS</b> dari '+esc(sk.nama):'';
- const nip=(x)=>'NIP. '+(x?esc(rpNIP(x)):'...............');
- return '<div class="rpr"><div class="in"><div class="kop">'+(sk.logo?'<img src="'+esc(sk.logo)+'" alt="">':'')+'<div><h3>'+esc(sk.nama||'')+'</h3>'+(sk.alamat?'<div class="al">'+esc(sk.alamat)+'</div>':'')+'</div></div><div class="gr"></div>'+
-  '<div class="jd">LAPORAN HASIL BELAJAR SISWA</div>'+
-  '<div class="if"><div><span>Nama Siswa</span><b>'+esc(sw.nama)+'</b></div><div><span>NISN / NIS</span><b>'+esc(sw.nisn||'')+'</b></div><div><span>Kelas</span><b>'+esc(r.kelas_nama||sw.kelas||'')+'</b></div><div><span>Semester</span><b>'+esc(sem)+'</b></div><div><span>Tahun Ajaran</span><b>'+esc(r.tahun_ajaran)+'</b></div><div><span>Nama Wali Kelas</span><b>'+esc(r.wali_nama||'')+'</b></div></div>'+
-  '<div class="sh">A. Nilai Mata Pelajaran</div><table class="rpn"><thead><tr><th style="width:34px">No</th><th>Mata Pelajaran</th><th style="width:56px">Nilai</th><th style="width:68px">Predikat</th><th>Deskripsi</th></tr></thead><tbody>'+baris+'</tbody></table>'+
-  '<div class="bc"><div><div class="sh">B. Kehadiran</div><table><tbody><tr><td>Sakit</td><td class="c">'+(r.sakit||0)+' hari</td></tr><tr><td>Izin</td><td class="c">'+(r.izin||0)+' hari</td></tr><tr><td>Tanpa Keterangan</td><td class="c">'+(r.alpa||0)+' hari</td></tr></tbody></table></div><div><div class="sh">C. Catatan Wali Kelas</div><div class="cat">'+esc(r.catatan||'')+'</div></div></div>'+
-  (kep?'<div class="kp">'+kep+'</div>':'')+
-  '<div class="tt"><div>Orang Tua / Wali<i></i>( ............................ )</div><div>Wali Kelas<i></i>( '+esc(r.wali_nama||'............................')+' )<small>'+nip(r.wali_nip)+'</small></div><div>Kepala Sekolah<i></i>( '+esc(r.kepsek_nama||'............................')+' )<small>'+nip(r.kepsek_nip)+'</small></div></div></div></div>'}
+/* ---------- Rapor: tampilan dan PDF memakai /rapor.js (satu desain untuk guru dan orang tua) ---------- */
+const RP={i:0,w:720,d:null,D:null};
+const rpTunggu=(f,n)=>{n=n||0;if(typeof Rapor!=='undefined')f();else if(n<60)setTimeout(()=>rpTunggu(f,n+1),150);else{const e=$('#rpS');if(e)e.innerHTML='<div class="mu" style="padding:14px">Tampilan rapor gagal dimuat. Muat ulang halaman ini.</div>'}};
+async function rpGambar(){const d=RP.d,r=d.rapor[RP.i],lg=await Rapor.logoPng(d.sekolah.logo).catch(()=>null);
+ RP.D=Rapor.susun(r,{logo:lg,sekolah:d.sekolah.nama,alamat:d.sekolah.alamat,nama:d.siswa.nama,nisn:d.siswa.nisn,kelas:d.siswa.kelas});
+ const e=$('#rpS');if(e)Rapor.pratinjau(e,[RP.D],RP.w)}
+const rpZoom=dl=>{RP.w=Math.max(360,Math.min(1400,RP.w+dl));const e=$('#rpS');if(e)Rapor.lebar(e,RP.w)};
+const rpPas=()=>{const e=$('#rpS');if(!e)return;RP.w=Math.max(300,e.clientWidth-20);Rapor.lebar(e,RP.w)};
+async function rpUnduh(b){if(!RP.D||b.disabled)return;const t=b.textContent,er=$('#rpErr');b.disabled=true;b.textContent='Membuat PDF...';if(er)er.textContent='';
+ try{const r=RP.d.rapor[RP.i],bs=x=>String(x||'').replace(/[^\w\-]+/g,'-').replace(/^-+|-+$/g,'');await Rapor.pdf([RP.D],'Raport-'+bs(RP.d.siswa.nama)+'-'+r.jenis+'-S'+r.semester+'-'+bs(r.tahun_ajaran))}
+ catch(e){if(er)er.textContent=(e&&e.message)||'Gagal membuat PDF'}
+ b.disabled=false;b.textContent=t}
 R.rapor=d=>{const L=d.rapor||[];if(!L.length)return pesanFitur('📄','Belum ada rapor','Rapor akan tampil di sini setelah diterbitkan oleh wali kelas.');
- RP.i=Math.min(RP.i,L.length-1);
+ RP.d=d;RP.i=Math.min(RP.i,L.length-1);
  const opts=L.map((r,i)=>({v:String(i),t:'Semester '+r.semester+' · '+r.jenis+' · '+r.tahun_ajaran}));
- return '<div class="panel"><div class="ph">📄 Rapor '+esc(d.siswa.pan||d.siswa.nama)+'</div><div class="pb">'+dd('rapor',opts,String(RP.i),v=>{RP.i=+v;$('#rpS').innerHTML=rpLembar(L[RP.i],d)})+'<button class="btn" onclick="window.print()">🖨️ Cetak / Simpan sebagai PDF</button><div class="mu" style="margin-top:8px">Pilih periode, lalu tekan tombol di atas dan pilih &quot;Simpan sebagai PDF&quot; pada layar cetak.</div></div></div><div id="rpS">'+rpLembar(L[RP.i],d)+'</div>'};
+ return '<div class="panel"><div class="ph">📄 Rapor '+esc(d.siswa.pan||d.siswa.nama)+'</div><div class="pb">'+dd('rapor',opts,String(RP.i),v=>{RP.i=+v;rpTunggu(rpGambar)})+'<button class="btn" onclick="rpUnduh(this)">⬇️ Unduh PDF</button><div id="rpErr" class="mu" style="color:var(--su)"></div><div class="rpz"><button onclick="rpZoom(-100)">−</button><button onclick="rpPas()">↔ Pas layar</button><button onclick="rpZoom(100)">+</button></div><div class="mu" style="margin-top:8px">Geser untuk melihat bagian lain halaman raport, atau gunakan tombol − dan +.</div></div></div><div class="rpv" id="rpS"><div class="mu" style="padding:14px">Menyiapkan tampilan...</div></div>'};
+A.rapor=d=>rpTunggu(rpGambar);
 
 /* ---------- Pengingat piket (push) ---------- */
 const PK_OFF='pk_off_'+(m?m[1]:'');
