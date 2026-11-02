@@ -482,6 +482,7 @@ html[data-tema=gelap] .usblay.ok{background:#16311f}html[data-tema=gelap] .usbla
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="/kartu.js"></script>
+<script src="/rapor.js"></script>
 <style id="patch-tampilan">
 :root{--hdrbg:#166534}html[data-tema=gelap]{--hdrbg:#0F3D24}
 .top,html[data-tema=gelap] .top{background:var(--hdrbg)!important;color:#fff;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;height:auto;min-height:calc(62px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);box-sizing:border-box}
@@ -3004,9 +3005,9 @@ function pnRange(){const k=pnRangeKey();if(!pnTgl[k]){try{const j=JSON.parse(loc
 function pnSetTgl(i,v){if(!pnOkTgl(v))return;const r=pnRange().slice();r[i]=v;if(r[0]>r[1]){toast('Tanggal mulai tidak boleh setelah tanggal berakhir',false);renderV();return}
  const k=pnRangeKey();pnTgl[k]=r;try{localStorage.setItem(k,JSON.stringify(r))}catch(_){}pnKey='';renderV();pnMuatLagi()}
 function pnResetTgl(){const k=pnRangeKey();delete pnTgl[k];try{localStorage.removeItem(k)}catch(_){}pnKey='';renderV();pnMuatLagi()}
-const pnPred=(n,k)=>{if(n==null)return '';const i=(100-k)/3;return n<k?'D':n<k+i?'C':n<k+2*i?'B':'A'};
+const pnPred=(n,k)=>Rapor.pred(n,k);
 const pnPredCls={A:'hadir',B:'hadir',C:'terlambat',D:'Alpa'};
-const pnDesk=(p,m)=>({A:'Sangat baik dalam memahami materi '+m+'.',B:'Baik dalam memahami materi '+m+'.',C:'Cukup memahami materi '+m+', perlu ditingkatkan.',D:'Belum mencapai ketuntasan pada materi '+m+', perlu bimbingan lebih lanjut.'})[p]||'';
+const pnDesk=(p,m)=>Rapor.desk(p,m);
 function pnNum(s){s=String(s==null?'':s).trim().replace(',','.');if(s==='')return null;const n=Number(s);if(!isFinite(n)||n<0||n>100)throw new Error('nilai harus antara 0 dan 100');return Math.round(n*100)/100}
 function pnAng(s,l){const n=Number(String(s).trim());if(!Number.isInteger(n)||n<0||n>100)throw new Error(l+' harus angka bulat 0 sampai 100');return n}
 const pnDaftar=()=>{const kl=pnKl(pnK);return kl?act().filter(s=>s.kelas_id===kl.id).sort((a,b)=>a.nama.localeCompare(b.nama,'id')):[]};
@@ -3115,65 +3116,16 @@ async function pnBatal(id){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl))return;
  if(!await konfirmasi('Batalkan penerbitan raport ini? Raport kembali menjadi draf dan tidak lagi tampil di portal orang tua sampai diterbitkan ulang.',{bahaya:1,judul:'Batalkan penerbitan',ya:'Batalkan',ikon:'↩️'}))return;
  guard(async()=>{await pnTry(()=>dbq(db.from('rapor').update({status:'draf'}).eq('id',id)));await pnMuat();closeM();renderV();toast('Penerbitan dibatalkan, raport kembali menjadi draf')})}
 
-/* ---- PDF raport: tata letak mengikuti contoh Rapor_Siswa_SD (A4 tegak) ---- */
-let pnLogoC={k:'',v:null};
-async function pnLogoPng(){const src=S.set&&S.set.logo;if(!logoOk(src))return null;if(pnLogoC.k===src)return pnLogoC.v;
- const v=await new Promise(ok=>{const im=new Image();im.onload=()=>{try{const sc=Math.min(1,300/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*sc));c.height=Math.max(1,Math.round(im.height*sc));c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok({url:c.toDataURL('image/png'),w:c.width,h:c.height})}catch(e){ok(null)}};im.onerror=()=>ok(null);im.src=src});
- pnLogoC={k:src,v};return v}
-function pnDataPdf(r,logo){const s=S.siswa.find(x=>x.id===r.siswa_id)||{},kn=r.kelas_nama||'';
- const w=r.wali_nama?{nama:r.wali_nama,nip:fmtNip(r.wali_nip)}:(ttdWali(kn)||{}),kp=r.kepsek_nama?{nama:r.kepsek_nama,nip:fmtNip(r.kepsek_nip)}:ttdKepsek();
- return{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:s.nama||'',nisn:s.nisn||'',kelas:kn,semTxt:r.semester+' ('+(r.semester===1?'Ganjil':'Genap')+') - '+r.jenis,ta:r.tahun_ajaran,wali:w,kepsek:kp,
-  rows:r.nilai.map(x=>{const p=pnPred(x.n,x.k);return{m:x.m,n:x.n,p,d:x.d||(p?pnDesk(p,x.m):'')}}),sakit:r.sakit,izin:r.izin,alpa:r.alpa,catatan:r.catatan||'',keputusan:r.keputusan,kelasTujuan:r.kelas_tujuan,draf:r.status!=='terbit'}}
-function pdfRapor(d,D){
- const L=14,R=196,W=182,NV=[30,58,95],GD=[201,150,43],GR=[90,100,115],TX=[40,48,60],LN=[196,205,218],SH=[241,244,249];
- const bingkai=()=>{d.setDrawColor(...NV);d.setLineWidth(1.6);d.rect(3,3,204,291);d.setDrawColor(...GD);d.setLineWidth(.5);d.rect(6,6,198,285)};
- const judul=(t,x,y)=>{d.setFillColor(...GD);d.rect(x,y-3.6,1.4,4.6,'F');d.setFont('times','bold');d.setFontSize(10);d.setTextColor(...NV);d.text(t,x+3.4,y)};
- const muat=(t,w,mx,mn)=>{let f=mx;d.setFontSize(f);while(f>mn&&d.getTextWidth(t)>w){f-=.3;d.setFontSize(f)}};
- bingkai();
- if(D.draf){d.setFont('helvetica','bold');d.setFontSize(9);d.setTextColor(200,50,50);d.text('DRAF',R,12,{align:'right'})}
- if(D.logo){const m=24,sc=Math.min(m/D.logo.w,m/D.logo.h),w=D.logo.w*sc,h=D.logo.h*sc;d.addImage(D.logo.url,'PNG',L+2+(m-w)/2,12+(m-h)/2,w,h)}
- const cx=D.logo?114:105;d.setFont('times','bold');d.setFontSize(15);d.setTextColor(...NV);
- const nl=d.splitTextToSize(String(D.sekolah||'').toUpperCase(),138);nl.forEach((t,i)=>d.text(t,cx,19+i*6.5,{align:'center'}));
- let yy=19+(nl.length-1)*6.5;d.setFont('helvetica','normal');d.setFontSize(8);d.setTextColor(...GR);
- const al=D.alamat?d.splitTextToSize(String(D.alamat),138):[];al.forEach((t,i)=>d.text(t,cx,yy+6+i*4,{align:'center'}));
- const ry=Math.max(40,yy+6+al.length*4+3);d.setDrawColor(...NV);d.setLineWidth(.8);d.line(L,ry,R,ry);d.setLineWidth(.25);d.line(L,ry+1.6,R,ry+1.6);
- const by=ry+6,T='LAPORAN HASIL BELAJAR SISWA';d.setFillColor(...NV);d.rect(L,by,W,9,'F');d.setFont('times','bold');d.setFontSize(11);d.setTextColor(255,255,255);
- d.setCharSpace(1.6);const tw=d.getTextWidth(T);d.text(T,105-tw/2,by+6.1);d.setCharSpace(0);
- const iy=by+16,F=[['Nama Siswa',D.nama,'NISN / NIS',D.nisn],['Kelas',D.kelas,'Semester',D.semTxt],['Tahun Ajaran',D.ta,'Nama Wali Kelas',(D.wali||{}).nama]];
- F.forEach((x,i)=>{const y=iy+i*7;d.setFont('helvetica','normal');d.setFontSize(8.5);d.setTextColor(...NV);d.text(x[0],L,y);d.text(x[2],L+96,y);
-  d.setFont('helvetica','bold');d.setTextColor(30,30,30);muat(String(x[1]||''),57,9,6.5);d.text(String(x[1]||''),L+30,y-.8);muat(String(x[3]||''),55,9,6.5);d.text(String(x[3]||''),L+126,y-.8);
-  d.setDrawColor(...GR);d.setLineWidth(.2);d.setLineDashPattern([.35,.7],0);d.line(L+30,y,L+88,y);d.line(L+126,y,R,y);d.setLineDashPattern([],0)});
- const ay=iy+3*7+4;judul('A. Nilai Mata Pelajaran',L,ay);
- d.autoTable({startY:ay+3,margin:{left:L,right:210-R,top:14,bottom:14},head:[['No','Mata Pelajaran','Nilai','Predikat','Deskripsi']],
-  body:D.rows.map((x,i)=>[i+1,x.m,x.n==null?'':String(x.n).replace('.',','),x.p,x.d]),theme:'grid',
-  styles:{font:'helvetica',fontSize:8,cellPadding:{top:2,bottom:2,left:2,right:2},lineColor:LN,lineWidth:.2,textColor:TX,valign:'middle',minCellHeight:9},
-  headStyles:{fillColor:NV,textColor:255,fontStyle:'bold',halign:'center',fontSize:8.5},bodyStyles:{fillColor:SH},alternateRowStyles:{fillColor:[255,255,255]},
-  columnStyles:{0:{halign:'center',cellWidth:10},1:{cellWidth:52},2:{halign:'center',cellWidth:14},3:{halign:'center',cellWidth:17,fontStyle:'bold'},4:{cellWidth:'auto'}},
-  didDrawPage:h=>{if(h.pageNumber>1)bingkai()}});
- let y=d.lastAutoTable.finalY+7;if(y>297-88){d.addPage();bingkai();y=18}
- judul('B. Kehadiran',L,y);judul('C. Catatan Wali Kelas',L+78,y);
- d.autoTable({startY:y+3,margin:{left:L},tableWidth:72,body:[['Sakit',(D.sakit||0)+' hari'],['Izin',(D.izin||0)+' hari'],['Tanpa Keterangan',(D.alpa||0)+' hari']],theme:'grid',
-  styles:{font:'helvetica',fontSize:8.5,cellPadding:2.4,lineColor:LN,lineWidth:.2,textColor:TX,valign:'middle',minCellHeight:9.5},bodyStyles:{fillColor:[255,255,255]},alternateRowStyles:{fillColor:SH},
-  columnStyles:{0:{cellWidth:38},1:{cellWidth:34,halign:'center'}}});
- const bh=d.lastAutoTable.finalY-(y+3);d.setFillColor(...SH);d.setDrawColor(...LN);d.setLineWidth(.2);d.rect(L+78,y+3,W-78,bh,'FD');
- if(D.catatan){d.setFont('helvetica','normal');d.setFontSize(8.5);d.setTextColor(...TX);const mx=Math.max(1,Math.floor((bh-5)/4)),ls=d.splitTextToSize(D.catatan,W-78-6).slice(0,mx);ls.forEach((t,i)=>d.text(t,L+81,y+8.5+i*4))}
- y=d.lastAutoTable.finalY+6;
- if(D.keputusan){const P=D.keputusan==='naik'?['Keputusan: siswa ditetapkan ','NAIK',' ke kelas '+(D.kelasTujuan||'........')]:D.keputusan==='tinggal'?['Keputusan: siswa ditetapkan ','TIDAK NAIK',' (tetap di kelas '+(D.kelas||'')+')']:['Keputusan: siswa dinyatakan ','LULUS',' dari '+(D.sekolah||'')];
-  d.setFillColor(250,246,235);d.setDrawColor(...GD);d.setLineWidth(.4);d.rect(L,y,W,10,'FD');d.setFontSize(9);let x=L+5;
-  P.forEach((t,i)=>{d.setFont('helvetica',i===1?'bold':'normal');d.setTextColor(30,30,30);d.text(t,x,y+6.2);x+=d.getTextWidth(t)});y+=16}
- y=Math.max(y+4,238);if(y+36>287){d.addPage();bingkai();y=24}
- const sx=[L+30,105,R-30],lab=['Orang Tua / Wali','Wali Kelas','Kepala Sekolah'],nm=['',(D.wali||{}).nama,(D.kepsek||{}).nama],np=['',(D.wali||{}).nip,(D.kepsek||{}).nip];
- sx.forEach((x,i)=>{d.setFont('helvetica','normal');d.setFontSize(9);d.setTextColor(...TX);d.text(lab[i],x,y,{align:'center'});const ny=y+26;
-  d.text('( '+(nm[i]||'............................')+' )',x,ny,{align:'center'});
-  if(i>0){d.setFontSize(8);d.setTextColor(...GR);d.text('NIP. '+(np[i]||'...............'),x,ny+4.5,{align:'center'})}})}
+/* ---- PDF raport: DESAIN ada di /rapor.js (dipakai bersama portal). Di sini hanya menyiapkan data ---- */
 async function pnPdf(ids,btn){const rs=pnRap.filter(r=>ids.includes(r.id));if(!rs.length)return toast('Belum ada raport tersimpan untuk diunduh',false);
  await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membuat PDF...'))return;
- try{await jedaUnduh();const logo=await pnLogoPng().catch(()=>null),d=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
-  const urut=rs.slice().sort((a,b)=>{const na=(S.siswa.find(x=>x.id===a.siswa_id)||{}).nama||'',nb=(S.siswa.find(x=>x.id===b.siswa_id)||{}).nama||'';return na.localeCompare(nb,'id')});
-  urut.forEach((r,i)=>{if(i)d.addPage();pdfRapor(d,pnDataPdf(r,logo))});
+ try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null);
+  const nmS=r=>(S.siswa.find(x=>x.id===r.siswa_id)||{}).nama||'';
+  const urut=rs.slice().sort((a,b)=>nmS(a).localeCompare(nmS(b),'id'));
+  const Ds=urut.map(r=>{const s=S.siswa.find(x=>x.id===r.siswa_id)||{};return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:s.nama,nisn:s.nisn,wali:ttdWali(r.kelas_nama),kepsek:ttdKepsek()})});
   const r0=urut[0],bersih=t=>String(t||'').replace(/[^\w\-]+/g,'-').replace(/^-+|-+$/g,'');
-  const nf=urut.length===1?'Raport-'+bersih((S.siswa.find(x=>x.id===r0.siswa_id)||{}).nama)+'-'+r0.jenis+'-S'+r0.semester:'Raport-'+bersih(r0.kelas_nama)+'-'+r0.jenis+'-S'+r0.semester+'-'+bersih(r0.tahun_ajaran);
-  d.save(nf+'.pdf');toast('PDF raport sedang diproses, mohon ditunggu')}
+  const nf=urut.length===1?'Raport-'+bersih(nmS(r0))+'-'+r0.jenis+'-S'+r0.semester:'Raport-'+bersih(r0.kelas_nama)+'-'+r0.jenis+'-S'+r0.semester+'-'+bersih(r0.tahun_ajaran);
+  await Rapor.pdf(Ds,nf);toast('PDF raport sedang diproses, mohon ditunggu')}
  catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
 /* --- Hafalan --- */
