@@ -77,26 +77,29 @@ const Rapor = (() => {
     return out.map(t => '- ' + t).join('\n');
   }
 
+  /* pohon bernomor dari master: [{id,no,n,kat:[{id,no,n,ind:[{i (indikator master), no, kd}]}]}]; dipakai PDF dan layar input */
+  function pohon(M) {
+    const nm = Object.assign({ a: 'A', s: '1', i: '1', gabung: true }, (M && M.nomor) || {});
+    return ((M && M.aspek) || []).map((a, ai) => {
+      const na = nomorFmt(nm.a, ai + 1); let ik = 0;
+      return { id: a.id, no: na, n: a.n || '', kat: (a.sub || []).map(s => {
+        const jdl = !!(s.n && String(s.n).trim()); if (jdl) ik++;
+        return { id: s.id, no: jdl ? (nm.gabung && na ? na + '.' : '') + nomorFmt(nm.s, ik) : '', n: jdl ? String(s.n).trim() : '',
+          ind: (s.ind || []).map((i, ii) => ({ i, no: nomorFmt(nm.i, ii + 1), kd: i.kd && M.kd && M.kd[i.kd] ? M.kd[i.kd].k : '' })) };
+      }) };
+    });
+  }
+
   /* r = baris rapor (fmt 'perkembangan'). o = {logo, sekolah, alamat, kota, nama, panggilan, nisn, kelas, tempatLahir, tglLahir (yyyy-mm-dd),
        kelompok, kelompokLabel, master (salinan beku atau master terbaru), wali, kepsek, pengelola} */
   function susunP(r, o) {
     o = o || {};
     const M = o.master || { aspek: [] }, S = pengaturan(M), d = r.data || {}, N = d.n || {}, OV = d.o || {}, OC = d.oc || {};
     const nama = String(o.panggilan || '').trim() || String(o.nama || '').trim().split(/\s+/)[0] || '';
-    const nm = Object.assign({ a: 'A', s: '1', i: '1', gabung: true }, M.nomor || {});
-    const aspek = (M.aspek || []).map((a, ai) => {
-      const na = nomorFmt(nm.a, ai + 1); let ik = 0;
-      const kat = (a.sub || []).map(s => {
-        const jdl = !!(s.n && String(s.n).trim()); if (jdl) ik++;
-        const nk = jdl ? (nm.gabung && na ? na + '.' : '') + nomorFmt(nm.s, ik) : '';
-        const ind = (s.ind || []).map((i, ii) => {
-          const lv = +N[i.id] || 0, kd = i.kd && M.kd && M.kd[i.kd] ? M.kd[i.kd].k : '';
-          return { no: nomorFmt(nm.i, ii + 1), kd: kd || '-', t: i.t || '', lv, cap: OV[i.id] != null && OV[i.id] !== '' ? String(OV[i.id]) : cap(i, lv, nama, S), cat: OC[i.id] != null && OC[i.id] !== '' ? String(OC[i.id]) : catI(i, lv, S) };
-        });
-        return { no: nk, n: jdl ? String(s.n).trim() : '', ind };
-      });
-      return { no: na, n: a.n || '', kat };
-    });
+    const aspek = pohon(M).map(a => ({ no: a.no, n: a.n, kat: a.kat.map(k => ({ no: k.no, n: k.n, ind: k.ind.map(x => {
+      const i = x.i, lv = +N[i.id] || 0;
+      return { no: x.no, kd: x.kd || '-', t: i.t || '', lv, cap: OV[i.id] != null && OV[i.id] !== '' ? String(OV[i.id]) : cap(i, lv, nama, S), cat: OC[i.id] != null && OC[i.id] !== '' ? String(OC[i.id]) : catI(i, lv, S) };
+    }) })) }));
     const w = r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : (o.wali || {});
     const kp = r.kepsek_nama ? { nama: r.kepsek_nama, nip: nip(r.kepsek_nip) } : (o.kepsek || {});
     /* pengelola: rapor terbit memakai nama yang dibekukan saat terbit; kosong = tidak ada tempat tanda tangan */
@@ -474,5 +477,5 @@ const Rapor = (() => {
   }
   function lebar(wadah, px) { wadah.querySelectorAll('canvas').forEach(c => { c.style.width = px + 'px'; c.style.height = (297 / 210 * px) + 'px'; }); }
 
-  return { versi: '2', pred, desk, nip, susun, gambar, pdf, pratinjau, lebar, logoPng, muatPdf, cap, catI, pendidik, pengaturan, nomorFmt, tglIndo, hariJkt };
+  return { versi: '2', pred, desk, nip, susun, gambar, pdf, pratinjau, lebar, logoPng, muatPdf, cap, catI, pendidik, pengaturan, pohon, nomorFmt, tglIndo, hariJkt };
 })();
