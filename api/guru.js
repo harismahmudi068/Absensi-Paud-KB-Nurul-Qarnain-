@@ -1,12 +1,12 @@
 // Fungsi server akun guru (multi-sekolah).
 // Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
-// Aksi untuk Kepala Sekolah / Wakil Kepala Sekolah / Operator sekolah itu atau Developer (wajib kirim sekolah_id):
+// Aksi untuk Kepala Sekolah / Wakil Kepala Sekolah / Pengelola/Pengasuh / Operator sekolah itu atau Developer (wajib kirim sekolah_id):
 //   otp_kelola_kirim, otp_kelola_verifikasi (bukti kepemilikan: OTP ke nomor pengelola sendiri)
 //   cek_nomor, tautkan, tambah, tambah_batch (wajib izin dari OTP, kecuali Developer atau Developer di mode bantuan)
 //   ubah_role, aktif, hapus, hapus_batch (keluarkan banyak guru sekaligus)
 // Aksi untuk pemilik akun sendiri: akun_sendiri, nomor_otp_kirim, nomor_simpan, otp_cek
-// Ganti Kepala Sekolah: Kepala Sekolah lama, Wakil, Operator, atau Developer; kepala lama otomatis menjadi Guru
+// Ganti Kepala Sekolah: Kepala Sekolah lama, Wakil, Pengelola/Pengasuh, Operator, atau Developer; kepala lama otomatis menjadi Guru
 // (fungsi database ganti_kepala_sekolah, satu transaksi).
 // Aksi khusus Developer:
 //   reset (atur sandi baru), hapus_akun (hapus akun seluruhnya),
@@ -23,10 +23,11 @@ const { kirimOtp, cekOtp, lihatOtp, ipDari, verifPasskey, bantuanCek, catatLog }
 const RE_UUID = /^[0-9a-f-]{36}$/i;
 const RE_USER = /^[a-z0-9._-]{3,20}$/;
 const RE_WA = /^628\d{8,12}$/;
-const ROLE_SEKOLAH = ['guru', 'operator', 'wakil_kepala', 'kepala_sekolah'];
-const ROLE_PENGELOLA = ['kepala_sekolah', 'wakil_kepala', 'operator'];
+const ROLE_SEKOLAH = ['guru', 'operator', 'pengelola', 'wakil_kepala', 'kepala_sekolah'];
+// 'pengelola' = Pengelola/Pengasuh: hak akses sama dengan Kepala Sekolah (kecuali ditetapkan sebagai Kepala)
+const ROLE_PENGELOLA = ['kepala_sekolah', 'wakil_kepala', 'pengelola', 'operator'];
 // Kolom profil.role hanya mengenal kepala_sekolah, guru, developer (batasan database).
-// Wakil Kepala dan Operator disimpan sebagai 'guru' di profil; peran sebenarnya ada di keanggotaan.role.
+// Wakil Kepala, Pengelola/Pengasuh, dan Operator disimpan sebagai 'guru' di profil; peran sebenarnya ada di keanggotaan.role.
 const peranProfil = (r) => (r === 'developer' || r === 'kepala_sekolah' ? r : 'guru');
 const IZIN_MENIT = 15;
 // Batas permintaan paralel ke Supabase Auth saat impor (hash sandi dikerjakan di sana).
@@ -518,13 +519,13 @@ module.exports = async (req, res) => {
       if (!k || !k.aktif || !ROLE_PENGELOLA.includes(k.role))
         return res
           .status(403)
-          .json({ error: 'Hanya Kepala Sekolah, Wakil Kepala Sekolah, atau Operator sekolah ini, atau Developer, yang boleh' });
+          .json({ error: 'Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, atau Operator sekolah ini, atau Developer, yang boleh' });
       peranPemanggil = k.role;
     }
-    // Yang boleh menunjuk Operator: Kepala Sekolah, Wakil, dan Developer (bukan Operator)
+    // Yang boleh menunjuk Operator atau Pengelola/Pengasuh: Kepala Sekolah, Wakil, Pengelola/Pengasuh, dan Developer (bukan Operator)
     const tolakOperator = (r) => {
-      if (peranPemanggil === 'operator' && r === 'operator')
-        throw new Error('Operator tidak boleh menunjuk Operator. Hubungi Kepala Sekolah atau Wakil');
+      if (peranPemanggil === 'operator' && (r === 'operator' || r === 'pengelola'))
+        throw new Error('Operator tidak boleh menunjuk Operator atau Pengelola/Pengasuh. Hubungi Kepala Sekolah, Wakil, atau Pengelola/Pengasuh');
     };
 
     // ---------- OTP pengelola (bukti kepemilikan) ----------
@@ -854,8 +855,11 @@ module.exports = async (req, res) => {
         const role = String(b.role || '');
         if (!ROLE_SEKOLAH.includes(role))
           return res.status(400).json({ error: 'Role tidak valid' });
-        if (peranPemanggil === 'operator' && (role === 'operator' || target.role === 'operator'))
-          return res.status(403).json({ error: 'Operator tidak boleh menunjuk atau mengubah peran Operator. Hubungi Kepala Sekolah atau Wakil' });
+        if (
+          peranPemanggil === 'operator' &&
+          (['operator', 'pengelola'].includes(role) || ['operator', 'pengelola'].includes(target.role))
+        )
+          return res.status(403).json({ error: 'Operator tidak boleh menunjuk atau mengubah peran Operator atau Pengelola/Pengasuh. Hubungi Kepala Sekolah, Wakil, atau Pengelola/Pengasuh' });
         if (role === 'kepala_sekolah') {
           if (!target.aktif)
             return res.status(400).json({ error: 'Aktifkan guru ini dulu sebelum menjadikannya Kepala Sekolah' });
