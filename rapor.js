@@ -24,6 +24,14 @@ const Rapor = (() => {
     C: 'Cukup memahami materi ' + m + ', perlu ditingkatkan.',
     D: 'Belum mencapai ketuntasan pada materi ' + m + ', perlu bimbingan lebih lanjut.'
   })[p] || '';
+  /* pengelompokan baris nilai per aspek: urutan aspek = urutan kemunculan pertama; yang tanpa aspek ("Lainnya") paling akhir.
+     Hasil: [{a, rows:[{x, i}]}], i = indeks asli baris. */
+  function aspekGrup(rows) {
+    const g = [], mp = new Map();
+    (rows || []).forEach((x, i) => { const a = String((x && x.a) || '').trim(), k = a.toLowerCase(); let o = mp.get(k); if (!o) { o = { a, rows: [] }; mp.set(k, o); g.push(o); } o.rows.push({ x, i }); });
+    const li = g.findIndex(o => !o.a); if (li >= 0 && li < g.length - 1) g.push(g.splice(li, 1)[0]);
+    return g;
+  }
   const nip = s => { const a = String(s || '').replace(/\D/g, ''); return a.length === 18 ? a.slice(0, 8) + ' ' + a.slice(8, 14) + ' ' + a.slice(14, 15) + ' ' + a.slice(15) : String(s || '').trim(); };
 
   /* ---------------- Raport perkembangan: aturan teks otomatis ---------------- */
@@ -138,7 +146,7 @@ const Rapor = (() => {
       nama: o.nama || '', nisn: o.nisn || '', kelas: r.kelas_nama || o.kelas || '',
       semTxt: r.semester + ' (' + (r.semester === 1 ? 'Ganjil' : 'Genap') + ') - ' + r.jenis, ta: r.tahun_ajaran || '',
       wali: w, kepsek: kp,
-      rows: (r.nilai || []).map(x => { const p = pred(x.n, x.k); return { m: x.m, n: x.n, p, d: x.d || (p ? desk(p, x.m) : '') }; }),
+      rows: (r.nilai || []).map(x => { const p = pred(x.n, x.k); return { m: x.m, n: x.n, k: x.k, a: String(x.a || '').trim(), p, d: x.d || (p ? desk(p, x.m) : '') }; }),
       sakit: r.sakit || 0, izin: r.izin || 0, alpa: r.alpa || 0, catatan: r.catatan || '',
       keputusan: r.keputusan || '', kelasTujuan: r.kelas_tujuan || '', draf: r.status === 'draf'
     };
@@ -233,9 +241,19 @@ const Rapor = (() => {
 
     /* --- A. Nilai --- */
     const ay = iy + 3 * 7 + 4; judul('A. Nilai Mata Pelajaran', L, ay);
-    let y = tbl(L, ay + 3, [{ w: 10, al: 'c' }, { w: 52 }, { w: 14, al: 'c' }, { w: 17, al: 'c', b: 1 }, { w: 89 }],
-      D.rows.map((x, i) => [i + 1, x.m, x.n == null ? '' : String(x.n).replace('.', ','), x.p, x.d]),
-      { head: ['No', 'Mata Pelajaran', 'Nilai', 'Predikat', 'Deskripsi'], page: true }) + 7;
+    /* satu tabel per aspek (judul aspek di atasnya); tanpa aspek sama sekali = satu tabel polos */
+    const gr = aspekGrup(D.rows), bernama = gr.some(g => g.a); let y = ay + 3;
+    gr.forEach((g, gi) => {
+      if (bernama) {
+        if (y + 25 > BAWAH) y = halBaru();
+        doc.setFillColor(...SH); doc.setDrawColor(...LN); doc.setLineWidth(.2); doc.rect(L, y, W, 7, 'FD');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(...NV); doc.text(String.fromCharCode(65 + gi) + '. ' + (g.a || 'Lainnya'), L + 2, y + 4.8); y += 7;
+      }
+      y = tbl(L, y, [{ w: 10, al: 'c' }, { w: 50 }, { w: 14, al: 'c' }, { w: 14, al: 'c' }, { w: 17, al: 'c', b: 1 }, { w: 77 }],
+        g.rows.map(({ x }, i) => [i + 1, x.m, x.n == null ? '' : String(x.n).replace('.', ','), x.k == null ? '' : String(x.k), x.p, x.d]),
+        { head: ['No', 'Mata Pelajaran', 'Nilai', 'KKM', 'Predikat', 'Deskripsi'], page: true }) + (gi < gr.length - 1 ? 3 : 0);
+    });
+    y += 7;
 
     /* --- B. Kehadiran dan C. Catatan --- */
     if (y + 36 > BAWAH) y = halBaru();
@@ -497,5 +515,5 @@ const Rapor = (() => {
   }
   function lebar(wadah, px) { wadah.querySelectorAll('canvas').forEach(c => { c.style.width = px + 'px'; c.style.height = (297 / 210 * px) + 'px'; }); }
 
-  return { versi: '2', pred, desk, nip, susun, gambar, pdf, pratinjau, lebar, logoPng, muatPdf, cap, catI, pendidik, pengaturan, pohon, nomorFmt, tglIndo, hariJkt };
+  return { versi: '2', pred, desk, nip, susun, gambar, aspekGrup, pdf, pratinjau, lebar, logoPng, muatPdf, cap, catI, pendidik, pengaturan, pohon, nomorFmt, tglIndo, hariJkt };
 })();
