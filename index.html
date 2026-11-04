@@ -644,6 +644,10 @@ textarea,textarea.input{display:block;width:100%!important;max-width:100%!import
 #mbd .tbkh{margin-top:18px}
 #mbd .note+.fd,#mbd .note+.tb{margin-top:14px}
 .mf .btn{min-width:96px}
+/* dropdown pas selebar layar */
+.pnper>.csel,.pnper>.select,.pnper>.cpick{flex:1 1 100%!important;width:100%!important;max-width:none!important;min-width:0!important}
+.fd>.select,.fd>.csel,.fd>.cpick,.tb>select.select,.tb>.csel:not(:has(.urutan-sel)),.tb>.cpick,.fd .csel-btn,.fd .cpick-btn,.tb>.csel .csel-btn,.tb>.cpick .cpick-btn{width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}
+.fd>.csel,.fd>.cpick{display:block}
 /* efek tekan untuk semua dropdown, tanpa spinner pada tombol level */
 select.click-fx,.select.click-fx{animation:btnClick .38s ease-out}
 .pklv button.busy{opacity:1!important;pointer-events:auto!important}.pklv button.busy::before{display:none!important;content:none!important}
@@ -3149,10 +3153,10 @@ function pnBaca(){const ent=window._pnEnt||[];
  const ang=id=>{const v=String($(id).value).trim()||'0';if(!/^\d{1,3}$/.test(v))throw new Error('Jumlah hari kehadiran harus berupa angka bulat');return +v};
  return{nilai,sakit:ang('#pnSk'),izin:ang('#pnIz'),alpa:ang('#pnAl'),catatan:($('#pnCat').value||'').trim()||null}}
 function pnSimpan(lanjut){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl))return;let d;try{d=pnBaca()}catch(e){return toast(e.message,false)}
- const sis=pnDaftar(),nxt=sis[sis.findIndex(x=>x.id===pnSis)+1];
+ const sis=pnDaftar(),nxt=sis[sis.findIndex(x=>x.id===pnSis)+1],kos=(d.nilai||[]).filter(x=>x.n==null).map(x=>x.m);
  guard(async()=>{await pnTry(()=>dbq(db.from('rapor').upsert({siswa_id:pnSis,kelas_id:kl.id,kelas_nama:kl.nama,tahun_ajaran:S.set.tahun_ajaran,semester:pnSem,jenis:pnJenis,status:'draf',nilai:d.nilai,sakit:d.sakit,izin:d.izin,alpa:d.alpa,catatan:d.catatan},{onConflict:'siswa_id,tahun_ajaran,semester,jenis'})));
   await pnMuat();
-  if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama)}else{closeM();renderV();toast('Draf nilai tersimpan')}})}
+  if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':''))}else{closeM();renderV();toast('Draf nilai tersimpan'+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':''))}})}
 function pnKepTanpa(rows){return rows.filter(r=>!pnKepKep.get(r.siswa_id)).map(r=>(S.siswa.find(x=>x.id===r.siswa_id)||{}).nama||'')}
 /* inti penerbitan: dipanggil di dalam guard(). UAS Semester 2 membawa keputusan akhir ke dalam raport */
 async function pnTerbitInti(ids,baru){const kl=pnKl(pnK),semua=pnRap.filter(r=>ids.includes(r.id)),rows=semua.filter(r=>r.fmt!=='perkembangan'),w=ttdWali(kl.nama)||{},k=ttdKepsek()||{};
