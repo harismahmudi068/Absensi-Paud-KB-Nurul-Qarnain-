@@ -108,6 +108,9 @@ const Rapor = (() => {
     const blOk = Array.isArray(d.bl) && d.bl.length > 0 && d.bl.length <= 12 && d.bl.every(k => /^\d{4}-(0[1-9]|1[0-2])$/.test(k));
     const bulan = blOk ? d.bl.map(k => d.bl.length > 6 ? BLN[+k.slice(5) - 1].slice(0, 3) : BLN[+k.slice(5) - 1]) : (r.semester === 1 ? BLN.slice(6) : BLN.slice(0, 6)), tb = d.tb || [];
     const jns = { UTS: 'Ujian Tengah Semester', UAS: 'Ujian Akhir Semester' };
+    /* keputusan akhir tahun (opsional): hanya UAS semester 2; raport terbit memakai yang dibekukan, draf memakai o.keputusan */
+    const uas2 = r.jenis === 'UAS' && +r.semester === 2, kj = r.status === 'terbit' ? r.keputusan : (o.keputusan || r.keputusan), kt = r.status === 'terbit' ? r.kelas_tujuan : (o.kelasTujuan || r.kelas_tujuan);
+    const kep = uas2 && ['naik', 'tinggal', 'lulus'].includes(kj) ? { j: kj, t: kj === 'naik' ? String(kt || '') : '' } : { j: '', t: '' };
     return {
       fmt: 'perkembangan', logo: o.logo || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
       nama: o.nama || '', nisn: o.nisn || '', kelas: r.kelas_nama || o.kelas || '',
@@ -117,6 +120,7 @@ const Rapor = (() => {
       wali: w, kepsek: kp, pengelola: pg, aspek,
       tb: { bulan, baris: (S.tumbuh || DEF.tumbuh).map((lab, i) => [lab].concat(bulan.map((_, j) => String(((tb[i] || [])[j]) == null ? '' : tb[i][j])))) },
       sakit: r.sakit || 0, izin: r.izin || 0, alpa: r.alpa || 0,
+      keputusan: kep.j, kelasTujuan: kep.t,
       catatan: String(r.catatan || '').trim() || pendidik(M, N, nama, S),
       kota: o.kota || '', tgl: tglIndo(r.status === 'terbit' && r.diterbitkan_pada ? hariJkt(r.diterbitkan_pada) : hariJkt()), draf: r.status === 'draf'
     };
@@ -380,6 +384,17 @@ const Rapor = (() => {
     doc.setFillColor(255, 255, 255); doc.setDrawColor(...LN); doc.setLineWidth(.2); doc.rect(L, y + 5, W, 18, 'FD');
     for (let i = 0; i < 3; i++) A.titik(L + 3, R - 3, y + 11 + i * 5.5);
     y += 28;
+
+    /* --- Keputusan akhir tahun (hanya bila ada) --- */
+    if (D.keputusan) {
+      if (y + 14 > BAWAH) y = halBaru();
+      const P = D.keputusan === 'naik' ? ['Keputusan: siswa ditetapkan ', 'NAIK', ' ke kelas ' + (D.kelasTujuan || '........')]
+        : D.keputusan === 'tinggal' ? ['Keputusan: siswa ditetapkan ', 'TIDAK NAIK', ' (tetap di kelas ' + (D.kelas || '') + ')']
+          : ['Keputusan: siswa dinyatakan ', 'LULUS', ' dari ' + (D.sekolah || '')];
+      doc.setFillColor(250, 246, 235); doc.setDrawColor(...GD); doc.setLineWidth(.4); doc.rect(L, y, W, 10, 'FD'); doc.setFontSize(9); let x = L + 5;
+      P.forEach((s, i) => { doc.setFont('helvetica', i === 1 ? 'bold' : 'normal'); doc.setTextColor(30, 30, 30); doc.text(s, x, y + 6.2); x += doc.getTextWidth(s); });
+      y += 14;
+    }
 
     /* --- Tanggal dan tanda tangan: satu baris; Pengelola/Pengasuh hanya bila sekolah punya akunnya --- */
     if (y + 45 > 285) y = halBaru() + 2;
