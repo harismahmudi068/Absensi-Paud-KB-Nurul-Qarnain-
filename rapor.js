@@ -466,8 +466,11 @@ const Rapor = (() => {
   /* Ds = daftar data hasil susun(); satu data = satu raport. Hasilnya diunduh sebagai PDF. */
   async function pdf(Ds, namaFile) {
     await muatPdf();
-    const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
-    Ds.forEach((D, i) => { if (i) doc.addPage(); gambar(doc, D); });
+    const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });   // compress: file PDF lebih kecil, tampilan sama
+    for (let i = 0; i < Ds.length; i++) {
+      if (i) doc.addPage(); gambar(doc, Ds[i]);
+      if (i % 3 === 2) await new Promise(r => setTimeout(r, 0));   // beri jeda supaya layar HP tidak macet saat membuat PDF satu kelas
+    }
     doc.save(String(namaFile || 'Raport').replace(/\.pdf$/i, '') + '.pdf');
   }
   /* Pratinjau di layar (kanvas), bisa digeser/diperbesar oleh halaman pemanggil */
