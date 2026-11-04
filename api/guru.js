@@ -512,21 +512,14 @@ module.exports = async (req, res) => {
           })
         : null;
 
-    // Peran pemanggil di sekolah ini (dipakai untuk membatasi penunjukan Operator)
-    let peranPemanggil = isDev ? 'developer' : '';
+    // Operator memiliki hak yang sama dengan Kepala Sekolah, Wakil, dan Pengelola/Pengasuh (tanpa pembatasan tambahan)
     if (!isDev) {
       const k = await ambilKeanggotaan(user.id, sekolahId);
       if (!k || !k.aktif || !ROLE_PENGELOLA.includes(k.role))
         return res
           .status(403)
           .json({ error: 'Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, atau Operator sekolah ini, atau Developer, yang boleh' });
-      peranPemanggil = k.role;
     }
-    // Yang boleh menunjuk Operator atau Pengelola/Pengasuh: Kepala Sekolah, Wakil, Pengelola/Pengasuh, dan Developer (bukan Operator)
-    const tolakOperator = (r) => {
-      if (peranPemanggil === 'operator' && (r === 'operator' || r === 'pengelola'))
-        throw new Error('Operator tidak boleh menunjuk Operator atau Pengelola/Pengasuh. Hubungi Kepala Sekolah, Wakil, atau Pengelola/Pengasuh');
-    };
 
     // ---------- OTP pengelola (bukti kepemilikan) ----------
     if (b.aksi === 'otp_kelola_kirim' || b.aksi === 'otp_kelola_verifikasi') {
@@ -568,7 +561,6 @@ module.exports = async (req, res) => {
       if (!isDev && !bantuan) izinCek(b.izin, user.id, sekolahId);
       await catatBantuan();
       const role = ROLE_SEKOLAH.includes(b.role) ? b.role : 'guru';
-      tolakOperator(role);
       const t = await cariProfilByWA(wa);
       if (!t || !t.aktif) throw new Error('Akun dengan nomor ini tidak ditemukan');
       if (await ambilKeanggotaan(t.id, sekolahId))
@@ -586,7 +578,6 @@ module.exports = async (req, res) => {
       const d = periksaDataAkun(b, { wajibWA: b.role !== 'developer' });
       if (d.role === 'developer' && !isDev)
         throw new Error('Hanya Developer yang boleh membuat akun Developer');
-      tolakOperator(d.role);
       if (d.no_wa && (await cariProfilByWA(d.no_wa)))
         throw new Error('Nomor WhatsApp sudah punya akun. Gunakan Tautkan');
       // Kepala Sekolah: dibuat sebagai Guru lebih dulu, lalu diganti secara atomis
@@ -639,7 +630,6 @@ module.exports = async (req, res) => {
             throw new Error('Hanya Developer yang boleh membuat akun Developer');
           if (d.role === 'kepala_sekolah' && !isDev)
             throw new Error('Role Kepala Sekolah hanya bisa ditetapkan Developer');
-          tolakOperator(d.role);
           if (userDlm.has(d.username)) throw new Error('Username sudah dipakai');
           if (d.no_wa && waDlm.has(d.no_wa))
             throw new Error('Nomor WhatsApp sudah punya akun');
@@ -855,11 +845,6 @@ module.exports = async (req, res) => {
         const role = String(b.role || '');
         if (!ROLE_SEKOLAH.includes(role))
           return res.status(400).json({ error: 'Role tidak valid' });
-        if (
-          peranPemanggil === 'operator' &&
-          (['operator', 'pengelola'].includes(role) || ['operator', 'pengelola'].includes(target.role))
-        )
-          return res.status(403).json({ error: 'Operator tidak boleh menunjuk atau mengubah peran Operator atau Pengelola/Pengasuh. Hubungi Kepala Sekolah, Wakil, atau Pengelola/Pengasuh' });
         if (role === 'kepala_sekolah') {
           if (!target.aktif)
             return res.status(400).json({ error: 'Aktifkan guru ini dulu sebelum menjadikannya Kepala Sekolah' });
