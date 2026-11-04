@@ -148,6 +148,7 @@ function pkBuka(sid) {
 /* ---- Keputusan akhir tahun di form (opsional, UAS Semester 2): sumber datanya sama dengan menu Kelola Siswa ---- */
 function pkKepHTML(e, kl) {
   if (!pnUas2() || !kl) return '';
+  window._kepE = e;
   const k = e.kep, kunci = !!k && k.status !== 'sementara', J = { naik: 'Naik kelas', tinggal: 'Tinggal kelas', lulus: 'Lulus' }, ST = { sementara: 'Sementara', disahkan: 'Disahkan', diterapkan: 'Diterapkan' };
   let h = '<div class="tbkh">Keputusan akhir tahun <span class="mu">(tidak wajib)</span></div>';
   if (kunci) return h + `<div class="note"><b>${esc(J[k.jenis] || k.jenis)}</b>${k.jenis === 'naik' && k.kelas_tujuan_nama ? ' → ' + esc(k.kelas_tujuan_nama) : ''} · ${esc(ST[k.status] || k.status)}. Keputusan sudah final; koreksinya lewat menu Kelola Siswa.</div>`;
@@ -159,7 +160,7 @@ function pkKepHTML(e, kl) {
   if (op.includes('naik')) h += `<div class="fd" id="pkKtw" style="${e.kj === 'naik' ? '' : 'display:none'}"><label class="l">Kelas tujuan</label><select id="pkKt" class="select"${dis}><option value="">- Pilih kelas tujuan -</option>${tuj.map(c => `<option value="${c.id}"${String(e.kt) === String(c.id) ? ' selected' : ''}>${esc(c.nama)}</option>`).join('')}</select>${tuj.length ? '' : '<div class="mu">Tidak ada kelas dengan urutan lebih tinggi. Periksa urutan kelas di menu Kelas dan Jam Masuk.</div>'}</div>`;
   return h + '<div class="mu">Tersimpan sebagai keputusan sementara saat Simpan draf (sama dengan menu Kelola Siswa), lalu disahkan di tab Pengesahan.</div>';
 }
-function pkKepUbah() { const e = PKR.ed, v = $('#pkKj').value; e.kj = v; const w = $('#pkKtw'); if (w) w.style.display = v === 'naik' ? '' : 'none'; }
+function pkKepUbah() { const e = window._kepE || PKR.ed, v = $('#pkKj').value; e.kj = v; const w = $('#pkKtw'); if (w) w.style.display = v === 'naik' ? '' : 'none'; }
 async function pkKepSimpan(e, kl, k) {
   if (!pnUas2() || !e.b || (e.kep && e.kep.status !== 'sementara')) return;
   const j = k.kj || '', t = k.kt || '', cur = e.kep, curT = cur && cur.kelas_tujuan_nama ? String(((S.kelas.find(c => c.nama === cur.kelas_tujuan_nama)) || {}).id || '') : '';
