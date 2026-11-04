@@ -483,8 +483,8 @@ html[data-tema=gelap] .usblay.ok{background:#16311f}html[data-tema=gelap] .usbla
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="/kartu.js?v=20261104b"></script>
-<script src="/rapor.js?v=20261104b"></script>
-<script src="/rapor-p.js?v=20261104b"></script>
+<script src="/rapor.js?v=20261104c"></script>
+<script src="/rapor-p.js?v=20261104d"></script>
 <script src="/rapor-m.js?v=20261104b"></script>
 <style id="patch-tampilan">
 :root{--hdrbg:#166534}html[data-tema=gelap]{--hdrbg:#0F3D24}
@@ -712,19 +712,22 @@ async function muatLib(daftar,diam){
 /* ---------- penyimpanan sementara (cache) pembacaan data ----------
    Data menu disimpan CM_TTL (2 menit). Setiap penulisan dari perangkat ini (simpan/ubah/hapus ke database,
    penyimpanan file, atau /api) menaikkan cmVer sehingga semua cache otomatis dianggap basi. */
-const CM_TTL=120000,CM=new Map();let cmVer=0;
-const RPC_BACA=/^(developer_(alpa|alumni_daftar|alumni_per_sekolah|alumni_ringkas|guru|jam_notif_siswa|log|notif_libur|notif_piket|notif_siswa|pendaftaran|permintaan_nomor|push_daftar|sekolah)|keputusan_validasi|nomor_wa_(guru|kepala|operator)|tabungan_saldo|tahun_baru_ringkasan|email_dari_username)$/;
+const CM_TTL=120000,CM=new Map();let cmVer=0,refVer=0;
+const RPC_BACA=/^(developer_(alpa|alumni_daftar|alumni_per_sekolah|alumni_ringkas|guru|jam_notif_siswa|log|notif_libur|notif_piket|notif_siswa|pendaftaran|permintaan_nomor|push_daftar|sekolah)|keputusan_validasi|rapor_kehadiran|nomor_wa_(guru|kepala|operator)|tabungan_saldo|tahun_baru_ringkasan|email_dari_username)$/;
 function cmTulis(u,m){m=String(m||'GET').toUpperCase();if(m==='GET'||m==='HEAD'||m==='OPTIONS')return false;
  const s=String((u&&u.url)||u||''),r=s.match(/\/rest\/v1\/rpc\/([A-Za-z0-9_]+)/);
  if(r)return !RPC_BACA.test(r[1]);
  if(/\/auth\/v1\/(token|logout)/.test(s))return false;
  return /\/(rest\/v1|storage\/v1|auth\/v1|api)\//.test(s)}
 const _fetchAsli=window.fetch.bind(window);
-function cmFetch(u,o){const w=cmTulis(u,(o&&o.method)||(u&&u.method));if(w)cmVer++;const p=_fetchAsli(u,o);if(w)p.then(()=>{cmVer++},()=>{cmVer++});return p}
+/* refVer: versi data acuan Kelola Raport (mapel, kelompok, master indikator). Naik pada SEMUA penulisan, kecuali penulisan
+   ke tabel yang pasti tidak mengubahnya (nilai raport, absensi, tabungan, setoran hafalan, pesan). Penulisan yang tidak dikenal tetap menaikkannya. */
+const REF_ABAI=/\/rest\/v1\/(rapor|absensi|tabungan_transaksi|hafalan_setoran|laporan_ortu|pesan_masuk|percakapan_tertunda)(\?|\/|$)/;
+function cmFetch(u,o){const w=cmTulis(u,(o&&o.method)||(u&&u.method)),rf=w&&!REF_ABAI.test(String((u&&u.url)||u||''));if(w)cmVer++;if(rf)refVer++;const p=_fetchAsli(u,o);if(w)p.then(()=>{cmVer++;if(rf)refVer++},()=>{cmVer++;if(rf)refVer++});return p}
 window.fetch=cmFetch;
 const cmOk=(k,ttl)=>{const e=CM.get(k);return !!e&&e.v===cmVer&&Date.now()-e.t<(ttl||CM_TTL)};
 const cmCatat=(k,v0)=>CM.set(k,{t:Date.now(),v:v0});
-function cmKosong(){CM.clear();cmVer++}
+function cmKosong(){CM.clear();cmVer++;refVer++}
 /* menu yang boleh memakai cache: [kunci, umur]. Scan dan Absensi hari ini, Tabungan, Pengaturan selalu dibaca segar. */
 function cmKunci(id){
  if(role==='Developer')return null;
@@ -1489,7 +1492,7 @@ async function verifikasiDaftar(){const wa=normWA($('#dfWa').value),kode=$('#dfK
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
  try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
-function closeM(){$('#md').classList.remove('show','besar');const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
+function closeM(){const pv=$('#rpPrev');if(pv){pv.querySelectorAll('canvas').forEach(c=>{c.width=c.height=0});pv.innerHTML=''}$('#md').classList.remove('show','besar');const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
 function konfirmasi(pesan,o){o=o||{};const _g=$('#cfg');if(_g){if(o.gambar){_g.src=o.gambar;_g.style.display='block'}else{_g.removeAttribute('src');_g.style.display='none'}}return new Promise(res=>{const m=$('#cf'),y=$('#cfy'),n=$('#cfn');$('#cfi').textContent=o.ikon||(o.bahaya?'🗑️':'❓');$('#cft').textContent=o.judul||'Konfirmasi';$('#cfm').textContent=pesan;y.textContent=o.ya||'Ya';y.className='btn '+(o.bahaya?'danger':'success');
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
  document.addEventListener('keydown',kd);y.onclick=()=>fin(true);n.onclick=()=>fin(false);m.onclick=e=>{if(e.target===m)fin(false)};m.classList.add('show');y.focus()})}
@@ -3047,7 +3050,9 @@ async function pkHapusBaris(id){const x=S.pkJadwal.find(y=>y.id===id);if(!x)retu
  guard(async()=>{await dbq(db.from('piket_jadwal').delete().eq('id',id));await muatPiket();renderV();toast('Jadwal dihapus')})}
 
 /* --- Penilaian Siswa (raport) - tahap 2: Mapel & KKM, Penilaian --- */
-const PN_TAB=[['nilai','📝 Penilaian'],['mapel','📚 Mapel &amp; KKM'],['kel','🧩 Kelompok'],['kep','🎓 Keputusan akhir'],['kirim','📤 Kirim laporan']];
+const PN_TAB=[['kel','⚙️ Pengaturan'],['nilai','📝 Penilaian'],['mapel','📚 Mapel &amp; KKM'],['kep','🎓 Keputusan akhir'],['kirim','📤 Kirim laporan']];
+/* Mapel & KKM hanya tampil bila pengelompokan siswa = per kelas (bukan per usia) */
+const pnTabs=()=>{const kelas=(typeof pkMode==='function'?pkMode():'kelas')==='kelas',a=PN_TAB.filter(x=>x[0]!=='mapel'||kelas);if(pnTab==='mapel'&&!kelas)pnTab='kel';return a};
 let pnTab='nilai',pnK='',pnSem=1,pnJenis='UTS',pnMapel=[],pnRap=[],pnKeh={},pnKey='',pnSis=0,pnKepKep=new Map(),pnKepOk=true;
 const pnKl=n=>S.kelas.find(k=>k.nama===n);
 const pnBoleh=kl=>!!kl&&(role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah'||role==='Pengelola/Pengasuh'||(!!kl.wali&&kl.wali===me));
@@ -3070,15 +3075,39 @@ function pnNum(s){s=String(s==null?'':s).trim().replace(',','.');if(s==='')retur
 function pnAng(s,l){const n=Number(String(s).trim());if(!Number.isInteger(n)||n<0||n>100)throw new Error(l+' harus angka bulat 0 sampai 100');return n}
 const pnDaftar=()=>{const kl=pnKl(pnK);return kl?act().filter(s=>s.kelas_id===kl.id).sort((a,b)=>a.nama.localeCompare(b.nama,'id')):[]};
 const pnLengkap=r=>!!r&&r.nilai.length===pnMapel.length&&pnMapel.every(m=>{const x=r.nilai.find(y=>y.m===m.nama);return x&&x.n!=null&&x.k===m.kkm});
+/* ---- pemuatan hemat (Kelola Raport) ----
+   - mapel & KKM per kelas: cache 2 menit (otomatis basi setiap ada penulisan, lihat cmVer)
+   - kelompok & master indikator (PKR): dimuat ulang hanya bila basi; salinan indikator (hash) tidak pernah berubah
+   - kehadiran: dihitung di server (fungsi SQL rapor_kehadiran); bila belum dipasang, otomatis memakai cara lama
+   - keputusan akhir tahun: hanya dibaca pada UAS Semester 2 (satu-satunya tempat yang memakainya)
+   - daftar raport & nilai siswa selalu dibaca segar */
+const SESI=1e13/* cache sepanjang sesi: baru hilang bila halaman dimuat ulang, keluar akun, atau ada simpan/ubah/hapus dari perangkat ini */;
+const PN_MEM=new Map();let PN_RPC_OK=true,PK_V=-1;
+async function pnKehHitung(ids,r){
+ if(PN_RPC_OK){try{
+  const bagi=[];for(let i=0;i<ids.length;i+=200)bagi.push(ids.slice(i,i+200));
+  const hs=await Promise.all(bagi.map(b=>dbq(db.rpc('rapor_kehadiran',{p_siswa:b,p_dari:r[0],p_sampai:r[1]}))));
+  return hs.flat().map(x=>({siswa_id:x.siswa_id,status:x.status,jumlah:+x.jumlah||0}))
+ }catch(e){if(/PGRST202|42883|could not find|does not exist/i.test(String((e&&(e.code+' '+e.message))||'')))PN_RPC_OK=false;console.warn('rapor_kehadiran gagal, memakai cara lama',e)}}
+ const rows=await pgAll(()=>db.from('absensi').select('siswa_id,status').in('siswa_id',ids).in('status',['sakit','izin','alpa']).gte('tanggal',r[0]).lte('tanggal',r[1])),m=new Map();
+ rows.forEach(x=>{const k=x.siswa_id+'|'+x.status;m.set(k,(m.get(k)||0)+1)});
+ return [...m].map(([k,n])=>{const q=k.split('|');return{siswa_id:+q[0],status:q[1],jumlah:n}})}
+async function pkMuatHemat(){
+ if(PKR.loaded&&!PKR.galat&&PK_V===refVer){
+  const perlu=[...new Set(pnRap.map(r=>r.salinan_hash).filter(h=>h&&!PKR.sal.has(h)))];
+  if(perlu.length)((await dbq(db.from('rapor_salinan').select('hash,isi').in('hash',perlu)))||[]).forEach(x=>PKR.sal.set(x.hash,x.isi));
+  return}
+ const v0=refVer;await pkMuat();if(!PKR.galat&&v0===refVer)PK_V=v0}
 async function pnMuat(){const kl=pnKl(pnK);pnKey='';pnMapel=[];pnRap=[];pnKeh={};pnKepKep=new Map();pnKepOk=true;if(!kl)return;
- const ids=act().filter(s=>s.kelas_id===kl.id).map(s=>s.id),ta=S.set.tahun_ajaran||'',r=pnRange();
- const kepQ=ids.length?dbq(db.from('keputusan_akhir_tahun').select('siswa_id,jenis,kelas_tujuan_nama,status').eq('sekolah_id',SEK).in('siswa_id',ids).eq('tahun_ajaran',ta)).catch(()=>{pnKepOk=false;return[]}):[];
- const [m,rp,ab,kp]=await Promise.all([
-  dbq(db.from('rapor_mapel').select('*').eq('kelas_id',kl.id).order('urutan').order('id')),
+ const ids=act().filter(s=>s.kelas_id===kl.id).map(s=>s.id),ta=S.set.tahun_ajaran||'',r=pnRange(),v0=refVer;
+ const kepQ=ids.length&&pnUas2()?dbq(db.from('keputusan_akhir_tahun').select('siswa_id,jenis,kelas_tujuan_nama,status').eq('sekolah_id',SEK).in('siswa_id',ids).eq('tahun_ajaran',ta)).catch(()=>{pnKepOk=false;return[]}):[];
+ const me=PN_MEM.get(kl.id),mapQ=me&&me.v===refVer?me.d:dbq(db.from('rapor_mapel').select('*').eq('kelas_id',kl.id).order('urutan').order('id')).then(v=>{if(v0===refVer)PN_MEM.set(kl.id,{v:v0,d:v});return v});
+ const [m,rp,kh,kp]=await Promise.all([
+  mapQ,
   ids.length?pgAll(()=>db.from('rapor').select('*').in('siswa_id',ids).eq('tahun_ajaran',ta).eq('semester',pnSem).eq('jenis',pnJenis)):[],
-  ids.length?pgAll(()=>db.from('absensi').select('siswa_id,status').in('siswa_id',ids).in('status',['sakit','izin','alpa']).gte('tanggal',r[0]).lte('tanggal',r[1])):[],
+  ids.length?pnKehHitung(ids,r):[],
   kepQ]);
- pnMapel=m||[];pnRap=rp||[];(kp||[]).forEach(x=>pnKepKep.set(x.siswa_id,x));(ab||[]).forEach(x=>{const o=pnKeh[x.siswa_id]||(pnKeh[x.siswa_id]={sakit:0,izin:0,alpa:0});if(o[x.status]!=null)o[x.status]++});await pkMuat();pnKey=pnKunci()}
+ pnMapel=m||[];pnRap=rp||[];(kp||[]).forEach(x=>pnKepKep.set(x.siswa_id,x));(kh||[]).forEach(x=>{const o=pnKeh[x.siswa_id]||(pnKeh[x.siswa_id]={sakit:0,izin:0,alpa:0});if(o[x.status]!=null)o[x.status]+=x.jumlah});await pkMuatHemat();pnKey=pnKunci()}
 const pnMuatLagi=()=>pnMuat().then(()=>renderV()).catch(e=>toast(dbMsg(e),false));
 const pnPilihK=v=>{pnK=v;pnKey='';renderV();pnMuatLagi()};
 const pnSetSem=v=>{pnSem=+v;pnKey='';renderV();pnMuatLagi()};
@@ -3087,7 +3116,7 @@ const pnPilihSiswa=v=>{renderV();pnBuka(+v)};
 const pnHal=t=>{pnTab=t;if(t==='kep'&&!pnUas2()){pnSem=2;pnJenis='UAS';pnKey='';renderV();pnMuatLagi();return}renderV()};
 const pnPilK=()=>`<div class="tb tab-choice">${cpick('pnKelasPick','kelas',pnK,pkKelasOpt(),'pnPilihK','Pilih kelas')}</div>`;
 const pnPeriode=()=>`<div class="tb pnper"><select class="select" onchange="pnSetSem(this.value)"><option value="1"${pnSem===1?' selected':''}>Semester 1</option><option value="2"${pnSem===2?' selected':''}>Semester 2</option></select><select class="select" onchange="pnSetJenis(this.value)"><option value="UTS"${pnJenis==='UTS'?' selected':''}>UTS (Tengah Semester)</option><option value="UAS"${pnJenis==='UAS'?' selected':''}>UAS (Akhir Semester)</option></select></div>`;
-V.penilaian=()=>`<div class="panel"><div class="ph">📝 Penilaian Siswa <span class="mu">Tahun ajaran: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="utabs">${PN_TAB.map(x=>`<button class="utab${pnTab===x[0]?' on':''}" onclick="pnHal('${x[0]}')">${x[1]}</button>`).join('')}</div>${pnIsiTab()}</div></div>`;
+V.penilaian=()=>`<div class="panel"><div class="ph">📝 Penilaian Siswa <span class="mu">Tahun ajaran: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="utabs">${pnTabs().map(x=>`<button class="utab${pnTab===x[0]?' on':''}" onclick="pnHal('${x[0]}')">${x[1]}</button>`).join('')}</div>${pnIsiTab()}</div></div>`;
 
 /* ---- Tab Mapel & KKM ---- */
 function pnMapelHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK);if(!kl)return pil+PKH;
@@ -3128,7 +3157,8 @@ function pnNilaiHTML(){const pil=pnPilK()+pnPeriode();if(!pnK)return pil+PKH;con
  if(!S.set.tahun_ajaran)return pil+'<div class="note">Tahun ajaran belum diatur. Isi dulu di menu Pengaturan.</div>';
  if(pnKey!==pnKunci())return pil+'<div class="note">⏳ Memuat...</div>';
  const b=pnBoleh(kl),rg=pnRange();
- if(!pnMapel.length&&!pnDaftar().some(pkFmtS))return pil+'<div class="note">Belum ada mata pelajaran untuk kelas '+esc(kl.nama)+'. Atur dulu di tab <b>Mapel &amp; KKM</b>.</div>'+(b?'<div class="tb"><button class="btn success" onclick="pnHal(\'mapel\')">📚 Atur mapel</button></div>':'');
+ if(!pnMapel.length&&!pnDaftar().some(pkFmtS)){if(pkMode()!=='kelas')return pil+'<div class="note">Siswa kelas '+esc(kl.nama)+' belum masuk kelompok raport. Atur kelompok dan indikatornya di tab <b>Pengaturan</b>.</div>'+(b?'<div class="tb"><button class="btn success" onclick="pnHal(\'kel\')">⚙️ Buka Pengaturan</button></div>':'');
+  return pil+'<div class="note">Belum ada mata pelajaran untuk kelas '+esc(kl.nama)+'. Atur dulu di tab <b>Mapel &amp; KKM</b>.</div>'+(b?'<div class="tb"><button class="btn success" onclick="pnHal(\'mapel\')">📚 Atur mapel</button></div>':'')}
  const sis=pnDaftar();if(!sis.length)return pil+'<div class="note">Belum ada siswa aktif di kelas ini.</div>';
  const map=new Map(pnRap.map(r=>[r.siswa_id,r]));let nt=0,nd=0,siap=[],tunggu=0;
  const rows=sis.map((s,i)=>{const r=map.get(s.id);if(pkFmtS(s)){const q=pkInfo(s,r,i,b);if(q.terbit)nt++;else if(r)nd++;if(q.siap)siap.push(q.siap);return q.tr}const terbit=!!r&&r.status==='terbit',lk=pnLengkap(r);if(terbit)nt++;else if(r)nd++;const kep=pnKepKep.get(s.id);if(r&&!terbit&&lk&&(!pnUas2()||kep))siap.push(r.id);if(pnUas2()&&r&&!terbit&&lk&&!kep)tunggu++;
@@ -3161,10 +3191,12 @@ function pnBaca(){const ent=window._pnEnt||[];
  const nilai=ent.map((e,i)=>{let n;try{n=pnNum($('#pnN'+i).value)}catch(x){throw new Error(e.m+': '+x.message)}const t=$('#pnD'+i),d=t&&t.value.trim()?t.value.trim():null;return{m:e.m,k:e.k,n,d}});
  const ang=id=>{const v=String($(id).value).trim()||'0';if(!/^\d{1,3}$/.test(v))throw new Error('Jumlah hari kehadiran harus berupa angka bulat');return +v};
  return{nilai,sakit:ang('#pnSk'),izin:ang('#pnIz'),alpa:ang('#pnAl'),catatan:($('#pnCat').value||'').trim()||null}}
+/* pasang satu baris raport hasil simpan ke daftar kelas tanpa memuat ulang semuanya */
+function pnPasang(row){if(!row||!row.siswa_id)return false;const i=pnRap.findIndex(x=>x.siswa_id===row.siswa_id);if(i>=0)pnRap[i]=row;else pnRap.push(row);return true}
 function pnSimpan(lanjut){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl))return;let d;try{d=pnBaca()}catch(e){return toast(e.message,false)}
  const sis=pnDaftar(),nxt=sis[sis.findIndex(x=>x.id===pnSis)+1],kos=(d.nilai||[]).filter(x=>x.n==null).map(x=>x.m);
- guard(async()=>{await pnTry(()=>dbq(db.from('rapor').upsert({siswa_id:pnSis,kelas_id:kl.id,kelas_nama:kl.nama,tahun_ajaran:S.set.tahun_ajaran,semester:pnSem,jenis:pnJenis,status:'draf',nilai:d.nilai,sakit:d.sakit,izin:d.izin,alpa:d.alpa,catatan:d.catatan},{onConflict:'siswa_id,tahun_ajaran,semester,jenis'})));
-  await pnMuat();
+ guard(async()=>{const hs=await pnTry(()=>dbq(db.from('rapor').upsert({siswa_id:pnSis,kelas_id:kl.id,kelas_nama:kl.nama,tahun_ajaran:S.set.tahun_ajaran,semester:pnSem,jenis:pnJenis,status:'draf',nilai:d.nilai,sakit:d.sakit,izin:d.izin,alpa:d.alpa,catatan:d.catatan},{onConflict:'siswa_id,tahun_ajaran,semester,jenis'}).select('*')));
+  if(!pnPasang((hs||[])[0]))await pnMuat();
   if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':''))}else{closeM();renderV();toast('Draf nilai tersimpan'+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':''))}})}
 function pnKepTanpa(rows){return rows.filter(r=>!pnKepKep.get(r.siswa_id)).map(r=>(S.siswa.find(x=>x.id===r.siswa_id)||{}).nama||'')}
 /* inti penerbitan: dipanggil di dalam guard(). UAS Semester 2 membawa keputusan akhir ke dalam raport */
@@ -3970,15 +4002,20 @@ document.addEventListener('click',e=>{
  b._clickFxTimer=setTimeout(()=>b.classList.remove('click-fx'),420);
 },true);
 /* ---------- Menu Raport: daftar raport semua siswa per kelas; hapus satu atau banyak sekaligus (batch) ---------- */
-const RP={k:'',key:'',rows:[],by:new Map(),sis:[],sel:new Set(),ukuran:200,mode:false,full:new Map()};
+const RP={k:'',key:'',rows:[],by:new Map(),sis:[],sel:new Set(),ukuran:200,mode:false,full:new Map(),mem:new Map()};
 const rpUrut=(a,b)=>String(b.tahun_ajaran).localeCompare(String(a.tahun_ajaran))||(b.semester-a.semester)||String(b.jenis).localeCompare(String(a.jenis));
 function rpBagi(rows){RP.by=new Map();rows.forEach(r=>{if(!RP.by.has(r.siswa_id))RP.by.set(r.siswa_id,[]);RP.by.get(r.siswa_id).push(r)})}
 /* satu kali baca untuk seluruh siswa kelas (dibagi per 200 siswa bila kelas sangat besar), bukan per siswa */
 async function rpMuat(){
  if(!RP.k&&pnK)RP.k=pnK;
- const k=RP.k,kl=pnKl(k);RP.rows=[];RP.by=new Map();RP.sis=[];RP.sel.clear();RP.full.clear();RP.mode=false;RP.key='';if(!kl)return;
- const sis=act().filter(s=>s.kelas_id===kl.id).sort((a,b)=>a.nama.localeCompare(b.nama,'id')),ids=sis.map(s=>s.id),rows=[];
- for(let i=0;i<ids.length;i+=RP.ukuran){const part=ids.slice(i,i+RP.ukuran);rows.push(...await pgAll(()=>db.from('rapor').select('id,siswa_id,kelas_nama,tahun_ajaran,semester,jenis,status,fmt').in('siswa_id',part).order('id')))}
+ const k=RP.k,kl=pnKl(k),ck='rp|'+k,segar=!!kl&&cmOk(ck,SESI)&&RP.mem.has(ck);
+ RP.rows=[];RP.by=new Map();RP.sis=[];RP.sel.clear();if(!segar)RP.full.clear();RP.mode=false;RP.key='';if(!kl)return;
+ const sis=act().filter(s=>s.kelas_id===kl.id).sort((a,b)=>a.nama.localeCompare(b.nama,'id')),ids=sis.map(s=>s.id),v0=cmVer;let rows;
+ if(segar)rows=RP.mem.get(ck).slice();
+ else{rows=[];
+  for(let i=0;i<ids.length;i+=RP.ukuran){const part=ids.slice(i,i+RP.ukuran);rows.push(...await pgAll(()=>db.from('rapor').select('id,siswa_id,kelas_nama,tahun_ajaran,semester,jenis,status,fmt').in('siswa_id',part).order('id')))}
+  if(RP.k!==k)return;
+  if(v0===cmVer){RP.mem.set(ck,rows.slice());cmCatat(ck,v0)}}
  if(RP.k!==k)return;
  rows.sort(rpUrut);RP.sis=sis;RP.rows=rows;rpBagi(rows);RP.key=k}
 V.raport=()=>{
@@ -3990,12 +4027,13 @@ V.raport=()=>{
  else{
   const b=pnBoleh(kl),n=RP.rows.length,nt=RP.rows.filter(r=>r.status==='terbit').length;
   h+=`<div class="note">Kelas <b>${esc(kl.nama)}</b> · ${RP.sis.length} siswa · ${n} raport (Terbit: <b>${nt}</b> · Draf: <b>${n-nt}</b>).${b?'':'<br>Anda hanya dapat melihat raport kelas ini.'}</div>`;
+  h+=`<div class="tb"><button type="button" class="btn soft sm" onclick="rpSegar()">🔄 Muat ulang data</button></div>`;
   const mode=b&&RP.mode;
   if(b&&n)h+=mode?`<div class="rpbar"><label class="rpall"><input type="checkbox" id="rpAll" class="mh-ck" onchange="rpPilihSemua(this.checked)"> Pilih semua</label><div class="rpbt"><button type="button" id="rpDel" class="btn danger" onclick="rpHapus([...RP.sel])" disabled>🗑 Hapus terpilih (0)</button><button type="button" class="btn soft" onclick="rpMode(false)">Batal</button></div></div>`:`<div class="rpbar"><span class="mu">Tekan 👁 Lihat untuk membuka raport.</span><button type="button" class="btn soft sm" onclick="rpMode(true)">☑ Hapus beberapa sekaligus</button></div>`;
-  h+=RP.sis.map(s=>{
+  h+=RP.sis.map((s,no)=>{
    const rs=RP.by.get(s.id)||[];
    const tg=mode?'label':'div',isi=rs.map(r=>`<div class="rpi"><${tg} class="rpl">${mode?`<input type="checkbox" class="mh-ck" data-rp="${r.id}" onchange="rpPilih(${r.id},this.checked)">`:''}<span><b>${esc(r.tahun_ajaran)}</b> · Semester ${esc(r.semester)} · ${esc(r.jenis)}<div class="mu">${esc(r.kelas_nama||'')}${r.fmt==='perkembangan'?' · Perkembangan':''}</div></span></${tg}><span>${r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>'}</span><div class="rpa"><button type="button" class="btn soft sm" onclick="rpLihat(${r.id})">👁 Lihat</button>${b&&!mode?`<button type="button" class="btn soft sm" onclick="rpHapus([${r.id}])">🗑 Hapus</button>`:''}</div></div>`).join('');
-   return `<div class="rpk"><div class="rph">${mode&&rs.length?`<input type="checkbox" class="mh-ck" data-rps="${s.id}" onchange="rpPilihSiswa(${s.id},this.checked)">`:''}<span class="rpn">${esc(s.nama)}</span><span class="mu">${rs.length} raport</span></div>${isi||'<div class="mu" style="margin-top:6px">Belum ada raport.</div>'}</div>`}).join('');
+   return `<div class="rpk"><div class="rph">${mode&&rs.length?`<input type="checkbox" class="mh-ck" data-rps="${s.id}" onchange="rpPilihSiswa(${s.id},this.checked)">`:''}<span class="rpn">${no+1}. ${esc(s.nama)}</span><span class="mu">${rs.length} raport</span></div>${isi||'<div class="mu" style="margin-top:6px">Belum ada raport.</div>'}</div>`}).join('');
  }
  return h+'</div></div>'};
 LOAD.raport=()=>rpMuat();
@@ -4009,6 +4047,8 @@ function rpPilih(id,on){on?RP.sel.add(id):RP.sel.delete(id);rpSync()}
 function rpPilihSiswa(sid,on){(RP.by.get(sid)||[]).forEach(r=>on?RP.sel.add(r.id):RP.sel.delete(r.id));rpSync()}
 function rpPilihSemua(on){RP.rows.forEach(r=>on?RP.sel.add(r.id):RP.sel.delete(r.id));rpSync()}
 
+/* muat ulang manual: membuang cache lalu membaca ulang dari database (bila ada perubahan dari perangkat lain) */
+function rpSegar(){cmKosong();RP.full.clear();RP.key='';renderV();rpMuat().then(()=>{renderV();toast('Data raport dimuat ulang')}).catch(e=>toast(dbMsg(e),false))}
 /* mode hapus beberapa sekaligus: hanya aktif bila tombolnya ditekan */
 function rpMode(on){RP.mode=!!on;RP.sel.clear();renderV();rpSync()}
 /* ambil satu raport lengkap (nilai, kehadiran, catatan); disimpan sementara supaya tidak membaca ulang */
