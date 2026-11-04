@@ -37,9 +37,14 @@ async function pkMuat() {
   try {
     PKR.kel = (await dbq(db.from('rapor_kelompok').select('*').order('urutan').order('id'))) || [];
     if (PKR.kel.length) {
-      ((await dbq(db.from('rapor_master').select('id,kelompok_id,isi,versi'))) || []).forEach(m => PKR.mas.set(m.kelompok_id, m));
       const hs = [...new Set((typeof pnRap !== 'undefined' ? pnRap : []).map(r => r.salinan_hash).filter(h => h && !PKR.sal.has(h)))];
-      if (hs.length) ((await dbq(db.from('rapor_salinan').select('hash,isi').in('hash', hs))) || []).forEach(x => PKR.sal.set(x.hash, x.isi));
+      // master dan salinan dibaca bersamaan (sebelumnya berurutan)
+      const [mas, sal] = await Promise.all([
+        dbq(db.from('rapor_master').select('id,kelompok_id,isi,versi')),
+        hs.length ? dbq(db.from('rapor_salinan').select('hash,isi').in('hash', hs)) : []
+      ]);
+      (mas || []).forEach(m => PKR.mas.set(m.kelompok_id, m));
+      (sal || []).forEach(x => PKR.sal.set(x.hash, x.isi));
     }
   } catch (e) { PKR.kel = []; PKR.mas = new Map(); PKR.galat = true; }
   PKR.loaded = true;
@@ -223,8 +228,8 @@ function pkSimpan(lanjut) {
   const data = { n }; if (Object.keys(o).length) data.o = o; if (Object.keys(oc).length) data.oc = oc; if (k.tb.some(r => r.some(v => v))) { data.tb = k.tb; data.bl = k.bl; }
   const sis = pnDaftar().filter(pkFmtS), nxt = sis[sis.findIndex(x => x.id === e.sid) + 1];
   guard(async () => {
-    await pnTry(() => dbq(db.from('rapor').upsert({ siswa_id: e.sid, kelas_id: kl.id, kelas_nama: kl.nama, tahun_ajaran: S.set.tahun_ajaran, semester: pnSem, jenis: pnJenis, status: 'draf', fmt: 'perkembangan', kelompok_id: e.kid, salinan_hash: (e.r && e.r.salinan_hash) || null, nilai: [], data, sakit: k.sakit, izin: k.izin, alpa: k.alpa, catatan: k.cat || null }, { onConflict: 'siswa_id,tahun_ajaran,semester,jenis' })));
-    await pnMuat();
+    const hs = await pnTry(() => dbq(db.from('rapor').upsert({ siswa_id: e.sid, kelas_id: kl.id, kelas_nama: kl.nama, tahun_ajaran: S.set.tahun_ajaran, semester: pnSem, jenis: pnJenis, status: 'draf', fmt: 'perkembangan', kelompok_id: e.kid, salinan_hash: (e.r && e.r.salinan_hash) || null, nilai: [], data, sakit: k.sakit, izin: k.izin, alpa: k.alpa, catatan: k.cat || null }, { onConflict: 'siswa_id,tahun_ajaran,semester,jenis' }).select('*')));
+    if (!pnPasang((hs || [])[0])) await pnMuat();   // cukup memperbarui baris siswa ini, tidak memuat ulang satu kelas
     if (lanjut === 'terbit') { closeM(); renderV(); const rr = pkRap(e.sid); if (rr) pnTerbit([rr.id]); return; }
     if (lanjut && nxt) { renderV(); pnBuka(nxt.id); toast('Tersimpan. Lanjut ke ' + nxt.nama + '.' + ktr); } else { closeM(); renderV(); toast('Draf tersimpan.' + ktr); }
   });
