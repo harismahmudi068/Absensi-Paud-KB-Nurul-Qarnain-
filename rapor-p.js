@@ -25,6 +25,8 @@ const PKLV = ['BB', 'MB', 'BSH', 'BSB'];
     + '.pkc .btn{margin-top:10px}.pkc .mu{margin-top:6px}.pklv{margin-bottom:2px}'
     + '.pkst{display:flex;flex-direction:column;flex-wrap:nowrap;gap:12px;width:100%;margin-top:8px}.pkfld{display:block;width:100%;float:none;clear:both}.pkfld textarea{display:block;width:100%!important;margin:0!important}.pkfld .pkl{margin:0 0 4px}.pkfld .btn{margin:0}'
     + '.pklv button.busy{opacity:1!important;pointer-events:auto!important}.pklv button.busy::before{display:none!important;content:none!important}'
+    + '.pkmiss{border:1.5px solid var(--or,#d97706);border-radius:12px;padding:12px;margin:10px 0;background:var(--card)}.pkmiss .pkmr{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--bd)}.pkmiss .pkmr:first-of-type{border-top:0}.pkmiss .pkmr>div{min-width:0;flex:1}.pkmiss .pkmr .btn{flex:0 0 auto;margin:0}'
+    + '@keyframes pkfl{0%,60%{background:rgba(245,158,11,.28)}100%{background:transparent}}.pkflash{animation:pkfl 2.2s ease-out}'
     + '#pkCat{display:block;width:100%;box-sizing:border-box;resize:vertical}';
   document.head.appendChild(st);
 })();
@@ -122,7 +124,7 @@ function pkRender() {
   let h = `<div class="note">Kelas ${esc(kl.nama)} · ${pnSem === 1 ? 'Semester 1' : 'Semester 2'} · ${pnJenis} · ${esc(S.set.tahun_ajaran || '')}${e.kunci ? ' · <b>Terbit (terkunci)</b>' : e.r ? ' · Draf' : ''}</div>`;
   h += `<div class="fd"><label class="l">${pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok usia'}</label>` + (e.b && pil.length > 1
     ? `<select class="select" onchange="pkGantiKel(this.value)"><option value="">(otomatis) ${esc((pkKel(s) || {}).nama || '')}</option>${pil.map(k => `<option value="${k.id}"${s.km === k.id ? ' selected' : ''}>${esc(k.nama)}</option>`).join('')}</select>` : `<input class="input" value="${esc(kg.nama || '')}" readonly>`) + '</div>';
-  h += '<div class="pkprog" id="pkprog"></div>';
+  h += '<div class="pkprog" id="pkprog"></div><div id="pkmiss"></div>';
   h += P.map((a, ai) => `<details class="pkas" id="pka_${ai}" ontoggle="pkIsi(${ai})"><summary><span>${esc(a.no ? a.no + '. ' : '')}${esc(a.n)}</span><span class="mu" id="pks_${ai}"></span></summary><div class="pkb" id="pkb_${ai}"></div></details>`).join('');
   const bln = pkBulan();
   h += `<div class="tbkh">Pertumbuhan fisik</div><div class="mu" style="margin-bottom:6px">Kolom bulan mengikuti periode perhitungan kehadiran (${fmt(pnRange()[0])} sampai ${fmt(pnRange()[1])}).</div><div class="pktw"><table class="pktbl"><thead><tr><th></th>${bln.map(m => `<th>${m.l}</th>`).join('')}</tr></thead><tbody>${pkSet_().tumbuh.map((lab, ri) => `<tr><td>${esc(lab)}</td>${bln.map(m => `<td><input class="input" maxlength="8" value="${esc(e.tb[ri][m.k] || '')}"${dis} oninput="pkTbSet(${ri},'${m.k}',this.value)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
@@ -154,6 +156,25 @@ function pkIsi(ai) {
 function pkTampil(id) {
   const row = $('#pkr_' + id); if (!row) return; const e = PKR.ed, lv = +e.n[id] || 0, i = pkIndAll(e.M).find(x => x.id === id);
   row.querySelectorAll('.pklv button').forEach((b, k) => b.classList.toggle('on', lv === k + 1)); $('#pkc_' + id).innerHTML = pkPrev(i);
+}
+/* aspek yang indikatornya belum semua dinilai: [{ai, no, n, kurang, tot, id (indikator pertama yang kosong), kat:[nama kategori]}] */
+function pkKurangAspek(M, n) {
+  const o = [];
+  Rapor.pohon(M).forEach((a, ai) => {
+    let kurang = 0, tot = 0, id = null; const kat = [];
+    a.kat.forEach(k => { let kk = 0; k.ind.forEach(x => { tot++; const v = +n[x.i.id]; if (!(v >= 1 && v <= 4)) { kurang++; kk++; if (!id) id = x.i.id; } }); if (kk && k.n) kat.push((k.no ? k.no + ' ' : '') + k.n + ' (' + kk + ')'); });
+    if (kurang) o.push({ ai, no: a.no, n: a.n, kurang, tot, id, kat });
+  });
+  return o;
+}
+function pkTampilKurang(l) {
+  const bx = $('#pkmiss'); if (!bx) return;
+  bx.innerHTML = '<div class="pkmiss"><b>Belum lengkap. Tabel berikut masih ada indikator yang belum dinilai:</b>' + l.map(x => `<div class="pkmr"><div><b>${esc(x.no ? x.no + '. ' : '')}${esc(x.n)}</b><div class="mu">${x.kurang} dari ${x.tot} indikator belum dinilai${x.kat.length ? ' · ' + esc(x.kat.join(', ')) : ''}</div></div><button type="button" class="btn success sm" onclick="pkKe(${x.ai},'${x.id}')">⚙ Atur</button></div>`).join('') + '</div>';
+  bx.scrollIntoView({ block: 'center' });
+}
+function pkKe(ai, id) {
+  const d = $('#pka_' + ai); if (!d) return; d.open = true; pkIsi(ai);
+  setTimeout(() => { const r = $('#pkr_' + id) || d; r.scrollIntoView({ block: 'center' }); r.classList.remove('pkflash'); void r.offsetWidth; r.classList.add('pkflash'); }, 60);
 }
 function pkProg() {
   const e = PKR.ed; if (!e) return; const tot = pkHitung(e.M, e.n); const pg = $('#pkprog'); if (pg) pg.textContent = `Terisi ${tot.isi} dari ${tot.tot} indikator`;
@@ -196,14 +217,16 @@ function pkSimpan(lanjut) {
   const e = PKR.ed, kl = pnKl(pnK); if (!e || !e.b || !kl) return; let k; try { k = pkBaca(); } catch (x) { return toast(x.message, false); }
   const ids = new Set(pkIndAll(e.M).map(i => i.id)), n = {}, o = {}, oc = {};
   ids.forEach(id => { const v = +e.n[id]; if (v >= 1 && v <= 4) n[id] = v; if (e.o[id]) o[id] = e.o[id]; if (e.oc[id]) oc[id] = e.oc[id]; });
-  if (lanjut === 'terbit') { const h = pkHitung(e.M, n); if (h.isi < h.tot) return toast('Masih ada indikator yang belum dinilai (' + h.isi + ' / ' + h.tot + ')', false); }
+  const kur = pkKurangAspek(e.M, n);
+  if (lanjut === 'terbit' && kur.length) { pkTampilKurang(kur); return toast('Belum bisa diterbitkan: ' + kur.length + ' tabel belum lengkap', false); }
+  const ktr = kur.length ? ' Belum lengkap: ' + kur.map(x => x.n).join(', ') + '.' : '';
   const data = { n }; if (Object.keys(o).length) data.o = o; if (Object.keys(oc).length) data.oc = oc; if (k.tb.some(r => r.some(v => v))) { data.tb = k.tb; data.bl = k.bl; }
   const sis = pnDaftar().filter(pkFmtS), nxt = sis[sis.findIndex(x => x.id === e.sid) + 1];
   guard(async () => {
     await pnTry(() => dbq(db.from('rapor').upsert({ siswa_id: e.sid, kelas_id: kl.id, kelas_nama: kl.nama, tahun_ajaran: S.set.tahun_ajaran, semester: pnSem, jenis: pnJenis, status: 'draf', fmt: 'perkembangan', kelompok_id: e.kid, salinan_hash: (e.r && e.r.salinan_hash) || null, nilai: [], data, sakit: k.sakit, izin: k.izin, alpa: k.alpa, catatan: k.cat || null }, { onConflict: 'siswa_id,tahun_ajaran,semester,jenis' })));
     await pnMuat();
     if (lanjut === 'terbit') { closeM(); renderV(); const rr = pkRap(e.sid); if (rr) pnTerbit([rr.id]); return; }
-    if (lanjut && nxt) { renderV(); pnBuka(nxt.id); toast('Tersimpan. Lanjut ke ' + nxt.nama); } else { closeM(); renderV(); toast('Draf tersimpan'); }
+    if (lanjut && nxt) { renderV(); pnBuka(nxt.id); toast('Tersimpan. Lanjut ke ' + nxt.nama + '.' + ktr); } else { closeM(); renderV(); toast('Draf tersimpan.' + ktr); }
   });
 }
 
