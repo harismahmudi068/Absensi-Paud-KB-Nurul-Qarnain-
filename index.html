@@ -482,10 +482,10 @@ html[data-tema=gelap] .usblay.ok{background:#16311f}html[data-tema=gelap] .usbla
 <script>(function(){var K='tema_ui';function ap(t){document.documentElement.setAttribute('data-tema',t);var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='gelap'?'#0F3D24':'#166534');var b=document.getElementById('tmBtn');if(b)b.setAttribute('aria-pressed',t==='gelap'?'true':'false')}var t='terang';try{t=localStorage.getItem(K)||'terang'}catch(e){}ap(t);window.tmToggle=function(){var n=document.documentElement.getAttribute('data-tema')==='gelap'?'terang':'gelap';ap(n);try{localStorage.setItem(K,n)}catch(e){}};document.addEventListener('DOMContentLoaded',function(){ap(document.documentElement.getAttribute('data-tema')||'terang')})})();</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="/kartu.js"></script>
-<script src="/rapor.js"></script>
-<script src="/rapor-p.js"></script>
-<script src="/rapor-m.js"></script>
+<script src="/kartu.js?v=20261104b"></script>
+<script src="/rapor.js?v=20261104b"></script>
+<script src="/rapor-p.js?v=20261104b"></script>
+<script src="/rapor-m.js?v=20261104b"></script>
 <style id="patch-tampilan">
 :root{--hdrbg:#166534}html[data-tema=gelap]{--hdrbg:#0F3D24}
 .top,html[data-tema=gelap] .top{background:var(--hdrbg)!important;color:#fff;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;height:auto;min-height:calc(62px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);box-sizing:border-box}
@@ -629,6 +629,26 @@ td .tb .btn{margin:0}
 .pntb{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
 .pnk{height:36px!important;font-size:13px!important}
 </style>
+<style id="patch-v3">
+/* semua kolom catatan: lebar penuh ke samping, hanya bisa diperbesar ke bawah */
+textarea,textarea.input{display:block;width:100%!important;max-width:100%!important;min-width:0!important;flex:none!important;box-sizing:border-box;resize:vertical}
+/* jarak antar dropdown dan tombol */
+.pnper{gap:12px!important;margin-bottom:14px}
+.pnper>.select{flex:1 1 220px;width:100%;min-width:0;margin:0}
+.tb.tab-choice{margin-bottom:14px}
+.tb{gap:10px}
+.tb>select.select,.tb>.csel,.tb>.cpick{margin:0}
+.fd>.select,.fd>.csel,.fd>.cpick{margin-bottom:14px}
+.fd>label.l{display:block;margin-bottom:4px}
+#mbd .tb{margin-top:12px}
+#mbd .tbkh{margin-top:18px}
+#mbd .note+.fd,#mbd .note+.tb{margin-top:14px}
+.mf .btn{min-width:96px}
+/* efek tekan untuk semua dropdown, tanpa spinner pada tombol level */
+select.click-fx,.select.click-fx{animation:btnClick .38s ease-out}
+.pklv button.busy{opacity:1!important;pointer-events:auto!important}.pklv button.busy::before{display:none!important;content:none!important}
+</style>
+<script id="patch-v3-js">(function(){function fx(e){var s=e.target&&e.target.closest?e.target.closest('select'):null;if(!s||s.disabled)return;s.classList.remove('click-fx');void s.offsetWidth;s.classList.add('click-fx');clearTimeout(s._fxT);s._fxT=setTimeout(function(){s.classList.remove('click-fx')},420)}document.addEventListener('pointerdown',fx,true);document.addEventListener('change',fx,true)})();</script>
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">Selamat Datang</h2><p class="mu" style="text-align:center;margin:0 0 16px">di Sistem Absensi. Silakan masukkan username dan kata sandi Anda.</p>
 <label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
@@ -3053,7 +3073,7 @@ const pnSetJenis=v=>{pnJenis=v;pnKey='';renderV();pnMuatLagi()};
 const pnPilihSiswa=v=>{renderV();pnBuka(+v)};
 const pnHal=t=>{pnTab=t;if(t==='kep'&&!pnUas2()){pnSem=2;pnJenis='UAS';pnKey='';renderV();pnMuatLagi();return}renderV()};
 const pnPilK=()=>`<div class="tb tab-choice">${cpick('pnKelasPick','kelas',pnK,pkKelasOpt(),'pnPilihK','Pilih kelas')}</div>`;
-const pnPeriode=()=>`<div class="tb"><select class="select" onchange="pnSetSem(this.value)"><option value="1"${pnSem===1?' selected':''}>Semester 1</option><option value="2"${pnSem===2?' selected':''}>Semester 2</option></select><select class="select" onchange="pnSetJenis(this.value)"><option value="UTS"${pnJenis==='UTS'?' selected':''}>UTS (Tengah Semester)</option><option value="UAS"${pnJenis==='UAS'?' selected':''}>UAS (Akhir Semester)</option></select></div>`;
+const pnPeriode=()=>`<div class="tb pnper"><select class="select" onchange="pnSetSem(this.value)"><option value="1"${pnSem===1?' selected':''}>Semester 1</option><option value="2"${pnSem===2?' selected':''}>Semester 2</option></select><select class="select" onchange="pnSetJenis(this.value)"><option value="UTS"${pnJenis==='UTS'?' selected':''}>UTS (Tengah Semester)</option><option value="UAS"${pnJenis==='UAS'?' selected':''}>UAS (Akhir Semester)</option></select></div>`;
 V.penilaian=()=>`<div class="panel"><div class="ph">📝 Penilaian Siswa <span class="mu">Tahun ajaran: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="utabs">${PN_TAB.map(x=>`<button class="utab${pnTab===x[0]?' on':''}" onclick="pnHal('${x[0]}')">${x[1]}</button>`).join('')}</div>${pnIsiTab()}</div></div>`;
 
 /* ---- Tab Mapel & KKM ---- */
@@ -3102,7 +3122,7 @@ function pnNilaiHTML(){const pil=pnPilK()+pnPeriode();if(!pnK)return pil+PKH;con
   const isi=r?r.nilai.filter(x=>x.n!=null).length:0,tot=r&&terbit?r.nilai.length:pnMapel.length;
   const stt=terbit?'<span class="badge hadir">Terbit</span>'+(r.dikirim_pada?'<div class="mu">Terkirim '+fmt(String(r.dikirim_pada).slice(0,10))+'</div>':''):r?'<span class="badge terlambat">Draf</span>'+(pnUas2()&&lk&&!kep?'<div class="mu">Menunggu keputusan akhir</div>':'')+(!lk&&isi===r.nilai.length&&r.nilai.length?'<div class="mu">Mapel/KKM berubah, simpan ulang</div>':''):'<span class="mu">Belum diisi</span>';
   const bt=b&&r&&!terbit&&lk&&(!pnUas2()||kep)?`<button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button>`:'';
-  return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${isi} / ${tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit||!b?'soft':'success'}" onclick="pnBuka(${s.id})">${terbit||!b?'👁 Lihat':'✍️ Isi'}</button>${bt}${r?`<button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>`:''}</div></td></tr>`}).join('');
+  return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${isi} / ${tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit||!b?'soft':'success'}" onclick="pnBuka(${s.id})">${terbit||!b?'👁 Lihat':'✍️ Isi'}</button>${bt}${terbit&&b?`<button class="btn pnk soft" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button>`:''}${r?`<button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>`:''}</div></td></tr>`}).join('');
  const tgl=`<div class="tbbox"><b>📅 Periode perhitungan kehadiran</b><div class="mu" style="margin:4px 0 8px">Sakit, izin, dan alpa dihitung dari absensi pada rentang tanggal ini. Atur sesuai kalender sekolah.</div><div class="tb" style="flex-wrap:wrap;align-items:center;margin:0"><span class="mu">Mulai</span>${dt('date',rg[0],'pnSetTgl(0,this.value)','',{id:'pnTa'})}<span class="mu">sampai</span>${dt('date',rg[1],'pnSetTgl(1,this.value)','',{id:'pnTb'})}<button class="btn soft sm" onclick="pnResetTgl()">↺ Bawaan semester</button></div><div class="mu" style="margin-top:6px">Angka kehadiran yang sudah tersimpan di draf tidak berubah. Untuk menghitung ulang satu siswa, buka lembar nilainya lalu tekan ↻ Ambil dari absensi.</div></div>`;
  const cari=`<div class="tb tab-choice">${cpick('pnSiswaPick','nama siswa','',sis.map(s=>({value:s.id,label:s.nama})),'pnPilihSiswa','Cari nama siswa')}</div>`;
  let h=pil+cari+tgl+`<div class="note">Kelas <b>${esc(kl.nama)}</b> · ${pnSem===1?'Semester 1':'Semester 2'} · ${pnJenis}. Terbit: <b>${nt}</b> · Draf: <b>${nd}</b> · Belum diisi: <b>${sis.length-nt-nd}</b>.${b?'':'<br>Anda hanya dapat melihat nilai kelas ini.'}</div>`;
