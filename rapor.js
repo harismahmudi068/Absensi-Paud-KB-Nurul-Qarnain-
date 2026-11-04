@@ -104,7 +104,9 @@ const Rapor = (() => {
     const kp = r.kepsek_nama ? { nama: r.kepsek_nama, nip: nip(r.kepsek_nip) } : (o.kepsek || {});
     /* pengelola: rapor terbit memakai nama yang dibekukan saat terbit; kosong = tidak ada tempat tanda tangan */
     const pg = r.status === 'terbit' ? (r.pengelola_nama ? { nama: r.pengelola_nama, nip: nip(r.pengelola_nip) } : null) : (o.pengelola && o.pengelola.nama ? o.pengelola : null);
-    const bulan = r.semester === 1 ? BLN.slice(6) : BLN.slice(0, 6), tb = d.tb || [];
+    /* kolom bulan: data.bl (kunci 'YYYY-MM', maksimal 12) bila valid; data lama tanpa bl = 6 bulan bawaan semester */
+    const blOk = Array.isArray(d.bl) && d.bl.length > 0 && d.bl.length <= 12 && d.bl.every(k => /^\d{4}-(0[1-9]|1[0-2])$/.test(k));
+    const bulan = blOk ? d.bl.map(k => d.bl.length > 6 ? BLN[+k.slice(5) - 1].slice(0, 3) : BLN[+k.slice(5) - 1]) : (r.semester === 1 ? BLN.slice(6) : BLN.slice(0, 6)), tb = d.tb || [];
     const jns = { UTS: 'Ujian Tengah Semester', UAS: 'Ujian Akhir Semester' };
     return {
       fmt: 'perkembangan', logo: o.logo || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
@@ -338,17 +340,17 @@ const Rapor = (() => {
     /* --- Pertumbuhan fisik --- */
     y += 2; if (y + 46 > BAWAH) y = halBaru();
     A.judul('Pertumbuhan Fisik', L, y + 3); y += 5;
-    const TW = [38, 24, 24, 24, 24, 24, 24], TX0 = [L]; TW.forEach((w, i) => TX0.push(TX0[i] + w));
+    const nb = D.tb.bulan.length, TW = [38].concat(Array(nb).fill(144 / nb)), TX0 = [L], TF = nb > 9 ? 7 : 8.5; TW.forEach((w, i) => TX0.push(TX0[i] + w));
     ['Aspek'].concat(D.tb.bulan).forEach((t, i) => {
       doc.setFillColor(...NV); doc.setDrawColor(...LN); doc.setLineWidth(.2); doc.rect(TX0[i], y, TW[i], 7, 'FD');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255); doc.text(t, TX0[i] + TW[i] / 2, y + 4.7, { align: 'center' });
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(TF); doc.setTextColor(255, 255, 255); doc.text(t, TX0[i] + TW[i] / 2, y + 4.7, { align: 'center' });
     });
     y += 7;
     D.tb.baris.forEach((b, ri) => {
       b.forEach((t, i) => {
         if (ri % 2 === 1) doc.setFillColor(...SH); else doc.setFillColor(255, 255, 255);
         doc.setDrawColor(...LN); doc.setLineWidth(.2); doc.rect(TX0[i], y, TW[i], 7, 'FD');
-        doc.setFont('helvetica', i ? 'normal' : 'bold'); doc.setFontSize(8.5); doc.setTextColor(...TX);
+        doc.setFont('helvetica', i ? 'normal' : 'bold'); doc.setFontSize(TF); doc.setTextColor(...TX);
         if (i) doc.text(String(t), TX0[i] + TW[i] / 2, y + 4.8, { align: 'center' }); else doc.text(String(t), TX0[i] + 2, y + 4.8);
       });
       y += 7;
