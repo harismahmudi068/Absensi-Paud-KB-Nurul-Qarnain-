@@ -601,8 +601,10 @@ R.hafalan=d=>{const h=d.hafalan;if(!h||!h.aktif)return pesanFitur('📖','Hafala
 const RP={i:0,w:720,d:null,D:null};
 const rpTunggu=(f,n)=>{n=n||0;if(typeof Rapor!=='undefined')f();else if(n<60)setTimeout(()=>rpTunggu(f,n+1),150);else{const e=$('#rpS');if(e)e.innerHTML='<div class="mu" style="padding:14px">Tampilan rapor gagal dimuat. Muat ulang halaman ini.</div>'}};
 async function rpGambar(){const d=RP.d,r=d.rapor[RP.i],lg=await Rapor.logoPng(d.sekolah.logo).catch(()=>null);
- RP.D=Rapor.susun(r,{logo:lg,sekolah:d.sekolah.nama,alamat:d.sekolah.alamat,nama:d.siswa.nama,nisn:d.siswa.nisn,kelas:d.siswa.kelas});
- const e=$('#rpS');if(e)Rapor.pratinjau(e,[RP.D],RP.w)}
+ const per=r.fmt==='perkembangan',e=$('#rpS');
+ if(per&&!r.master){RP.D=null;if(e)e.innerHTML='<div class="mu" style="padding:14px">Rapor ini belum bisa ditampilkan. Hubungi sekolah.</div>';return}
+ RP.D=Rapor.susun(r,Object.assign({logo:lg,sekolah:d.sekolah.nama,alamat:d.sekolah.alamat,nama:d.siswa.nama,nisn:d.siswa.nisn,kelas:d.siswa.kelas},per?{panggilan:d.siswa.pan,tempatLahir:d.siswa.tempat,tglLahir:d.siswa.tgl,kota:d.sekolah.kota,kelompok:r.kelompok_nama,kelompokLabel:r.kelompok_label,master:r.master}:{}));
+ if(e)Rapor.pratinjau(e,[RP.D],RP.w)}
 const rpZoom=dl=>{RP.w=Math.max(360,Math.min(1400,RP.w+dl));const e=$('#rpS');if(e)Rapor.lebar(e,RP.w)};
 const rpPas=()=>{const e=$('#rpS');if(!e)return;RP.w=Math.max(300,e.clientWidth-20);Rapor.lebar(e,RP.w)};
 async function rpUnduh(b){if(!RP.D||b.disabled)return;const t=b.textContent,er=$('#rpErr');b.disabled=true;b.textContent='Membuat PDF...';if(er)er.textContent='';
