@@ -6,7 +6,7 @@
    Isi master: {aspek:[{n, sub:[{n, ind:[{id,t,kd,j,f,a,x}]}]}], kd:{id:{k}}, nomor, set, riwayat, ...}.
    Kunci lain (riwayat, v, skala, label, kelompok) dibiarkan apa adanya.
    ===================================================================== */
-const PKM = { kid: 0, M: null, versi: 0, dirty: false, boleh: null, ro: true, buka: new Set(['aspek']), ring: '' };
+const PKME = { kid: 0, M: null, versi: 0, dirty: false, boleh: null, ro: true, buka: new Set(['aspek']), ring: '' };
 (function () {
   const st = document.createElement('style');
   st.textContent = '.pmh{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;font-weight:800;font-size:13px}'
@@ -124,30 +124,30 @@ function pmCek(M0) {
 
 /* ---------------- Keadaan dan pembuka ---------------- */
 function pmMuatDari(row, kid) {
-  if (kid) PKM.kid = kid;
-  PKM.M = pmNorm(row ? pmKlon(row.isi) : { aspek: [], kd: {} }); PKM.versi = row ? (row.versi || 0) : 0; PKM.dirty = false; PKM.ring = '';
+  if (kid) PKME.kid = kid;
+  PKME.M = pmNorm(row ? pmKlon(row.isi) : { aspek: [], kd: {} }); PKME.versi = row ? (row.versi || 0) : 0; PKME.dirty = false; PKME.ring = '';
 }
-const pmUbah = () => { PKM.dirty = true; const e = $('#pmDirty'); if (e) e.style.display = ''; };
+const pmUbah = () => { PKME.dirty = true; const e = $('#pmDirty'); if (e) e.style.display = ''; };
 function pmBuka(kid) {
   if (!PKR.kel.find(x => x.id === kid)) return;
   guard(async () => {
-    if (PKM.boleh === null) { try { PKM.boleh = !!(await dbq(db.rpc('rapor_master_boleh_tulis', { p_sekolah: SEK }))); } catch (e) { PKM.boleh = false; } }
-    if (!(PKM.dirty && PKM.kid === kid && PKM.M)) { await pkMuat(); pmMuatDari(PKR.mas.get(kid), kid); PKM.buka = new Set(['aspek']); }
-    PKM.ro = !PKM.boleh; pmRender();
+    if (PKME.boleh === null) { try { PKME.boleh = !!(await dbq(db.rpc('rapor_master_boleh_tulis', { p_sekolah: SEK }))); } catch (e) { PKME.boleh = false; } }
+    if (!(PKME.dirty && PKME.kid === kid && PKME.M)) { await pkMuat(); pmMuatDari(PKR.mas.get(kid), kid); PKME.buka = new Set(['aspek']); }
+    PKME.ro = !PKME.boleh; pmRender();
   });
 }
 function pmBuang() {
   guard(async () => {
-    if (PKM.dirty && !await konfirmasi('Buang semua perubahan yang belum disimpan dan muat versi terbaru dari server?', { judul: 'Buang perubahan', ya: 'Buang', bahaya: 1, ikon: '↩️' })) return;
-    await pkMuat(); pmMuatDari(PKR.mas.get(PKM.kid), PKM.kid); pmRender();
+    if (PKME.dirty && !await konfirmasi('Buang semua perubahan yang belum disimpan dan muat versi terbaru dari server?', { judul: 'Buang perubahan', ya: 'Buang', bahaya: 1, ikon: '↩️' })) return;
+    await pkMuat(); pmMuatDari(PKR.mas.get(PKME.kid), PKME.kid); pmRender();
   });
 }
-const pmTog = (k, o) => { if (o) PKM.buka.add(k); else PKM.buka.delete(k); };
+const pmTog = (k, o) => { if (o) PKME.buka.add(k); else PKME.buka.delete(k); };
 
 /* ---------------- Tampilan ---------------- */
 const pmIn = (js, v, ph, ro) => `<input class="input" value="${esc(pmStr(v))}" placeholder="${esc(ph || '')}" onchange="${js}"${ro ? ' disabled' : ''}>`;
 const pmTa = (js, v, r, ro, ph) => `<textarea class="input" rows="${r || 2}" placeholder="${esc(ph || '')}" onchange="${js}"${ro ? ' disabled' : ''}>${esc(pmStr(v))}</textarea>`;
-const pmDet = (k, judul, isi) => `<details class="pkas" ontoggle="pmTog('${k}',this.open)"${PKM.buka.has(k) ? ' open' : ''}><summary><span>${judul}</span></summary><div class="pkb">${isi}</div></details>`;
+const pmDet = (k, judul, isi) => `<details class="pkas" ontoggle="pmTog('${k}',this.open)"${PKME.buka.has(k) ? ' open' : ''}><summary><span>${judul}</span></summary><div class="pkb">${isi}</div></details>`;
 const pmBtn = (js, t, ro) => ro ? '' : `<button type="button" onclick="${js}">${t}</button>`;
 const PM_NOM = [['A', 'A, B, C'], ['a', 'a, b, c'], ['1', '1, 2, 3'], ['I', 'I, II, III'], ['i', 'i, ii, iii'], ['', 'Tanpa nomor']];
 const PM_JENIS = [['', 'Biasa (belum/mulai/sudah bisa ...)'], ['p', 'Perilaku (tanpa kata "bisa")'], ['u', 'Ukuran (pertumbuhan, memakai acuan)']];
@@ -216,7 +216,7 @@ function pmHtmlRiwayat(M) {
   return r.map(e => { const t = f(e, ['t', 'tgl', 'waktu', 'at', 'diubah']), isi = [nv(e) ? 'v' + nv(e) : '', t ? fmt(t.slice(0, 10)) : '', f(e, ['oleh', 'o', 'nama']), f(e, ['ringkas', 'r', 'ket'])].filter(Boolean).join(' · '); return `<div class="pki">${esc(isi || JSON.stringify(e))}</div>`; }).join('');
 }
 function pmRender() {
-  const M = PKM.M, ro = PKM.ro, k = PKR.kel.find(x => x.id === PKM.kid) || {}, nm = M.nomor;
+  const M = PKME.M, ro = PKME.ro, k = PKR.kel.find(x => x.id === PKME.kid) || {}, nm = M.nomor;
   const sc = [$('#mbd').scrollTop, $('#md').scrollTop];
   const sel = (js, v) => `<select class="select" onchange="${js}"${ro ? ' disabled' : ''}>${PM_NOM.map(o => `<option value="${esc(o[0])}"${(v || '') === o[0] ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
   const ex = `${Rapor.nomorFmt(nm.a, 1)}${nm.gabung && nm.a ? '.' : ''}${Rapor.nomorFmt(nm.s, 1)}`;
@@ -225,8 +225,8 @@ function pmRender() {
   const kd = Object.keys(M.kd).map(id => `<div class="pmh">${pmIn(`pmSetKd('${esc(id)}',this.value)`, M.kd[id].k, 'Kode KD, misalnya 3.1', ro)}${pmBtn(`pmHapusKd('${esc(id)}')`, '🗑', ro)}</div>`).join('') + (ro ? '' : '<div class="tb"><button class="btn soft sm" onclick="pmTambahKd()">➕ KD</button></div>');
   const tempel = ro ? '<div class="mu">Hanya pemilik hak ubah yang dapat menempel.</div>' : '<div class="mu">Salin dari Excel kolom <b>Aspek | Kategori | Indikator | KD</b> (Kategori dan KD boleh kosong; sel Aspek/Kategori yang kosong ikut baris di atasnya; baris judul boleh disertakan), lalu tempel di sini.</div>'
     + '<textarea id="pmPaste" class="input" rows="6" placeholder="Tempel di sini"></textarea><div class="fd"><label class="l">Cara</label><select id="pmMode" class="select"><option value="tambah">Tambahkan ke master (indikator yang sudah ada dilewati)</option><option value="ganti">Ganti seluruh isi master (indikator bertuliskan sama tetap memakai nilai lamanya)</option></select></div><div class="tb"><button class="btn success" onclick="pmTerapkanTempel()">📋 Terapkan ke layar</button></div>';
-  let h = `<div class="note">Kelompok <b>${esc(k.nama || '')}</b> · ${PKM.versi ? 'versi ' + PKM.versi : 'belum ada master'}${ro ? ' · <b>hanya lihat</b>' : ''}<br>Perubahan memengaruhi draf. Raport yang sudah terbit tetap memakai salinan lamanya sampai diterbitkan ulang dengan indikator terbaru.</div>`;
-  if (!ro) h += `<div class="pmd" id="pmDirty" style="${PKM.dirty ? '' : 'display:none'}">● Ada perubahan yang belum disimpan</div><div class="fd"><input class="input" maxlength="120" placeholder="Ringkasan perubahan (opsional)" value="${esc(PKM.ring)}" onchange="PKM.ring=this.value"></div><div class="tb" style="flex-wrap:wrap"><button class="btn success grow" onclick="pmSimpan()">💾 Simpan master</button><button class="btn soft grow" onclick="pmBuang()">↩️ Buang perubahan</button></div>`;
+  let h = `<div class="note">Kelompok <b>${esc(k.nama || '')}</b> · ${PKME.versi ? 'versi ' + PKME.versi : 'belum ada master'}${ro ? ' · <b>hanya lihat</b>' : ''}<br>Perubahan memengaruhi draf. Raport yang sudah terbit tetap memakai salinan lamanya sampai diterbitkan ulang dengan indikator terbaru.</div>`;
+  if (!ro) h += `<div class="pmd" id="pmDirty" style="${PKME.dirty ? '' : 'display:none'}">● Ada perubahan yang belum disimpan</div><div class="fd"><input class="input" maxlength="120" placeholder="Ringkasan perubahan (opsional)" value="${esc(PKME.ring)}" onchange="PKME.ring=this.value"></div><div class="tb" style="flex-wrap:wrap"><button class="btn success grow" onclick="pmSimpan()">💾 Simpan master</button><button class="btn soft grow" onclick="pmBuang()">↩️ Buang perubahan</button></div>`;
   h += pmDet('aspek', 'Aspek, kategori, dan indikator', pmHtmlAspek(M, ro)) + pmDet('kd', 'Kompetensi Dasar (KD)', kd + '<div class="mu">KD dipilih per indikator dan tampil pada kolom KD raport.</div>') + pmDet('nomor', 'Penomoran', nomor)
     + pmDet('set', 'Teks otomatis (kalimat capaian dan catatan)', pmHtmlSet(M, ro)) + pmDet('tempel', 'Tempel dari Excel', tempel) + pmDet('riw', 'Riwayat perubahan', pmHtmlRiwayat(M));
   $('#mt').textContent = 'Indikator · ' + (k.nama || ''); $('#ms').style.display = 'none'; $('#mbd').innerHTML = h; $('#md').classList.add('besar'); $('#md').classList.add('show');
@@ -234,66 +234,66 @@ function pmRender() {
 }
 
 /* ---------------- Pengubah ---------------- */
-const pmA = ai => PKM.M.aspek[ai], pmS = (ai, si) => PKM.M.aspek[ai].sub[si], pmI = (ai, si, ii) => PKM.M.aspek[ai].sub[si].ind[ii];
+const pmA = ai => PKME.M.aspek[ai], pmS = (ai, si) => PKME.M.aspek[ai].sub[si], pmI = (ai, si, ii) => PKME.M.aspek[ai].sub[si].ind[ii];
 function pmSetA(ai, v) { pmA(ai).n = v; pmUbah(); }
 function pmSetS(ai, si, v) { pmS(ai, si).n = v; pmUbah(); }
 function pmSetI(ai, si, ii, k, v) { const i = pmI(ai, si, ii); if (k === 'kd' && !v) delete i.kd; else i[k] = v; pmUbah(); if (k === 'j') pmRender(); }
 function pmSetX(ai, si, ii, l, v) { const i = pmI(ai, si, ii); i.x = i.x || {}; i.x[l] = v; pmUbah(); }
-function pmSetKd(id, v) { PKM.M.kd[id].k = v; pmUbah(); }
-function pmSetNom(k, v) { PKM.M.nomor[k] = v; pmUbah(); pmRender(); }
+function pmSetKd(id, v) { PKME.M.kd[id].k = v; pmUbah(); }
+function pmSetNom(k, v) { PKME.M.nomor[k] = v; pmUbah(); pmRender(); }
 function pmSetCfg(path, v) {
-  const M = PKM.M, S0 = Rapor.pengaturan(M); M.set = M.set || {};
+  const M = PKME.M, S0 = Rapor.pengaturan(M); M.set = M.set || {};
   if (M.set[path[0]] === undefined) M.set[path[0]] = pmKlon(S0[path[0]]);
   let o = M.set; for (let i = 0; i < path.length - 1; i++) o = o[path[i]];
   const last = path[path.length - 1];
   o[last] = path[0] === 'pend' && path[1] === 'batas' ? parseFloat(String(v).replace(',', '.')) : v; pmUbah();
 }
-function pmResetSet() { guard(async () => { if (!await konfirmasi('Kembalikan semua teks otomatis ke bawaan?', { judul: 'Teks otomatis', ya: 'Kembalikan', ikon: '↺' })) return; delete PKM.M.set; pmUbah(); pmRender(); }); }
+function pmResetSet() { guard(async () => { if (!await konfirmasi('Kembalikan semua teks otomatis ke bawaan?', { judul: 'Teks otomatis', ya: 'Kembalikan', ikon: '↺' })) return; delete PKME.M.set; pmUbah(); pmRender(); }); }
 function pmTambah(t, ai, si) {
-  const M = PKM.M;
-  if (t === 'a') { M.aspek.push({ n: 'Aspek baru', sub: [{ n: '', ind: [] }] }); PKM.buka.add('a' + (M.aspek.length - 1)); }
+  const M = PKME.M;
+  if (t === 'a') { M.aspek.push({ n: 'Aspek baru', sub: [{ n: '', ind: [] }] }); PKME.buka.add('a' + (M.aspek.length - 1)); }
   else if (t === 's') pmA(ai).sub.push({ n: 'Kategori baru', ind: [] });
-  else { const i = { id: pmIdBaru(M, 'i'), t: '' }; pmS(ai, si).ind.push(i); PKM.buka.add('a' + ai); }
+  else { const i = { id: pmIdBaru(M, 'i'), t: '' }; pmS(ai, si).ind.push(i); PKME.buka.add('a' + ai); }
   pmUbah(); pmRender();
 }
-function pmTambahKd() { const id = pmIdBaru(PKM.M, 'k'); PKM.M.kd[id] = { k: '' }; pmUbah(); pmRender(); }
+function pmTambahKd() { const id = pmIdBaru(PKME.M, 'k'); PKME.M.kd[id] = { k: '' }; pmUbah(); pmRender(); }
 function pmHapusKd(id) {
   guard(async () => {
-    const dipakai = []; PKM.M.aspek.forEach(a => a.sub.forEach(s => s.ind.forEach(i => { if (i.kd === id) dipakai.push(i); })));
+    const dipakai = []; PKME.M.aspek.forEach(a => a.sub.forEach(s => s.ind.forEach(i => { if (i.kd === id) dipakai.push(i); })));
     if (dipakai.length && !await konfirmasi('KD ini dipakai ' + dipakai.length + ' indikator. Hapus KD dan lepaskan dari indikator tersebut?', { judul: 'Hapus KD', ya: 'Hapus', bahaya: 1 })) return;
-    dipakai.forEach(i => { delete i.kd; }); delete PKM.M.kd[id]; pmUbah(); pmRender();
+    dipakai.forEach(i => { delete i.kd; }); delete PKME.M.kd[id]; pmUbah(); pmRender();
   });
 }
 function pmGeser(t, ai, si, ii, d) {
-  const L = t === 'a' ? PKM.M.aspek : t === 's' ? pmA(ai).sub : pmS(ai, si).ind, i = t === 'a' ? ai : t === 's' ? si : ii, j = i + d;
+  const L = t === 'a' ? PKME.M.aspek : t === 's' ? pmA(ai).sub : pmS(ai, si).ind, i = t === 'a' ? ai : t === 's' ? si : ii, j = i + d;
   if (j < 0 || j >= L.length) return; [L[i], L[j]] = [L[j], L[i]]; pmUbah(); pmRender();
 }
 function pmHapus(t, ai, si, ii) {
   guard(async () => {
-    const L = t === 'a' ? PKM.M.aspek : t === 's' ? pmA(ai).sub : pmS(ai, si).ind, i = t === 'a' ? ai : t === 's' ? si : ii, o = L[i]; if (!o) return;
+    const L = t === 'a' ? PKME.M.aspek : t === 's' ? pmA(ai).sub : pmS(ai, si).ind, i = t === 'a' ? ai : t === 's' ? si : ii, o = L[i]; if (!o) return;
     const n = t === 'a' ? o.sub.reduce((x, s) => x + s.ind.length, 0) : t === 's' ? o.ind.length : 0;
     if (n && !await konfirmasi('Hapus ' + (t === 'a' ? 'aspek' : 'kategori') + ' ini beserta ' + n + ' indikator di dalamnya? (Raport terbit tidak terpengaruh.)', { judul: 'Hapus', ya: 'Hapus', bahaya: 1 })) return;
     L.splice(i, 1); pmUbah(); pmRender();
   });
 }
 function pmTerapkanTempel() {
-  let hasil; try { hasil = pmTempel(PKM.M, pmTsv($('#pmPaste').value), $('#pmMode').value); } catch (e) { return toast(e.message, false); }
+  let hasil; try { hasil = pmTempel(PKME.M, pmTsv($('#pmPaste').value), $('#pmMode').value); } catch (e) { return toast(e.message, false); }
   const st = hasil.st; guard(async () => {
     const t = 'Terbaca ' + st.baris + ' indikator: ' + st.baru + ' baru' + (st.dipakai ? ', ' + st.dipakai + ' memakai nilai lama' : '') + (st.lewat ? ', ' + st.lewat + ' dilewati (sudah ada)' : '') + (st.kdBaru ? ', ' + st.kdBaru + ' KD baru' : '')
       + (st.dibuang ? '. ' + st.dibuang + ' indikator lama tidak ada di tempelan dan akan dibuang' : '') + '. Terapkan ke layar? (Belum tersimpan sampai Anda menekan Simpan master.)';
     if (!await konfirmasi(t, { judul: 'Tempel dari Excel', ya: 'Terapkan', ikon: '📋', bahaya: st.dibuang ? 1 : 0 })) return;
-    PKM.M = hasil.M; PKM.buka.add('aspek'); pmUbah(); pmRender(); toast('Diterapkan ke layar. Tekan Simpan master untuk menyimpan.');
+    PKME.M = hasil.M; PKME.buka.add('aspek'); pmUbah(); pmRender(); toast('Diterapkan ke layar. Tekan Simpan master untuk menyimpan.');
   });
 }
 function pmSimpan() {
-  if (PKM.ro) return; let M; try { M = pmCek(PKM.M); } catch (e) { return toast(e.message, false); }
-  const ring = String(PKM.ring || '').trim().slice(0, 120) || 'Diubah lewat editor';
+  if (PKME.ro) return; let M; try { M = pmCek(PKME.M); } catch (e) { return toast(e.message, false); }
+  const ring = String(PKME.ring || '').trim().slice(0, 120) || 'Diubah lewat editor';
   guard(async () => {
-    try { await pnTry(() => dbq(db.rpc('rapor_master_simpan', { p_kelompok: PKM.kid, p_isi: M, p_versi: PKM.versi, p_ringkas: ring }))); }
+    try { await pnTry(() => dbq(db.rpc('rapor_master_simpan', { p_kelompok: PKME.kid, p_isi: M, p_versi: PKME.versi, p_ringkas: ring }))); }
     catch (e) {
       if (/versi|version|konflik|diubah/i.test(e.message || '')) throw new Error('Master sudah diubah orang lain. Tekan "Buang perubahan" untuk memuat versi terbaru, lalu ulangi perubahan Anda. (' + e.message + ')');
       throw e;
     }
-    PKM.dirty = false; await pkMuat(); pmMuatDari(PKR.mas.get(PKM.kid), PKM.kid); pmRender(); renderV(); toast('Master disimpan (versi ' + PKM.versi + ')');
+    PKME.dirty = false; await pkMuat(); pmMuatDari(PKR.mas.get(PKME.kid), PKME.kid); pmRender(); renderV(); toast('Master disimpan (versi ' + PKME.versi + ')');
   });
 }
