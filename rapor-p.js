@@ -121,7 +121,36 @@ function pkBuka(sid) {
   if (!kg || !M) return info('Kelompok belum tersedia', '<div class="note">Siswa ini belum punya kelompok atau master indikator. Atur di tab <b>Kelompok</b>.</div>');
   const d = (r && r.data) || {}, keh = pnKeh[sid] || { sakit: 0, izin: 0, alpa: 0 };
   PKR.ed = { sid, kid: kg.id, M, b, kunci, r, n: Object.assign({}, d.n), o: Object.assign({}, d.o), oc: Object.assign({}, d.oc), tb: pkTb(d), keh: r ? { sakit: r.sakit, izin: r.izin, alpa: r.alpa } : { sakit: keh.sakit, izin: keh.izin, alpa: keh.alpa }, cat: r ? (r.catatan || '') : '' };
+  const kp = pnUas2() ? (pnKepKep.get(sid) || null) : null;
+  PKR.ed.kep = kp; PKR.ed.kj = kp ? kp.jenis : ''; PKR.ed.kt = kp && kp.kelas_tujuan_nama ? String(((S.kelas.find(c => c.nama === kp.kelas_tujuan_nama)) || {}).id || '') : '';
   pkRender();
+}
+/* ---- Keputusan akhir tahun di form (opsional, UAS Semester 2): sumber datanya sama dengan menu Kelola Siswa ---- */
+function pkKepHTML(e, kl) {
+  if (!pnUas2() || !kl) return '';
+  const k = e.kep, kunci = !!k && k.status !== 'sementara', J = { naik: 'Naik kelas', tinggal: 'Tinggal kelas', lulus: 'Lulus' }, ST = { sementara: 'Sementara', disahkan: 'Disahkan', diterapkan: 'Diterapkan' };
+  let h = '<div class="tbkh">Keputusan akhir tahun <span class="mu">(tidak wajib)</span></div>';
+  if (kunci) return h + `<div class="note"><b>${esc(J[k.jenis] || k.jenis)}</b>${k.jenis === 'naik' && k.kelas_tujuan_nama ? ' → ' + esc(k.kelas_tujuan_nama) : ''} · ${esc(ST[k.status] || k.status)}. Keputusan sudah final; koreksinya lewat menu Kelola Siswa.</div>`;
+  const dis = e.b ? '' : ' disabled';
+  /* kelas akhir: Tinggal kelas atau Lulus. Kelas lain: Naik kelas atau Tinggal kelas (Lulus tidak ditampilkan). Pilihan yang sudah tersimpan tetap ditampilkan. */
+  let op = kl.akhir ? ['tinggal', 'lulus'] : ['naik', 'tinggal']; if (e.kj && !op.includes(e.kj)) op = op.concat(e.kj);
+  const tuj = kl.urutan != null ? S.kelas.filter(c => c.urutan != null && c.urutan > kl.urutan) : [];
+  h += `<div class="fd"><select id="pkKj" class="select" onchange="pkKepUbah()"${dis}><option value="">Belum diputuskan</option>${op.map(j => `<option value="${j}"${e.kj === j ? ' selected' : ''}>${J[j]}</option>`).join('')}</select></div>`;
+  if (op.includes('naik')) h += `<div class="fd" id="pkKtw" style="${e.kj === 'naik' ? '' : 'display:none'}"><label class="l">Kelas tujuan</label><select id="pkKt" class="select"${dis}><option value="">- Pilih kelas tujuan -</option>${tuj.map(c => `<option value="${c.id}"${String(e.kt) === String(c.id) ? ' selected' : ''}>${esc(c.nama)}</option>`).join('')}</select>${tuj.length ? '' : '<div class="mu">Tidak ada kelas dengan urutan lebih tinggi. Periksa urutan kelas di menu Kelas dan Jam Masuk.</div>'}</div>`;
+  return h + '<div class="mu">Tersimpan sebagai keputusan sementara saat Simpan draf (sama dengan menu Kelola Siswa), lalu disahkan di tab Pengesahan.</div>';
+}
+function pkKepUbah() { const e = PKR.ed, v = $('#pkKj').value; e.kj = v; const w = $('#pkKtw'); if (w) w.style.display = v === 'naik' ? '' : 'none'; }
+async function pkKepSimpan(e, kl, k) {
+  if (!pnUas2() || !e.b || (e.kep && e.kep.status !== 'sementara')) return;
+  const j = k.kj || '', t = k.kt || '', cur = e.kep, curT = cur && cur.kelas_tujuan_nama ? String(((S.kelas.find(c => c.nama === cur.kelas_tujuan_nama)) || {}).id || '') : '';
+  if (j === (cur ? cur.jenis : '') && (j !== 'naik' || String(t) === curT)) return;
+  if (!j) { if (cur) await dbq(db.rpc('keputusan_hapus', { p_sekolah: SEK, p_ids: [cur.id] })); }
+  else {
+    const r = await dbq(db.rpc('keputusan_simpan', { p_sekolah: SEK, p_jenis: j, p_kelas_asal: Number(kl.id), p_kelas_tujuan: j === 'naik' ? Number(t) : null, p_siswa: [e.sid], p_timpa: true }));
+    if (r && r.dilewati && r.dilewati.length) throw new Error((r.dilewati[0].alasan || 'siswa dilewati'));
+  }
+  const rs = (await dbq(db.from('keputusan_akhir_tahun').select('id,siswa_id,jenis,kelas_tujuan_nama,status').eq('sekolah_id', SEK).eq('siswa_id', e.sid).eq('tahun_ajaran', S.set.tahun_ajaran))) || [];
+  if (rs[0]) pnKepKep.set(e.sid, rs[0]); else pnKepKep.delete(e.sid);
 }
 function pkRender() {
   const e = PKR.ed, s = S.siswa.find(x => x.id === e.sid), kl = pnKl(pnK), dis = e.b ? '' : ' disabled', P = Rapor.pohon(e.M), kg = PKR.kel.find(k => k.id === e.kid) || {};
@@ -136,6 +165,7 @@ function pkRender() {
   h += `<div class="tbkh">Kehadiran <span class="mu">(hari)</span></div><div class="tb" style="flex-wrap:wrap;align-items:flex-end"><div class="fd" style="flex:1;min-width:80px"><label class="l">Sakit</label><input id="pkSk" class="input" inputmode="numeric" maxlength="3" value="${e.keh.sakit}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Izin</label><input id="pkIz" class="input" inputmode="numeric" maxlength="3" value="${e.keh.izin}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Tanpa keterangan</label><input id="pkAl" class="input" inputmode="numeric" maxlength="3" value="${e.keh.alpa}"${dis}></div></div>`;
   if (e.b) h += `<div class="tb" style="flex-wrap:wrap;align-items:center"><button class="btn soft sm" onclick="pkAmbilKeh()">↻ Ambil dari absensi</button><span class="mu">${fmt(pnRange()[0])} sampai ${fmt(pnRange()[1])}</span></div>`;
   h += `<div class="tbkh">Catatan dan rekomendasi pendidik</div><textarea id="pkCat" class="input" rows="4" maxlength="600" placeholder=""${dis}>${esc(e.cat)}</textarea><div class="mu">Dikosongkan = dibuat otomatis dari nilai (lihat contoh di kolom ini). Isi bila ingin menulis sendiri.</div>`;
+  h += pkKepHTML(e, kl);
   const lama = e.r && e.r.salinan_hash && PKR.sal.has(e.r.salinan_hash) && PKR.mas.has(e.kid) && JSON.stringify(PKR.sal.get(e.r.salinan_hash)) !== JSON.stringify(PKR.mas.get(e.kid).isi);
   if (e.b) h += '<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pkSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pkSimpan(true)">Simpan &amp; berikutnya ➜</button></div><div class="tb"><button class="btn success grow" onclick="pkSimpan(\'terbit\')">🚀 Simpan &amp; terbitkan</button></div>' + (lama ? '<div class="note">Draf ini masih memakai indikator lama (salinan saat terbit sebelumnya). Indikator master sudah berubah.</div><div class="tb"><button class="btn soft sm" onclick="pkPakaiBaru()">🔄 Pakai indikator terbaru</button></div>' : '');
   else if (e.kunci && pnBoleh(kl) && e.r) h += `<div class="note">Raport ini sudah terbit dan terkunci. Indikatornya memakai salinan yang dibekukan saat terbit.</div><div class="tb" style="flex-wrap:wrap"><button class="btn soft grow" onclick="closeM();pnTerbitUlang([${e.r.id}])">🔄 Terbitkan ulang (indikator lama)</button><button class="btn soft grow" onclick="closeM();pnTerbitUlang([${e.r.id}],true)">🔄 Terbitkan ulang, pakai indikator terbaru</button></div><div class="tb"><button class="btn danger" onclick="pnBatal(${e.r.id})">Batalkan penerbitan</button></div>`;
@@ -216,12 +246,14 @@ async function pkGantiKel(v) {
 }
 function pkBaca() {
   const e = PKR.ed, ang = id => { const v = String($(id).value).trim() || '0'; if (!/^\d{1,3}$/.test(v)) throw new Error('Jumlah hari kehadiran harus berupa angka bulat'); return +v; };
-  return { sakit: ang('#pkSk'), izin: ang('#pkIz'), alpa: ang('#pkAl'), cat: ($('#pkCat').value || '').trim(), bl: pkBulan().map(m => m.k), tb: e.tb.map(r => pkBulan().map(m => r[m.k] || '')) };
+  const kjEl = $('#pkKj'), ktEl = $('#pkKt'); if (kjEl) { e.kj = kjEl.value; if (ktEl) e.kt = ktEl.value; }
+  return { kj: e.kj || '', kt: e.kj === 'naik' ? (e.kt || '') : '', sakit: ang('#pkSk'), izin: ang('#pkIz'), alpa: ang('#pkAl'), cat: ($('#pkCat').value || '').trim(), bl: pkBulan().map(m => m.k), tb: e.tb.map(r => pkBulan().map(m => r[m.k] || '')) };
 }
 function pkSimpan(lanjut) {
   const e = PKR.ed, kl = pnKl(pnK); if (!e || !e.b || !kl) return; let k; try { k = pkBaca(); } catch (x) { return toast(x.message, false); }
   const ids = new Set(pkIndAll(e.M).map(i => i.id)), n = {}, o = {}, oc = {};
   ids.forEach(id => { const v = +e.n[id]; if (v >= 1 && v <= 4) n[id] = v; if (e.o[id]) o[id] = e.o[id]; if (e.oc[id]) oc[id] = e.oc[id]; });
+  if (pnUas2() && !(e.kep && e.kep.status !== 'sementara') && k.kj === 'naik' && !k.kt) return toast('Pilih kelas tujuan untuk keputusan Naik kelas', false);
   const kur = pkKurangAspek(e.M, n);
   if (lanjut === 'terbit' && kur.length) { pkTampilKurang(kur); return toast('Belum bisa diterbitkan: ' + kur.length + ' tabel belum lengkap', false); }
   const ktr = kur.length ? ' Belum lengkap: ' + kur.map(x => x.n).join(', ') + '.' : '';
@@ -229,18 +261,24 @@ function pkSimpan(lanjut) {
   const sis = pnDaftar().filter(pkFmtS), nxt = sis[sis.findIndex(x => x.id === e.sid) + 1];
   guard(async () => {
     const hs = await pnTry(() => dbq(db.from('rapor').upsert({ siswa_id: e.sid, kelas_id: kl.id, kelas_nama: kl.nama, tahun_ajaran: S.set.tahun_ajaran, semester: pnSem, jenis: pnJenis, status: 'draf', fmt: 'perkembangan', kelompok_id: e.kid, salinan_hash: (e.r && e.r.salinan_hash) || null, nilai: [], data, sakit: k.sakit, izin: k.izin, alpa: k.alpa, catatan: k.cat || null }, { onConflict: 'siswa_id,tahun_ajaran,semester,jenis' }).select('*')));
+    let kepGagal = ''; try { await pkKepSimpan(e, kl, k); } catch (x) { kepGagal = ' Keputusan akhir tahun TIDAK tersimpan: ' + (x.message || x); }
     if (!pnPasang((hs || [])[0])) await pnMuat();   // cukup memperbarui baris siswa ini, tidak memuat ulang satu kelas
     if (lanjut === 'terbit') { closeM(); renderV(); const rr = pkRap(e.sid); if (rr) pnTerbit([rr.id]); return; }
-    if (lanjut && nxt) { renderV(); pnBuka(nxt.id); toast('Tersimpan. Lanjut ke ' + nxt.nama + '.' + ktr); } else { closeM(); renderV(); toast('Draf tersimpan.' + ktr); }
+    if (lanjut && nxt) { renderV(); pnBuka(nxt.id); toast('Tersimpan. Lanjut ke ' + nxt.nama + '.' + ktr + kepGagal, !kepGagal); } else { closeM(); renderV(); toast('Draf tersimpan.' + ktr + kepGagal, !kepGagal); }
   });
 }
 
 /* ---------------- PDF ---------------- */
 function pkPengelola() { const g = (S.guru || []).find(x => x.role === 'pengelola' && x.aktif); return g ? { nama: g.nama, nip: fmtNip(g.nip) } : null; }
+/* keputusan untuk pratinjau draf (raport terbit memakai yang tersimpan di barisnya) */
+function pkKepO(r) {
+  if (!(pnUas2() && r.jenis === 'UAS' && +r.semester === 2)) return {};
+  const k = pnKepKep.get(r.siswa_id); return k ? { keputusan: k.jenis, kelasTujuan: k.kelas_tujuan_nama || '' } : {};
+}
 function pkSusun(r, logo) {
   const s = S.siswa.find(x => x.id === r.siswa_id) || {}, kg = PKR.kel.find(k => k.id === r.kelompok_id) || pkKel(s) || {};
   return Rapor.susun(r, { logo, sekolah: ns(), alamat: (S.set && S.set.alamat) || '', kota: kotaTtd(), nama: s.nama, panggilan: s.pan, nisn: s.nisn, kelas: r.kelas_nama, tempatLahir: s.tempat, tglLahir: s.tgl,
-    kelompok: kg.nama || '', kelompokLabel: pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok Usia', master: pkMasterS(s, r), wali: ttdWali(r.kelas_nama) || {}, kepsek: ttdKepsek(), pengelola: pkPengelola() });
+    kelompok: kg.nama || '', kelompokLabel: pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok Usia', master: pkMasterS(s, r), wali: ttdWali(r.kelas_nama) || {}, kepsek: ttdKepsek(), pengelola: pkPengelola(), ...pkKepO(r) });
 }
 
 /* ---------------- Tahap 4: terbit raport perkembangan ---------------- */
@@ -285,9 +323,10 @@ async function pkTerbitInti(rows, ttd, baru) {
       if (!cache.has(r.kelompok_id)) cache.set(r.kelompok_id, await pkSalinanBuat(r.kelompok_id));
       h = cache.get(r.kelompok_id);
     }
-    if (!grup.has(h)) grup.set(h, []); grup.get(h).push(r.id);
+    const kp = pnUas2() ? pnKepKep.get(r.siswa_id) : null, kj = kp ? kp.jenis : '', kt = kj === 'naik' ? (kp.kelas_tujuan_nama || '') : '', key = h + '|' + kj + '|' + kt;
+    if (!grup.has(key)) grup.set(key, { h, kj, kt, ids: [] }); grup.get(key).ids.push(r.id);
   }
-  for (const [h, ids] of grup) await pnTry(() => dbq(db.from('rapor').update(Object.assign({ status: 'terbit', salinan_hash: h }, ttd, per)).in('id', ids)));
+  for (const g of grup.values()) await pnTry(() => dbq(db.from('rapor').update(Object.assign({ status: 'terbit', salinan_hash: g.h }, ttd, per, pnUas2() ? { keputusan: g.kj || null, kelas_tujuan: g.kt || null } : {})).in('id', g.ids)));
 }
 
 /* ---------------- Tab Kelompok ---------------- */
