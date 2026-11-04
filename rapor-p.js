@@ -18,7 +18,14 @@ const PKLV = ['BB', 'MB', 'BSH', 'BSB'];
     + '.pkc{font-size:12px;margin-top:6px;color:var(--tx2)}.pkc textarea,.pkc input{margin-bottom:4px}'
     + '.pktw{overflow-x:auto}.pktbl{border-collapse:collapse;min-width:100%}.pktbl th,.pktbl td{padding:3px;font-size:12px;text-align:center;border:1px solid var(--bd)}'
     + '.pktbl td:first-child{text-align:left;font-weight:700;white-space:nowrap;padding:3px 6px}.pktbl input{width:62px;padding:5px;text-align:center}'
-    + '.pkprog{position:sticky;top:0;background:var(--card);padding:6px 0;z-index:2;font-weight:800}';
+    + '.pkprog{position:sticky;top:0;background:var(--card);padding:6px 0;z-index:2;font-weight:800}'
+    + '.pktbl th:first-child,.pktbl td:first-child{position:sticky;left:0;z-index:1;background:var(--card)}'
+    + '.pkl{display:block;font-weight:800;font-size:12px;margin:12px 0 4px;color:var(--tx)}'
+    + '.pkc{margin-top:10px}.pkc textarea{display:block;width:100%;box-sizing:border-box;margin:0 0 8px;resize:vertical}'
+    + '.pkc .btn{margin-top:10px}.pkc .mu{margin-top:6px}.pklv{margin-bottom:2px}'
+    + '.pkst{display:flex;flex-direction:column;flex-wrap:nowrap;gap:12px;width:100%;margin-top:8px}.pkfld{display:block;width:100%;float:none;clear:both}.pkfld textarea{display:block;width:100%!important;margin:0!important}.pkfld .pkl{margin:0 0 4px}.pkfld .btn{margin:0}'
+    + '.pklv button.busy{opacity:1!important;pointer-events:auto!important}.pklv button.busy::before{display:none!important;content:none!important}'
+    + '#pkCat{display:block;width:100%;box-sizing:border-box;resize:vertical}';
   document.head.appendChild(st);
 })();
 
@@ -78,21 +85,35 @@ function pkInfo(s, r, i, b) {
   const kg = PKR.kel.find(k => k.id === ((r && r.kelompok_id) || (pkKel(s) || {}).id)) || {}, terbit = !!r && r.status === 'terbit';
   const stt = terbit ? '<span class="badge hadir">Terbit</span>' : r ? '<span class="badge terlambat">Draf</span>' + (h.tot && h.isi === h.tot ? '<div class="mu">Lengkap</div>' : '') : '<span class="mu">Belum diisi</span>';
   const siap = !!r && !terbit && h.tot > 0 && h.isi === h.tot, bt = b && siap ? `<button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button>` : '';
-  const tr = `<tr><td>${i + 1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(kg.nama || '')}</div></td><td>${h.isi} / ${h.tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit || !b ? 'soft' : 'success'}" onclick="pnBuka(${s.id})">${terbit || !b ? '👁 Lihat' : '✍️ Isi'}</button>${bt}${r ? `<button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>` : ''}</div></td></tr>`;
+  const tr = `<tr><td>${i + 1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(kg.nama || '')}</div></td><td>${h.isi} / ${h.tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit || !b ? 'soft' : 'success'}" onclick="pnBuka(${s.id})">${terbit || !b ? '👁 Lihat' : '✍️ Isi'}</button>${bt}${terbit && b ? `<button class="btn pnk soft" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button>` : ''}${r ? `<button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>` : ''}</div></td></tr>`;
   return { terbit, tr, siap: siap ? r.id : 0 };
 }
 
 /* ---------------- Lembar input per siswa ---------------- */
 const pkNama = () => { const s = S.siswa.find(x => x.id === PKR.ed.sid) || {}; return String(s.pan || '').trim() || String(s.nama || '').trim().split(/\s+/)[0]; };
 const pkSet_ = () => Rapor.pengaturan(PKR.ed.M);
-function pkTb(tb) { const o = []; for (let i = 0; i < 4; i++) { o.push([]); for (let j = 0; j < 6; j++) o[i].push(String(((tb || [])[i] || [])[j] == null ? '' : tb[i][j])); } return o; }
+const pkBlnN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+/* Kolom bulan pertumbuhan fisik mengikuti rentang periode (maksimal 12 bulan). Kunci bulan: 'YYYY-MM'. */
+function pkBulanDari(a, b) {
+  const o = []; let y = +String(a).slice(0, 4), m = +String(a).slice(5, 7); const ye = +String(b).slice(0, 4), me = +String(b).slice(5, 7);
+  while ((y < ye || (y === ye && m <= me)) && o.length < 12) { o.push({ k: y + '-' + String(m).padStart(2, '0'), l: pkBlnN[m - 1] }); m++; if (m > 12) { m = 1; y++; } }
+  return o;
+}
+const pkBulan = () => { const r = pnRange(); return pkBulanDari(r[0], r[1]); };
+/* data.tb = baris x kolom, data.bl = kunci bulan tiap kolom. Data lama (tanpa bl) = 6 bulan bawaan semester. */
+function pkTb(d) {
+  const m = [{}, {}, {}, {}], tb = (d && d.tb) || [], r0 = pnRangeDef();
+  const keys = d && Array.isArray(d.bl) && d.bl.length ? d.bl : pkBulanDari(r0[0], r0[1]).slice(0, 6).map(x => x.k);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < keys.length; j++) { const v = (tb[i] || [])[j]; if (v != null && String(v) !== '') m[i][keys[j]] = String(v); }
+  return m;
+}
 function pkBuka(sid) {
   const s = S.siswa.find(x => x.id === sid), kl = pnKl(pnK); if (!s || !kl) return;
   const r = pkRap(sid), kunci = !!r && r.status === 'terbit', b = pnBoleh(kl) && !kunci;
   const kg = (r && r.kelompok_id && PKR.kel.find(k => k.id === r.kelompok_id)) || pkKel(s), M = pkMasterS(s, r);
   if (!kg || !M) return info('Kelompok belum tersedia', '<div class="note">Siswa ini belum punya kelompok atau master indikator. Atur di tab <b>Kelompok</b>.</div>');
   const d = (r && r.data) || {}, keh = pnKeh[sid] || { sakit: 0, izin: 0, alpa: 0 };
-  PKR.ed = { sid, kid: kg.id, M, b, kunci, r, n: Object.assign({}, d.n), o: Object.assign({}, d.o), oc: Object.assign({}, d.oc), tb: pkTb(d.tb), keh: r ? { sakit: r.sakit, izin: r.izin, alpa: r.alpa } : { sakit: keh.sakit, izin: keh.izin, alpa: keh.alpa }, cat: r ? (r.catatan || '') : '' };
+  PKR.ed = { sid, kid: kg.id, M, b, kunci, r, n: Object.assign({}, d.n), o: Object.assign({}, d.o), oc: Object.assign({}, d.oc), tb: pkTb(d), keh: r ? { sakit: r.sakit, izin: r.izin, alpa: r.alpa } : { sakit: keh.sakit, izin: keh.izin, alpa: keh.alpa }, cat: r ? (r.catatan || '') : '' };
   pkRender();
 }
 function pkRender() {
@@ -103,8 +124,8 @@ function pkRender() {
     ? `<select class="select" onchange="pkGantiKel(this.value)"><option value="">(otomatis) ${esc((pkKel(s) || {}).nama || '')}</option>${pil.map(k => `<option value="${k.id}"${s.km === k.id ? ' selected' : ''}>${esc(k.nama)}</option>`).join('')}</select>` : `<input class="input" value="${esc(kg.nama || '')}" readonly>`) + '</div>';
   h += '<div class="pkprog" id="pkprog"></div>';
   h += P.map((a, ai) => `<details class="pkas" id="pka_${ai}" ontoggle="pkIsi(${ai})"><summary><span>${esc(a.no ? a.no + '. ' : '')}${esc(a.n)}</span><span class="mu" id="pks_${ai}"></span></summary><div class="pkb" id="pkb_${ai}"></div></details>`).join('');
-  const bln = pnSem === 1 ? ['Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'] : ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
-  h += `<div class="tbkh">Pertumbuhan fisik</div><div class="pktw"><table class="pktbl"><thead><tr><th></th>${bln.map(m => `<th>${m}</th>`).join('')}</tr></thead><tbody>${pkSet_().tumbuh.map((lab, ri) => `<tr><td>${esc(lab)}</td>${bln.map((_, ci) => `<td><input class="input" maxlength="8" value="${esc(e.tb[ri][ci])}"${dis} oninput="pkTbSet(${ri},${ci},this.value)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const bln = pkBulan();
+  h += `<div class="tbkh">Pertumbuhan fisik</div><div class="mu" style="margin-bottom:6px">Kolom bulan mengikuti periode perhitungan kehadiran (${fmt(pnRange()[0])} sampai ${fmt(pnRange()[1])}).</div><div class="pktw"><table class="pktbl"><thead><tr><th></th>${bln.map(m => `<th>${m.l}</th>`).join('')}</tr></thead><tbody>${pkSet_().tumbuh.map((lab, ri) => `<tr><td>${esc(lab)}</td>${bln.map(m => `<td><input class="input" maxlength="8" value="${esc(e.tb[ri][m.k] || '')}"${dis} oninput="pkTbSet(${ri},'${m.k}',this.value)"></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   h += `<div class="tbkh">Kehadiran <span class="mu">(hari)</span></div><div class="tb" style="flex-wrap:wrap;align-items:flex-end"><div class="fd" style="flex:1;min-width:80px"><label class="l">Sakit</label><input id="pkSk" class="input" inputmode="numeric" maxlength="3" value="${e.keh.sakit}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Izin</label><input id="pkIz" class="input" inputmode="numeric" maxlength="3" value="${e.keh.izin}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Tanpa keterangan</label><input id="pkAl" class="input" inputmode="numeric" maxlength="3" value="${e.keh.alpa}"${dis}></div></div>`;
   if (e.b) h += `<div class="tb" style="flex-wrap:wrap;align-items:center"><button class="btn soft sm" onclick="pkAmbilKeh()">↻ Ambil dari absensi</button><span class="mu">${fmt(pnRange()[0])} sampai ${fmt(pnRange()[1])}</span></div>`;
   h += `<div class="tbkh">Catatan dan rekomendasi pendidik</div><textarea id="pkCat" class="input" rows="4" maxlength="600" placeholder=""${dis}>${esc(e.cat)}</textarea><div class="mu">Dikosongkan = dibuat otomatis dari nilai (lihat contoh di kolom ini). Isi bila ingin menulis sendiri.</div>`;
@@ -113,12 +134,12 @@ function pkRender() {
   else if (e.kunci && pnBoleh(kl) && e.r) h += `<div class="note">Raport ini sudah terbit dan terkunci. Indikatornya memakai salinan yang dibekukan saat terbit.</div><div class="tb" style="flex-wrap:wrap"><button class="btn soft grow" onclick="closeM();pnTerbitUlang([${e.r.id}])">🔄 Terbitkan ulang (indikator lama)</button><button class="btn soft grow" onclick="closeM();pnTerbitUlang([${e.r.id}],true)">🔄 Terbitkan ulang, pakai indikator terbaru</button></div><div class="tb"><button class="btn danger" onclick="pnBatal(${e.r.id})">Batalkan penerbitan</button></div>`;
   else h += '<div class="note">Anda hanya dapat melihat raport ini.</div>';
   if (e.r) h += `<div class="tb"><button class="btn soft sm" onclick="pnPdf([${e.r.id}],this)">📄 Unduh PDF (data yang tersimpan)</button></div>`;
-  $('#mt').textContent = (e.kunci ? 'Raport ' : 'Nilai ') + s.nama; $('#ms').style.display = 'none'; $('#mbd').innerHTML = h; $('#md').classList.add('besar'); $('#md').classList.add('show');
+  $('#mt').textContent = (e.kunci ? 'Raport ' : 'Nilai ') + s.nama; const ms = $('#ms'); if (ms) { if (e.b) { ms.style.display = ''; ms.textContent = '💾 Simpan draf'; ms.className = 'btn success'; ms.disabled = false; ms.onclick = () => pkSimpan(false); } else ms.style.display = 'none'; } $('#mbd').innerHTML = h; $('#md').classList.add('besar'); $('#md').classList.add('show');
   const a0 = $('#pka_0'); if (a0) { a0.open = true; pkIsi(0); } pkProg();
 }
 function pkRowHTML(x) {
   const e = PKR.ed, i = x.i, lv = +e.n[i.id] || 0, dis = e.b ? '' : ' disabled';
-  return `<div class="pki" id="pkr_${i.id}"><div class="pkt"><span class="mu">${x.no ? esc(x.no) + '.' : ''}</span> ${esc(i.t)}${x.kd ? ` <span class="mu">[KD ${esc(x.kd)}]</span>` : ''}</div><div class="pklv">${PKLV.map((t, k) => `<button type="button" class="${lv === k + 1 ? 'on' : ''}"${dis} onclick="pkSetLv('${i.id}',${k + 1})">${t}</button>`).join('')}</div><div class="pkc" id="pkc_${i.id}">${pkPrev(i)}</div></div>`;
+  return `<div class="pki" id="pkr_${i.id}"><div class="pkt"><span class="mu">${x.no ? esc(x.no) + '.' : ''}</span> ${esc(i.t)}${x.kd ? ` <span class="mu">[KD ${esc(x.kd)}]</span>` : ''}</div><div class="pklv">${PKLV.map((t, k) => `<button type="button" class="nobusy ${lv === k + 1 ? 'on' : ''}"${dis} onclick="pkSetLv('${i.id}',${k + 1})">${t}</button>`).join('')}</div><div class="pkc" id="pkc_${i.id}">${pkPrev(i)}</div></div>`;
 }
 function pkPrev(i) {
   const e = PKR.ed, lv = +e.n[i.id] || 0; if (!lv) return '<span class="mu">Pilih level untuk mengisi capaian otomatis</span>';
@@ -151,11 +172,11 @@ function pkSemua(ai, kid) {
 function pkUbahTeks(id) {
   const e = PKR.ed, i = pkIndAll(e.M).find(x => x.id === id), el = $('#pkc_' + id); if (!i || !el) return;
   const lv = +e.n[id] || 0, S_ = pkSet_(), c = e.o[id] != null && e.o[id] !== '' ? e.o[id] : Rapor.cap(i, lv, pkNama(), S_), t = e.oc[id] != null && e.oc[id] !== '' ? e.oc[id] : Rapor.catI(i, lv, S_);
-  el.innerHTML = `<textarea class="input" rows="3" maxlength="300" oninput="pkTeks('${id}','o',this.value)">${esc(c)}</textarea><input class="input" maxlength="200" value="${esc(t)}" placeholder="Catatan" oninput="pkTeks('${id}','oc',this.value)"><button type="button" class="btn soft sm" onclick="pkResetTeks('${id}')">↺ Kembali otomatis</button>`;
+  el.innerHTML = `<div class="pkst"><div class="pkfld"><label class="pkl">Penilaian</label><textarea class="input" rows="4" maxlength="300" oninput="pkTeks('${id}','o',this.value)">${esc(c)}</textarea></div><div class="pkfld"><label class="pkl">Catatan</label><textarea class="input" rows="2" maxlength="200" oninput="pkTeks('${id}','oc',this.value)">${esc(t)}</textarea></div><div class="pkfld"><button type="button" class="btn soft sm" onclick="pkResetTeks('${id}')">↺ Kembali otomatis</button></div></div>`;
 }
 function pkTeks(id, k, v) { const e = PKR.ed; if (!e || !e.b) return; const t = String(v || '').trim(); if (t) e[k][id] = t; else delete e[k][id]; }
 function pkResetTeks(id) { const e = PKR.ed; delete e.o[id]; delete e.oc[id]; $('#pkc_' + id).innerHTML = pkPrev(pkIndAll(e.M).find(x => x.id === id)); }
-function pkTbSet(ri, ci, v) { if (PKR.ed && PKR.ed.b) PKR.ed.tb[ri][ci] = String(v || '').trim(); }
+function pkTbSet(ri, k, v) { if (!PKR.ed || !PKR.ed.b) return; const t = String(v || '').trim(); if (t) PKR.ed.tb[ri][k] = t; else delete PKR.ed.tb[ri][k]; }
 function pkAmbilKeh() { const k = pnKeh[PKR.ed.sid] || { sakit: 0, izin: 0, alpa: 0 }; $('#pkSk').value = k.sakit; $('#pkIz').value = k.izin; $('#pkAl').value = k.alpa; toast('Kehadiran diisi dari absensi. Tekan Simpan untuk menyimpan'); }
 async function pkGantiKel(v) {
   const e = PKR.ed, s = S.siswa.find(x => x.id === e.sid); if (!e || !s || !e.b) return;
@@ -169,14 +190,14 @@ async function pkGantiKel(v) {
 }
 function pkBaca() {
   const e = PKR.ed, ang = id => { const v = String($(id).value).trim() || '0'; if (!/^\d{1,3}$/.test(v)) throw new Error('Jumlah hari kehadiran harus berupa angka bulat'); return +v; };
-  return { sakit: ang('#pkSk'), izin: ang('#pkIz'), alpa: ang('#pkAl'), cat: ($('#pkCat').value || '').trim(), tb: e.tb.map(r => r.slice()) };
+  return { sakit: ang('#pkSk'), izin: ang('#pkIz'), alpa: ang('#pkAl'), cat: ($('#pkCat').value || '').trim(), bl: pkBulan().map(m => m.k), tb: e.tb.map(r => pkBulan().map(m => r[m.k] || '')) };
 }
 function pkSimpan(lanjut) {
   const e = PKR.ed, kl = pnKl(pnK); if (!e || !e.b || !kl) return; let k; try { k = pkBaca(); } catch (x) { return toast(x.message, false); }
   const ids = new Set(pkIndAll(e.M).map(i => i.id)), n = {}, o = {}, oc = {};
   ids.forEach(id => { const v = +e.n[id]; if (v >= 1 && v <= 4) n[id] = v; if (e.o[id]) o[id] = e.o[id]; if (e.oc[id]) oc[id] = e.oc[id]; });
   if (lanjut === 'terbit') { const h = pkHitung(e.M, n); if (h.isi < h.tot) return toast('Masih ada indikator yang belum dinilai (' + h.isi + ' / ' + h.tot + ')', false); }
-  const data = { n }; if (Object.keys(o).length) data.o = o; if (Object.keys(oc).length) data.oc = oc; if (k.tb.some(r => r.some(v => v))) data.tb = k.tb;
+  const data = { n }; if (Object.keys(o).length) data.o = o; if (Object.keys(oc).length) data.oc = oc; if (k.tb.some(r => r.some(v => v))) { data.tb = k.tb; data.bl = k.bl; }
   const sis = pnDaftar().filter(pkFmtS), nxt = sis[sis.findIndex(x => x.id === e.sid) + 1];
   guard(async () => {
     await pnTry(() => dbq(db.from('rapor').upsert({ siswa_id: e.sid, kelas_id: kl.id, kelas_nama: kl.nama, tahun_ajaran: S.set.tahun_ajaran, semester: pnSem, jenis: pnJenis, status: 'draf', fmt: 'perkembangan', kelompok_id: e.kid, salinan_hash: (e.r && e.r.salinan_hash) || null, nilai: [], data, sakit: k.sakit, izin: k.izin, alpa: k.alpa, catatan: k.cat || null }, { onConflict: 'siswa_id,tahun_ajaran,semester,jenis' })));
