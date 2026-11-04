@@ -644,6 +644,15 @@ textarea,textarea.input{display:block;width:100%!important;max-width:100%!import
 #mbd .tbkh{margin-top:18px}
 #mbd .note+.fd,#mbd .note+.tb{margin-top:14px}
 .mf .btn{min-width:96px}
+/* menu Raport */
+button[onclick="go('raport')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h8l4 4v14H6z'/%3E%3Cpath d='M14 3v4h4'/%3E%3Cpath d='M9 12h6M9 16h6'/%3E%3C/svg%3E")}
+.rpbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.rpall{display:flex;align-items:center;gap:10px;font-weight:800;cursor:pointer}
+.rpk{border:1px solid var(--bd);border-radius:14px;padding:12px;margin:12px 0;background:var(--card)}
+.rph{display:flex;align-items:center;gap:10px;font-weight:800}.rpn{flex:1;min-width:0;overflow-wrap:anywhere}
+.rpi{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--bd);margin-top:10px}
+.rpi label{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0;cursor:pointer;font-size:13px}
+.rpi .btn{flex:0 0 auto;margin:0}
 /* dropdown pas selebar layar */
 .pnper>.csel,.pnper>.select,.pnper>.cpick{flex:1 1 100%!important;width:100%!important;max-width:none!important;min-width:0!important}
 .fd>.select,.fd>.csel,.fd>.cpick,.tb>select.select,.tb>.csel:not(:has(.urutan-sel)),.tb>.cpick,.fd .csel-btn,.fd .cpick-btn,.tb>.csel .csel-btn,.tb>.cpick .cpick-btn{width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}
@@ -834,8 +843,8 @@ function tpPilih(v){const T=TP;if(!T)return;const ada=document.body.contains(T.w
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&TP)tpTutup()});
 window.addEventListener('resize',()=>{if(TP)tpPos()});
 window.addEventListener('scroll',e=>{if(TP&&innerWidth>640&&!(e.target&&e.target.nodeType===1&&e.target.closest('#tpop')))tpTutup()},true);
-const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['piket','Jadwal Piket','🧹','KG'],['hafalan','Hafalan','📖','KG'],['kartu','Kartu','🪪','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['alumni','Alumni','🏅','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['guru','Data Guru','👨‍🏫','KG'],['penilaian','Penilaian Siswa','📝','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
-const MENU_GRUP=[['Utama',['dashboard','profil']],['Kegiatan Harian',['absensi','scan','piket','hafalan','tabungan']],['Data Sekolah',['siswa','kelola','alumni','kartu','guru','kelasjam']],['Laporan &amp; Komunikasi',['penilaian','rekap','laporanortu','pesan']],['Pengaturan',['libur','pengaturan']]];
+const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️','KG'],['scan','Scan','📷','KG'],['tabungan','Tabungan','💰','KG'],['piket','Jadwal Piket','🧹','KG'],['hafalan','Hafalan','📖','KG'],['kartu','Kartu','🪪','KG'],['siswa','Data Siswa','👥','KG'],['kelola','Kelola Siswa','🎓','KG'],['alumni','Alumni','🏅','KG'],['kelasjam','Kelas dan Jam Masuk','🏫','KG'],['guru','Data Guru','👨‍🏫','KG'],['penilaian','Penilaian Siswa','📝','KG'],['raport','Raport','📄','KG'],['rekap','Rekap','📚','KG'],['laporanortu','Laporan Ortu','📨','KG'],['pesan','Pesan WA','💬','KG'],['libur','Jadwal Libur','🥳','KG'],['profil','Profil Saya','👤','KGD'],['pengaturan','Pengaturan','⚙','K'],['developer','Developer','🛠','D']];
+const MENU_GRUP=[['Utama',['dashboard','profil']],['Kegiatan Harian',['absensi','scan','piket','hafalan','tabungan']],['Data Sekolah',['siswa','alumni','kartu','guru','kelasjam']],['Kelola Raport',['kelola','penilaian','raport']],['Laporan &amp; Komunikasi',['rekap','laporanortu','pesan']],['Pengaturan',['libur','pengaturan']]];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',pengelola:'Pengelola/Pengasuh',operator:'Operator',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Pengelola/Pengasuh':'pengelola','Operator':'operator','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Pengelola/Pengasuh':'K','Operator':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah'||role==='Pengelola/Pengasuh'||role==='Operator';
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
@@ -3960,6 +3969,62 @@ document.addEventListener('click',e=>{
  clearTimeout(b._clickFxTimer);
  b._clickFxTimer=setTimeout(()=>b.classList.remove('click-fx'),420);
 },true);
+/* ---------- Menu Raport: daftar raport semua siswa per kelas; hapus satu atau banyak sekaligus (batch) ---------- */
+const RP={k:'',key:'',rows:[],by:new Map(),sis:[],sel:new Set(),ukuran:200};
+const rpUrut=(a,b)=>String(b.tahun_ajaran).localeCompare(String(a.tahun_ajaran))||(b.semester-a.semester)||String(b.jenis).localeCompare(String(a.jenis));
+function rpBagi(rows){RP.by=new Map();rows.forEach(r=>{if(!RP.by.has(r.siswa_id))RP.by.set(r.siswa_id,[]);RP.by.get(r.siswa_id).push(r)})}
+/* satu kali baca untuk seluruh siswa kelas (dibagi per 200 siswa bila kelas sangat besar), bukan per siswa */
+async function rpMuat(){
+ if(!RP.k&&pnK)RP.k=pnK;
+ const k=RP.k,kl=pnKl(k);RP.rows=[];RP.by=new Map();RP.sis=[];RP.sel.clear();RP.key='';if(!kl)return;
+ const sis=act().filter(s=>s.kelas_id===kl.id).sort((a,b)=>a.nama.localeCompare(b.nama,'id')),ids=sis.map(s=>s.id),rows=[];
+ for(let i=0;i<ids.length;i+=RP.ukuran){const part=ids.slice(i,i+RP.ukuran);rows.push(...await pgAll(()=>db.from('rapor').select('id,siswa_id,kelas_nama,tahun_ajaran,semester,jenis,status,fmt').in('siswa_id',part).order('id')))}
+ if(RP.k!==k)return;
+ rows.sort(rpUrut);RP.sis=sis;RP.rows=rows;rpBagi(rows);RP.key=k}
+V.raport=()=>{
+ let h=`<div class="panel"><div class="ph">📄 Raport <span class="mu">Tahun ajaran: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="tb tab-choice">${cpick('rpKelasPick','kelas',RP.k,pkKelasOpt(),'rpPilihK','Pilih kelas')}</div>`;
+ const kl=pnKl(RP.k);
+ if(!RP.k||!kl)h+=PKH;
+ else if(RP.key!==RP.k)h+='<div class="note">⏳ Memuat...</div>';
+ else if(!RP.sis.length)h+='<div class="note">Belum ada siswa aktif di kelas ini.</div>';
+ else{
+  const b=pnBoleh(kl),n=RP.rows.length,nt=RP.rows.filter(r=>r.status==='terbit').length;
+  h+=`<div class="note">Kelas <b>${esc(kl.nama)}</b> · ${RP.sis.length} siswa · ${n} raport (Terbit: <b>${nt}</b> · Draf: <b>${n-nt}</b>).${b?'':'<br>Anda hanya dapat melihat raport kelas ini.'}</div>`;
+  if(b&&n)h+=`<div class="rpbar"><label class="rpall"><input type="checkbox" id="rpAll" class="mh-ck" onchange="rpPilihSemua(this.checked)"> Pilih semua</label><button type="button" id="rpDel" class="btn danger" onclick="rpHapus([...RP.sel])" disabled>🗑 Hapus terpilih (0)</button></div>`;
+  h+=RP.sis.map(s=>{
+   const rs=RP.by.get(s.id)||[];
+   const isi=rs.map(r=>`<div class="rpi"><label>${b?`<input type="checkbox" class="mh-ck" data-rp="${r.id}" onchange="rpPilih(${r.id},this.checked)">`:''}<span><b>${esc(r.tahun_ajaran)}</b> · Semester ${esc(r.semester)} · ${esc(r.jenis)}<div class="mu">${esc(r.kelas_nama||'')}${r.fmt==='perkembangan'?' · Perkembangan':''}</div></span></label><span>${r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>'}</span>${b?`<button type="button" class="btn soft sm" onclick="rpHapus([${r.id}])">🗑 Hapus</button>`:''}</div>`).join('');
+   return `<div class="rpk"><div class="rph">${b&&rs.length?`<input type="checkbox" class="mh-ck" data-rps="${s.id}" onchange="rpPilihSiswa(${s.id},this.checked)">`:''}<span class="rpn">${esc(s.nama)}</span><span class="mu">${rs.length} raport</span></div>${isi||'<div class="mu" style="margin-top:6px">Belum ada raport.</div>'}</div>`}).join('');
+ }
+ return h+'</div></div>'};
+LOAD.raport=()=>rpMuat();
+function rpPilihK(v){RP.k=v;RP.key='';RP.sel.clear();renderV();rpMuat().then(()=>renderV()).catch(e=>toast(dbMsg(e),false))}
+function rpSync(){
+ document.querySelectorAll('#v [data-rp]').forEach(c=>{c.checked=RP.sel.has(+c.dataset.rp)});
+ document.querySelectorAll('#v [data-rps]').forEach(c=>{const ids=(RP.by.get(+c.dataset.rps)||[]).map(r=>r.id),n=ids.filter(i=>RP.sel.has(i)).length;c.checked=!!ids.length&&n===ids.length;c.indeterminate=n>0&&n<ids.length});
+ const a=$('#rpAll'),n=RP.sel.size;if(a){a.checked=!!RP.rows.length&&n===RP.rows.length;a.indeterminate=n>0&&n<RP.rows.length}
+ const d=$('#rpDel');if(d){d.textContent='🗑 Hapus terpilih ('+n+')';d.disabled=!n}}
+function rpPilih(id,on){on?RP.sel.add(id):RP.sel.delete(id);rpSync()}
+function rpPilihSiswa(sid,on){(RP.by.get(sid)||[]).forEach(r=>on?RP.sel.add(r.id):RP.sel.delete(r.id));rpSync()}
+function rpPilihSemua(on){RP.rows.forEach(r=>on?RP.sel.add(r.id):RP.sel.delete(r.id));rpSync()}
+/* hapus satu atau banyak raport: satu permintaan per 200 id (bukan satu per satu) */
+async function rpHapus(ids){
+ const kl=pnKl(RP.k);if(!kl||!pnBoleh(kl))return toast('Anda tidak punya izin menghapus raport kelas ini',false);
+ const ada=new Set(RP.rows.map(r=>r.id));ids=[...new Set(ids)].filter(i=>ada.has(i));
+ if(!ids.length)return toast('Belum ada raport yang dipilih',false);
+ const rs=RP.rows.filter(r=>ids.includes(r.id)),nt=rs.filter(r=>r.status==='terbit').length;
+ if(!await konfirmasi('Hapus '+rs.length+' raport dari '+new Set(rs.map(r=>r.siswa_id)).size+' siswa?'+(nt?' '+nt+' di antaranya sudah terbit dan akan hilang dari portal orang tua.':'')+' Tindakan ini tidak bisa dibatalkan.',{bahaya:1,judul:'Hapus raport',ya:'Hapus',ikon:'🗑️'}))return;
+ guard(async()=>{
+  const gone=new Set();
+  try{
+   for(let i=0;i<ids.length;i+=RP.ukuran){const r=await dbq(db.from('rapor').delete().in('id',ids.slice(i,i+RP.ukuran)).select('id'));(r||[]).forEach(x=>gone.add(x.id))}
+   if(!gone.size)throw new Error('Tidak ada raport yang terhapus. Anda mungkin tidak punya izin hapus, atau data sudah tidak ada.')
+  }catch(e){await rpMuat().catch(()=>{});renderV();throw e}
+  RP.rows=RP.rows.filter(r=>!gone.has(r.id));rpBagi(RP.rows);gone.forEach(i=>RP.sel.delete(i));
+  pnRap=pnRap.filter(r=>!gone.has(r.id));pnKey='';
+  renderV();
+  if(gone.size===ids.length)toast(gone.size+' raport dihapus');else toast(gone.size+' dari '+ids.length+' raport terhapus, sisanya ditolak',false)})}
+
 mulai();
 /* dashboard: dimuat setiap dibuka (lewat go) dan saat tab/aplikasi kembali terlihat. Tanpa timer. */
 let _dashBusy=false;
