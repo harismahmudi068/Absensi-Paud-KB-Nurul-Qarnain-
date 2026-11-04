@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
     if (!Number.isInteger(sekolahId) || sekolahId <= 0) return res.status(400).json({ error: 'Sekolah tidak valid' });
     if (p.role !== 'developer') {
       const m = (await sb(`/rest/v1/keanggotaan?profil_id=eq.${user.id}&sekolah_id=eq.${sekolahId}&select=role,aktif`))[0];
-      if (!m || !m.aktif || !['guru', 'wakil_kepala', 'kepala_sekolah'].includes(m.role)) return res.status(403).json({ error: 'Tidak punya akses ke sekolah ini' });
+      if (!m || !m.aktif || !['guru', 'operator', 'pengelola', 'wakil_kepala', 'kepala_sekolah'].includes(m.role)) return res.status(403).json({ error: 'Tidak punya akses ke sekolah ini' });
     }
     // Token utama = token pertama yang didaftarkan sekolah (Pengaturan > Konfigurasi)
     const t0 = (await sb(`/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=token&order=id.asc&limit=1`))[0] || {};
