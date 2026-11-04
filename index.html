@@ -3160,7 +3160,7 @@ async function pnHapus(id){const kl=pnKl(pnK),m=pnMapel.find(x=>x.id===id);if(!p
  if(!await konfirmasi('Hapus mata pelajaran '+m.nama+' dari kelas '+kl.nama+'? Raport yang sudah tersimpan tidak berubah, tetapi nilai draf mapel ini tidak akan ikut tersimpan lagi.',{bahaya:1,judul:'Hapus mata pelajaran',ya:'Hapus'}))return;
  guard(async()=>{await pnTry(()=>dbq(db.from('rapor_mapel').delete().eq('id',id)));await pnMuat();renderV();toast('Mata pelajaran dihapus')})}
 function pnBawaan(btn){const kl=pnKl(pnK);if(!pnBoleh(kl))return;
- guard(async()=>{const n=await pnTry(()=>dbq(db.rpc('rapor_mapel_bawaan',{p_kelas:kl.id})));if(n)await pnTry(()=>dbq(db.from('rapor_mapel').update({aspek:'Mata Pelajaran'}).eq('kelas_id',kl.id).is('aspek',null)));await pnMuat();renderV();toast(n?n+' mata pelajaran bawaan ditambahkan':'Kelas ini sudah punya mata pelajaran')})}
+ guard(async()=>{const n=await pnTry(()=>dbq(db.rpc('rapor_mapel_bawaan',{p_kelas:kl.id})));await pnMuat();renderV();toast(n?n+' mata pelajaran bawaan ditambahkan':'Kelas ini sudah punya mata pelajaran')})}
 function pnKkmSemua(){const kl=pnKl(pnK);if(!pnBoleh(kl)||!pnMapel.length)return;
  form('Atur KKM semua mata pelajaran',[{k:'kkm',l:'KKM untuk semua mapel di kelas '+kl.nama+' (0 sampai 100)',v:String(pnMapel[0].kkm),t:'number'}],async v=>{
   const kk=pnAng(v.kkm,'KKM');await pnTry(()=>dbq(db.from('rapor_mapel').update({kkm:kk}).eq('kelas_id',kl.id)));await pnMuat();renderV();toast('KKM semua mapel diubah menjadi '+kk)})}
