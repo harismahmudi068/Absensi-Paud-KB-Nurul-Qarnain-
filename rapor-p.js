@@ -32,7 +32,25 @@ const PKLV = ['BB', 'MB', 'BSH', 'BSB'];
 })();
 
 /* ---------------- Pemuatan data ---------------- */
+let PK_SYNC = false, PK_GAGAL = false;
+/* mode per kelas + level: setiap kelas sekolah otomatis punya satu kelompok (nama = nama kelas); kelas baru ikut otomatis */
+async function pkSinkronKelas() {
+  if (PK_SYNC || PK_GAGAL || role === 'Guru' || pkSkala() !== 'level' || pkMode() !== 'kelas' || PKR.galat || !S.kelas || !S.kelas.length) return false;
+  const perlu = S.kelas.filter(c => !PKR.kel.some(k => k.aturan && Array.isArray(k.aturan.kelas) && k.aturan.kelas.includes(c.id)));
+  if (!perlu.length) return false;
+  PK_SYNC = true;
+  try {
+    let u = Math.max(0, ...PKR.kel.map(k => k.urutan || 0));
+    await dbq(db.from('rapor_kelompok').insert(perlu.map(c => ({ nama: c.nama, aturan: { kelas: [c.id] }, urutan: ++u }))));
+    return true;
+  } catch (e) { PK_GAGAL = true; return false; } finally { PK_SYNC = false; }
+}
 async function pkMuat() {
+  await pkMuatData();
+  if (await pkSinkronKelas()) await pkMuatData();
+  PKR.loaded = true;
+}
+async function pkMuatData() {
   PKR.kel = []; PKR.mas = new Map(); PKR.galat = false;
   try {
     PKR.kel = (await dbq(db.from('rapor_kelompok').select('*').order('urutan').order('id'))) || [];
@@ -47,12 +65,13 @@ async function pkMuat() {
       (sal || []).forEach(x => PKR.sal.set(x.hash, x.isi));
     }
   } catch (e) { PKR.kel = []; PKR.mas = new Map(); PKR.galat = true; }
-  PKR.loaded = true;
 }
 
 /* ---------------- Kelompok siswa ---------------- */
 const pkOkTgl = x => /^\d{4}-\d\d-\d\d$/.test(String(x || ''));
 const pkMode = () => (S.set && S.set.kelompok_mode) || 'kelas';
+/* skala penilaian: per usia selalu 'level'; per kelas memilih 'angka' (mapel + KKM + aspek) atau 'level' (BB/MB/BSH/BSB, kelompok = kelas) */
+const pkSkala = () => pkMode() === 'usia' ? 'level' : ((S.set && S.set.skala_kelas) === 'level' ? 'level' : 'angka');
 function pkAcuan() {
   const ta = String((S.set && S.set.tahun_ajaran) || ''), m = ta.match(/(\d{4})/), y = m ? +m[1] : +String(TODAY).slice(0, 4);
   const a = ((S.set && S.set.acuan_usia) || {})[ta + '-' + pnSem];
@@ -77,6 +96,7 @@ const pkRap = sid => (typeof pnRap !== 'undefined' ? pnRap : []).find(r => r.sis
 /* true bila raport siswa ini memakai format perkembangan (sudah tersimpan begitu, atau kelompoknya punya master) */
 function pkFmtS(s) {
   if (!s) return false; const r = pkRap(s.id); if (r) return r.fmt === 'perkembangan';
+  if (pkSkala() !== 'level') return false;
   const k = pkKel(s); return !!(k && PKR.mas.has(k.id));
 }
 function pkMasterS(s, r) {
@@ -335,18 +355,31 @@ function pkKelHTML() {
   if (!PKR.loaded) { pkMuat().then(() => renderV()); return '<div class="note">⏳ Memuat...</div>'; }
   if (PKR.galat) return '<div class="note">Fitur raport perkembangan belum siap di database. Jalankan 01_rapor_perkembangan.sql lebih dulu.</div>';
   const kl = role !== 'Guru', mode = pkMode(), dis = kl ? '' : ' disabled', aktif = S.siswa.filter(s => s.aktif);
-  let h = '<div class="note">Kelompok menentukan aspek, kategori, dan indikator pada raport perkembangan. Pilih pengelompokan siswa per usia (misalnya PAUD) atau per kelas (misalnya SD).' + (kl ? '' : '<br>Anda hanya dapat melihat pengaturan ini.') + '</div>';
+  const skala = pkSkala(), oto = mode === 'kelas' && skala === 'level';
+  let h = '<div class="note">Pilih pengelompokan siswa per usia (misalnya PAUD) atau per kelas (misalnya SD). Per usia memakai raport level perkembangan; per kelas bisa memakai nilai angka atau level perkembangan.' + (kl ? '' : '<br>Anda hanya dapat melihat pengaturan ini.') + '</div>';
   h += `<div class="fd"><label class="l">Pengelompokan siswa</label><select class="select" onchange="pkSetMode(this.value)"${dis}><option value="kelas"${mode === 'kelas' ? ' selected' : ''}>Per kelas</option><option value="usia"${mode === 'usia' ? ' selected' : ''}>Per usia (dari tanggal lahir)</option></select></div>`;
+  if (mode === 'kelas') h += `<div class="fd"><label class="l">Penilaian</label><select class="select" onchange="pkSetSkala(this.value)"${dis}><option value="angka"${skala === 'angka' ? ' selected' : ''}>Nilai angka (mapel, KKM, dan aspek)</option><option value="level"${skala === 'level' ? ' selected' : ''}>Level perkembangan (BB, MB, BSH, BSB)</option></select></div>`;
+  if (mode === 'kelas' && skala === 'angka') return h + '<div class="note">Penilaian memakai <b>nilai angka 0-100</b>. Atur mata pelajaran, KKM, dan aspek di tab <b>Mapel &amp; KKM</b>.</div>';
+  if (oto && PK_GAGAL) h += '<div class="note" style="color:var(--rd)">Kelompok kelas belum bisa dibuat otomatis (periksa hak akses atau database). Muat ulang halaman, atau hubungi Kepala Sekolah.</div>';
   if (mode === 'usia') h += pnPeriode() + `<div class="fd"><label class="l">Tanggal acuan hitung usia · Semester ${pnSem} · TA ${esc(S.set.tahun_ajaran || '-')}</label><input type="date" class="input" value="${pkAcuan()}" onchange="pkSetAcuan(this.value)"${dis}><div class="mu">Usia siswa dihitung pada tanggal ini. Bawaan: awal semester.</div></div>`;
   const cnt = new Map(), tanpa = []; aktif.forEach(s => { const k = pkKel(s); if (k) cnt.set(k.id, (cnt.get(k.id) || 0) + 1); else tanpa.push(s.nama); });
   const bisaSalin = PKR.kel.filter(k => PKR.mas.has(k.id));
-  h += PKR.kel.length ? tab(['Kelompok', 'Aturan', 'Master', 'Siswa', 'Aksi'], PKR.kel.map(k => `<tr><td><b>${esc(k.nama)}</b>${k.aktif ? '' : '<div class="mu">Nonaktif</div>'}</td><td>${esc(pkAturanTxt(k))}</td><td>${PKR.mas.has(k.id) ? 'v' + PKR.mas.get(k.id).versi : '<span class="mu">Belum ada</span>'}</td><td>${cnt.get(k.id) || 0}</td><td><div class="pnka"><button class="btn pnk soft" onclick="pmBuka(${k.id})">📝 ${PKR.mas.has(k.id) ? 'Indikator' : 'Buat master'}</button>${kl ? `<button class="btn pnk soft" onclick="pkFormKel(${k.id})">Ubah</button>${!PKR.mas.has(k.id) && bisaSalin.length ? `<button class="btn pnk soft" onclick="pkSalinMaster(${k.id})">Salin master</button>` : ''}<button class="btn pnk soft" onclick="pkToggleKel(${k.id})">${k.aktif ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn pnk soft" onclick="pkHapusKel(${k.id})">Hapus</button>` : ''}</div></td></tr>`)) : '<div class="note">Belum ada kelompok.</div>';
-  if (kl) h += '<div class="tb"><button class="btn success" onclick="pkFormKel(0)">➕ Tambah kelompok</button></div>';
+  h += PKR.kel.length ? tab(['Kelompok', 'Aturan', 'Master', 'Siswa', 'Aksi'], PKR.kel.map(k => `<tr><td><b>${esc(k.nama)}</b>${k.aktif ? '' : '<div class="mu">Nonaktif</div>'}</td><td>${esc(pkAturanTxt(k))}</td><td>${PKR.mas.has(k.id) ? 'v' + PKR.mas.get(k.id).versi : '<span class="mu">Belum ada</span>'}</td><td>${cnt.get(k.id) || 0}</td><td><div class="pnka"><button class="btn pnk soft" onclick="pmBuka(${k.id})">📝 ${PKR.mas.has(k.id) ? 'Indikator' : 'Buat master'}</button>${kl ? `${oto ? '' : `<button class="btn pnk soft" onclick="pkFormKel(${k.id})">Ubah</button>`}${!PKR.mas.has(k.id) && bisaSalin.length ? `<button class="btn pnk soft" onclick="pkSalinMaster(${k.id})">Salin master</button>` : ''}<button class="btn pnk soft" onclick="pkToggleKel(${k.id})">${k.aktif ? 'Nonaktifkan' : 'Aktifkan'}</button>${oto ? '' : `<button class="btn pnk soft" onclick="pkHapusKel(${k.id})">Hapus</button>`}` : ''}</div></td></tr>`)) : '<div class="note">Belum ada kelompok.</div>';
+  if (kl && !oto) h += '<div class="tb"><button class="btn success" onclick="pkFormKel(0)">➕ Tambah kelompok</button></div>';
+  if (oto) h += '<div class="note">Kelompok dibuat otomatis dari kelas sekolah (satu kelompok per kelas). Tekan <b>Indikator</b> untuk mengisi aspek, kategori, dan indikator tiap kelas.</div>';
   if (PKR.kel.length && tanpa.length) h += `<div class="note"><b>${tanpa.length} siswa aktif belum punya kelompok</b>${mode === 'usia' ? ' (tanggal lahir kosong atau di luar rentang usia)' : ' (kelasnya belum dimasukkan ke kelompok)'}:<div class="mu">${tanpa.slice(0, 12).map(esc).join(', ')}${tanpa.length > 12 ? ', ...' : ''}</div></div>`;
   return h;
 }
 async function pkUbahPengaturan(kol) { const r = await dbq(db.from('pengaturan').update(kol).select('id')); if (!r || !r.length) throw new Error('Tidak diizinkan mengubah pengaturan ini'); Object.assign(S.set, kol); }
-function pkSetMode(v) { if (role === 'Guru') return; guard(async () => { await pkUbahPengaturan({ kelompok_mode: v === 'usia' ? 'usia' : 'kelas' }); renderV(); toast('Pengelompokan disimpan'); }); }
+function pkSetMode(v) { if (role === 'Guru') return; guard(async () => { await pkUbahPengaturan({ kelompok_mode: v === 'usia' ? 'usia' : 'kelas' }); PK_GAGAL = false; if (await pkSinkronKelas()) await pkMuatData(); renderV(); toast('Pengelompokan disimpan'); }); }
+function pkSetSkala(v) {
+  if (role === 'Guru') return;
+  guard(async () => {
+    await pkUbahPengaturan({ skala_kelas: v === 'level' ? 'level' : 'angka' }); PK_GAGAL = false;
+    if (await pkSinkronKelas()) await pkMuatData();
+    renderV(); toast('Penilaian disimpan');
+  });
+}
 function pkSetAcuan(v) { if (role === 'Guru' || !pkOkTgl(v)) return; const a = Object.assign({}, S.set.acuan_usia || {}); a[(S.set.tahun_ajaran || '') + '-' + pnSem] = v; guard(async () => { await pkUbahPengaturan({ acuan_usia: a }); renderV(); toast('Tanggal acuan disimpan'); }); }
 function pkFormKel(id) {
   if (role === 'Guru') return; const k = id ? PKR.kel.find(x => x.id === id) : null, mode = pkMode(), a = (k && k.aturan) || {};
