@@ -64,8 +64,8 @@ function pmKolom(rows) {
 }
 /* mode 'tambah': menambah ke master (indikator yang sama teksnya dilewati). mode 'ganti': isi master diganti, indikator berteks sama memakai id lama (nilai di draf tidak hilang) */
 function pmTempel(M0, rows, mode) {
-  if (!rows.length) throw new Error('Tempelan kosong');
-  const col = pmKolom(rows); if (!col) throw new Error('Tempelan minimal 2 kolom: Aspek, Kategori (boleh kosong), Indikator, KD (boleh kosong)');
+  if (!rows.length) throw new Error('File kosong');
+  const col = pmKolom(rows); if (!col) throw new Error('File minimal 2 kolom: Aspek, Kategori (boleh kosong), Indikator, KD (boleh kosong)');
   const data = col.head ? rows.slice(1) : rows, M = pmNorm(pmKlon(M0));
   const cl = x => pmStr(x).replace(/\s*\n\s*/g, ' ').trim(), nk = x => cl(x).toLowerCase().replace(/\s+/g, ' ');
   const lama = new Map(); M.aspek.forEach(a => a.sub.forEach(s => s.ind.forEach(i => lama.set(nk(i.t), i))));
@@ -227,13 +227,16 @@ function pmRender() {
   const nomor = `<div class="fd"><label class="l">Nomor aspek</label>${sel("pmSetNom('a',this.value)", nm.a)}</div><div class="fd"><label class="l">Nomor kategori</label>${sel("pmSetNom('s',this.value)", nm.s)}</div><div class="fd"><label class="l">Nomor indikator</label>${sel("pmSetNom('i',this.value)", nm.i)}</div>`
     + `<label class="l"><input type="checkbox" onchange="pmSetNom('gabung',this.checked)"${nm.gabung ? ' checked' : ''}${ro ? ' disabled' : ''}> Nomor kategori digabung dengan nomor aspek (contoh ${esc(ex || '-')})</label>`;
   const kd = Object.keys(M.kd).map(id => `<div class="pmh">${pmIn(`pmSetKd('${esc(id)}',this.value)`, M.kd[id].k, 'Kode KD, misalnya 3.1', ro)}${pmBtn(`pmHapusKd('${esc(id)}')`, '🗑', ro)}</div>`).join('') + (ro ? '' : '<div class="tb"><button class="btn soft sm" onclick="pmTambahKd()">➕ KD</button></div>');
-  const tempel = ro ? '<div class="mu">Hanya pemilik hak ubah yang dapat menempel.</div>' : '<div class="mu">Salin dari Excel kolom <b>Aspek | Kategori | Indikator | KD</b> (Kategori dan KD boleh kosong; sel Aspek/Kategori yang kosong ikut baris di atasnya; baris judul boleh disertakan), lalu tempel di sini.</div>'
-    + '<textarea id="pmPaste" class="input" rows="6" placeholder="Tempel di sini"></textarea><div class="fd"><label class="l">Cara</label><select id="pmMode" class="select"><option value="tambah">Tambahkan ke master (indikator yang sudah ada dilewati)</option><option value="ganti">Ganti seluruh isi master (indikator bertuliskan sama tetap memakai nilai lamanya)</option></select></div><div class="tb"><button class="btn success" onclick="pmTerapkanTempel()">📋 Terapkan ke layar</button></div>';
+  const tempel = ro ? '<div class="mu">Hanya pemilik hak ubah yang dapat mengimpor.</div>'
+    : '<div class="mu">1. Unduh template, lalu isi kolom <b>Aspek | Kategori | Indikator | KD</b> (Kategori dan KD boleh kosong; sel Aspek/Kategori yang kosong ikut baris di atasnya). Bila master sudah berisi indikator, template ikut memuatnya.<br>2. Pilih cara, lalu impor file Excel yang sudah diisi. Hasilnya diterapkan ke layar dulu dan baru tersimpan setelah Anda menekan Simpan.</div>'
+    + '<div class="tb" style="margin:10px 0"><button class="btn soft" onclick="pmUnduhTemplate()">⬇ Unduh template XLSX</button></div>'
+    + '<div class="fd"><label class="l">Cara</label><select id="pmMode" class="select tanpa-cari"><option value="tambah">Tambahkan ke master (lewati yang sudah ada)</option><option value="ganti">Ganti seluruh isi master (nilai lama tetap dipakai)</option></select></div>'
+    + '<div class="tb"><button class="btn success" onclick="pmPilihFile()">📂 Impor dari Excel</button></div><input type="file" id="pmFile" accept=".xlsx,.xls" class="hid" onchange="pmImporFile(this)">';
   let h = `<div class="note">Kelompok <b>${esc(k.nama || '')}</b> · ${PKME.versi ? 'versi ' + PKME.versi : 'belum ada master'}${ro ? ' · <b>hanya lihat</b>' : ''}<br>Perubahan memengaruhi draf. Raport yang sudah terbit tetap memakai salinan lamanya sampai diterbitkan ulang dengan indikator terbaru.</div>`;
   if (!ro) h += `<div class="pmd" id="pmDirty" style="${PKME.dirty ? '' : 'display:none'}">● Ada perubahan yang belum disimpan</div><div class="fd" style="margin-bottom:14px"><input class="input" style="margin-bottom:0" maxlength="120" placeholder="Ringkasan perubahan (opsional)" value="${esc(PKME.ring)}" onchange="PKME.ring=this.value"></div><div class="tb" style="flex-wrap:wrap;gap:10px;margin-bottom:16px"><button class="btn success grow" onclick="pmSimpan()">💾 Simpan master</button><button class="btn soft grow" onclick="pmBuang()">↩️ Buang perubahan</button></div>`;
   h += pmDet('aspek', 'Aspek, kategori, dan indikator', pmHtmlAspek(M, ro)) + pmDet('kd', 'Kompetensi Dasar (KD)', kd + '<div class="mu">KD dipilih per indikator dan tampil pada kolom KD raport.</div>') + pmDet('nomor', 'Penomoran', nomor)
-    + pmDet('set', 'Teks otomatis (kalimat capaian dan catatan)', pmHtmlSet(M, ro)) + pmDet('tempel', 'Tempel dari Excel', tempel) + pmDet('riw', 'Riwayat perubahan', pmHtmlRiwayat(M));
-  $('#mt').textContent = 'Indikator · ' + (k.nama || ''); const ms = $('#ms'); if (ms) { if (!ro) { ms.style.display = ''; ms.textContent = '💾 Simpan'; ms.className = 'btn success'; ms.disabled = false; ms.onclick = () => pmSimpan(); } else ms.style.display = 'none'; } $('#mbd').innerHTML = h; $('#md').classList.add('besar'); $('#md').classList.add('show');
+    + pmDet('set', 'Teks otomatis (kalimat capaian dan catatan)', pmHtmlSet(M, ro)) + pmDet('tempel', 'Impor dan template XLSX', tempel) + pmDet('riw', 'Riwayat perubahan', pmHtmlRiwayat(M));
+  $('#mt').textContent = 'Indikator · ' + (k.nama || ''); const ms = $('#ms'); if (ms) { if (!ro) { ms.style.display = ''; ms.textContent = '💾 Simpan'; ms.className = 'btn success'; ms.disabled = false; ms.onclick = () => pmSimpan(); } else ms.style.display = 'none'; } $('#mbd').innerHTML = h; $('#mbd').querySelectorAll('select[disabled]').forEach(x => { x.dataset.cselReady = '1'; }); if (typeof enhanceCustomSelects === 'function') enhanceCustomSelects($('#mbd')); $('#md').classList.add('besar'); $('#md').classList.add('show');
   $('#mbd').scrollTop = sc[0]; $('#md').scrollTop = sc[1];
 }
 
@@ -280,14 +283,55 @@ function pmHapus(t, ai, si, ii) {
     L.splice(i, 1); pmUbah(); pmRender();
   });
 }
-function pmTerapkanTempel() {
-  let hasil; try { hasil = pmTempel(PKME.M, pmTsv($('#pmPaste').value), $('#pmMode').value); } catch (e) { return toast(e.message, false); }
-  const st = hasil.st; guard(async () => {
-    const t = 'Terbaca ' + st.baris + ' indikator: ' + st.baru + ' baru' + (st.dipakai ? ', ' + st.dipakai + ' memakai nilai lama' : '') + (st.lewat ? ', ' + st.lewat + ' dilewati (sudah ada)' : '') + (st.kdBaru ? ', ' + st.kdBaru + ' KD baru' : '')
-      + (st.dibuang ? '. ' + st.dibuang + ' indikator lama tidak ada di tempelan dan akan dibuang' : '') + '. Terapkan ke layar? (Belum tersimpan sampai Anda menekan Simpan master.)';
-    if (!await konfirmasi(t, { judul: 'Tempel dari Excel', ya: 'Terapkan', ikon: '📋', bahaya: st.dibuang ? 1 : 0 })) return;
-    PKME.M = hasil.M; PKME.buka.add('aspek'); pmUbah(); pmRender(); toast('Diterapkan ke layar. Tekan Simpan master untuk menyimpan.');
+async function pmTerapkanRows(rows, mode) {
+  let hasil; try { hasil = pmTempel(PKME.M, rows, mode); } catch (e) { return toast(e.message, false); }
+  const st = hasil.st;
+  const t = 'Terbaca ' + st.baris + ' indikator: ' + st.baru + ' baru' + (st.dipakai ? ', ' + st.dipakai + ' memakai nilai lama' : '') + (st.lewat ? ', ' + st.lewat + ' dilewati (sudah ada)' : '') + (st.kdBaru ? ', ' + st.kdBaru + ' KD baru' : '')
+    + (st.dibuang ? '. ' + st.dibuang + ' indikator lama tidak ada di file dan akan dibuang' : '') + '. Terapkan ke layar? (Belum tersimpan sampai Anda menekan Simpan master.)';
+  if (!await konfirmasi(t, { judul: 'Impor dari Excel', ya: 'Terapkan', ikon: '📋', bahaya: st.dibuang ? 1 : 0 })) return;
+  PKME.M = hasil.M; PKME.buka.add('aspek'); pmUbah(); pmRender(); toast('Diterapkan ke layar. Tekan Simpan master untuk menyimpan.');
+}
+function pmPilihFile() { const f = $('#pmFile'); if (!f) return; f.value = ''; f.click(); }
+function pmImporFile(inp) {
+  const f = inp.files && inp.files[0]; if (!f) return;
+  const mode = $('#pmMode') ? $('#pmMode').value : 'tambah';
+  guard(async () => {
+    await muatLib('xlsx');
+    let wb; try { wb = XLSX.read(await f.arrayBuffer(), { type: 'array' }); } catch (e) { throw new Error('File Excel tidak bisa dibaca. Pastikan formatnya .xlsx'); }
+    const baca = n => XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: false });
+    const cocok = n => { const h = (baca(n)[0] || []).map(x => String(x).trim().toLowerCase()); return h.some(x => x.startsWith('aspek')) && h.some(x => x.startsWith('indikator')); };
+    const nm = wb.SheetNames.find(n => String(n).toLowerCase() === 'data') || wb.SheetNames.find(cocok) || wb.SheetNames[0];
+    const rows = baca(nm).map(r => r.map(c => String(c == null ? '' : c))).filter(r => r.some(x => x.trim() !== ''));
+    if (!rows.length) throw new Error('File Excel kosong');
+    await pmTerapkanRows(rows, mode);
   });
+}
+async function pmUnduhTemplate() {
+  try {
+    await muatLib('exceljs');
+    if (typeof ExcelJS === 'undefined') throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
+    const M = PKME.M, k = PKR.kel.find(x => x.id === PKME.kid) || {};
+    const ln = { style: 'thin', color: { argb: 'FFCFD9D3' } }, wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Data'), pt = wb.addWorksheet('Petunjuk');
+    wb.creator = typeof ns === 'function' ? ns() : 'Absensi';
+    const gayaHead = r => { r.height = 24; r.eachCell(c => { c.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF176B3A' } }; c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = { top: ln, left: ln, bottom: ln, right: ln }; }); };
+    ws.columns = [{ width: 28 }, { width: 28 }, { width: 64 }, { width: 14 }];
+    ws.addRow(['Aspek', 'Kategori (Opsional)', 'Indikator', 'KD (Opsional)']); gayaHead(ws.getRow(1));
+    let n = 0;
+    M.aspek.forEach(a => a.sub.forEach(s => s.ind.forEach(i => { ws.addRow([pmStr(a.n), pmStr(s.n), pmStr(i.t), i.kd && M.kd[i.kd] ? pmStr(M.kd[i.kd].k) : '']); n++; })));
+    const akhir = Math.max(500, n + 100);
+    for (let r = 2; r <= akhir; r++) for (let c = 1; c <= 4; c++) { const x = ws.getCell(r, c); x.numFmt = '@'; x.alignment = { vertical: 'top', wrapText: true }; }
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    pt.columns = [{ width: 28 }, { width: 28 }, { width: 64 }, { width: 14 }];
+    ['Petunjuk pengisian · Indikator ' + (k.nama || ''), '', 'Isi sheet "Data" mulai baris 2. Satu baris = satu indikator.', 'Aspek: wajib pada baris pertama. Bila kosong, ikut baris di atasnya.', 'Kategori: boleh kosong. Bila kosong, ikut baris di atasnya (dalam aspek yang sama).', 'KD: boleh kosong. Tulis kodenya, misalnya 3.1.', 'Indikator dengan tulisan yang sama dianggap satu indikator.', n ? 'Sheet "Data" sudah berisi indikator master saat ini.' : 'Master belum berisi indikator. Contoh pengisian ada di bawah.']
+      .forEach((t, i) => { const r = pt.addRow([t]); r.getCell(1).font = { name: 'Arial', size: 10, bold: i === 0 }; });
+    if (!n) {
+      pt.addRow([]); const h = pt.addRow(['Aspek', 'Kategori', 'Indikator', 'KD']); gayaHead(h);
+      [['A. NILAI AGAMA DAN MORAL', 'Ibadah', 'Anak mau mengikuti doa sebelum dan sesudah kegiatan', '1.1'], ['A. NILAI AGAMA DAN MORAL', '', 'Anak mengenal huruf hijaiyah', ''], ['B. FISIK MOTORIK', 'Motorik kasar', 'Anak mampu melompat dengan dua kaki', '3.3']]
+        .forEach(x => { const r = pt.addRow(x); r.eachCell(c => { c.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF7A8B80' } }; }); });
+    }
+    const slug = String(k.nama || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    await tulisXlsx(wb, 'template-indikator' + (slug ? '-' + slug : '') + '.xlsx');
+  } catch (e) { toast('Gagal membuat template: ' + (e.message || e), false); }
 }
 function pmSimpan() {
   if (PKME.ro) return; let M; try { M = pmCek(PKME.M); } catch (e) { return toast(e.message, false); }
