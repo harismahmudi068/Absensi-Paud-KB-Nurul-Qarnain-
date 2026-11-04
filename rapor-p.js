@@ -77,8 +77,9 @@ function pkInfo(s, r, i, b) {
   const M = pkMasterS(s, r), n = (r && r.data && r.data.n) || {}, h = M ? pkHitung(M, n) : { tot: 0, isi: 0 };
   const kg = PKR.kel.find(k => k.id === ((r && r.kelompok_id) || (pkKel(s) || {}).id)) || {}, terbit = !!r && r.status === 'terbit';
   const stt = terbit ? '<span class="badge hadir">Terbit</span>' : r ? '<span class="badge terlambat">Draf</span>' + (h.tot && h.isi === h.tot ? '<div class="mu">Lengkap</div>' : '') : '<span class="mu">Belum diisi</span>';
-  const tr = `<tr><td>${i + 1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(kg.nama || '')}</div></td><td>${h.isi} / ${h.tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit || !b ? 'soft' : 'success'}" onclick="pnBuka(${s.id})">${terbit || !b ? '👁 Lihat' : '✍️ Isi'}</button>${r ? `<button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>` : ''}</div></td></tr>`;
-  return { terbit, tr };
+  const siap = !!r && !terbit && h.tot > 0 && h.isi === h.tot, bt = b && siap ? `<button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button>` : '';
+  const tr = `<tr><td>${i + 1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(kg.nama || '')}</div></td><td>${h.isi} / ${h.tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit || !b ? 'soft' : 'success'}" onclick="pnBuka(${s.id})">${terbit || !b ? '👁 Lihat' : '✍️ Isi'}</button>${bt}${r ? `<button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>` : ''}</div></td></tr>`;
+  return { terbit, tr, siap: siap ? r.id : 0 };
 }
 
 /* ---------------- Lembar input per siswa ---------------- */
@@ -107,7 +108,10 @@ function pkRender() {
   h += `<div class="tbkh">Kehadiran <span class="mu">(hari)</span></div><div class="tb" style="flex-wrap:wrap;align-items:flex-end"><div class="fd" style="flex:1;min-width:80px"><label class="l">Sakit</label><input id="pkSk" class="input" inputmode="numeric" maxlength="3" value="${e.keh.sakit}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Izin</label><input id="pkIz" class="input" inputmode="numeric" maxlength="3" value="${e.keh.izin}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Tanpa keterangan</label><input id="pkAl" class="input" inputmode="numeric" maxlength="3" value="${e.keh.alpa}"${dis}></div></div>`;
   if (e.b) h += `<div class="tb" style="flex-wrap:wrap;align-items:center"><button class="btn soft sm" onclick="pkAmbilKeh()">↻ Ambil dari absensi</button><span class="mu">${fmt(pnRange()[0])} sampai ${fmt(pnRange()[1])}</span></div>`;
   h += `<div class="tbkh">Catatan dan rekomendasi pendidik</div><textarea id="pkCat" class="input" rows="4" maxlength="600" placeholder=""${dis}>${esc(e.cat)}</textarea><div class="mu">Dikosongkan = dibuat otomatis dari nilai (lihat contoh di kolom ini). Isi bila ingin menulis sendiri.</div>`;
-  h += e.b ? '<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pkSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pkSimpan(true)">Simpan &amp; berikutnya ➜</button></div><div class="note">Penerbitan raport perkembangan diaktifkan pada tahap berikutnya. Untuk sekarang, simpan sebagai draf dan unduh PDF.</div>' : '<div class="note">Anda hanya dapat melihat raport ini.</div>';
+  const lama = e.r && e.r.salinan_hash && PKR.sal.has(e.r.salinan_hash) && PKR.mas.has(e.kid) && JSON.stringify(PKR.sal.get(e.r.salinan_hash)) !== JSON.stringify(PKR.mas.get(e.kid).isi);
+  if (e.b) h += '<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pkSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pkSimpan(true)">Simpan &amp; berikutnya ➜</button></div><div class="tb"><button class="btn success grow" onclick="pkSimpan(\'terbit\')">🚀 Simpan &amp; terbitkan</button></div>' + (lama ? '<div class="note">Draf ini masih memakai indikator lama (salinan saat terbit sebelumnya). Indikator master sudah berubah.</div><div class="tb"><button class="btn soft sm" onclick="pkPakaiBaru()">🔄 Pakai indikator terbaru</button></div>' : '');
+  else if (e.kunci && pnBoleh(kl) && e.r) h += `<div class="note">Raport ini sudah terbit dan terkunci. Indikatornya memakai salinan yang dibekukan saat terbit.</div><div class="tb" style="flex-wrap:wrap"><button class="btn soft grow" onclick="closeM();pnTerbitUlang([${e.r.id}])">🔄 Terbitkan ulang (indikator lama)</button><button class="btn soft grow" onclick="closeM();pnTerbitUlang([${e.r.id}],true)">🔄 Terbitkan ulang, pakai indikator terbaru</button></div><div class="tb"><button class="btn danger" onclick="pnBatal(${e.r.id})">Batalkan penerbitan</button></div>`;
+  else h += '<div class="note">Anda hanya dapat melihat raport ini.</div>';
   if (e.r) h += `<div class="tb"><button class="btn soft sm" onclick="pnPdf([${e.r.id}],this)">📄 Unduh PDF (data yang tersimpan)</button></div>`;
   $('#mt').textContent = (e.kunci ? 'Raport ' : 'Nilai ') + s.nama; $('#ms').style.display = 'none'; $('#mbd').innerHTML = h; $('#md').classList.add('besar'); $('#md').classList.add('show');
   const a0 = $('#pka_0'); if (a0) { a0.open = true; pkIsi(0); } pkProg();
@@ -160,7 +164,7 @@ async function pkGantiKel(v) {
   try {
     const rr = await dbq(db.from('siswa').update({ kelompok_manual: km }).eq('id', s.id).select('id')); if (!rr || !rr.length) throw new Error('Tidak diizinkan mengubah kelompok siswa ini');
     s.km = km; const k = pkKel(s), M = k ? pkMasterS(s, null) : null; if (!k || !M) throw new Error('Kelompok belum punya master indikator');
-    e.kid = k.id; e.M = M; e.n = {}; e.o = {}; e.oc = {}; pkRender();
+    e.kid = k.id; e.M = M; e.n = {}; e.o = {}; e.oc = {}; if (e.r) e.r = Object.assign({}, e.r, { salinan_hash: null }); pkRender();
   } catch (x) { toast(x.message || String(x), false); pkRender(); }
 }
 function pkBaca() {
@@ -171,11 +175,13 @@ function pkSimpan(lanjut) {
   const e = PKR.ed, kl = pnKl(pnK); if (!e || !e.b || !kl) return; let k; try { k = pkBaca(); } catch (x) { return toast(x.message, false); }
   const ids = new Set(pkIndAll(e.M).map(i => i.id)), n = {}, o = {}, oc = {};
   ids.forEach(id => { const v = +e.n[id]; if (v >= 1 && v <= 4) n[id] = v; if (e.o[id]) o[id] = e.o[id]; if (e.oc[id]) oc[id] = e.oc[id]; });
+  if (lanjut === 'terbit') { const h = pkHitung(e.M, n); if (h.isi < h.tot) return toast('Masih ada indikator yang belum dinilai (' + h.isi + ' / ' + h.tot + ')', false); }
   const data = { n }; if (Object.keys(o).length) data.o = o; if (Object.keys(oc).length) data.oc = oc; if (k.tb.some(r => r.some(v => v))) data.tb = k.tb;
   const sis = pnDaftar().filter(pkFmtS), nxt = sis[sis.findIndex(x => x.id === e.sid) + 1];
   guard(async () => {
     await pnTry(() => dbq(db.from('rapor').upsert({ siswa_id: e.sid, kelas_id: kl.id, kelas_nama: kl.nama, tahun_ajaran: S.set.tahun_ajaran, semester: pnSem, jenis: pnJenis, status: 'draf', fmt: 'perkembangan', kelompok_id: e.kid, salinan_hash: (e.r && e.r.salinan_hash) || null, nilai: [], data, sakit: k.sakit, izin: k.izin, alpa: k.alpa, catatan: k.cat || null }, { onConflict: 'siswa_id,tahun_ajaran,semester,jenis' })));
     await pnMuat();
+    if (lanjut === 'terbit') { closeM(); renderV(); const rr = pkRap(e.sid); if (rr) pnTerbit([rr.id]); return; }
     if (lanjut && nxt) { renderV(); pnBuka(nxt.id); toast('Tersimpan. Lanjut ke ' + nxt.nama); } else { closeM(); renderV(); toast('Draf tersimpan'); }
   });
 }
@@ -186,6 +192,53 @@ function pkSusun(r, logo) {
   const s = S.siswa.find(x => x.id === r.siswa_id) || {}, kg = PKR.kel.find(k => k.id === r.kelompok_id) || pkKel(s) || {};
   return Rapor.susun(r, { logo, sekolah: ns(), alamat: (S.set && S.set.alamat) || '', kota: kotaTtd(), nama: s.nama, panggilan: s.pan, nisn: s.nisn, kelas: r.kelas_nama, tempatLahir: s.tempat, tglLahir: s.tgl,
     kelompok: kg.nama || '', kelompokLabel: pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok Usia', master: pkMasterS(s, r), wali: ttdWali(r.kelas_nama) || {}, kepsek: ttdKepsek(), pengelola: pkPengelola() });
+}
+
+/* ---------------- Tahap 4: terbit raport perkembangan ---------------- */
+/* rpc rapor_salinan_buat(p_kelompok bigint) -> text (hash): server membekukan master kelompok itu saat ini */
+const pkSalNorm = x => { let v = Array.isArray(x) ? x[0] : x; if (v && typeof v === 'object') v = v.hash || v.salinan_hash || Object.values(v)[0]; return String(v == null ? '' : v).trim(); };
+async function pkSalinanBuat(kid) {
+  const h = pkSalNorm(await dbq(db.rpc('rapor_salinan_buat', { p_kelompok: kid })));
+  if (!h) throw new Error('Salinan indikator gagal dibuat');
+  if (!PKR.sal.has(h)) {
+    const x = ((await dbq(db.from('rapor_salinan').select('hash,isi').eq('hash', h))) || [])[0];
+    if (!x) throw new Error('Salinan indikator tidak terbaca setelah dibuat');
+    PKR.sal.set(h, x.isi);
+  }
+  return h;
+}
+function pkPakaiBaru() {
+  const e = PKR.ed; if (!e || !e.b || !e.r || !e.r.salinan_hash) return;
+  const m = PKR.mas.get(e.kid); if (!m) return toast('Master indikator tidak ditemukan', false);
+  try { const k = pkBaca(); e.keh = { sakit: k.sakit, izin: k.izin, alpa: k.alpa }; e.cat = k.cat; e.tb = k.tb; } catch (x) { return toast(x.message, false); }
+  e.r = Object.assign({}, e.r, { salinan_hash: null }); e.M = m.isi; pkRender(); toast('Memakai indikator terbaru. Tekan Simpan draf untuk menyimpan.');
+}
+/* nama siswa yang indikatornya belum lengkap; baru=true -> dihitung terhadap master terbaru */
+function pkKurang(rows, baru) {
+  const o = [];
+  rows.filter(r => r.fmt === 'perkembangan').forEach(r => {
+    const s = S.siswa.find(x => x.id === r.siswa_id) || {}, M = baru ? (PKR.mas.get(r.kelompok_id) || {}).isi : pkMasterS(s, r);
+    if (!M) return o.push((s.nama || '') + ' (master tidak ada)');
+    const h = pkHitung(M, (r.data && r.data.n) || {}); if (h.isi < h.tot) o.push((s.nama || '') + ' (' + h.isi + '/' + h.tot + ')');
+  });
+  return o;
+}
+async function pkTerbitInti(rows, ttd, baru) {
+  rows = rows.filter(r => r.fmt === 'perkembangan'); if (!rows.length) return;
+  const kur = pkKurang(rows, baru); if (kur.length) throw new Error('Indikator belum lengkap: ' + kur.join(', '));
+  const pg = pkPengelola(), per = { pengelola_nama: pg ? pg.nama : null, pengelola_nip: pg ? (pg.nip || null) : null };
+  const cache = new Map(), grup = new Map();
+  for (const r of rows) {
+    let h = null;
+    if (!baru && r.salinan_hash) { if (!PKR.sal.has(r.salinan_hash)) throw new Error('Salinan indikator lama tidak ditemukan. Gunakan pilihan indikator terbaru'); h = r.salinan_hash; }
+    if (!h) {
+      const m = PKR.mas.get(r.kelompok_id); if (!m) throw new Error('Master indikator kelompok tidak ditemukan');
+      if (!cache.has(r.kelompok_id)) cache.set(r.kelompok_id, await pkSalinanBuat(r.kelompok_id));
+      h = cache.get(r.kelompok_id);
+    }
+    if (!grup.has(h)) grup.set(h, []); grup.get(h).push(r.id);
+  }
+  for (const [h, ids] of grup) await pnTry(() => dbq(db.from('rapor').update(Object.assign({ status: 'terbit', salinan_hash: h }, ttd, per)).in('id', ids)));
 }
 
 /* ---------------- Tab Kelompok ---------------- */
