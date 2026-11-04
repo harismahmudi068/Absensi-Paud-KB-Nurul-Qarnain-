@@ -1716,7 +1716,7 @@ function cariGuruInput(el){
  if(body){
   const kl=adalahKepala(),dev=role==='Developer',kel=kl||dev;
   const bh=bolehHapusGuru();
-  const kunci=g=>(g.role==='kepala_sekolah'&&!dev)||((g.role==='operator'||g.role==='pengelola')&&role==='Operator');
+  const kunci=g=>(g.role==='kepala_sekolah'&&!dev);
   const z=String(gQ||'').toLowerCase().trim();
   const shown=S.guru.filter(g=>!z||String(g.nama||'').toLowerCase().includes(z)||String(g.nip||'').toLowerCase().includes(z));
   body.innerHTML=guruRows(shown,bh,kel,dev,kunci)||`<tr><td colspan="${gHapusMode&&bh?9:8}" class="mu">Guru tidak ditemukan.</td></tr>`;
@@ -1725,7 +1725,7 @@ function cariGuruInput(el){
 V.guru=()=>{
  const kl=adalahKepala(),dev=role==='Developer',kel=kl||dev;
  const bh=bolehHapusGuru();
- const kunci=g=>(g.role==='kepala_sekolah'&&!dev)||((g.role==='operator'||g.role==='pengelola')&&role==='Operator');
+ const kunci=g=>(g.role==='kepala_sekolah'&&!dev);
  const z=String(gQ||'').toLowerCase().trim();
  const shown=S.guru.filter(g=>!z||String(g.nama||'').toLowerCase().includes(z)||String(g.nip||'').toLowerCase().includes(z));
  const selectable=shown.filter(g=>g.id!==me&&!kunci(g));
@@ -1762,7 +1762,7 @@ function mintaIzin(lanjut){if(MB())return lanjut(null);
   setTimeout(()=>{form('Verifikasi pemilik akun',[{k:'kode',l:'Masukkan kode 6 angka yang dikirim ke WhatsApp Anda ('+esc(j.nomor||'')+')',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'kelola_guru',kode:kd})}],async v=>{
     const k=await apiGuru({aksi:'otp_kelola_verifikasi',kode:v.kode});izinKelola=k.izin;izinExp=Date.now()+14*60000;setTimeout(()=>lanjut(izinKelola),150)});
    $('#ms').textContent='Verifikasi'},150)})}
-function formGuruBaru(wa,izin){const opsi=role==='Operator'?['Guru','Wakil Kepala Sekolah','Kepala Sekolah']:['Guru','Operator','Pengelola/Pengasuh','Wakil Kepala Sekolah','Kepala Sekolah'];
+function formGuruBaru(wa,izin){const opsi=['Guru','Operator','Pengelola/Pengasuh','Wakil Kepala Sekolah','Kepala Sekolah'];
  form('Tambah guru baru',[{k:'nama',l:'Nama guru'},{k:'nip',l:'NIP (opsional)'},{k:'user',l:'Username (huruf kecil, tanpa spasi)'},{k:'sandi',l:'Kata sandi awal (minimal 6 karakter)',t:'password'},{k:'role',l:'Peran',o:opsi}],async v=>{
   const jk=KEYR[v.role]==='kepala_sekolah';
   if(jk&&!await konfirmasi('Guru baru ini akan menjadi Kepala Sekolah dan Kepala Sekolah saat ini otomatis menjadi Guru. Lanjutkan?',{judul:'Ganti Kepala Sekolah',ya:'Lanjutkan',ikon:'👑'}))return;
@@ -3053,9 +3053,9 @@ async function pkHapusBaris(id){const x=S.pkJadwal.find(y=>y.id===id);if(!x)retu
 const PN_TAB=[['kel','⚙️ Pengaturan'],['nilai','📝 Penilaian'],['mapel','📚 Mapel &amp; KKM'],['kep','🎓 Keputusan akhir'],['kirim','📤 Kirim laporan']];
 /* Mapel & KKM hanya tampil bila pengelompokan siswa = per kelas (bukan per usia) */
 const pnTabs=()=>{const kelas=(typeof pkMode==='function'?pkMode():'kelas')==='kelas',a=PN_TAB.filter(x=>x[0]!=='mapel'||kelas);if(pnTab==='mapel'&&!kelas)pnTab='kel';return a};
-let pnTab='nilai',pnK='',pnSem=1,pnJenis='UTS',pnMapel=[],pnRap=[],pnKeh={},pnKey='',pnSis=0,pnKepKep=new Map(),pnKepOk=true;
+let pnTab='kel',pnK='',pnSem=1,pnJenis='UTS',pnMapel=[],pnRap=[],pnKeh={},pnKey='',pnSis=0,pnKepKep=new Map(),pnKepOk=true;
 const pnKl=n=>S.kelas.find(k=>k.nama===n);
-const pnBoleh=kl=>!!kl&&(role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah'||role==='Pengelola/Pengasuh'||(!!kl.wali&&kl.wali===me));
+const pnBoleh=kl=>!!kl&&(role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah'||role==='Pengelola/Pengasuh'||role==='Operator'||(!!kl.wali&&kl.wali===me));
 const pnGalat=e=>{const m=dbMsg(e);return /row-level security|permission denied/i.test(m)?'Anda tidak memiliki izin mengubah penilaian kelas ini':m};
 const pnTry=async f=>{try{return await f()}catch(e){throw new Error(pnGalat(e))}};
 const pnKunci=()=>pnK+'|'+pnSem+'|'+pnJenis;
