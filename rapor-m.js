@@ -12,7 +12,11 @@ const PKME = { kid: 0, M: null, versi: 0, dirty: false, boleh: null, ro: true, b
   st.textContent = '.pmh{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:4px;font-weight:800;font-size:13px}'
     + '.pmb{display:flex;gap:4px}.pmb button{padding:4px 9px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--mu);font-weight:800}'
     + '.pmk{border-left:3px solid var(--bd);padding-left:8px;margin:10px 0}.pmx{margin-top:6px}.pmx textarea,.pmx input{margin-bottom:4px}'
-    + '.pmd{color:var(--rd);font-weight:800;margin:6px 0}';
+    + '.pmd{color:var(--rd);font-weight:800;margin:6px 0}'
+    + '.pmk .input,.pmk .select,.pki .input,.pki .select,.pkb>.input,.pkb>.select{display:block;width:100%;box-sizing:border-box;margin:0 0 12px}'
+    + '.pmk textarea,.pki textarea,.pkb textarea{resize:vertical}'
+    + '.pmk .pki{padding:12px 0}.pmx .mu{margin:10px 0 4px}.pmx label.l,.pkb label.l{display:block;margin:12px 0 4px;font-weight:800;font-size:12px}'
+    + '.pmh{margin:10px 0 8px}.pkb .tb{margin-top:12px}.pmk>.pmh+.input{margin-top:0}';
   document.head.appendChild(st);
 })();
 
@@ -226,10 +230,10 @@ function pmRender() {
   const tempel = ro ? '<div class="mu">Hanya pemilik hak ubah yang dapat menempel.</div>' : '<div class="mu">Salin dari Excel kolom <b>Aspek | Kategori | Indikator | KD</b> (Kategori dan KD boleh kosong; sel Aspek/Kategori yang kosong ikut baris di atasnya; baris judul boleh disertakan), lalu tempel di sini.</div>'
     + '<textarea id="pmPaste" class="input" rows="6" placeholder="Tempel di sini"></textarea><div class="fd"><label class="l">Cara</label><select id="pmMode" class="select"><option value="tambah">Tambahkan ke master (indikator yang sudah ada dilewati)</option><option value="ganti">Ganti seluruh isi master (indikator bertuliskan sama tetap memakai nilai lamanya)</option></select></div><div class="tb"><button class="btn success" onclick="pmTerapkanTempel()">📋 Terapkan ke layar</button></div>';
   let h = `<div class="note">Kelompok <b>${esc(k.nama || '')}</b> · ${PKME.versi ? 'versi ' + PKME.versi : 'belum ada master'}${ro ? ' · <b>hanya lihat</b>' : ''}<br>Perubahan memengaruhi draf. Raport yang sudah terbit tetap memakai salinan lamanya sampai diterbitkan ulang dengan indikator terbaru.</div>`;
-  if (!ro) h += `<div class="pmd" id="pmDirty" style="${PKME.dirty ? '' : 'display:none'}">● Ada perubahan yang belum disimpan</div><div class="fd"><input class="input" maxlength="120" placeholder="Ringkasan perubahan (opsional)" value="${esc(PKME.ring)}" onchange="PKME.ring=this.value"></div><div class="tb" style="flex-wrap:wrap"><button class="btn success grow" onclick="pmSimpan()">💾 Simpan master</button><button class="btn soft grow" onclick="pmBuang()">↩️ Buang perubahan</button></div>`;
+  if (!ro) h += `<div class="pmd" id="pmDirty" style="${PKME.dirty ? '' : 'display:none'}">● Ada perubahan yang belum disimpan</div><div class="fd" style="margin-bottom:14px"><input class="input" style="margin-bottom:0" maxlength="120" placeholder="Ringkasan perubahan (opsional)" value="${esc(PKME.ring)}" onchange="PKME.ring=this.value"></div><div class="tb" style="flex-wrap:wrap;gap:10px;margin-bottom:16px"><button class="btn success grow" onclick="pmSimpan()">💾 Simpan master</button><button class="btn soft grow" onclick="pmBuang()">↩️ Buang perubahan</button></div>`;
   h += pmDet('aspek', 'Aspek, kategori, dan indikator', pmHtmlAspek(M, ro)) + pmDet('kd', 'Kompetensi Dasar (KD)', kd + '<div class="mu">KD dipilih per indikator dan tampil pada kolom KD raport.</div>') + pmDet('nomor', 'Penomoran', nomor)
     + pmDet('set', 'Teks otomatis (kalimat capaian dan catatan)', pmHtmlSet(M, ro)) + pmDet('tempel', 'Tempel dari Excel', tempel) + pmDet('riw', 'Riwayat perubahan', pmHtmlRiwayat(M));
-  $('#mt').textContent = 'Indikator · ' + (k.nama || ''); $('#ms').style.display = 'none'; $('#mbd').innerHTML = h; $('#md').classList.add('besar'); $('#md').classList.add('show');
+  $('#mt').textContent = 'Indikator · ' + (k.nama || ''); const ms = $('#ms'); if (ms) { if (!ro) { ms.style.display = ''; ms.textContent = '💾 Simpan'; ms.className = 'btn success'; ms.disabled = false; ms.onclick = () => pmSimpan(); } else ms.style.display = 'none'; } $('#mbd').innerHTML = h; $('#md').classList.add('besar'); $('#md').classList.add('show');
   $('#mbd').scrollTop = sc[0]; $('#md').scrollTop = sc[1];
 }
 
