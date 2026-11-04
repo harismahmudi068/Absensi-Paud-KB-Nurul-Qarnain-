@@ -484,7 +484,7 @@ html[data-tema=gelap] .usblay.ok{background:#16311f}html[data-tema=gelap] .usbla
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="/kartu.js?v=20261104b"></script>
 <script src="/rapor.js?v=20261104f"></script>
-<script src="/rapor-p.js?v=20261104f"></script>
+<script src="/rapor-p.js?v=20261104g"></script>
 <script src="/rapor-m.js?v=20261104b"></script>
 <style id="patch-tampilan">
 :root{--hdrbg:#166534}html[data-tema=gelap]{--hdrbg:#0F3D24}
@@ -3174,20 +3174,22 @@ function pnNilaiHTML(){const pil=pnPilK()+pnPeriode();if(!pnK)return pil+PKH;con
  if((pkSkala()==='level'||!pnMapel.length)&&!pnDaftar().some(pkFmtS)){if(pkSkala()==='level')return pil+'<div class="note">Siswa kelas '+esc(kl.nama)+' belum masuk kelompok raport. Atur kelompok dan indikatornya di tab <b>Pengaturan</b>.</div>'+(b?'<div class="tb"><button class="btn success" onclick="pnHal(\'kel\')">⚙️ Buka Pengaturan</button></div>':'');
   return pil+'<div class="note">Belum ada mata pelajaran untuk kelas '+esc(kl.nama)+'. Atur dulu di tab <b>Mapel &amp; KKM</b>.</div>'+(b?'<div class="tb"><button class="btn success" onclick="pnHal(\'mapel\')">📚 Atur mapel</button></div>':'')}
  const sis=pnDaftar();if(!sis.length)return pil+'<div class="note">Belum ada siswa aktif di kelas ini.</div>';
- const map=new Map(pnRap.map(r=>[r.siswa_id,r]));let nt=0,nd=0,siap=[],tunggu=0;
- const rows=sis.map((s,i)=>{const r=map.get(s.id);if(pkFmtS(s)){const q=pkInfo(s,r,i,b);if(q.terbit)nt++;else if(r)nd++;if(q.siap)siap.push(q.siap);return q.tr}if(pkSkala()==='level'&&!r)return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>-</td><td><span class="mu">Indikator kelompok belum diatur</span></td><td>${b?'<div class="pnka"><button class="btn pnk soft" onclick="pnHal(\'kel\')">⚙️ Atur</button></div>':''}</td></tr>`;const terbit=!!r&&r.status==='terbit',lk=pnLengkap(r);if(terbit)nt++;else if(r)nd++;const kep=pnKepKep.get(s.id);if(r&&!terbit&&lk&&(!pnUas2()||kep))siap.push(r.id);if(pnUas2()&&r&&!terbit&&lk&&!kep)tunggu++;
+ const map=new Map(pnRap.map(r=>[r.siswa_id,r]));let nt=0,nd=0,siap=[];
+ const rows=sis.map((s,i)=>{const r=map.get(s.id);if(pkFmtS(s)){const q=pkInfo(s,r,i,b);if(q.terbit)nt++;else if(r)nd++;if(q.siap)siap.push(q.siap);return q.tr}if(pkSkala()==='level'&&!r)return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>-</td><td><span class="mu">Indikator kelompok belum diatur</span></td><td>${b?'<div class="pnka"><button class="btn pnk soft" onclick="pnHal(\'kel\')">⚙️ Atur</button></div>':''}</td></tr>`;const terbit=!!r&&r.status==='terbit',lk=pnLengkap(r);if(terbit)nt++;else if(r)nd++;const kep=pnKepKep.get(s.id);if(r&&!terbit&&lk)siap.push(r.id);
   const isi=r?r.nilai.filter(x=>x.n!=null).length:0,tot=r&&terbit?r.nilai.length:pnMapel.length;
-  const stt=terbit?'<span class="badge hadir">Terbit</span>'+(r.dikirim_pada?'<div class="mu">Terkirim '+fmt(String(r.dikirim_pada).slice(0,10))+'</div>':''):r?'<span class="badge terlambat">Draf</span>'+(pnUas2()&&lk&&!kep?'<div class="mu">Menunggu keputusan akhir</div>':'')+(!lk&&isi===r.nilai.length&&r.nilai.length?'<div class="mu">Mapel/KKM berubah, simpan ulang</div>':''):'<span class="mu">Belum diisi</span>';
-  const bt=b&&r&&!terbit&&lk&&(!pnUas2()||kep)?`<button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button>`:'';
+  const stt=terbit?'<span class="badge hadir">Terbit</span>'+(r.dikirim_pada?'<div class="mu">Terkirim '+fmt(String(r.dikirim_pada).slice(0,10))+'</div>':''):r?'<span class="badge terlambat">Draf</span>'+(pnUas2()&&lk&&!kep?'<div class="mu">Siap diterbitkan (tanpa keputusan)</div>':'')+(!lk&&isi===r.nilai.length&&r.nilai.length?'<div class="mu">Mapel/KKM berubah, simpan ulang</div>':''):'<span class="mu">Belum diisi</span>';
+  const bt=b&&r&&!terbit&&lk?`<button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button>`:'';
   return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${isi} / ${tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit||!b?'soft':'success'}" onclick="pnBuka(${s.id})">${terbit||!b?'👁 Lihat':'✍️ Isi'}</button>${bt}${terbit&&b?`<button class="btn pnk soft" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button>`:''}${r?`<button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>`:''}</div></td></tr>`}).join('');
  const tgl=`<div class="tbbox"><b>📅 Periode perhitungan kehadiran</b><div class="mu" style="margin:4px 0 8px">Sakit, izin, dan alpa dihitung dari absensi pada rentang tanggal ini. Atur sesuai kalender sekolah.</div><div class="tb" style="flex-wrap:wrap;align-items:center;margin:0"><span class="mu">Mulai</span>${dt('date',rg[0],'pnSetTgl(0,this.value)','',{id:'pnTa'})}<span class="mu">sampai</span>${dt('date',rg[1],'pnSetTgl(1,this.value)','',{id:'pnTb'})}<button class="btn soft sm" onclick="pnResetTgl()">↺ Bawaan semester</button></div><div class="mu" style="margin-top:6px">Angka kehadiran yang sudah tersimpan di draf tidak berubah. Untuk menghitung ulang satu siswa, buka lembar nilainya lalu tekan ↻ Ambil dari absensi.</div></div>`;
  const cari=`<div class="tb tab-choice">${cpick('pnSiswaPick','nama siswa','',sis.map(s=>({value:s.id,label:s.nama})),'pnPilihSiswa','Cari nama siswa')}</div>`;
  let h=pil+cari+tgl+`<div class="note">Kelas <b>${esc(kl.nama)}</b> · ${pnSem===1?'Semester 1':'Semester 2'} · ${pnJenis}. Terbit: <b>${nt}</b> · Draf: <b>${nd}</b> · Belum diisi: <b>${sis.length-nt-nd}</b>.${b?'':'<br>Anda hanya dapat melihat nilai kelas ini.'}</div>`;
- if(pnUas2())h+='<div class="note">UAS Semester 2 adalah ujian kenaikan kelas. Keputusan naik, tinggal, atau lulus diambil dari menu <b>Kelola Siswa</b> dan dicetak pada raport. Untuk raport nilai angka, raport baru bisa diterbitkan setelah siswa diputuskan. Raport perkembangan tidak menunggu keputusan (dicetak bila ada; bisa diisi di form pengisian indikator).'+(tunggu?' <b>'+tunggu+' siswa</b> masih menunggu keputusan.':'')+(pnKepOk?'':' <b>Data keputusan tidak dapat dibaca.</b>')+'</div>';
+ if(pnUas2())h+='<div class="note">UAS Semester 2 adalah ujian kenaikan kelas. Keputusan naik, tinggal, atau lulus tidak wajib: dicetak pada raport bila sudah ada, dan bisa diisi di bagian bawah lembar nilai atau di menu <b>Kelola Siswa</b>.'+(pnKepOk?'':' <b>Data keputusan tidak dapat dibaca.</b>')+'</div>';
  if((b&&siap.length)||pnRap.length)h+=`<div class="pntb">${b&&siap.length?`<button class="btn pnk success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan semua yang lengkap (${siap.length})</button>`:''}${pnRap.length?`<button class="btn pnk soft" onclick="pnPdf([${pnRap.map(r=>r.id).join(',')}],this)">📄 Unduh PDF raport kelas (${pnRap.length} siswa)</button>`:''}</div>`;
  return h+tab(['No','Nama','Nilai terisi','Status','Aksi'],rows)}
 function pnNilaiRows(ent,dis){const g=Rapor.aspekGrup(ent),nm=g.some(x=>x.a);return g.map((o,gi)=>(nm?`<div class="tbkh">${String.fromCharCode(65+gi)}. ${esc(o.a||'Lainnya')}</div>`:'')+o.rows.map(({x:e,i})=>{const p=pnPred(e.n,e.k);return `<div class="pnrow"><div class="pnm"><b>${esc(e.m)}</b><div class="mu">KKM ${e.k}</div></div><input id="pnN${i}" class="input pnin" inputmode="decimal" maxlength="6" placeholder="0-100" value="${e.n==null?'':e.n}"${dis} oninput="pnHit(${i})"><span id="pnP${i}" class="badge ${pnPredCls[p]||''}">${p||'-'}</span></div><details class="pnd"><summary class="mu">Deskripsi${e.d?' (diubah)':' (otomatis)'}</summary><textarea id="pnD${i}" class="input" rows="2" maxlength="300" placeholder="${esc(p?pnDesk(p,e.m):'Dibuat otomatis sesuai predikat')}"${dis}>${esc(e.d||'')}</textarea></details>`}).join('')).join('')}
-function pnBuka(sid){const s=S.siswa.find(x=>x.id===sid),kl=pnKl(pnK);if(!s||!kl)return;pnSis=sid;resetTutup();if(pkFmtS(s))return pkBuka(sid);
+/* keputusan akhir tahun di form nilai angka (opsional, UAS Semester 2); memakai pkKepHTML/pkKepSimpan dari rapor-p.js */
+function pnKepForm(sid,b,kl){if(!pnUas2())return'';const kp=pnKepKep.get(sid)||null;return pkKepHTML({sid,b,kep:kp,kj:kp?kp.jenis:'',kt:kp&&kp.kelas_tujuan_nama?String((S.kelas.find(c=>c.nama===kp.kelas_tujuan_nama)||{}).id||''):''},kl)}
+function pnBuka(sid){const s=S.siswa.find(x=>x.id===sid),kl=pnKl(pnK);if(!s||!kl)return;pnSis=sid;resetTutup();window._kepE=null;if(pkFmtS(s))return pkBuka(sid);
  const rap=pnRap.find(r=>r.siswa_id===sid),kunci=!!rap&&rap.status==='terbit',b=pnBoleh(kl)&&!kunci,keh=pnKeh[sid]||{sakit:0,izin:0,alpa:0},dis=b?'':' disabled';
  const ent=kunci?rap.nilai.map(x=>({m:x.m,k:x.k,a:String(x.a||'').trim(),n:x.n,d:x.d})):pnMapel.map(m=>{const x=rap&&rap.nilai.find(y=>y.m===m.nama);return{m:m.nama,k:m.kkm,a:pnAN(m),n:x?x.n:null,d:x?x.d:null}});
  window._pnEnt=ent;const v=rap?{sakit:rap.sakit,izin:rap.izin,alpa:rap.alpa,catatan:rap.catatan||''}:{sakit:keh.sakit,izin:keh.izin,alpa:keh.alpa,catatan:''};
@@ -3195,6 +3197,7 @@ function pnBuka(sid){const s=S.siswa.find(x=>x.id===sid),kl=pnKl(pnK);if(!s||!kl
  h+=pnNilaiRows(ent,dis);
  h+=`<div class="tbkh">Kehadiran <span class="mu">(hari)</span></div><div class="tb" style="flex-wrap:wrap;align-items:flex-end"><div class="fd" style="flex:1;min-width:80px"><label class="l">Sakit</label><input id="pnSk" class="input" inputmode="numeric" maxlength="3" value="${v.sakit}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Izin</label><input id="pnIz" class="input" inputmode="numeric" maxlength="3" value="${v.izin}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Tanpa keterangan</label><input id="pnAl" class="input" inputmode="numeric" maxlength="3" value="${v.alpa}"${dis}></div></div>${b?`<div class="tb" style="flex-wrap:wrap;align-items:center"><button class="btn soft sm" onclick="pnAmbilKeh()">↻ Ambil dari absensi</button><span class="mu">${fmt(pnRange()[0])} sampai ${fmt(pnRange()[1])}</span></div>`:''}`;
  h+=`<div class="tbkh">Catatan wali kelas</div><textarea id="pnCat" class="input" rows="3" maxlength="600" placeholder="Catatan untuk orang tua (opsional)"${dis}>${esc(v.catatan)}</textarea>`;
+ h+=pnKepForm(sid,b,kl);
  h+=b?`<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pnSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pnSimpan(true)">Simpan &amp; berikutnya ➜</button></div>`:kunci?(pnBoleh(kl)?`<div class="note">Raport ini sudah terbit dan terkunci. Untuk mengubahnya, batalkan penerbitan dulu.</div><div class="tb"><button class="btn danger" onclick="pnBatal(${rap.id})">Batalkan penerbitan</button></div>`:'<div class="note">Raport ini sudah terbit dan terkunci.</div>'):'<div class="note">Anda hanya dapat melihat nilai kelas ini.</div>';
  if(rap)h+=`<div class="tb"><button class="btn soft sm" onclick="pnPdf([${rap.id}],this)">📄 Unduh PDF (data yang tersimpan)</button></div>`;
  $('#mt').textContent=(kunci?'Raport ':'Nilai ')+s.nama;$('#ms').style.display='none';$('#mbd').innerHTML=h;$('#md').classList.add('besar');$('#md').classList.add('show')}
@@ -3205,36 +3208,34 @@ function pnAmbilKeh(){const k=pnKeh[pnSis]||{sakit:0,izin:0,alpa:0};$('#pnSk').v
 function pnBaca(){const ent=window._pnEnt||[];
  const nilai=ent.map((e,i)=>{let n;try{n=pnNum($('#pnN'+i).value)}catch(x){throw new Error(e.m+': '+x.message)}const t=$('#pnD'+i),d=t&&t.value.trim()?t.value.trim():null;return Object.assign({m:e.m,k:e.k,n,d},e.a?{a:e.a}:{})});
  const ang=id=>{const v=String($(id).value).trim()||'0';if(!/^\d{1,3}$/.test(v))throw new Error('Jumlah hari kehadiran harus berupa angka bulat');return +v};
- return{nilai,sakit:ang('#pnSk'),izin:ang('#pnIz'),alpa:ang('#pnAl'),catatan:($('#pnCat').value||'').trim()||null}}
+ const ke=window._kepE,kjEl=$('#pkKj'),ktEl=$('#pkKt');if(ke&&kjEl){ke.kj=kjEl.value;if(ktEl)ke.kt=ktEl.value}
+ return{nilai,sakit:ang('#pnSk'),izin:ang('#pnIz'),alpa:ang('#pnAl'),catatan:($('#pnCat').value||'').trim()||null,kepAda:!!(ke&&kjEl),kj:ke&&kjEl?(ke.kj||''):'',kt:ke&&kjEl&&ke.kj==='naik'?(ke.kt||''):''}}
 /* pasang satu baris raport hasil simpan ke daftar kelas tanpa memuat ulang semuanya */
 function pnPasang(row){if(!row||!row.siswa_id)return false;const i=pnRap.findIndex(x=>x.siswa_id===row.siswa_id);if(i>=0)pnRap[i]=row;else pnRap.push(row);return true}
 function pnSimpan(lanjut){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl))return;let d;try{d=pnBaca()}catch(e){return toast(e.message,false)}
+ if(d.kepAda&&d.kj==='naik'&&!d.kt)return toast('Pilih kelas tujuan untuk keputusan Naik kelas',false);
  const sis=pnDaftar(),nxt=sis[sis.findIndex(x=>x.id===pnSis)+1],kos=(d.nilai||[]).filter(x=>x.n==null).map(x=>x.m);
  guard(async()=>{const hs=await pnTry(()=>dbq(db.from('rapor').upsert({siswa_id:pnSis,kelas_id:kl.id,kelas_nama:kl.nama,tahun_ajaran:S.set.tahun_ajaran,semester:pnSem,jenis:pnJenis,status:'draf',nilai:d.nilai,sakit:d.sakit,izin:d.izin,alpa:d.alpa,catatan:d.catatan},{onConflict:'siswa_id,tahun_ajaran,semester,jenis'}).select('*')));
   if(!pnPasang((hs||[])[0]))await pnMuat();
-  if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':''))}else{closeM();renderV();toast('Draf nilai tersimpan'+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':''))}})}
-function pnKepTanpa(rows){return rows.filter(r=>!pnKepKep.get(r.siswa_id)).map(r=>(S.siswa.find(x=>x.id===r.siswa_id)||{}).nama||'')}
+  let kepGagal='';if(d.kepAda){try{await pkKepSimpan(window._kepE,kl,{kj:d.kj,kt:d.kt})}catch(x){kepGagal=' Keputusan akhir tahun TIDAK tersimpan: '+(x.message||x)}}
+  if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':'')+kepGagal,!kepGagal)}else{closeM();renderV();toast('Draf nilai tersimpan'+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':'')+kepGagal,!kepGagal)}})}
 /* inti penerbitan: dipanggil di dalam guard(). UAS Semester 2 membawa keputusan akhir ke dalam raport */
 async function pnTerbitInti(ids,baru){const kl=pnKl(pnK),semua=pnRap.filter(r=>ids.includes(r.id)),rows=semua.filter(r=>r.fmt!=='perkembangan'),w=ttdWali(kl.nama)||{},k=ttdKepsek()||{};
  const ttd={wali_nama:w.nama||null,wali_nip:w.nip||null,kepsek_nama:k.nama||null,kepsek_nip:k.nip||null};
  if(semua.length>rows.length)await pkTerbitInti(semua,ttd,baru);
- if(!rows.length);else if(pnUas2()){const baris=rows.map(r=>{const kp=pnKepKep.get(r.siswa_id);return{siswa_id:r.siswa_id,kelas_id:r.kelas_id,kelas_nama:r.kelas_nama,tahun_ajaran:r.tahun_ajaran,semester:r.semester,jenis:r.jenis,status:'terbit',nilai:r.nilai,sakit:r.sakit,izin:r.izin,alpa:r.alpa,catatan:r.catatan,keputusan:kp.jenis,kelas_tujuan:kp.jenis==='naik'?(kp.kelas_tujuan_nama||null):null,...ttd}});
+ if(!rows.length);else if(pnUas2()){const baris=rows.map(r=>{const kp=pnKepKep.get(r.siswa_id);return{siswa_id:r.siswa_id,kelas_id:r.kelas_id,kelas_nama:r.kelas_nama,tahun_ajaran:r.tahun_ajaran,semester:r.semester,jenis:r.jenis,status:'terbit',nilai:r.nilai,sakit:r.sakit,izin:r.izin,alpa:r.alpa,catatan:r.catatan,keputusan:kp?kp.jenis:null,kelas_tujuan:kp&&kp.jenis==='naik'?(kp.kelas_tujuan_nama||null):null,...ttd}});
   await pnTry(()=>dbq(db.from('rapor').upsert(baris,{onConflict:'siswa_id,tahun_ajaran,semester,jenis'})))}
  else await pnTry(()=>dbq(db.from('rapor').update({status:'terbit',...ttd}).in('id',rows.map(r=>r.id))));
  await pnMuat()}
 async function pnTerbit(ids){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl)||!ids.length)return;
  const rows=pnRap.filter(r=>ids.includes(r.id));if(!rows.length)return;
  {const kur=pkKurang(rows);if(kur.length)return info('Indikator belum lengkap','<div class="note">Lengkapi penilaian untuk:</div><div class="mu">'+kur.map(esc).join('<br>')+'</div>')}
- if(pnUas2()){const tanpa=pnKepTanpa(rows.filter(r=>r.fmt!=='perkembangan'));
-  if(tanpa.length)return info('Keputusan akhir belum ada','<div class="note">Raport UAS Semester 2 memuat keputusan naik, tinggal, atau lulus. Proses dulu di menu <b>Kelola Siswa</b> untuk:</div><div class="mu">'+tanpa.map(esc).join('<br>')+'</div>')}
  if(!await konfirmasi('Terbitkan raport '+ids.length+' siswa kelas '+kl.nama+'? Setelah terbit, raport terkunci dan dapat dilihat orang tua di portal anak. Untuk mengubahnya, penerbitan harus dibatalkan dulu.',{judul:'Terbitkan raport',ya:'Terbitkan',ikon:'🚀'}))return;
  guard(async()=>{await pnTerbitInti(ids);renderV();toast(ids.length+' raport diterbitkan')})}
 /* terbitkan ulang: tarik ke draf lalu terbitkan lagi dengan data terbaru (nilai, kehadiran, keputusan, nama wali kelas dan kepala sekolah) */
 async function pnTerbitUlang(ids,baru){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl)||!ids.length)return;
  const rows=pnRap.filter(r=>ids.includes(r.id)&&r.status==='terbit');if(!rows.length)return;
  if(baru){const kur=pkKurang(rows,true);if(kur.length)return info('Indikator terbaru belum lengkap','<div class="note">Master punya indikator yang belum dinilai. Batalkan penerbitan, buka lembar nilai, tekan <b>Pakai indikator terbaru</b>, isi, lalu terbitkan. Siswa:</div><div class="mu">'+kur.map(esc).join('<br>')+'</div>')}
- if(pnUas2()){const tanpa=pnKepTanpa(rows.filter(r=>r.fmt!=='perkembangan'));
-  if(tanpa.length)return info('Keputusan akhir tidak ditemukan','<div class="note">Keputusan akhir untuk siswa berikut tidak ditemukan, jadi raport tidak bisa diterbitkan ulang:</div><div class="mu">'+tanpa.map(esc).join('<br>')+'</div>')}
  if(!await konfirmasi('Terbitkan ulang raport '+rows.length+' siswa kelas '+kl.nama+'? Raport ditarik ke draf lalu langsung diterbitkan lagi dengan data terbaru. Status "Terkirim" akan diulang dari awal, jadi tautan perlu dikirim lagi bila diperlukan.'+(rows.some(r=>r.fmt==='perkembangan')?(baru?' Indikator raport perkembangan diganti dengan indikator terbaru.':' Raport perkembangan tetap memakai indikator lama.'):''),{judul:'Terbitkan ulang raport',ya:'Terbitkan ulang',ikon:'🔄'}))return;
  const idr=rows.map(r=>r.id);
  guard(async()=>{await pnTry(()=>dbq(db.from('rapor').update({status:'draf'}).in('id',idr)));await pnMuat();
@@ -3265,15 +3266,14 @@ function pnKepHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK
    return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}</td></tr>`}
   const r=map.get(s.id),k=pnKepKep.get(s.id),terbit=!!r&&r.status==='terbit',lk=pnLengkap(r);if(k)nk++;
   const kt=k?'<b>'+esc(KEPT[k.jenis]||k.jenis)+'</b>'+(k.jenis==='naik'&&k.kelas_tujuan_nama?' → '+esc(k.kelas_tujuan_nama):'')+'<div class="mu">'+esc(KEPS[k.status]||k.status)+'</div>':'<span class="mu">Belum diputuskan</span>';
-  let st,aksi='';const beda=terbit&&k&&(r.keputusan!==k.jenis||(k.jenis==='naik'&&(r.kelas_tujuan||'')!==(k.kelas_tujuan_nama||'')));
-  if(terbit){nt++;if(k)ulang.push(r.id);if(b&&k)aksi=`<div class="pnka"><button class="btn pnk ${beda?'success':'soft'}" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button></div>`;
-   st='<span class="badge hadir">Terbit</span>'+(beda?'<div class="mu" style="color:var(--rd)">⚠ Berbeda dengan keputusan terbaru. Batalkan penerbitan lalu terbitkan ulang.</div>':'')}
+  let st,aksi='';const beda=terbit&&((r.keputusan||'')!==(k?k.jenis:'')||((r.kelas_tujuan||'')!==(k&&k.jenis==='naik'?(k.kelas_tujuan_nama||''):'')));
+  if(terbit){nt++;ulang.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk ${beda?'success':'soft'}" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button></div>`;
+   st='<span class="badge hadir">Terbit</span>'+(beda?'<div class="mu" style="color:var(--rd)">⚠ Berbeda dengan keputusan terbaru. Terbitkan ulang agar raport mengikuti keputusan terbaru.</div>':'')}
   else if(!r)st='<span class="mu">Nilai belum diisi</span>';
   else if(!lk)st='<span class="badge terlambat">Draf</span><div class="mu">Nilai belum lengkap</div>';
-  else if(!k)st='<span class="badge terlambat">Draf</span><div class="mu">Menunggu keputusan</div>';
-  else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
+  else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan'+(k?'':' (tanpa keputusan)')+'</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
   return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}</td></tr>`}).join('');
- let h=pil+`<div class="note">Raport <b>UAS Semester 2</b> kelas <b>${esc(kl.nama)}</b> memuat keputusan naik, tinggal, atau lulus. Keputusan diambil dari menu <b>Kelola Siswa</b> (tidak perlu diisi dua kali). Diputuskan: <b>${nk}</b> dari ${sis.length} siswa. Raport perkembangan tidak menunggu keputusan; keputusan dicetak bila sudah ada dan bisa diisi langsung di form pengisian indikator. Raport terbit: <b>${nt}</b>.</div>`;
+ let h=pil+`<div class="note">Raport <b>UAS Semester 2</b> kelas <b>${esc(kl.nama)}</b> memuat keputusan naik, tinggal, atau lulus bila sudah ada. Keputusan tidak wajib dan tidak menghalangi terbit; bisa diisi di bagian bawah lembar nilai atau di menu <b>Kelola Siswa</b> (sumber datanya sama). Diputuskan: <b>${nk}</b> dari ${sis.length} siswa. Raport terbit: <b>${nt}</b>.</div>`;
  if(!pnKepOk)h+='<div class="note" style="color:var(--rd)">Data keputusan tidak dapat dibaca. Hubungi Kepala Sekolah atau muat ulang halaman.</div>';
  h+=`<div class="pntb">${b&&siap.length?`<button class="btn pnk success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan yang siap (${siap.length})</button>`:''}${b&&ulang.length?`<button class="btn pnk soft" onclick="pnTerbitUlang([${ulang.join(',')}])">🔄 Terbitkan ulang semua (${ulang.length})</button>`:''}<button class="btn pnk soft" onclick="go('kelola')">🎓 Buka Kelola Siswa</button></div>`;
  return h+tab(['No','Nama','Keputusan akhir','Raport UAS Sem. 2','Aksi'],rows)}
@@ -3334,7 +3334,7 @@ function alRaporPdf(idx,btn){const a=window._alA,rs=idx.map(i=>window._alRap[i])
 /* ---- PDF raport: DESAIN ada di /rapor.js (dipakai bersama portal). Di sini hanya menyiapkan data ---- */
 async function pnPdfBuat(rs,infoFn,nf,btn){await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membuat PDF...'))return;
  try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null);
-  const Ds=rs.map(r=>{if(r.fmt==='perkembangan')return pkSusun(r,logo);const i=infoFn(r)||{};return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
+  const Ds=rs.map(r=>{if(r.fmt==='perkembangan')return pkSusun(r,logo);const i=infoFn(r)||{};if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
   await Rapor.pdf(Ds,nf);toast('PDF raport sedang diproses, mohon ditunggu')}
  catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 async function pnPdf(ids,btn){const rs=pnRap.filter(r=>ids.includes(r.id));if(!rs.length)return toast('Belum ada raport tersimpan untuk diunduh',false);
