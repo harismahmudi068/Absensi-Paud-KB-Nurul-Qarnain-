@@ -427,7 +427,7 @@ async function petaRapor(rows, sid) {
     if (r.fmt === 'perkembangan') {
       const d = r.data && typeof r.data === 'object' ? r.data : {};
       Object.assign(o, {
-        fmt: 'perkembangan', status: 'terbit', data: { n: d.n || {}, o: d.o || {}, oc: d.oc || {}, tb: Array.isArray(d.tb) ? d.tb : [] },
+        fmt: 'perkembangan', status: 'terbit', data: { n: d.n || {}, o: d.o || {}, oc: d.oc || {}, tb: Array.isArray(d.tb) ? d.tb : [], bl: Array.isArray(d.bl) && d.bl.length <= 12 && d.bl.every((k) => typeof k === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(k)) ? d.bl : [] },
         diterbitkan_pada: r.diterbitkan_pada || null, pengelola_nama: r.pengelola_nama || '', pengelola_nip: r.pengelola_nip || '',
         kelompok_nama: kel[r.kelompok_id] || '', kelompok_label: mode === 'kelas' ? 'Kelompok' : 'Kelompok Usia',
         master: (r.salinan_hash && sal[r.salinan_hash]) || null
