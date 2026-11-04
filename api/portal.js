@@ -395,6 +395,48 @@ async function ubahProfil(req, res) {
   }
 }
 
+
+// ---- Raport: kolom dasar (format nilai) + kolom format perkembangan ----
+const COL_RAPOR_DASAR = 'id,tahun_ajaran,semester,jenis,kelas_nama,nilai,sakit,izin,alpa,catatan,keputusan,kelas_tujuan,wali_nama,wali_nip,kepsek_nama,kepsek_nip';
+const COL_RAPOR = COL_RAPOR_DASAR + ',fmt,data,kelompok_id,salinan_hash,diterbitkan_pada,pengelola_nama,pengelola_nip';
+const RE_HASH = /^[A-Za-z0-9_-]{8,128}$/;
+// Raport terbit milik siswa; bila kolom tambahan belum ada di database, jatuh ke kolom dasar (format nilai tetap jalan).
+async function raporTerbit(id, sid) {
+  const dasar = `/rest/v1/rapor?siswa_id=eq.${id}&sekolah_id=eq.${sid}&status=eq.terbit&order=tahun_ajaran.desc,semester.desc,jenis.asc`;
+  try { return await semua(`${dasar}&select=${COL_RAPOR}`); } catch (e) { return await semua(`${dasar}&select=${COL_RAPOR_DASAR}`); }
+}
+// Raport perkembangan: sertakan salinan indikator beku (rapor_salinan), nama kelompok, dan label kelompok.
+async function petaRapor(rows, sid) {
+  rows = rows || [];
+  const per = rows.filter((r) => r.fmt === 'perkembangan');
+  const sal = {}, kel = {}; let mode = 'kelas';
+  if (per.length) {
+    const hs = [...new Set(per.map((r) => r.salinan_hash).filter((h) => typeof h === 'string' && RE_HASH.test(h)))];
+    const ks = [...new Set(per.map((r) => r.kelompok_id).filter((k) => Number.isInteger(k)))];
+    try { if (hs.length) ((await L.panggil(`/rest/v1/rapor_salinan?hash=in.(${hs.map(encodeURIComponent).join(',')})&select=hash,isi`, 'GET')) || []).forEach((x) => { sal[x.hash] = x.isi; }); } catch (e) {}
+    try { if (ks.length) ((await L.panggil(`/rest/v1/rapor_kelompok?id=in.(${ks.join(',')})&select=id,nama`, 'GET')) || []).forEach((x) => { kel[x.id] = x.nama; }); } catch (e) {}
+    try { const m = await L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=kelompok_mode&limit=1`, 'GET'); if (m && m[0] && m[0].kelompok_mode === 'usia') mode = 'usia'; } catch (e) {}
+  }
+  return rows.map((r) => {
+    const o = {
+      id: r.id, tahun_ajaran: r.tahun_ajaran, semester: r.semester, jenis: r.jenis, kelas_nama: r.kelas_nama || '',
+      nilai: Array.isArray(r.nilai) ? r.nilai : [], sakit: r.sakit || 0, izin: r.izin || 0, alpa: r.alpa || 0,
+      catatan: r.catatan || '', keputusan: r.keputusan || '', kelas_tujuan: r.kelas_tujuan || '',
+      wali_nama: r.wali_nama || '', wali_nip: r.wali_nip || '', kepsek_nama: r.kepsek_nama || '', kepsek_nip: r.kepsek_nip || ''
+    };
+    if (r.fmt === 'perkembangan') {
+      const d = r.data && typeof r.data === 'object' ? r.data : {};
+      Object.assign(o, {
+        fmt: 'perkembangan', status: 'terbit', data: { n: d.n || {}, o: d.o || {}, oc: d.oc || {}, tb: Array.isArray(d.tb) ? d.tb : [] },
+        diterbitkan_pada: r.diterbitkan_pada || null, pengelola_nama: r.pengelola_nama || '', pengelola_nip: r.pengelola_nip || '',
+        kelompok_nama: kel[r.kelompok_id] || '', kelompok_label: mode === 'kelas' ? 'Kelompok' : 'Kelompok Usia',
+        master: (r.salinan_hash && sal[r.salinan_hash]) || null
+      });
+    }
+    return o;
+  });
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -551,7 +593,7 @@ module.exports = async (req, res) => {
         ? semua(`/rest/v1/hafalan_setoran?siswa_id=eq.${id}&sekolah_id=eq.${sid}&hafalan_id=not.is.null&select=${v === 'dashboard' ? 'hafalan_id,hasil' : 'hafalan_id,hasil,tanggal'}&order=id.asc`)
         : null,
       v === 'rapor'
-        ? semua(`/rest/v1/rapor?siswa_id=eq.${id}&sekolah_id=eq.${sid}&status=eq.terbit&select=id,tahun_ajaran,semester,jenis,kelas_nama,nilai,sakit,izin,alpa,catatan,keputusan,kelas_tujuan,wali_nama,wali_nip,kepsek_nama,kepsek_nip&order=tahun_ajaran.desc,semester.desc,jenis.asc`)
+        ? raporTerbit(id, sid)
         : null
     ]);
     const peng = (pengRows || [])[0] || {};
@@ -707,24 +749,7 @@ module.exports = async (req, res) => {
     } else if (v === 'hafalan') {
       out.hafalan = muatHafalanData(true);
     } else if (v === 'rapor') {
-      out.rapor = (raporData || []).map((r) => ({
-        id: r.id,
-        tahun_ajaran: r.tahun_ajaran,
-        semester: r.semester,
-        jenis: r.jenis,
-        kelas_nama: r.kelas_nama || '',
-        nilai: Array.isArray(r.nilai) ? r.nilai : [],
-        sakit: r.sakit || 0,
-        izin: r.izin || 0,
-        alpa: r.alpa || 0,
-        catatan: r.catatan || '',
-        keputusan: r.keputusan || '',
-        kelas_tujuan: r.kelas_tujuan || '',
-        wali_nama: r.wali_nama || '',
-        wali_nip: r.wali_nip || '',
-        kepsek_nama: r.kepsek_nama || '',
-        kepsek_nip: r.kepsek_nip || ''
-      }));
+      out.rapor = await petaRapor(raporData, sid);
     } else if (v === 'libur') {
       Object.assign(out, liburRingkas(liburData));
     }
