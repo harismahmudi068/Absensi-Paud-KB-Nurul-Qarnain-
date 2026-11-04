@@ -651,8 +651,8 @@ button[onclick="go('raport')"]{--ic:url("data:image/svg+xml,%3Csvg xmlns='http:/
 .rpk{border:1px solid var(--bd);border-radius:14px;padding:12px;margin:12px 0;background:var(--card)}
 .rph{display:flex;align-items:center;gap:10px;font-weight:800}.rpn{flex:1;min-width:0;overflow-wrap:anywhere}
 .rpi{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--bd);margin-top:10px}
-.rpi label{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0;cursor:pointer;font-size:13px}
-.rpi .btn{flex:0 0 auto;margin:0}
+.rpi label,.rpi .rpl{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0;font-size:13px}.rpi label{cursor:pointer}.rpa{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}.rpbar .rpbt{display:flex;flex-wrap:wrap;gap:8px}.rpprev{overflow:auto;max-height:68vh;background:#e9edf3;padding:8px;border-radius:12px;margin:8px 0;-webkit-overflow-scrolling:touch}.rpprev canvas{display:block;max-width:none!important;margin:0 auto 10px;box-shadow:0 1px 6px rgba(0,0,0,.25);background:#fff}
+.rpi .btn,.rpa .btn{flex:0 0 auto;margin:0}
 /* dropdown pas selebar layar */
 .pnper>.csel,.pnper>.select,.pnper>.cpick{flex:1 1 100%!important;width:100%!important;max-width:none!important;min-width:0!important}
 .fd>.select,.fd>.csel,.fd>.cpick,.tb>select.select,.tb>.csel:not(:has(.urutan-sel)),.tb>.cpick,.fd .csel-btn,.fd .cpick-btn,.tb>.csel .csel-btn,.tb>.cpick .cpick-btn{width:100%!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important}
@@ -3970,13 +3970,13 @@ document.addEventListener('click',e=>{
  b._clickFxTimer=setTimeout(()=>b.classList.remove('click-fx'),420);
 },true);
 /* ---------- Menu Raport: daftar raport semua siswa per kelas; hapus satu atau banyak sekaligus (batch) ---------- */
-const RP={k:'',key:'',rows:[],by:new Map(),sis:[],sel:new Set(),ukuran:200};
+const RP={k:'',key:'',rows:[],by:new Map(),sis:[],sel:new Set(),ukuran:200,mode:false,full:new Map()};
 const rpUrut=(a,b)=>String(b.tahun_ajaran).localeCompare(String(a.tahun_ajaran))||(b.semester-a.semester)||String(b.jenis).localeCompare(String(a.jenis));
 function rpBagi(rows){RP.by=new Map();rows.forEach(r=>{if(!RP.by.has(r.siswa_id))RP.by.set(r.siswa_id,[]);RP.by.get(r.siswa_id).push(r)})}
 /* satu kali baca untuk seluruh siswa kelas (dibagi per 200 siswa bila kelas sangat besar), bukan per siswa */
 async function rpMuat(){
  if(!RP.k&&pnK)RP.k=pnK;
- const k=RP.k,kl=pnKl(k);RP.rows=[];RP.by=new Map();RP.sis=[];RP.sel.clear();RP.key='';if(!kl)return;
+ const k=RP.k,kl=pnKl(k);RP.rows=[];RP.by=new Map();RP.sis=[];RP.sel.clear();RP.full.clear();RP.mode=false;RP.key='';if(!kl)return;
  const sis=act().filter(s=>s.kelas_id===kl.id).sort((a,b)=>a.nama.localeCompare(b.nama,'id')),ids=sis.map(s=>s.id),rows=[];
  for(let i=0;i<ids.length;i+=RP.ukuran){const part=ids.slice(i,i+RP.ukuran);rows.push(...await pgAll(()=>db.from('rapor').select('id,siswa_id,kelas_nama,tahun_ajaran,semester,jenis,status,fmt').in('siswa_id',part).order('id')))}
  if(RP.k!==k)return;
@@ -3990,15 +3990,16 @@ V.raport=()=>{
  else{
   const b=pnBoleh(kl),n=RP.rows.length,nt=RP.rows.filter(r=>r.status==='terbit').length;
   h+=`<div class="note">Kelas <b>${esc(kl.nama)}</b> · ${RP.sis.length} siswa · ${n} raport (Terbit: <b>${nt}</b> · Draf: <b>${n-nt}</b>).${b?'':'<br>Anda hanya dapat melihat raport kelas ini.'}</div>`;
-  if(b&&n)h+=`<div class="rpbar"><label class="rpall"><input type="checkbox" id="rpAll" class="mh-ck" onchange="rpPilihSemua(this.checked)"> Pilih semua</label><button type="button" id="rpDel" class="btn danger" onclick="rpHapus([...RP.sel])" disabled>🗑 Hapus terpilih (0)</button></div>`;
+  const mode=b&&RP.mode;
+  if(b&&n)h+=mode?`<div class="rpbar"><label class="rpall"><input type="checkbox" id="rpAll" class="mh-ck" onchange="rpPilihSemua(this.checked)"> Pilih semua</label><div class="rpbt"><button type="button" id="rpDel" class="btn danger" onclick="rpHapus([...RP.sel])" disabled>🗑 Hapus terpilih (0)</button><button type="button" class="btn soft" onclick="rpMode(false)">Batal</button></div></div>`:`<div class="rpbar"><span class="mu">Tekan 👁 Lihat untuk membuka raport.</span><button type="button" class="btn soft sm" onclick="rpMode(true)">☑ Hapus beberapa sekaligus</button></div>`;
   h+=RP.sis.map(s=>{
    const rs=RP.by.get(s.id)||[];
-   const isi=rs.map(r=>`<div class="rpi"><label>${b?`<input type="checkbox" class="mh-ck" data-rp="${r.id}" onchange="rpPilih(${r.id},this.checked)">`:''}<span><b>${esc(r.tahun_ajaran)}</b> · Semester ${esc(r.semester)} · ${esc(r.jenis)}<div class="mu">${esc(r.kelas_nama||'')}${r.fmt==='perkembangan'?' · Perkembangan':''}</div></span></label><span>${r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>'}</span>${b?`<button type="button" class="btn soft sm" onclick="rpHapus([${r.id}])">🗑 Hapus</button>`:''}</div>`).join('');
-   return `<div class="rpk"><div class="rph">${b&&rs.length?`<input type="checkbox" class="mh-ck" data-rps="${s.id}" onchange="rpPilihSiswa(${s.id},this.checked)">`:''}<span class="rpn">${esc(s.nama)}</span><span class="mu">${rs.length} raport</span></div>${isi||'<div class="mu" style="margin-top:6px">Belum ada raport.</div>'}</div>`}).join('');
+   const tg=mode?'label':'div',isi=rs.map(r=>`<div class="rpi"><${tg} class="rpl">${mode?`<input type="checkbox" class="mh-ck" data-rp="${r.id}" onchange="rpPilih(${r.id},this.checked)">`:''}<span><b>${esc(r.tahun_ajaran)}</b> · Semester ${esc(r.semester)} · ${esc(r.jenis)}<div class="mu">${esc(r.kelas_nama||'')}${r.fmt==='perkembangan'?' · Perkembangan':''}</div></span></${tg}><span>${r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>'}</span><div class="rpa"><button type="button" class="btn soft sm" onclick="rpLihat(${r.id})">👁 Lihat</button>${b&&!mode?`<button type="button" class="btn soft sm" onclick="rpHapus([${r.id}])">🗑 Hapus</button>`:''}</div></div>`).join('');
+   return `<div class="rpk"><div class="rph">${mode&&rs.length?`<input type="checkbox" class="mh-ck" data-rps="${s.id}" onchange="rpPilihSiswa(${s.id},this.checked)">`:''}<span class="rpn">${esc(s.nama)}</span><span class="mu">${rs.length} raport</span></div>${isi||'<div class="mu" style="margin-top:6px">Belum ada raport.</div>'}</div>`}).join('');
  }
  return h+'</div></div>'};
 LOAD.raport=()=>rpMuat();
-function rpPilihK(v){RP.k=v;RP.key='';RP.sel.clear();renderV();rpMuat().then(()=>renderV()).catch(e=>toast(dbMsg(e),false))}
+function rpPilihK(v){RP.k=v;RP.key='';RP.sel.clear();RP.mode=false;renderV();rpMuat().then(()=>renderV()).catch(e=>toast(dbMsg(e),false))}
 function rpSync(){
  document.querySelectorAll('#v [data-rp]').forEach(c=>{c.checked=RP.sel.has(+c.dataset.rp)});
  document.querySelectorAll('#v [data-rps]').forEach(c=>{const ids=(RP.by.get(+c.dataset.rps)||[]).map(r=>r.id),n=ids.filter(i=>RP.sel.has(i)).length;c.checked=!!ids.length&&n===ids.length;c.indeterminate=n>0&&n<ids.length});
@@ -4007,6 +4008,37 @@ function rpSync(){
 function rpPilih(id,on){on?RP.sel.add(id):RP.sel.delete(id);rpSync()}
 function rpPilihSiswa(sid,on){(RP.by.get(sid)||[]).forEach(r=>on?RP.sel.add(r.id):RP.sel.delete(r.id));rpSync()}
 function rpPilihSemua(on){RP.rows.forEach(r=>on?RP.sel.add(r.id):RP.sel.delete(r.id));rpSync()}
+
+/* mode hapus beberapa sekaligus: hanya aktif bila tombolnya ditekan */
+function rpMode(on){RP.mode=!!on;RP.sel.clear();renderV();rpSync()}
+/* ambil satu raport lengkap (nilai, kehadiran, catatan); disimpan sementara supaya tidak membaca ulang */
+async function rpAmbil(id){let r=RP.full.get(id);if(r)return r;
+ const a=await dbq(db.from('rapor').select('*').eq('id',id));r=(a||[])[0];if(!r)throw new Error('Raport tidak ditemukan, mungkin sudah dihapus.');RP.full.set(id,r);return r}
+/* siapkan data gambar raport; desainnya SAMA dengan PDF (rapor.js), jadi yang dilihat = yang diunduh */
+async function rpDataD(r){
+ const s=S.siswa.find(x=>x.id===r.siswa_id)||{},logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null);
+ if(r.fmt==='perkembangan'){
+  if(typeof PKR==='undefined'||typeof pkSusun!=='function')throw new Error('Modul raport perkembangan belum termuat, muat ulang halaman.');
+  if(!PKR.loaded)await pkMuat();
+  if(r.salinan_hash&&!PKR.sal.has(r.salinan_hash)){const a=await dbq(db.from('rapor_salinan').select('hash,isi').eq('hash',r.salinan_hash));(a||[]).forEach(x=>PKR.sal.set(x.hash,x.isi))}
+  return pkSusun(r,logo)}
+ return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:s.nama,nisn:s.nisn,wali:ttdWali(r.kelas_nama),kepsek:ttdKepsek()})}
+function rpLihatHTML(r,s,b){
+ const stt=r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>';
+ return `<div class="rpv"><div class="note"><b>${esc(s.nama)}</b>${s.nisn?' · NISN '+esc(s.nisn):''}<br>Kelas ${esc(r.kelas_nama||'-')} · TA ${esc(r.tahun_ajaran)} · Semester ${esc(r.semester)} · ${esc(r.jenis)} ${stt}</div>
+ <div class="tb" style="flex-wrap:wrap;align-items:center"><button type="button" class="btn soft sm" onclick="rpZoom(-80)">➖ Perkecil</button><button type="button" class="btn soft sm" onclick="rpZoom(80)">➕ Perbesar</button><span class="mu">Geser untuk melihat bagian lain</span></div>
+ <div id="rpPrev" class="rpprev"><div class="note">⏳ Menyiapkan raport...</div></div>
+ <div class="tb" style="flex-wrap:wrap"><button type="button" class="btn success grow" onclick="rpPdf(${r.id},this)">📄 Unduh PDF</button>${b?`<button type="button" class="btn danger grow" onclick="closeM();rpHapus([${r.id}])">🗑 Hapus</button>`:''}</div></div>`}
+function rpZoom(d){RP.lb=Math.max(240,Math.min(1100,(RP.lb||340)+d));const w=$('#rpPrev');if(w)Rapor.lebar(w,RP.lb)}
+function rpLihat(id){const kl=pnKl(RP.k);if(!kl)return;
+ guard(async()=>{const r=await rpAmbil(id),s=S.siswa.find(x=>x.id===r.siswa_id);if(!s)throw new Error('Data siswa tidak ditemukan.');
+  const D=await rpDataD(r);
+  info('Raport '+s.nama,rpLihatHTML(r,s,pnBoleh(kl)));$('#md').classList.add('besar');
+  const w=$('#rpPrev'),bd=$('#mbd');RP.lb=Math.min(760,Math.max(260,((bd&&bd.clientWidth)||360)-40));
+  Rapor.pratinjau(w,[D],RP.lb)})}
+async function rpPdf(id,btn){let r;try{r=await rpAmbil(id)}catch(e){return toast(e.message||String(e),false)}
+ const s=S.siswa.find(x=>x.id===r.siswa_id)||{},bersih=t=>String(t||'').replace(/[^\w\-]+/g,'-').replace(/^-+|-+$/g,'');
+ return pnPdfBuat([r],x=>({nama:s.nama,nisn:s.nisn,wali:ttdWali(x.kelas_nama),kepsek:ttdKepsek()}),'Raport-'+bersih(s.nama)+'-'+r.jenis+'-S'+r.semester,btn)}
 /* hapus satu atau banyak raport: satu permintaan per 200 id (bukan satu per satu) */
 async function rpHapus(ids){
  const kl=pnKl(RP.k);if(!kl||!pnBoleh(kl))return toast('Anda tidak punya izin menghapus raport kelas ini',false);
@@ -4021,8 +4053,9 @@ async function rpHapus(ids){
    if(!gone.size)throw new Error('Tidak ada raport yang terhapus. Anda mungkin tidak punya izin hapus, atau data sudah tidak ada.')
   }catch(e){await rpMuat().catch(()=>{});renderV();throw e}
   RP.rows=RP.rows.filter(r=>!gone.has(r.id));rpBagi(RP.rows);gone.forEach(i=>RP.sel.delete(i));
-  pnRap=pnRap.filter(r=>!gone.has(r.id));pnKey='';
-  renderV();
+  pnRap=pnRap.filter(r=>!gone.has(r.id));pnKey='';gone.forEach(i=>RP.full.delete(i));
+  if(!RP.sel.size)RP.mode=false;
+  renderV();rpSync();
   if(gone.size===ids.length)toast(gone.size+' raport dihapus');else toast(gone.size+' dari '+ids.length+' raport terhapus, sisanya ditolak',false)})}
 
 mulai();
