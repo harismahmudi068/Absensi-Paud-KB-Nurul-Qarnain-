@@ -484,8 +484,8 @@ html[data-tema=gelap] .usblay.ok{background:#16311f}html[data-tema=gelap] .usbla
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="/kartu.js?v=20261104b"></script>
 <script src="/rapor.js?v=20261104f"></script>
-<script src="/rapor-p.js?v=20261104g"></script>
-<script src="/rapor-m.js?v=20261104c"></script>
+<script src="/rapor-p.js?v=20261104h"></script>
+<script src="/rapor-m.js?v=20261104e"></script>
 <style id="patch-tampilan">
 :root{--hdrbg:#166534}html[data-tema=gelap]{--hdrbg:#0F3D24}
 .top,html[data-tema=gelap] .top{background:var(--hdrbg)!important;color:#fff;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;height:auto;min-height:calc(62px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);box-sizing:border-box}
@@ -2711,9 +2711,11 @@ function simpanKelas(id,el){const ci=el.closest('.ci'),inp=ci&&ci.querySelector(
 const urutanOpt=n=>'<option value=""'+(n==null?' selected':'')+'>-</option>'+Array.from({length:Math.max(12,n||0)},(_,i)=>'<option value="'+(i+1)+'"'+(n===i+1?' selected':'')+'>'+(i+1)+'</option>').join('');
 const setUrutan=(id,v)=>guard(async()=>{const n=String(v).trim()===''?null:parseInt(v,10);if(n!==null&&!(n>=1&&n<=12))throw new Error('Urutan kelas harus angka 1 sampai 12');await dbq(db.from('kelas').update({urutan:n}).eq('id',id));const k=S.kelas.find(x=>x.id===id);if(k)k.urutan=n;toast('Urutan kelas disimpan')});
 const setKelasAkhir=(id,on)=>guard(async()=>{await dbq(db.from('kelas').update({kelas_akhir:!!on}).eq('id',id));const k=S.kelas.find(x=>x.id===id);if(k)k.akhir=!!on;toast(on?'Ditandai sebagai kelas akhir':'Tanda kelas akhir dilepas')});
+/* kelas tujuan naik: hanya 1 atau 2 tingkat (urutan) di atas kelas asal */
+const kelasTujuanNaik=u=>{if(u==null)return[];const lv=[...new Set(S.kelas.filter(c=>c.urutan!=null&&c.urutan>u).map(c=>c.urutan))].sort((a,b)=>a-b).slice(0,2);return S.kelas.filter(c=>lv.includes(c.urutan))};
 const klOpsi=(l,sel,ph)=>`<option value="">${ph}</option>`+l.map(k=>`<option value="${k.id}" ${String(k.id)===String(sel)?'selected':''}>${esc(k.nama)}</option>`).join('');
 const klAsalList=()=>S.kelas.filter(k=>KL.tab==='lulus'?k.akhir:KL.tab==='naik'?!k.akhir:true);
-const klTujuanList=()=>{const a=S.kelas.find(k=>String(k.id)===String(KL.asal));return a&&a.urutan!=null?S.kelas.filter(k=>k.urutan!=null&&(KL.tab==='pindah'?(k.urutan===a.urutan&&k.id!==a.id):k.urutan>a.urutan)):[]};
+const klTujuanList=()=>{const a=S.kelas.find(k=>String(k.id)===String(KL.asal));return a&&a.urutan!=null?(KL.tab==='pindah'?S.kelas.filter(k=>k.urutan===a.urutan&&k.id!==a.id):kelasTujuanNaik(a.urutan)):[]};
 const klSiswa=()=>{const z=KL.q.toLowerCase().trim();return S.siswa.filter(s=>s.aktif&&!klKunci(s)&&KL.asal&&String(s.kelas_id)===String(KL.asal)&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z))).sort((a,b)=>a.nama.localeCompare(b.nama,'id'))};
 const klKunci=s=>{const d=KL.map.get(s.id);return !!d&&d.status!=='sementara'};
 const klInfo=d=>kb(KJC[d.jenis],KJ[d.jenis])+(d.jenis==='naik'&&d.kelas_tujuan_nama?' → '+esc(d.kelas_tujuan_nama):'')+' '+kb(KSC[d.status],KST[d.status]);
@@ -2727,7 +2729,7 @@ function klPilih(id,on){on?KL.sel.add(id):KL.sel.delete(id);const b=$('#klRingka
 function klSemua(on){klSiswa().filter(s=>!klKunci(s)).forEach(s=>on?KL.sel.add(s.id):KL.sel.delete(s.id));cekBaris('#v .ckkl:not(:disabled)').forEach(x=>x.checked=on);const b=$('#klRingkas');if(b)b.innerHTML=klRingkasHtml()}
 function klCari(el){KL.q=el.value;klRefresh()}
 function klCariDaftar(el){KL.dq=el.value;const a=$('#klDaftar');if(a)a.innerHTML=klDaftarHtml()}
-const klJudul={naik:['Proses Kenaikan Kelas','Pilih kelas asal dan kelas tujuan, lalu centang siswa yang naik. Guru bebas memilih kelas tujuan yang berurutan lebih tinggi, tidak harus mengikuti urutan otomatis.'],tinggal:['Proses Tinggal Kelas','Pilih kelas asal, lalu centang siswa yang tetap berada di kelas yang sama pada tahun ajaran berikutnya.'],lulus:['Proses Kelulusan','Pilih kelas akhir, lalu centang siswa yang dinyatakan lulus. Data siswa lulus tidak langsung berubah.'],pindah:['Pindah Kelas','Pindahkan siswa ke kelas lain yang urutannya SAMA (misalnya kelas urutan 1 hanya ke kelas urutan 1). Berlaku langsung, bukan keputusan akhir tahun.']};
+const klJudul={naik:['Proses Kenaikan Kelas','Pilih kelas asal dan kelas tujuan, lalu centang siswa yang naik. Kelas tujuan hanya bisa 1 atau 2 tingkat di atas kelas asal, bebas memilih salah satunya.'],tinggal:['Proses Tinggal Kelas','Pilih kelas asal, lalu centang siswa yang tetap berada di kelas yang sama pada tahun ajaran berikutnya.'],lulus:['Proses Kelulusan','Pilih kelas akhir, lalu centang siswa yang dinyatakan lulus. Data siswa lulus tidak langsung berubah.'],pindah:['Pindah Kelas','Pindahkan siswa ke kelas lain yang urutannya SAMA (misalnya kelas urutan 1 hanya ke kelas urutan 1). Berlaku langsung, bukan keputusan akhir tahun.']};
 function klProsesHtml(){
  const t=KL.tab,all=klSiswa().filter(s=>!klKunci(s)),sem=all.length>0&&all.every(s=>KL.sel.has(s.id)),as=klAsalList();
  const tanpa=S.kelas.filter(k=>k.urutan==null).map(k=>k.nama),adaAkhir=S.kelas.some(k=>k.akhir);
@@ -3130,12 +3132,22 @@ async function pnAspekPilihan(){const o=[],s=new Set(),add=a=>{a=String(a||'').r
  return o}
 const pnAspekFd=(L,cur)=>[{k:'aspek',l:'Aspek (pilih dari kelas ini atau kelas lain)',o:[PN_TANPA].concat(L),v:cur||PN_TANPA},{k:'aspekb',l:'Aspek baru (isi hanya bila belum ada di daftar)'}];
 const pnAspekAmbil=v=>{const b=String(v.aspekb||'').trim();return pnAspekNorm(b||(v.aspek===PN_TANPA?'':v.aspek))};
+const PNPM={on:false,sel:new Set()};
+function pnPmToggle(){PNPM.on=!PNPM.on;PNPM.sel=new Set();renderV()}
+function pnPmSemua(){const all=pnMapel.length&&PNPM.sel.size===pnMapel.length;PNPM.sel=all?new Set():new Set(pnMapel.map(m=>m.id));renderV()}
+function pnPmCek(id,on){if(on)PNPM.sel.add(id);else PNPM.sel.delete(id);const bt=$('#pnPmHps');if(bt){bt.textContent='🗑 Hapus terpilih ('+PNPM.sel.size+')';bt.disabled=!PNPM.sel.size}}
+async function pnHapusBanyak(){const kl=pnKl(pnK);if(!pnBoleh(kl))return;const ids=[...PNPM.sel].filter(id=>pnMapel.some(m=>m.id===id));if(!ids.length)return toast('Centang mata pelajaran yang ingin dihapus',false);
+ const nm=pnMapel.filter(m=>ids.includes(m.id)).map(m=>m.nama);
+ if(!await konfirmasi('Hapus '+ids.length+' mata pelajaran dari kelas '+kl.nama+'?\n\n'+nm.slice(0,10).map(x=>'- '+x).join('\n')+(nm.length>10?'\n... dan '+(nm.length-10)+' lainnya':'')+'\n\nRaport yang sudah tersimpan tidak berubah, tetapi nilai draf mapel ini tidak akan ikut tersimpan lagi.',{bahaya:1,judul:'Hapus mata pelajaran terpilih',ya:'Hapus '+ids.length}))return;
+ guard(async()=>{for(let i=0;i<ids.length;i+=200)await pnTry(()=>dbq(db.from('rapor_mapel').delete().in('id',ids.slice(i,i+200))));PNPM.on=false;PNPM.sel=new Set();await pnMuat();renderV();toast(ids.length+' mata pelajaran dihapus')})}
 function pnMapelHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK);if(!kl)return pil+PKH;
  if(pnKey!==pnKunci())return pil+'<div class="note">⏳ Memuat...</div>';
- const b=pnBoleh(kl);let h=pil;
+ const b=pnBoleh(kl);let h=pil;if(!b||!pnMapel.length){PNPM.on=false;PNPM.sel=new Set()}
  if(!b)h+='<div class="note">Anda hanya dapat melihat. Mata pelajaran dan KKM kelas ini hanya dapat diubah oleh wali kelasnya, Kepala Sekolah, atau Wakil.</div>';
- if(b)h+=`<div class="tb" style="flex-wrap:wrap"><button class="btn success sm" onclick="pnTambah()">+ Tambah mapel</button>${pnMapel.length?'<button class="btn soft sm" onclick="pnKkmSemua()">Atur KKM semua</button>':'<button class="btn soft sm" onclick="pnBawaan(this)">Isi mapel bawaan</button>'}<button class="btn soft sm" onclick="pnSalin()">Salin dari kelas lain</button>${pnMapel.length?'<button class="btn soft sm" onclick="pnAspek()">Kelola aspek</button>':''}</div>`;
+ if(b)h+=`<div class="tb" style="flex-wrap:wrap"><button class="btn success sm" onclick="pnTambah()">+ Tambah mapel</button>${pnMapel.length?'<button class="btn soft sm" onclick="pnKkmSemua()">Atur KKM semua</button>':'<button class="btn soft sm" onclick="pnBawaan(this)">Isi mapel bawaan</button>'}<button class="btn soft sm" onclick="pnSalin()">Salin dari kelas lain</button>${pnMapel.length?'<button class="btn soft sm" onclick="pnAspek()">Kelola aspek</button><button class="btn soft sm" onclick="pnPmToggle()">'+(PNPM.on?'✖ Batal pilih':'☑ Pilih mapel')+'</button>':''}</div>`;
+ if(b&&PNPM.on&&pnMapel.length)h+=`<div class="tb" style="flex-wrap:wrap;align-items:center"><button class="btn soft sm" onclick="pnPmSemua()">${PNPM.sel.size===pnMapel.length?'Hapus semua centang':'Pilih semua'}</button><button class="btn danger sm" id="pnPmHps" onclick="pnHapusBanyak()"${PNPM.sel.size?'':' disabled'}>🗑 Hapus terpilih (${PNPM.sel.size})</button><span class="mu">Centang mapel yang ingin dihapus sekaligus.</span></div>`;
  if(!pnMapel.length)h+='<div class="note">Belum ada mata pelajaran untuk kelas '+esc(kl.nama)+'.'+(b?' Tekan <b>Isi mapel bawaan</b> (8 mapel SD) atau tambah satu per satu.':'')+'</div>';
+ else if(b&&PNPM.on)h+=tab(['Pilih','No','Mata pelajaran','Aspek','KKM'],pnMapel.map((m,i)=>`<tr><td><input type="checkbox" onchange="pnPmCek(${m.id},this.checked)"${PNPM.sel.has(m.id)?' checked':''}></td><td>${i+1}</td><td><b>${esc(m.nama)}</b></td><td>${pnAN(m)?esc(pnAN(m)):'<span class="mu">Lainnya</span>'}</td><td>${m.kkm}</td></tr>`).join(''));
  else h+=tab(['No','Mata pelajaran','Aspek','KKM'].concat(b?['Aksi']:[]),pnMapel.map((m,i)=>`<tr><td>${i+1}</td><td><b>${esc(m.nama)}</b></td><td>${pnAN(m)?esc(pnAN(m)):'<span class="mu">Lainnya</span>'}</td><td>${m.kkm}</td>${b?`<td><button class="btn sm soft" onclick="pnUbah(${m.id})">✎</button> <button class="btn sm danger" onclick="pnHapus(${m.id})">🗑</button></td>`:''}</tr>`).join(''));
  return h}
 function pnAspek(){const kl=pnKl(pnK);if(!pnBoleh(kl))return;const L=pnAspekList();
@@ -3164,7 +3176,8 @@ function pnBawaan(btn){const kl=pnKl(pnK);if(!pnBoleh(kl))return;
 function pnKkmSemua(){const kl=pnKl(pnK);if(!pnBoleh(kl)||!pnMapel.length)return;
  form('Atur KKM semua mata pelajaran',[{k:'kkm',l:'KKM untuk semua mapel di kelas '+kl.nama+' (0 sampai 100)',v:String(pnMapel[0].kkm),t:'number'}],async v=>{
   const kk=pnAng(v.kkm,'KKM');await pnTry(()=>dbq(db.from('rapor_mapel').update({kkm:kk}).eq('kelas_id',kl.id)));await pnMuat();renderV();toast('KKM semua mapel diubah menjadi '+kk)})}
-function pnSalin(){const kl=pnKl(pnK);if(!pnBoleh(kl))return;const lain=S.kelas.filter(k=>k.id!==kl.id).map(k=>k.nama);if(!lain.length)return toast('Tidak ada kelas lain',false);
+async function pnSalin(){const kl=pnKl(pnK);if(!pnBoleh(kl))return;let ada;try{const r=await dbq(db.from('rapor_mapel').select('kelas_id').in('kelas_id',S.kelas.map(k=>k.id)));ada=new Set((r||[]).map(x=>x.kelas_id))}catch(e){return toast('Gagal memeriksa kelas: '+(e.message||e),false)}
+ const lain=S.kelas.filter(k=>k.id!==kl.id&&ada.has(k.id)).map(k=>k.nama);if(!lain.length)return toast('Belum ada kelas lain yang punya mata pelajaran untuk disalin',false);
  form('Salin mapel dari kelas lain',[{k:'dari',l:'Salin dari kelas',o:['Pilih kelas'].concat(lain)}],async v=>{
   const sr=pnKl(v.dari);if(!sr)throw new Error('Pilih kelas asal terlebih dahulu');
   const src=await dbq(db.from('rapor_mapel').select('nama,kkm,urutan,aspek').eq('kelas_id',sr.id).order('urutan').order('id'));
@@ -3258,6 +3271,16 @@ const pnIsiTab=()=>pnTab==='mapel'?pnMapelHTML():pnTab==='kel'?pkKelHTML():pnTab
 const pnJenisTxt=j=>j==='UTS'?'Ujian Tengah Semester (UTS)':'Ujian Akhir Semester (UAS)';
 
 /* ---- Tab Keputusan akhir (kesiapan raport UAS Semester 2) ---- */
+/* lihat raport dari tab Keputusan akhir: pratinjau yang sama dengan halaman Raport (Rapor.pratinjau), keputusan terbaru ikut tampil */
+function pnKepLihatHTML(s,r){const stt=r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>';
+ return `<div class="rpv"><div class="note"><b>${esc(s.nama)}</b>${s.nisn?' · NISN '+esc(s.nisn):''}<br>Kelas ${esc(r.kelas_nama||'-')} · TA ${esc(r.tahun_ajaran)} · Semester ${esc(r.semester)} · ${esc(r.jenis)} ${stt}</div>
+  <div class="tb" style="flex-wrap:wrap;align-items:center"><button type="button" class="btn soft sm" onclick="rpZoom(-80)">➖ Perkecil</button><button type="button" class="btn soft sm" onclick="rpZoom(80)">➕ Perbesar</button><span class="mu">Geser untuk melihat bagian lain</span></div>
+  <div id="rpPrev" class="rpprev"><div class="note">⏳ Menyiapkan raport...</div></div>
+  <div class="tb" style="flex-wrap:wrap"><button type="button" class="btn success grow" onclick="pnPdf([${r.id}],this)">📄 Unduh PDF</button></div></div>`}
+function pnKepLihat(sid){const kl=pnKl(pnK),r0=pnRap.find(x=>x.siswa_id===sid),s=S.siswa.find(x=>x.id===sid);if(!kl||!r0||!s)return toast('Raport siswa ini belum ada',false);
+ guard(async()=>{let r=r0;if(r.fmt!=='perkembangan'&&r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}
+  const D=await rpDataD(r);info('Raport '+s.nama,pnKepLihatHTML(s,r));$('#md').classList.add('besar');
+  const w=$('#rpPrev'),bd=$('#mbd');RP.lb=Math.min(760,Math.max(260,((bd&&bd.clientWidth)||360)-40));Rapor.pratinjau(w,[D],RP.lb)})}
 function pnKepHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK);if(!kl)return pil+PKH;
  if(!S.set.tahun_ajaran)return pil+'<div class="note">Tahun ajaran belum diatur. Isi dulu di menu Pengaturan.</div>';
  if(pnKey!==pnKunci())return pil+'<div class="note">⏳ Memuat...</div>';
@@ -3270,7 +3293,7 @@ function pnKepHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK
    else if(!r)st='<span class="mu">Belum diisi</span>';
    else if(!lk)st='<span class="badge terlambat">Draf</span><div class="mu">Indikator belum lengkap ('+h.isi+'/'+h.tot+')</div>';
    else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan'+(k?'':' (tanpa keputusan)')+'</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
-   return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}</td></tr>`}
+   return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}${r?`<div class="pnka"><button class="btn pnk soft" onclick="pnKepLihat(${s.id})">👁 Lihat</button></div>`:''}</td></tr>`}
   const r=map.get(s.id),k=pnKepKep.get(s.id),terbit=!!r&&r.status==='terbit',lk=pnLengkap(r);if(k)nk++;
   const kt=k?'<b>'+esc(KEPT[k.jenis]||k.jenis)+'</b>'+(k.jenis==='naik'&&k.kelas_tujuan_nama?' → '+esc(k.kelas_tujuan_nama):'')+'<div class="mu">'+esc(KEPS[k.status]||k.status)+'</div>':'<span class="mu">Belum diputuskan</span>';
   let st,aksi='';const beda=terbit&&((r.keputusan||'')!==(k?k.jenis:'')||((r.kelas_tujuan||'')!==(k&&k.jenis==='naik'?(k.kelas_tujuan_nama||''):'')));
@@ -3279,7 +3302,7 @@ function pnKepHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK
   else if(!r)st='<span class="mu">Nilai belum diisi</span>';
   else if(!lk)st='<span class="badge terlambat">Draf</span><div class="mu">Nilai belum lengkap</div>';
   else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan'+(k?'':' (tanpa keputusan)')+'</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
-  return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}</td></tr>`}).join('');
+  return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}${r?`<div class="pnka"><button class="btn pnk soft" onclick="pnKepLihat(${s.id})">👁 Lihat</button></div>`:''}</td></tr>`}).join('');
  let h=pil+`<div class="note">Raport <b>UAS Semester 2</b> kelas <b>${esc(kl.nama)}</b> memuat keputusan naik, tinggal, atau lulus bila sudah ada. Keputusan tidak wajib dan tidak menghalangi terbit; bisa diisi di bagian bawah lembar nilai atau di menu <b>Kelola Siswa</b> (sumber datanya sama). Diputuskan: <b>${nk}</b> dari ${sis.length} siswa. Raport terbit: <b>${nt}</b>.</div>`;
  if(!pnKepOk)h+='<div class="note" style="color:var(--rd)">Data keputusan tidak dapat dibaca. Hubungi Kepala Sekolah atau muat ulang halaman.</div>';
  h+=`<div class="pntb">${b&&siap.length?`<button class="btn pnk success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan yang siap (${siap.length})</button>`:''}${b&&ulang.length?`<button class="btn pnk soft" onclick="pnTerbitUlang([${ulang.join(',')}])">🔄 Terbitkan ulang semua (${ulang.length})</button>`:''}<button class="btn pnk soft" onclick="go('kelola')">🎓 Buka Kelola Siswa</button></div>`;
