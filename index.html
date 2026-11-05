@@ -75,7 +75,7 @@ body.scan-kunci .usblay{min-height:230px}
 /* foto siswa hasil scan diperbesar (hampir separuh layar HP) */
 .scf{height:min(40vh,380px);width:auto;max-width:80%;aspect-ratio:3/4;border-radius:12px;object-position:50% 15%}
 .scr b{font-size:22px}.scr small{font-size:15px}
-#rw #scRes{position:fixed;left:12px;right:12px;bottom:auto;top:50%;transform:translateY(-50%);max-width:420px;margin:0 auto}
+#rw #scRes{position:absolute;left:8px;right:8px;bottom:auto;top:50%;transform:translateY(-50%);max-width:none;margin:0}#rw .scf{height:min(40vh,380px,calc(var(--rwh,999px) - 110px))}
 #rw #scRes .scr.ok{background:rgba(22,110,60,.96)}#rw #scRes .scr.tl{background:rgba(160,104,8,.96)}#rw #scRes .scr.bad{background:rgba(160,40,40,.96)}#rw #scRes .scr{box-shadow:0 10px 30px rgba(0,0,0,.45)}
 .usbw #scRes{inset:8px}
 .usbw .scr{padding:10px}
@@ -2040,7 +2040,7 @@ let scLast=null,scT=null,scOpen=false,scCardHtml=null;
 const scWaktu=()=>{const d=new Date();return[d.toLocaleTimeString('id-ID',{timeZone:'Asia/Jakarta',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/\./g,':'),d.toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta',weekday:'long',day:'numeric',month:'long',year:'numeric'})]};
 setInterval(()=>{const j=$('#scJam');if(!j)return;const w=scWaktu();j.textContent=w[0];const t=$('#scTgl');if(t)t.textContent=w[1]},1000);
 const scPlace=()=>'';
-function scSet(h){scCardHtml=h;const e=$('#scRes');if(e){e.innerHTML=h||scPlace();if(e.parentNode)e.parentNode.classList.toggle('tampil',!!h)}}
+function scSet(h){scCardHtml=h;const e=$('#scRes');const _r=$('#rw');if(_r&&h)_r.style.setProperty('--rwh',_r.clientHeight+'px');if(e){e.innerHTML=h||scPlace();if(e.parentNode)e.parentNode.classList.toggle('tampil',!!h)}}
 function scSumHTML(){const ab=A(TODAY),pk=new Map();let n=0;(scanKelas==='*'?S.kelas.map(k=>k.nama):[scanKelas]).forEach(k=>pk.set(k,{a:0,t:0}));
  S.siswa.forEach(x=>{if(!x.aktif)return;const p=pk.get(x.kelas);if(!p)return;p.t++;const r=ab[x.id];if(r&&r.cara==='scan'){p.a++;n++}});
  return `<b>Sudah scan: ${n} anak</b><div class="scchip">${[...pk].map(([k,p])=>`<span>${esc(k)} ${p.a}/${p.t}</span>`).join('')}</div>`}
