@@ -1956,7 +1956,7 @@ async function usbSiap(){unlockAC();if(!scanKelas)return toast(PK,false);await s
  if(view!=='scan'||usbPh!=='cek')return;
  usbPh='uji';usbOn=true;usbQ=[];usbUjiOto=false;usbOtoNext=false;renderV();usbFokus()}
 function usbBatal(){usbStop()}
-function usbMulai(){liburPrompted={};unlockAC();usbPh='scan';usbOn=true;usbQ=[];lastKode='';lastAt=0;clearTimeout(usbResT);usbRes=null;renderV();usbFokus();scPrefetch()}
+function usbMulai(){liburPrompted={};unlockAC();suaraPanas();usbPh='scan';usbOn=true;usbQ=[];lastKode='';lastAt=0;clearTimeout(usbResT);usbRes=null;renderV();usbFokus();scPrefetch();scanSegarkan()}
 async function usbTanyaSelesai(){if(usbPh!=='scan')return;const n=$('#cfn');if(n)n.textContent='Belum';
  let ya=false;try{ya=await konfirmasi('Apakah proses scan sudah selesai?',{judul:'Selesai scan?',ikon:'✅',ya:'Ya, selesai'})}finally{if(n)n.textContent='Batal'}
  if(ya)usbStop(false,'selesai');else usbFokus()}
@@ -1976,7 +1976,7 @@ async function usbUjiScan(mentah){
    if(!ucap('Gagal'))beep(false);getarGagal();return}
   usbUjiNama=s.pan||s.nama;usbOn=false;usbPh='siap';usbQ=[];usbRes=null;renderV();if(!ucap('pengujian berhasil'))beep(true);tanda(true)
  }catch(e){usbRes={ok:false,t:'Uji gagal',m:String((e&&e.message)||e),tetap:1};usbLayRender()}}
-function usbStop(jangan,fase){if(!usbOn&&usbPh==='idle'&&!fase)return;const aktif=usbOn;usbOn=false;usbPh=fase||'idle';usbQ=[];clearTimeout(usbT);clearTimeout(usbRT);clearTimeout(usbResT);usbRes=null;if(aktif){const u=scanUbah;scanUbah=[];if(u.length)ringkasUbah(u)}if(!jangan)renderV()}
+function usbStop(jangan,fase){if(!usbOn&&usbPh==='idle'&&!fase)return;const aktif=usbOn;usbOn=false;usbPh=fase||'idle';usbQ=[];clearTimeout(usbT);clearTimeout(usbRT);clearTimeout(usbResT);usbRes=null;if(aktif){const u=scanUbah;scanUbah=[];scanAkhir(u)}if(!jangan)renderV()}
 function usbKd(e){if(e.key!=='Enter')return;e.preventDefault();clearTimeout(usbT);const v=e.target.value;e.target.value='';usbKirim(v)}
 function usbMasuk(el){clearTimeout(usbT);usbT=setTimeout(()=>{const v=el.value.trim();if(USB_RE.test(v)||Kartu.kartuLama(v)){el.value='';usbKirim(v)}},120)}
 function usbBlur(){setTimeout(()=>{const a=document.activeElement;if(usbOn&&view==='scan'&&(!a||a===document.body))usbFokus()},200)}
@@ -2018,6 +2018,9 @@ function suaraPilih(){let l=suaraDaftar();if(netMati()){const lk=l.filter(v=>v.l
 function ucap(teks){try{const ss=window.speechSynthesis;if(!ss||!window.SpeechSynthesisUtterance)return false;
  const u=new SpeechSynthesisUtterance(teks);u.lang='id-ID';u.rate=SUARA.r;u.pitch=SUARA.p;u.volume=1;const v=suaraPilih();if(v)u.voice=v;
  u.onerror=()=>{try{beep(!/gagal|tidak|bukan|nonaktif|sudah tercatat/i.test(teks))}catch(e){}};ss.cancel();ss.speak(u);return true}catch(e){return false}}
+/* C. pemanasan mesin suara (tanpa bunyi) saat sesi scan dimulai, agar ucapan pertama tidak telat */
+let _suaraPanas=0;
+function suaraPanas(){try{const ss=window.speechSynthesis;if(!ss||!window.SpeechSynthesisUtterance||Date.now()-_suaraPanas<60000)return;_suaraPanas=Date.now();const u=new SpeechSynthesisUtterance('a');u.lang='id-ID';u.volume=0;u.rate=2;const v=suaraPilih();if(v)u.voice=v;ss.speak(u)}catch(e){}}
 function suaraOpsi(){const l=suaraDaftar(),c=suaraPilih();return l.length?l.map(v=>`<option value="${esc(v.voiceURI)}"${c&&c.voiceURI===v.voiceURI?' selected':''}>${esc(v.name)}</option>`).join(''):'<option value="">Suara bawaan perangkat</option>'}
 const suaraPanel=()=>`<details class="suarabox"${suaraOpen?' open':''} ontoggle="suaraOpen=this.open"><summary>🔊 Pengaturan suara</summary><div class="suarabd"><label class="mu">Suara</label><select id="suaraSel" class="select" onchange="suaraUbah('v',this.value)">${suaraOpsi()}</select><label class="mu">Kecepatan: <b id="suaraRv">${SUARA.r.toFixed(2)}</b>×</label><input id="suaraR" type="range" min="0.6" max="1.5" step="0.05" value="${SUARA.r}" oninput="suaraUbah('r',this.value)"><label class="mu">Nada: <b id="suaraPv">${SUARA.p.toFixed(2)}</b></label><input id="suaraP" type="range" min="0.6" max="1.8" step="0.05" value="${SUARA.p}" oninput="suaraUbah('p',this.value)"><div class="tb" style="justify-content:center"><button type="button" class="btn soft sm" onclick="suaraCoba()">▶ Coba suara</button><button type="button" class="btn soft sm" onclick="suaraReset()">Atur ulang</button></div></div></details>`;
 function suaraUbah(k,v){if(k==='v')SUARA.v=String(v);else SUARA[k]=+v;const r=$('#suaraRv'),p=$('#suaraPv');if(r)r.textContent=SUARA.r.toFixed(2);if(p)p.textContent=SUARA.p.toFixed(2);suaraSimpan()}
@@ -2035,7 +2038,7 @@ async function mulaiScan(){await muatLib('scan');
  if(!scanKelas){resetRw();return toast(PK,false)}
  liburPrompted={};if(!await cekLiburSebelumAbsensi(scanKelas,TODAY)){resetRw();toast('Scan tidak dimulai: kelas libur hari ini.',false);return}
  scanner=new Html5Qrcode('reader');
- try{await scanner.start({facingMode:cam==='belakang'?'environment':'user'},{fps:10,qrbox:{width:220,height:220}},onScan,()=>{});$('#bs').textContent='Selesai scan';$('#rw').classList.add('on');$('#rw').style.minHeight='';ovHapus();scPrefetch()}catch(e){scanner=null;resetRw();toast('Kamera tidak bisa dibuka. Izinkan akses kamera untuk situs ini.',false)}}
+ try{await scanner.start({facingMode:cam==='belakang'?'environment':'user'},{fps:15,qrbox:{width:220,height:220}},onScan,()=>{});$('#bs').textContent='Selesai scan';$('#rw').classList.add('on');$('#rw').style.minHeight='';ovHapus();scPrefetch();scanSegarkan()}catch(e){scanner=null;resetRw();toast('Kamera tidak bisa dibuka. Izinkan akses kamera untuk situs ini.',false)}}
 /* ---------- mode scan layar penuh ---------- */
 let scLast=null,scT=null,scOpen=false,scCardHtml=null;
 const scWaktu=()=>{const d=new Date();return[d.toLocaleTimeString('id-ID',{timeZone:'Asia/Jakarta',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/\./g,':'),d.toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta',weekday:'long',day:'numeric',month:'long',year:'numeric'})]};
@@ -2103,10 +2106,32 @@ const jaringanErr=e=>{const m=String((e&&(e.message||e.details))||e||'');return 
 const aqBaca=()=>{try{const a=JSON.parse(localStorage.getItem(AQ_K)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}};
 const aqTulis=a=>{try{a.length?localStorage.setItem(AQ_K,JSON.stringify(a)):localStorage.removeItem(AQ_K)}catch(e){}};
 const aqJumlah=()=>aqBaca().filter(x=>x.sek===SEK).length;
-const aqHtml=()=>{const n=aqJumlah();return `<div id="aqInfo" class="mu" style="display:${n?'block':'none'};text-align:center;margin-top:6px;color:#92400e;font-weight:700">${n?'⏳ '+n+' scan tersimpan di HP, menunggu internet untuk dikirim.':''}</div>`};
-function aqInfo(){const e=$('#aqInfo');if(!e)return;const n=aqJumlah();e.style.display=n?'block':'none';e.textContent=n?'⏳ '+n+' scan tersimpan di HP, menunggu internet untuk dikirim.':''}
-function aqTambah(row,sw){const a=aqBaca();if(a.some(x=>x.sek===SEK&&x.row.siswa_id===row.siswa_id&&x.row.tanggal===row.tanggal)){aqInfo();return}a.push({sek:SEK,row,pan:sw.pan||sw.nama,n:0});aqTulis(a);aqInfo()}
+const aqTeks=()=>{const a=aqBaca().filter(z=>z&&z.row&&z.sek===SEK),off=netMati(),now=Date.now(),n=a.filter(z=>off||now-Date.parse(z.row.jam_datang)>4000).length;return n?'\u23F3 '+n+' scan belum terkirim ke server'+(off?', menunggu internet.':', sedang dikirim ulang.'):''};
+const aqHtml=()=>{const t=aqTeks();return `<div id="aqInfo" class="mu" style="display:${t?'block':'none'};text-align:center;margin-top:6px;color:#92400e;font-weight:700">${t}</div>`};
+function aqInfo(){const e=$('#aqInfo');if(!e)return;const t=aqTeks();e.style.display=t?'block':'none';e.textContent=t}
+setInterval(aqInfo,2000);
+function aqTambah(row,sw,ex){const a=aqBaca();if(a.some(x=>x.sek===SEK&&x.row.siswa_id===row.siswa_id&&x.row.tanggal===row.tanggal)){aqInfo();return}a.push(Object.assign({sek:SEK,row,pan:sw.pan||sw.nama,nama:sw.nama||'',n:0},ex||{}));aqTulis(a);aqInfo()}
 const AQ_N=50;
+let _aUlang=false,_mut=0,_akhirTunggu=false,scanKoreksi=[];
+const aqKirimSegera=()=>{if(_aBusy){_aUlang=true;return}aqKirim()};
+/* hasil dari server untuk satu scan yang tadi sudah diucapkan "hadir/terlambat" di HP */
+function aqHasil(b,r){try{
+ if(!r)return;
+ const tgl=b.row.tanggal,sid=b.row.siswa_id,st=b.st||cap(b.row.status),jm=b.jm||jamJkt(b.row.jam_datang),pan=b.pan||'',nama=b.nama||'',lo=(S.absen[tgl]||{})[sid];
+ if(r.hasil==='dicatat'){
+  if(r.status_lama&&cap(r.status_lama)!==(b.lama||''))scanKoreksi.push({j:'ubah',pan,nama,dari:cap(r.status_lama),ke:st,jam:jm})}
+ else if(r.hasil==='sudah_tercatat'){
+  if(r.jam_datang&&Date.parse(r.jam_datang)===Date.parse(b.row.jam_datang))return;/* ini catatan kita sendiri (kirim ulang) */
+  const sj=r.jam_datang?jamJkt(r.jam_datang):'-';
+  scanKoreksi.push({j:'sudah',pan,nama,lokal:st+' '+jm,server:cap(r.status)+' '+sj});
+  if(lo)S.absen[tgl][sid]=Object.assign({},lo,{st:cap(r.status),jam:r.jam_datang?sj:lo.jam,iso:r.jam_datang||lo.iso})}
+ else{
+  scanKoreksi.push({j:'gagal',pan,nama,alasan:r.hasil==='nonaktif'?'Anak berstatus nonaktif, absensi tidak tersimpan.':'Anak tidak ditemukan di sekolah ini, absensi tidak tersimpan.'});
+  if(lo&&lo.iso===b.row.jam_datang)delete S.absen[tgl][sid]}
+}catch(e){}}
+function aqGagal(b){try{const tgl=b.row.tanggal,sid=b.row.siswa_id,lo=(S.absen[tgl]||{})[sid];
+ scanKoreksi.push({j:'gagal',pan:b.pan||'',nama:b.nama||'',alasan:'Gagal dikirim ke server berulang kali, absensi tidak tersimpan. Catat ulang secara manual.'});
+ if(lo&&lo.iso===b.row.jam_datang)delete S.absen[tgl][sid]}catch(e){}}
 async function aqKirim(){
  if(_aBusy||!me||!SEK||netMati())return;const q=aqBaca().filter(b=>b&&b.row);if(!q.length){aqTulis([]);return}
  _aBusy=true;const kunci=b=>b.sek+'|'+b.row.siswa_id+'|'+b.row.tanggal,selesai=new Set();let ok=0,buang=0;
@@ -2118,9 +2143,10 @@ async function aqKirim(){
      /* 1 permintaan: server mengecek sekaligus menyimpan (yang sudah hadir/terlambat tidak ditimpa).
         Bila ditolak karena data bermasalah, ulangi satu per satu untuk mencari yang bermasalah */
      const kirim=arr=>dbqT(db.rpc('scan_absen',{p_baris:arr.map(b=>({siswa_id:b.row.siswa_id,tanggal:b.row.tanggal,status:b.row.status,jam_datang:b.row.jam_datang}))}),10000),masalah=new Set();
-     try{await kirim(part)}
+     const olah=(arr,res)=>{const m={};(Array.isArray(res)?res:[]).forEach(r=>{if(r)m[String(r.siswa_id)]=r});arr.forEach(b=>aqHasil(b,m[String(b.row.siswa_id)]))};
+     try{olah(part,await kirim(part))}
      catch(e){if(jaringanErr(e))throw e;
-      for(const b of part){try{await kirim([b])}catch(e2){if(jaringanErr(e2))throw e2;masalah.add(kunci(b));b.n=(b.n||0)+1}}}
+      for(const b of part){try{olah([b],await kirim([b]))}catch(e2){if(jaringanErr(e2))throw e2;masalah.add(kunci(b));b.n=(b.n||0)+1}}}
      part.forEach(b=>{if(!masalah.has(kunci(b))){selesai.add(kunci(b));ok++}})
     }catch(e){
      if(jaringanErr(e)){_netDown=true;break luar}
@@ -2128,18 +2154,47 @@ async function aqKirim(){
    }
   }
  }finally{
-  const sisa=q.filter(b=>{if(selesai.has(kunci(b)))return false;if((b.n||0)>=10){buang++;return false}return true});
+  const sisa=q.filter(b=>{if(selesai.has(kunci(b)))return false;if((b.n||0)>=10){buang++;aqGagal(b);return false}return true});
   const lain=aqBaca().filter(x=>x&&x.row&&!q.some(y=>y.sek===x.sek&&y.row.siswa_id===x.row.siswa_id&&y.row.tanggal===x.row.tanggal));
-  aqTulis(sisa.concat(lain));_aBusy=false;aqInfo()}
- if(ok)toast(ok+' scan yang tersimpan di HP berhasil dikirim');
- if(buang)toast(buang+' scan tersimpan gagal dikirim berulang kali dan dibuang. Periksa absensi hari ini.',false)}
+  aqTulis(sisa.concat(lain));_aBusy=false;_mut++;aqInfo();if(_aUlang){_aUlang=false;setTimeout(aqKirim,50)}}
+ if(ok&&!scanner&&!usbOn&&!_akhirTunggu)toast(ok+' scan yang tersimpan di HP berhasil dikirim');
+ if(buang)toast(buang+' scan gagal dikirim berulang kali dan tidak tersimpan. Lihat rinciannya di ringkasan scan.',false);
+ if(scanKoreksi.length&&!scanner&&!usbOn&&!_akhirTunggu){const k=scanKoreksi;scanKoreksi=[];ringkasAkhir([],k,0)}}
 window.addEventListener('online',()=>{netTandai(false);aqKirim()});window.addEventListener('offline',()=>{_netDown=true});
 setInterval(aqKirim,15000);
+/* ringkasan di akhir sesi scan: perubahan status + koreksi dari server, dalam satu jendela */
+function ringkasAkhir(u,k,sisa){
+ const ub=u.concat(k.filter(z=>z.j==='ubah')),sd=k.filter(z=>z.j==='sudah'),gl=k.filter(z=>z.j==='gagal');
+ if(!ub.length&&!sd.length&&!gl.length&&!sisa)return;let h='';
+ if(ub.length)h+='<div class="note">'+ub.length+' anak sebelumnya sudah punya status, dan statusnya kini diganti otomatis berdasarkan hasil scan.</div>'+tab(['Anak','Status semula','Sekarang','Jam'],ub.map(z=>`<tr><td><b>${esc(z.pan)}</b><div class="mu">${esc(z.nama)}</div></td><td>${badge(z.dari)}</td><td>${badge(z.ke)}</td><td>${esc(z.jam)}</td></tr>`).join(''));
+ if(sd.length)h+='<div class="note" style="margin-top:12px">'+sd.length+' anak ternyata sudah tercatat dari perangkat lain (atau diubah guru) sebelum scan ini. Data di server dipertahankan, jadi absensi anak tetap benar.</div>'+tab(['Anak','Terdengar saat scan','Tercatat di server'],sd.map(z=>`<tr><td><b>${esc(z.pan)}</b><div class="mu">${esc(z.nama)}</div></td><td>${esc(z.lokal)}</td><td>${esc(z.server)}</td></tr>`).join(''));
+ if(gl.length)h+='<div class="note" style="margin-top:12px;border-color:#d83d4d">'+gl.length+' scan tidak tersimpan di server.</div>'+tab(['Anak','Keterangan'],gl.map(z=>`<tr><td><b>${esc(z.pan)}</b><div class="mu">${esc(z.nama)}</div></td><td>${esc(z.alasan)}</td></tr>`).join(''));
+ if(sisa)h+='<div class="note" style="margin-top:12px">'+sisa+' scan masih tersimpan di HP dan akan dikirim otomatis saat koneksi memungkinkan.</div>';
+ info('Ringkasan sesi scan',h)}
+/* dipanggil saat sesi scan berakhir: pastikan semua terkirim (maks 4 detik), lalu tampilkan ringkasan */
+async function scanAkhir(u){_akhirTunggu=true;try{
+ const t0=Date.now();
+ while(aqJumlah()>0&&!netMati()&&Date.now()-t0<4000){aqKirimSegera();await new Promise(r=>setTimeout(r,300))}
+ const k=scanKoreksi;scanKoreksi=[];ringkasAkhir(u,k,aqJumlah())}
+ catch(e){}finally{_akhirTunggu=false}}
+/* penyegaran cache absensi hari ini, HANYA selama berada di scanner (awal sesi, tiap 2 menit, saat layar aktif lagi) */
+let _segB=false;
+async function scanSegarkan(){
+ if(_segB||!me||!SEK||!(scanner||usbOn)||document.hidden||netMati()||_aBusy||busy)return;
+ _segB=true;const m0=_mut,tg=TODAY;
+ try{let rows=[],from=0;for(;;){const d=await dbq(db.from('absensi').select('siswa_id,status,cara,catatan,jam_datang').eq('tanggal',tg).order('id').range(from,from+999));rows=rows.concat(d);if(d.length<1000)break;from+=1000}
+  if(m0!==_mut||_aBusy||busy||tg!==TODAY||!(scanner||usbOn))return;/* ada scan/pengiriman selama mengambil data: hasil ini basi, buang */
+  const baru={};rows.forEach(r=>{baru[r.siswa_id]=fromRow(r)});
+  aqBaca().filter(b=>b&&b.row&&b.sek===SEK&&b.row.tanggal===tg).forEach(b=>{const e=baru[b.row.siswa_id];if(!e||(e.st!=='Hadir'&&e.st!=='Terlambat'))baru[b.row.siswa_id]={st:cap(b.row.status),cara:'scan',cat:'',jam:jamJkt(b.row.jam_datang),iso:b.row.jam_datang}});
+  S.absen[tg]=baru;scRefresh()}
+ catch(e){}finally{_segB=false}}
+setInterval(scanSegarkan,120000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)scanSegarkan()});
 function ringkasUbah(u){info('Perubahan status pada sesi scan','<div class="note">'+u.length+' anak sebelumnya sudah punya status, dan statusnya kini diganti otomatis berdasarkan hasil scan.</div>'+tab(['Anak','Status semula','Sekarang','Jam'],u.map(x=>`<tr><td><b>${esc(x.pan)}</b><div class="mu">${esc(x.nama)}</div></td><td>${badge(x.dari)}</td><td>${badge(x.ke)}</td><td>${esc(x.jam)}</td></tr>`).join('')))}
 async function stopScan(m){if(!scanner)return;const s=scanner;scanner=null;const w0=$('#rw');if(m==='restart'&&w0)w0.style.minHeight=w0.offsetHeight+'px';try{await s.stop();s.clear()}catch(e){}if(m==='restart')return;resetRw();
- const u=scanUbah;scanUbah=[];if(u.length&&m!=='keluar')ringkasUbah(u)}
+ const u=scanUbah;scanUbah=[];if(m!=='keluar')scanAkhir(u)}
 let tanyaKam=false;
-async function toggleScan(){unlockAC();if(!scanner)return mulaiScan();if(tanyaKam)return;tanyaKam=true;const n=$('#cfn');if(n)n.textContent='Belum';
+async function toggleScan(){unlockAC();if(!scanner)suaraPanas();if(!scanner)return mulaiScan();if(tanyaKam)return;tanyaKam=true;const n=$('#cfn');if(n)n.textContent='Belum';
  let ya=false;try{ya=await konfirmasi('Apakah proses scan sudah selesai?',{judul:'Selesai scan?',ikon:'✅',ya:'Ya, selesai'})}finally{if(n)n.textContent='Batal';tanyaKam=false}
  if(ya&&scanner)await stopScan()}
 function balikKamera(){cam=cam==='belakang'?'depan':'belakang';const l=$('#camlbl');if(l)l.textContent=cam;if(scanner){ovMuat();mulaiScan()}}
@@ -2151,20 +2206,14 @@ async function onScan(mentah){const cr=cariKode(mentah),kode=cr.s?String(cr.s.ko
   if(!await okLib(s.kelas,TODAY))return hasil('Kelas '+(s.kelas||'-')+' libur hari ini, absensi tidak dicatat.',false);
   const iso=new Date().toISOString(),jm=jamJkt(iso),lim=(S.kelas.find(k=>k.nama===s.kelas)||{jam:'23:59'}).jam,st=jm>lim?'Terlambat':'Hadir';
   const baris={siswa_id:s.id,tanggal:TODAY,status:low(st),cara:'scan',catatan:null,jam_datang:iso,diubah:iso,diubah_oleh:me};
-  const cap=t=>t?t[0].toUpperCase()+t.slice(1):'';
-  const lokal=()=>{const lo=A(TODAY)[s.id];return lo?{st:lo.st,jam:lo.jam}:null};
-  let ada=null,antri=netMati(),res=null;
-  /* ONLINE: 1 panggilan ke server, yang mengecek sekaligus menyimpan (scan_absen) */
-  if(!antri){try{const r=await dbqT(db.rpc('scan_absen',{p_baris:[{siswa_id:s.id,tanggal:TODAY,status:baris.status,jam_datang:iso}]}));res=Array.isArray(r)?r[0]:null;if(!res)throw new Error('Respons server tidak valid')}catch(e){if(!jaringanErr(e))throw e;antri=true;_netDown=true}}
-  if(antri){/* OFFLINE: cek dari data lokal, simpan ke antrian HP */
-   ada=lokal();if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat'))return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false,'sudah tercatat');
-   aqTambah(baris,s)}
-  else{
-   if(res.hasil==='tidak_ditemukan')return hasil(s.pan+' tidak ditemukan di sekolah ini.',false);
-   if(res.hasil==='nonaktif')return hasil(s.pan+' berstatus nonaktif.',false);
-   if(res.hasil==='sudah_tercatat')return hasil(`${s.pan} sudah tercatat ${String(res.status||'').toLowerCase()} jam ${res.jam_datang?jamJkt(res.jam_datang):'-'}.`,false,'sudah tercatat');
-   if(res.status_lama)ada={st:cap(res.status_lama),jam:''}}
-  (S.absen[TODAY]=S.absen[TODAY]||{})[s.id]={st,cara:'scan',cat:'',jam:jm,iso};if(ada)scanUbah.push({pan:s.pan,nama:s.nama,dari:ada.st,ke:st,jam:jm});scLast={s,st,jm};hasil(`${s.pan} ${st.toLowerCase()}, jam ${jm}.`+(ada?` (sebelumnya ${ada.st.toLowerCase()})`:'')+(antri?' Disimpan di HP, dikirim saat internet kembali.':''),true);const h=$('#hist');if(h)h.innerHTML=histHTML();scRefresh()}
+  /* cek ke cache absensi hari ini di HP (tanpa menunggu server) */
+  const lo=A(TODAY)[s.id],ada=lo?{st:lo.st,jam:lo.jam}:null;
+  if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat'))return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false,'sudah tercatat');
+  const antri=netMati();_mut++;
+  /* simpan di HP dulu (permanen), lalu dikirim ke server di belakang layar; suara tidak menunggu server */
+  aqTambah(baris,s,{st,jm,lama:ada?ada.st:''});
+  (S.absen[TODAY]=S.absen[TODAY]||{})[s.id]={st,cara:'scan',cat:'',jam:jm,iso};if(ada)scanUbah.push({pan:s.pan,nama:s.nama,dari:ada.st,ke:st,jam:jm});scLast={s,st,jm};hasil(`${s.pan} ${st.toLowerCase()}, jam ${jm}.`+(ada?` (sebelumnya ${ada.st.toLowerCase()})`:'')+(antri?' Disimpan di HP, dikirim saat internet kembali.':''),true);const h=$('#hist');if(h)h.innerHTML=histHTML();scRefresh();
+  aqKirimSegera()}
  catch(e){hasil('Gagal: '+(e.message||e),false)}finally{busy=false}}
 /* ---------- kartu ---------- */
 function qrObj(kode){const o=qrcode(0,'M');o.addData(kode);o.make();return o}
