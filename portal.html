@@ -229,7 +229,7 @@ html.rg .pill{background:rgba(8,40,22,.88)}
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet"></noscript>
 <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script defer src="/kartu.js"></script>
+<script defer src="/kartu.js?v=20261106a"></script>
 <script defer src="/rapor.js?v=20261104f"></script>
 </head><body>
 <div class="scene" id="scene"></div>
@@ -292,7 +292,7 @@ async function ambil(v){
  $('#nm').textContent=d.siswa.nama||'';if(d.v==='dashboard')sapa(d);document.title=(d.sekolah.nama?d.sekolah.nama+' - ':'')+'Halaman Siswa';return d}
 async function go(v){
  mTutup();ddTutup();
- if(!m)return pesan('🔎',['Kartu tidak ditemukan','Pindai ulang QR pada kartu anak Anda.']);
+ if(!m)return pesan('🔎',['Kartu tidak ditemukan','Minta link terbaru ke pihak sekolah.']);
  const t=++tok;cur=v;const mi=MENU.find(x=>x[0]===v);$('#mic').textContent=mi[1];$('#mt').textContent=mi[2];bangunMenu();
  if(!segar(v))loading();scrollTo({top:0,behavior:'smooth'});
  try{const d=await ambil(v);if(t!==tok)return;bangunMenu();$('#isi').innerHTML='<div class="pg">'+R[v](d)+'</div>';if(A[v])A[v](d)}
@@ -393,7 +393,7 @@ async function lapKirim(){if(!LAP.st||LAP.busy)return;
   LAP.busy=0;b.disabled=false;return}}
 
 /* B1. Data Siswa */
-function kartu(sisi){const s=S.kd.siswa,k=S.kd.sekolah;return (sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tempat:s.tempat,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.urlQR(s.kode_qr),logo:k.logo||null,foto:S.fotoImg||null})}
+function kartu(sisi){const s=S.kd.siswa,k=S.kd.sekolah;return (sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tempat:s.tempat,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.isiQR(s.kode_scan),logo:k.logo||null,foto:S.fotoImg||null})}
 R.siswa=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
  return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
  '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><img class="kimg" id="kimg" alt="Kartu anak, sisi depan"><img class="kimg" id="kimg2" alt="Kartu anak, sisi belakang" style="margin-top:10px"><button class="btn fx" id="kunduh" onclick="unduh()">⬇ Unduh kartu (depan &amp; belakang)</button>'+(d.sekolah&&d.sekolah.izin_foto===false?'<div class="mu" style="margin-top:10px;text-align:center">Foto anak diatur oleh sekolah.</div>':'<button type="button" class="btn fx" id="kfoto" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button>')+'<button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'+
@@ -404,7 +404,7 @@ function kartuRender(){const d=S.kd;if(!d)return Promise.resolve();const s=d.sis
  return Promise.all([Kartu.siapkanLogo(k.logo||null).catch(()=>null),Kartu.siapkanLogo(s.foto||null).catch(()=>null)]).then(r=>{S.fotoImg=r[1];
   try{$('#kimg').src=kartu('depan');$('#kimg2').src=kartu('belakang')}catch(e){['#kimg','#kimg2','#kunduh'].forEach(q=>{const z=$(q);if(z)z.remove()})}})}
 A.siswa=d=>{S.kd=d;kartuRender();kedipKosong()};
-async function salinLinkAnak(){const t=Kartu.urlQR(S.siswa.kode_qr);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}ok?toast('Link halaman disalin'):toast('Tidak bisa menyalin, coba lagi','err')}
+async function salinLinkAnak(){const t=Kartu.urlPortal(S.siswa.kode_qr);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}ok?toast('Link halaman disalin'):toast('Tidak bisa menyalin, coba lagi','err')}
 function unduh(){const dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-'),dl=(u,n)=>{const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove()};
  dl($('#kimg').src,dasar+'-depan.png');setTimeout(()=>{dl($('#kimg2').src,dasar+'-belakang.png')},500)}
 
