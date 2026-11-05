@@ -3101,6 +3101,10 @@ async function pkMuatHemat(){
   if(perlu.length)((await dbq(db.from('rapor_salinan').select('hash,isi').in('hash',perlu)))||[]).forEach(x=>PKR.sal.set(x.hash,x.isi));
   return}
  const v0=refVer;await pkMuat();if(!PKR.galat&&v0===refVer)PK_V=v0}
+/* muat ulang HANYA mapel kelas ini, dipakai setelah tambah/ubah/hapus mapel, KKM, atau aspek. Nilai, kehadiran, keputusan, dan master tidak terpengaruh, jadi tidak dibaca ulang. Bila tampilan belum termuat penuh, memakai pnMuat biasa. */
+async function pnMuatMapel(){const kl=pnKl(pnK);if(!kl||pnKey!==pnKunci())return pnMuat();
+ const k0=pnK,v0=refVer,d=await dbq(db.from('rapor_mapel').select('*').eq('kelas_id',kl.id).order('urutan').order('id'));
+ if(pnK!==k0)return;pnMapel=d||[];if(v0===refVer)PN_MEM.set(kl.id,{v:v0,d:pnMapel})}
 async function pnMuat(){const kl=pnKl(pnK);pnKey='';pnMapel=[];pnRap=[];pnKeh={};pnKepKep=new Map();pnKepOk=true;if(!kl)return;
  const ids=act().filter(s=>s.kelas_id===kl.id).map(s=>s.id),ta=S.set.tahun_ajaran||'',r=pnRange(),v0=refVer;
  const kepQ=ids.length&&pnUas2()?dbq(db.from('keputusan_akhir_tahun').select('id,siswa_id,jenis,kelas_tujuan_nama,status').eq('sekolah_id',SEK).in('siswa_id',ids).eq('tahun_ajaran',ta)).catch(()=>{pnKepOk=false;return[]}):[];
@@ -3139,7 +3143,7 @@ function pnPmCek(id,on){if(on)PNPM.sel.add(id);else PNPM.sel.delete(id);const bt
 async function pnHapusBanyak(){const kl=pnKl(pnK);if(!pnBoleh(kl))return;const ids=[...PNPM.sel].filter(id=>pnMapel.some(m=>m.id===id));if(!ids.length)return toast('Centang mata pelajaran yang ingin dihapus',false);
  const nm=pnMapel.filter(m=>ids.includes(m.id)).map(m=>m.nama);
  if(!await konfirmasi('Hapus '+ids.length+' mata pelajaran dari kelas '+kl.nama+'?\n\n'+nm.slice(0,10).map(x=>'- '+x).join('\n')+(nm.length>10?'\n... dan '+(nm.length-10)+' lainnya':'')+'\n\nRaport yang sudah tersimpan tidak berubah, tetapi nilai draf mapel ini tidak akan ikut tersimpan lagi.',{bahaya:1,judul:'Hapus mata pelajaran terpilih',ya:'Hapus '+ids.length}))return;
- guard(async()=>{for(let i=0;i<ids.length;i+=200)await pnTry(()=>dbq(db.from('rapor_mapel').delete().in('id',ids.slice(i,i+200))));PNPM.on=false;PNPM.sel=new Set();await pnMuat();renderV();toast(ids.length+' mata pelajaran dihapus')})}
+ guard(async()=>{for(let i=0;i<ids.length;i+=200)await pnTry(()=>dbq(db.from('rapor_mapel').delete().in('id',ids.slice(i,i+200))));PNPM.on=false;PNPM.sel=new Set();await pnMuatMapel();renderV();toast(ids.length+' mata pelajaran dihapus')})}
 function pnMapelHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK);if(!kl)return pil+PKH;
  if(pnKey!==pnKunci())return pil+'<div class="note">⏳ Memuat...</div>';
  const b=pnBoleh(kl);let h=pil;if(!b||!pnMapel.length){PNPM.on=false;PNPM.sel=new Set()}
@@ -3156,26 +3160,26 @@ const pnAspekIds=a=>pnMapel.filter(m=>pnAN(m).toLowerCase()===String(a).toLowerC
 function pnAspekUbah(i){const kl=pnKl(pnK),a=pnAspekList()[i];if(!pnBoleh(kl)||!a)return;closeM();
  form('Ubah nama aspek',[{k:'nama',l:'Nama aspek',v:a}],async v=>{let nm=String(v.nama||'').replace(/\s+/g,' ').trim();if(!nm)throw new Error('Nama aspek wajib diisi. Untuk menghapus aspek, gunakan tombol hapus.');if(nm.length>60)throw new Error('Nama aspek maksimal 60 huruf');
   const lain=pnAspekList().find(x=>x.toLowerCase()===nm.toLowerCase()&&x.toLowerCase()!==a.toLowerCase());if(lain)nm=lain;
-  await pnTry(()=>dbq(db.from('rapor_mapel').update({aspek:nm}).in('id',pnAspekIds(a))));await pnMuat();renderV();toast('Aspek diperbarui. Simpan ulang draf nilai agar raport memakai aspek baru')})}
+  await pnTry(()=>dbq(db.from('rapor_mapel').update({aspek:nm}).in('id',pnAspekIds(a))));await pnMuatMapel();renderV();toast('Aspek diperbarui. Simpan ulang draf nilai agar raport memakai aspek baru')})}
 async function pnAspekHapus(i){const kl=pnKl(pnK),a=pnAspekList()[i];if(!pnBoleh(kl)||!a)return;closeM();
  if(!await konfirmasi('Hapus aspek '+a+'? Mata pelajarannya tidak dihapus, hanya pindah ke Lainnya.',{bahaya:1,judul:'Hapus aspek',ya:'Hapus'}))return;
- guard(async()=>{await pnTry(()=>dbq(db.from('rapor_mapel').update({aspek:null}).in('id',pnAspekIds(a))));await pnMuat();renderV();toast('Aspek dihapus')})}
+ guard(async()=>{await pnTry(()=>dbq(db.from('rapor_mapel').update({aspek:null}).in('id',pnAspekIds(a))));await pnMuatMapel();renderV();toast('Aspek dihapus')})}
 async function pnTambah(){const kl=pnKl(pnK);if(!pnBoleh(kl))return;const AS=await pnAspekPilihan();
  form('Tambah mata pelajaran',[{k:'nama',l:'Nama mata pelajaran'}].concat(pnAspekFd(AS,''),[{k:'kkm',l:'KKM (0 sampai 100)',v:'70',t:'number'}]),async v=>{
   const nm=v.nama.trim();if(!nm)throw new Error('Nama mata pelajaran wajib diisi');const kk=pnAng(v.kkm,'KKM'),u=Math.max(0,...pnMapel.map(m=>m.urutan||0))+1;
-  await pnTry(()=>dbq(db.from('rapor_mapel').insert({kelas_id:kl.id,nama:nm,kkm:kk,urutan:u,aspek:pnAspekAmbil(v)})));await pnMuat();renderV();toast('Mata pelajaran ditambahkan')})}
+  await pnTry(()=>dbq(db.from('rapor_mapel').insert({kelas_id:kl.id,nama:nm,kkm:kk,urutan:u,aspek:pnAspekAmbil(v)})));await pnMuatMapel();renderV();toast('Mata pelajaran ditambahkan')})}
 async function pnUbah(id){const kl=pnKl(pnK),m=pnMapel.find(x=>x.id===id);if(!pnBoleh(kl)||!m)return;const AS=await pnAspekPilihan();
  form('Ubah mata pelajaran',[{k:'nama',l:'Nama mata pelajaran',v:m.nama}].concat(pnAspekFd(AS,pnAN(m)),[{k:'kkm',l:'KKM (0 sampai 100)',v:String(m.kkm),t:'number'},{k:'urutan',l:'Urutan tampil (angka kecil tampil lebih dulu)',v:String(m.urutan||0),t:'number'}]),async v=>{
   const nm=v.nama.trim();if(!nm)throw new Error('Nama mata pelajaran wajib diisi');const kk=pnAng(v.kkm,'KKM'),u=pnAng(v.urutan,'Urutan');
-  await pnTry(()=>dbq(db.from('rapor_mapel').update({nama:nm,kkm:kk,urutan:u,aspek:pnAspekAmbil(v)}).eq('id',id)));await pnMuat();renderV();toast('Mata pelajaran diperbarui')})}
+  await pnTry(()=>dbq(db.from('rapor_mapel').update({nama:nm,kkm:kk,urutan:u,aspek:pnAspekAmbil(v)}).eq('id',id)));await pnMuatMapel();renderV();toast('Mata pelajaran diperbarui')})}
 async function pnHapus(id){const kl=pnKl(pnK),m=pnMapel.find(x=>x.id===id);if(!pnBoleh(kl)||!m)return;
  if(!await konfirmasi('Hapus mata pelajaran '+m.nama+' dari kelas '+kl.nama+'? Raport yang sudah tersimpan tidak berubah, tetapi nilai draf mapel ini tidak akan ikut tersimpan lagi.',{bahaya:1,judul:'Hapus mata pelajaran',ya:'Hapus'}))return;
- guard(async()=>{await pnTry(()=>dbq(db.from('rapor_mapel').delete().eq('id',id)));await pnMuat();renderV();toast('Mata pelajaran dihapus')})}
+ guard(async()=>{await pnTry(()=>dbq(db.from('rapor_mapel').delete().eq('id',id)));await pnMuatMapel();renderV();toast('Mata pelajaran dihapus')})}
 function pnBawaan(btn){const kl=pnKl(pnK);if(!pnBoleh(kl))return;
- guard(async()=>{const n=await pnTry(()=>dbq(db.rpc('rapor_mapel_bawaan',{p_kelas:kl.id})));await pnMuat();renderV();toast(n?n+' mata pelajaran bawaan ditambahkan':'Kelas ini sudah punya mata pelajaran')})}
+ guard(async()=>{const n=await pnTry(()=>dbq(db.rpc('rapor_mapel_bawaan',{p_kelas:kl.id})));await pnMuatMapel();renderV();toast(n?n+' mata pelajaran bawaan ditambahkan':'Kelas ini sudah punya mata pelajaran')})}
 function pnKkmSemua(){const kl=pnKl(pnK);if(!pnBoleh(kl)||!pnMapel.length)return;
  form('Atur KKM semua mata pelajaran',[{k:'kkm',l:'KKM untuk semua mapel di kelas '+kl.nama+' (0 sampai 100)',v:String(pnMapel[0].kkm),t:'number'}],async v=>{
-  const kk=pnAng(v.kkm,'KKM');await pnTry(()=>dbq(db.from('rapor_mapel').update({kkm:kk}).eq('kelas_id',kl.id)));await pnMuat();renderV();toast('KKM semua mapel diubah menjadi '+kk)})}
+  const kk=pnAng(v.kkm,'KKM');await pnTry(()=>dbq(db.from('rapor_mapel').update({kkm:kk}).eq('kelas_id',kl.id)));await pnMuatMapel();renderV();toast('KKM semua mapel diubah menjadi '+kk)})}
 async function pnSalin(){const kl=pnKl(pnK);if(!pnBoleh(kl))return;let ada;try{const r=await dbq(db.from('rapor_mapel').select('kelas_id').in('kelas_id',S.kelas.map(k=>k.id)));ada=new Set((r||[]).map(x=>x.kelas_id))}catch(e){return toast('Gagal memeriksa kelas: '+(e.message||e),false)}
  const lain=S.kelas.filter(k=>k.id!==kl.id&&ada.has(k.id)).map(k=>k.nama);if(!lain.length)return toast('Belum ada kelas lain yang punya mata pelajaran untuk disalin',false);
  form('Salin mapel dari kelas lain',[{k:'dari',l:'Salin dari kelas',o:['Pilih kelas'].concat(lain)}],async v=>{
@@ -3184,7 +3188,7 @@ async function pnSalin(){const kl=pnKl(pnK);if(!pnBoleh(kl))return;let ada;try{c
   const ada=new Set(pnMapel.map(m=>m.nama.trim().toLowerCase()));let u=Math.max(0,...pnMapel.map(m=>m.urutan||0));
   const baru=(src||[]).filter(m=>!ada.has(String(m.nama).trim().toLowerCase())).map(m=>({kelas_id:kl.id,nama:m.nama,kkm:m.kkm,urutan:++u,aspek:m.aspek||null}));
   if(!baru.length)throw new Error('Tidak ada mata pelajaran baru untuk disalin');
-  await pnTry(()=>dbq(db.from('rapor_mapel').insert(baru)));await pnMuat();renderV();toast(baru.length+' mata pelajaran disalin dari kelas '+sr.nama)})}
+  await pnTry(()=>dbq(db.from('rapor_mapel').insert(baru)));await pnMuatMapel();renderV();toast(baru.length+' mata pelajaran disalin dari kelas '+sr.nama)})}
 
 /* ---- Tab Penilaian ---- */
 function pnNilaiHTML(){const pil=pnPilK()+pnPeriode();if(!pnK)return pil+PKH;const kl=pnKl(pnK);if(!kl)return pil+PKH;
