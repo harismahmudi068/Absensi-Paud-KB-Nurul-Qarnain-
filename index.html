@@ -3724,12 +3724,13 @@ const DEVSET={
  np:async()=>{S.devNP=await dbq(db.rpc('developer_notif_piket')).catch(ERR)},
  ns:async()=>{S.devNS=await dbq(db.rpc('developer_notif_siswa')).catch(ERR)},
  nj:async()=>{S.devNSJam=await dbq(db.rpc('developer_jam_notif_siswa')).catch(()=>null)},
+ hp:async()=>{S.devHP=await dbq(db.rpc('developer_hp_daftar')).catch(ERR)},
  push:async()=>{S.devPush=await dbq(db.rpc('developer_push_daftar')).catch(()=>null)},
  alring:async()=>{S.devAlRing=await dbq(db.rpc('developer_alumni_ringkas')).catch(()=>null);S.devAlTh='';S.devAlList=[]},
  kal:async()=>{await muatKalNas().catch(()=>{})},
  profil:async()=>{await muatProfilSaya()}
 };
-const DEV_BUTUH={dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],hapus:['alring','log','sek'],log:['log'],sistem:[],kalender:['kal']};
+const DEV_BUTUH={dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],perangkat:['hp'],hapus:['alring','log','sek'],log:['log'],sistem:[],kalender:['kal']};
 const DEVT={};
 function devButuh(){const t=devTab==='ringkas'?'setuju':devTab;
  const b=view==='developer'?(DEV_BUTUH[t]||[]):view==='dashboard'?DEV_BUTUH.dashboard:view==='profil'?['profil']:[];
@@ -3738,7 +3739,7 @@ const devSegar=k=>{const e=DEVT[k];return !!e&&e.v===cmVer&&Date.now()-e.t<CM_TT
 async function devPastikan(keys,paksa){const perlu=keys.filter(k=>paksa||!devSegar(k));if(!perlu.length)return false;
  const v0=cmVer;await Promise.all(perlu.map(async k=>{await DEVSET[k]();DEVT[k]={t:Date.now(),v:v0}}));return true}
 async function muatDev(){await devPastikan(devButuh(),true)}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['hapus','🗑 Hapus Data'],['log','📜 Log'],['sistem','🩺 Sistem']];
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
 function devBuka(k){drw(0);kalReset();devTab=k;if(view==='developer'){const b=devButuh();if(b.every(devSegar)){renderAll();scrollTo(0,0);kedipHalaman()}else guard(async()=>{await devPastikan(b);renderAll();scrollTo(0,0);kedipHalaman()})}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
@@ -3784,7 +3785,7 @@ function ubahLiburNas(t){const r=(S.devKal||[]).find(x=>x.tanggal===t);if(!r)ret
 async function hapusLiburNas(t){if(!await konfirmasi('Hapus libur nasional '+fmt(t)+'?',{judul:'Hapus libur nasional',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.rpc('libur_nasional_hapus',{p_tanggal:t}));await muatKalNas();renderV();toast('Libur nasional dihapus')})}
 function segarDev(){drw(0);guard(async()=>{cmKosong();await muatDev();renderV();toast('Data diperbarui')})}
 V.developer=()=>{if(devTab==='ringkas')devTab='setuju';
- return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,hapus:devHapus,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
+ return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,hapus:devHapus,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
 function renderNavDev(){
  const nm=(S.devPend||[]).length+(S.devNomor||[]).length,bd=nm?` <span class="badge Belum">${nm}</span>`:'';
  const itm=(on,fn,ic,lb,ex)=>`<button class="${on?'on':''}" onclick="${fn}"><span>${ic}</span>${lb}${ex||''}</button>`,dv=k=>view==='developer'&&devTab===k;
@@ -3968,6 +3969,34 @@ async function ujiNotifPiket(w){const t=w==='malam'?'piket BESOK':'piket HARI IN
  if(!await konfirmasi('Kirim notifikasi push SUNGGUHAN untuk '+t+' ke semua HP orang tua yang sudah terdaftar? Catatan pengiriman hari itu akan diganti dan pesan dikirim ulang.',{judul:'Uji kirim notifikasi piket',ya:'Kirim sekarang'}))return;
  guard(async()=>{await dbq(db.rpc('developer_uji_notif_piket',{p_waktu:w}));toast('Permintaan kirim dijalankan. Tunggu beberapa detik lalu tekan Muat ulang untuk melihat hasilnya')})}
 const NS_STATUS={selesai:['Hadir','Terkirim'],gagal:['Alpa','Gagal'],dilewati:['Belum','Dilewati'],menunggu:['Belum','Menunggu'],berjalan:['Belum','Berjalan']};
+
+/* ---- Developer: pemantauan HP push (tabel push_langganan) ---- */
+let HPF={sek:'',q:'',sel:new Set()};
+function hpAgen(a){a=String(a||'');const os=/iPhone|iPad|iOS/.test(a)?'iPhone/iPad':/Android/.test(a)?'Android':/Windows/.test(a)?'Windows':/Mac OS X|Macintosh/.test(a)?'Mac':/Linux/.test(a)?'Linux':'Tidak dikenal';
+ const br=/Edg\//.test(a)?'Edge':/OPR\/|Opera/.test(a)?'Opera':/SamsungBrowser/.test(a)?'Samsung Browser':/Firefox\//.test(a)?'Firefox':/Chrome\//.test(a)?'Chrome':/Safari\//.test(a)?'Safari':'';return os+(br?' · '+br:'')}
+function hpList(){const L=Array.isArray(S.devHP)?S.devHP:[],q=HPF.q.trim().toLowerCase();return L.filter(x=>(!HPF.sek||String(x.sekolah_id)===HPF.sek)&&(!q||String(x.siswa||'').toLowerCase().includes(q)))}
+function hpTabelHtml(){const L=hpList(),all=L.length&&L.every(x=>HPF.sel.has(x.id));
+ const head=[`<input type="checkbox" ${all?'checked':''} onchange="hpPilihSemua(this.checked)" aria-label="Pilih semua">`,'Sekolah','Anak','Perangkat','Terdaftar','Terakhir berhasil','Gagal','Pilihan push','Aksi'];
+ return tab(head,L.map(x=>`<tr><td><input type="checkbox" ${HPF.sel.has(x.id)?'checked':''} onchange="hpPilih(${Number(x.id)},this.checked)"></td><td>${esc(x.sekolah||'-')}</td><td><b>${esc(x.siswa||'-')}</b></td><td title="${esc(x.agen||'')}">${esc(hpAgen(x.agen))}<div class="mu">${esc(x.layanan||'')}</div></td><td>${waktuId(x.dibuat)}</td><td>${waktuId(x.terakhir_ok)}</td><td>${Number(x.gagal)||0}</td><td>${[['terima_piket','Piket'],['terima_absensi','Absensi'],['terima_tabungan','Tabungan']].filter(k=>x[k[0]]).map(k=>k[1]).join(', ')||'-'}</td><td><button class="btn danger sm" onclick="hpHapus([${Number(x.id)}])">🗑 Hapus</button></td></tr>`).join(''),'Tidak ada HP yang cocok.')}
+function hpSegarkan(){const e=$('#hpTabel');if(e)e.innerHTML=hpTabelHtml();const b=$('#hpBtnHapus');if(b){const n=HPF.sel.size;b.disabled=!n;b.textContent='🗑 Hapus terpilih ('+n+')'}}
+function hpPilih(id,on){on?HPF.sel.add(id):HPF.sel.delete(id);hpSegarkan()}
+function hpPilihSemua(on){hpList().forEach(x=>on?HPF.sel.add(x.id):HPF.sel.delete(x.id));hpSegarkan()}
+function hpPilihanHapus(){return [...HPF.sel]}
+async function hpMuat(){S.devHP=await dbq(db.rpc('developer_hp_daftar')).catch(ERR);DEVT.hp={t:Date.now(),v:cmVer}}
+async function hpHapus(ids){ids=(ids||[]).filter(Boolean);if(!ids.length)return;
+ const ada=(Array.isArray(S.devHP)?S.devHP:[]).filter(x=>ids.includes(x.id)),tx=ids.length===1&&ada[0]?'HP '+(ada[0].siswa||'-')+' ('+(ada[0].sekolah||'-')+')':ids.length+' HP';
+ if(!await konfirmasi('Hapus '+tx+' dari daftar push? HP itu tidak lagi menerima notifikasi sampai orang tua mengaktifkannya lagi dari portal.',{judul:'Hapus HP terdaftar',ya:'Hapus',bahaya:1,ikon:'🗑'}))return;
+ guard(async()=>{try{const n=await dbq(db.rpc('developer_hp_hapus',{p_ids:ids}));ids.forEach(i=>HPF.sel.delete(i));await hpMuat();toast(Number(n)+' HP dihapus')}finally{renderV()}})}
+function devPerangkat(){const d=S.devHP;
+ if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat daftar HP...</div></div></div>';
+ if(d.error)return `<div class="panel"><div class="ph">📱 HP Terdaftar</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL langkah-hp-push-developer.sql sudah dijalankan di Supabase.</div></div></div>`;
+ const sk=new Map();d.forEach(x=>sk.set(String(x.sekolah_id),x.sekolah||('Sekolah '+x.sekolah_id)));
+ const n=HPF.sel.size,bermasalah=d.filter(x=>(Number(x.gagal)||0)>0).length,belum=d.filter(x=>!x.terakhir_ok).length;
+ return `<div class="panel"><div class="ph">📱 HP Terdaftar (push) <button class="btn soft sm" onclick="guard(async()=>{try{await hpMuat()}finally{renderV()}})">↻ Muat ulang</button></div><div class="pb"><div class="cards"><div class="card stat"><b>${d.length}</b>HP terdaftar</div><div class="card stat"><b>${sk.size}</b>Sekolah</div><div class="card stat"><b>${bermasalah}</b>Pernah gagal kirim</div><div class="card stat"><b>${belum}</b>Belum pernah berhasil</div></div>
+ <div class="tb" style="flex-wrap:wrap"><select class="select" onchange="HPF.sek=this.value;hpSegarkan()"><option value="">Semua sekolah</option>${[...sk].map(([id,nm])=>`<option value="${esc(id)}" ${HPF.sek===id?'selected':''}>${esc(nm)}</option>`).join('')}</select><input class="input grow" placeholder="Cari nama anak..." value="${esc(HPF.q)}" oninput="HPF.q=this.value;hpSegarkan()"></div>
+ <div class="tb" style="flex-wrap:wrap"><button id="hpBtnHapus" class="btn danger sm" ${n?'':'disabled'} onclick="hpHapus(hpPilihanHapus())">🗑 Hapus terpilih (${n})</button></div>
+ <div id="hpTabel">${hpTabelHtml()}</div>
+ <div class="note" style="margin-top:8px">Yang dihapus hanya catatan HP di daftar push, bukan data siswa. Bila orang tua membuka portal dan mengaktifkan notifikasi lagi, HP itu akan terdaftar kembali. Kolom Gagal bertambah tiap pengiriman ke HP itu gagal.</div></div></div>`}
 function devNotifSiswa(){const d=S.devNS;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat status notifikasi siswa...</div></div></div>';
  if(d.error)return `<div class="panel"><div class="ph">📲 Notifikasi Siswa</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL pembaruan_tahap5_notif_siswa.sql dan pembaruan_tahap5b_pemantauan_notif_siswa.sql sudah dijalankan.</div></div></div>`;
