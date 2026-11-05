@@ -2096,23 +2096,32 @@ const aqJumlah=()=>aqBaca().filter(x=>x.sek===SEK).length;
 const aqHtml=()=>{const n=aqJumlah();return `<div id="aqInfo" class="mu" style="display:${n?'block':'none'};text-align:center;margin-top:6px;color:#92400e;font-weight:700">${n?'⏳ '+n+' scan tersimpan di HP, menunggu internet untuk dikirim.':''}</div>`};
 function aqInfo(){const e=$('#aqInfo');if(!e)return;const n=aqJumlah();e.style.display=n?'block':'none';e.textContent=n?'⏳ '+n+' scan tersimpan di HP, menunggu internet untuk dikirim.':''}
 function aqTambah(row,sw){const a=aqBaca();if(a.some(x=>x.sek===SEK&&x.row.siswa_id===row.siswa_id&&x.row.tanggal===row.tanggal)){aqInfo();return}a.push({sek:SEK,row,pan:sw.pan||sw.nama,n:0});aqTulis(a);aqInfo()}
+const AQ_N=50;
 async function aqKirim(){
- if(_aBusy||!me||!SEK||netMati())return;const q=aqBaca();if(!q.length)return;
- _aBusy=true;const sisa=[];let ok=0,buang=0;
+ if(_aBusy||!me||!SEK||netMati())return;const q=aqBaca().filter(b=>b&&b.row);if(!q.length){aqTulis([]);return}
+ _aBusy=true;const kunci=b=>b.sek+'|'+b.row.siswa_id+'|'+b.row.tanggal,selesai=new Set();let ok=0,buang=0;
  try{
-  for(let i=0;i<q.length;i++){const b=q[i];
-   if(b.sek!==SEK){sisa.push(b);continue}
-   try{
-    const ex=await dbqT(db.from('absensi').select('status').eq('siswa_id',b.row.siswa_id).eq('tanggal',b.row.tanggal).maybeSingle(),6000);
-    const st=ex&&String(ex.status||'').toLowerCase();
-    if(!(st==='hadir'||st==='terlambat'))await dbqT(db.from('absensi').upsert(b.row,{onConflict:'siswa_id,tanggal'}),6000);
-    ok++;
-   }catch(e){
-    if(jaringanErr(e)){_netDown=true;sisa.push(...q.slice(i));break}
-    b.n=(b.n||0)+1;if(b.n>=10)buang++;else sisa.push(b)}
+  const grup={};q.filter(b=>b.sek===SEK).forEach(b=>{(grup[b.row.tanggal]=grup[b.row.tanggal]||[]).push(b)});
+  luar:for(const tgl of Object.keys(grup)){const arr=grup[tgl];
+   for(let i=0;i<arr.length;i+=AQ_N){const part=arr.slice(i,i+AQ_N);
+    try{
+     /* 1 permintaan: cek siapa saja yang sudah tercatat hadir/terlambat (jangan ditimpa) */
+     const ex=await dbqT(db.from('absensi').select('siswa_id,status').eq('tanggal',tgl).in('siswa_id',part.map(b=>b.row.siswa_id)),8000);
+     const sudah=new Set((ex||[]).filter(r=>{const t=String(r.status||'').toLowerCase();return t==='hadir'||t==='terlambat'}).map(r=>String(r.siswa_id)));
+     const baru=part.filter(b=>!sudah.has(String(b.row.siswa_id))),masalah=new Set();
+     /* 1 permintaan: simpan semuanya sekaligus. Bila ditolak karena data bermasalah, ulangi satu per satu untuk mencari yang bermasalah */
+     if(baru.length){try{await dbqT(db.from('absensi').upsert(baru.map(b=>b.row),{onConflict:'siswa_id,tanggal'}),10000)}
+      catch(e){if(jaringanErr(e))throw e;
+       for(const b of baru){try{await dbqT(db.from('absensi').upsert(b.row,{onConflict:'siswa_id,tanggal'}),8000)}catch(e2){if(jaringanErr(e2))throw e2;masalah.add(kunci(b));b.n=(b.n||0)+1}}}}
+     part.forEach(b=>{if(!masalah.has(kunci(b))){selesai.add(kunci(b));ok++}})
+    }catch(e){
+     if(jaringanErr(e)){_netDown=true;break luar}
+     part.forEach(b=>{b.n=(b.n||0)+1})}
+   }
   }
  }finally{
-  const lain=aqBaca().filter(x=>!q.some(y=>y.row&&x.row&&y.sek===x.sek&&y.row.siswa_id===x.row.siswa_id&&y.row.tanggal===x.row.tanggal));
+  const sisa=q.filter(b=>{if(selesai.has(kunci(b)))return false;if((b.n||0)>=10){buang++;return false}return true});
+  const lain=aqBaca().filter(x=>x&&x.row&&!q.some(y=>y.sek===x.sek&&y.row.siswa_id===x.row.siswa_id&&y.row.tanggal===x.row.tanggal));
   aqTulis(sisa.concat(lain));_aBusy=false;aqInfo()}
  if(ok)toast(ok+' scan yang tersimpan di HP berhasil dikirim');
  if(buang)toast(buang+' scan tersimpan gagal dikirim berulang kali dan dibuang. Periksa absensi hari ini.',false)}
