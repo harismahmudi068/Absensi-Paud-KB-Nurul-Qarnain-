@@ -1,6 +1,6 @@
 /* kartu.js - generator kartu siswa + isi QR, dipakai bersama oleh Index dan portal orang tua.
-   Ubah DOMAIN_PORTAL hanya jika alamat aplikasi berpindah. Kartu yang sudah dicetak
-   tetap membawa domain lama, jadi domain lama harus tetap aktif. */
+   QR di kartu HANYA berisi kode scan 8 karakter (kolom siswa.kode_scan), supaya cepat dibaca.
+   Link portal (memakai kode_qr / UUID) TIDAK ada di kartu, dibagikan lewat aplikasi (WA / salin link). */
 (function(g){
 'use strict';
 const DOMAIN_PORTAL='https://absensi-1486.vercel.app';
@@ -9,11 +9,14 @@ const tglPanjang=iso=>{const p=String(iso||'').split('-');return p.length===3&&B
 const tglDMY=iso=>iso?String(iso).slice(8,10)+'/'+String(iso).slice(5,7)+'/'+String(iso).slice(0,4):'';
 const ttlPanjang=(t,iso)=>{t=String(t||'').trim();const d=tglDMY(iso);return t&&d?t+', '+d:(d||t)};
 const jkNama=x=>x==='L'?'Laki-laki':x==='P'?'Perempuan':'';
-/* isi QR: URL portal. Pemindai absensi mengembalikannya menjadi kode lewat kodeDariQR */
-function urlQR(kode){return DOMAIN_PORTAL+'/p/'+kode}
-function kodeDariQR(t){t=String(t==null?'':t).trim();
- if(/^https?:\/\//i.test(t)){try{const m=new URL(t).pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);return m?m[1]:''}catch(e){return ''}}
- return t}
+/* isi QR kartu: kode scan 8 karakter (huruf besar + angka) */
+function isiQR(kodeScan){return String(kodeScan==null?'':kodeScan).trim().toUpperCase()}
+/* link portal orang tua (UUID kode_qr). Hanya untuk dibagikan lewat aplikasi, bukan untuk kartu */
+function urlPortal(kode){return DOMAIN_PORTAL+'/p/'+kode}
+/* hasil baca scanner -> kode scan 8 karakter, atau '' bila bukan format kartu baru */
+function kodeDariQR(t){t=String(t==null?'':t).trim().toUpperCase();return /^[A-Z0-9]{8}$/.test(t)?t:''}
+/* kartu lama (QR berisi URL/UUID portal) sudah tidak berlaku */
+function kartuLama(t){return /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(String(t==null?'':t))}
 function qrObj(kode){const o=qrcode(0,'M');o.addData(kode);o.make();return o}
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
 /* ---- logo: dimuat sekali lewat siapkanLogo(), lalu dipakai buatKartu secara sinkron ---- */
@@ -157,5 +160,5 @@ function buatBelakang(s,opt){
  const nm=String(s.nama||'').toUpperCase();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle='#f2c94c';fitFont(c,nm,270,23,10,z=>'800 '+z+'px '+F);
  const _t=elips(c,nm,270),_cap=c.measureText('H').actualBoundingBoxAscent;tebal(c,_t,330,398.5+_cap/2,.6);
  c.restore();return cv.toDataURL('image/png')}
-g.Kartu={DOMAIN_PORTAL,urlQR,kodeDariQR,qrObj,buatKartu,buatBelakang,siapkanLogo,tglDMY,jkNama};
+g.Kartu={DOMAIN_PORTAL,isiQR,urlPortal,kodeDariQR,kartuLama,qrObj,buatKartu,buatBelakang,siapkanLogo,tglDMY,jkNama};
 })(window);
