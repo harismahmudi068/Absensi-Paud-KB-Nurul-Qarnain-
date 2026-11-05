@@ -58,11 +58,11 @@ function pola(c,x0,y0,w,h,col,lw){c.save();c.beginPath();c.rect(x0,y0,w,h);c.cli
   c.moveTo(cx-r,cy-r);c.lineTo(cx+r,cy-r);c.lineTo(cx+r,cy+r);c.lineTo(cx-r,cy+r);c.closePath();
   c.moveTo(cx-d,cy);c.lineTo(cx,cy-d);c.lineTo(cx+d,cy);c.lineTo(cx,cy+d);c.closePath()}
  c.stroke();c.restore()}
-const kanvas=()=>{const K=3,cv=document.createElement('canvas');cv.width=660*K;cv.height=420*K;const c=cv.getContext('2d');c.scale(K,K);return{K,cv,c}};
+const kanvas=skala=>{const K=skala||3,cv=document.createElement('canvas');cv.width=660*K;cv.height=420*K;const c=cv.getContext('2d');c.scale(K,K);return{K,cv,c}};
 const F='system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
 /* ---- KARTU DEPAN ---- Desain permanen. Kanvas 660x420 (rasio sama dengan desain acuan). */
 function buatKartu(s,opt){
- const {cv,c}=kanvas();let gr;
+ const {cv,c}=kanvas(opt.pratinjau?1.5:3);let gr;
  rr(c,0,0,660,420,22);c.save();c.clip();
  /* latar badan */
  gr=c.createLinearGradient(0,94,0,380);gr.addColorStop(0,'#ffffff');gr.addColorStop(1,'#f0f9f5');c.fillStyle=gr;c.fillRect(0,0,660,420);
@@ -123,7 +123,7 @@ function buatKartu(s,opt){
  c.restore();return cv.toDataURL('image/png')}
 /* ---- KARTU BELAKANG ---- hanya identitas sekolah, nama anak, dan QR */
 function buatBelakang(s,opt){
- const {K,cv,c}=kanvas();let gr;
+ const {K,cv,c}=kanvas(opt.pratinjau?1.5:3);let gr;
  rr(c,0,0,660,420,22);c.save();c.clip();
  /* latar + pola */
  gr=c.createLinearGradient(0,0,0,420);gr.addColorStop(0,'#fbfdfc');gr.addColorStop(1,'#eef7f2');c.fillStyle=gr;c.fillRect(0,0,660,420);
@@ -149,7 +149,8 @@ function buatBelakang(s,opt){
  /* QR */
  c.save();c.shadowColor='rgba(15,92,63,.22)';c.shadowBlur=18*K;c.shadowOffsetY=3*K;rr(c,199,103.5,262,262,18);c.fillStyle='#fff';c.fill();c.restore();
  rr(c,199,103.5,262,262,18);c.lineWidth=3.4;c.strokeStyle='#1b7a5a';c.stroke();
- const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(240*K/n)/K,sz=cl*n,qx=330-sz/2,qy=234.5-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl,cl);
+ if(opt.qr){const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(240*K/n)/K,sz=cl*n,qx=330-sz/2,qy=234.5-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl,cl)}
+ else{/* anak belum punya kode scan: jangan cetak QR kosong */c.textAlign='center';c.textBaseline='middle';c.fillStyle='#b42318';c.font='bold 22px '+F;c.fillText('KODE BELUM ADA',330,226);c.fillStyle='#5b6b62';c.font='13px '+F;c.fillText('Hubungi admin sekolah',330,252)}
  /* footer */
  gr=c.createLinearGradient(0,0,660,0);gr.addColorStop(0,'#0a5a3f');gr.addColorStop(1,'#0e6a49');c.fillStyle=gr;c.fillRect(0,378,660,42);
  pola(c,0,378,660,42,'rgba(255,255,255,.06)',.6);
@@ -157,8 +158,8 @@ function buatBelakang(s,opt){
  c.beginPath();c.moveTo(520,420);c.bezierCurveTo(590,416,640,398,660,374);c.lineWidth=2.4;c.strokeStyle='#f0cf5a';c.stroke();
  c.strokeStyle='rgba(255,255,255,.75)';c.lineWidth=1.1;c.beginPath();c.moveTo(126.7,398.5);c.lineTo(176.7,398.5);c.moveTo(483,398.5);c.lineTo(533,398.5);c.stroke();
  /* nama anak: di footer, rata tengah antara dua garis, tengah vertikal sejajar garis */
- const nm=String(s.nama||'').toUpperCase();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle='#f2c94c';fitFont(c,nm,270,23,10,z=>'800 '+z+'px '+F);
- const _t=elips(c,nm,270),_cap=c.measureText('H').actualBoundingBoxAscent;tebal(c,_t,330,398.5+_cap/2,.6);
+ const nm=String(s.nama||'').toUpperCase();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle='#f2c94c';const _z=fitFont(c,nm,270,23,10,z=>'800 '+z+'px '+F);
+ const _t=elips(c,nm,270),_mH=c.measureText('H'),_cap=(_mH&&_mH.actualBoundingBoxAscent>0)?_mH.actualBoundingBoxAscent:_z*0.72;tebal(c,_t,330,398.5+_cap/2,.6);
  c.restore();return cv.toDataURL('image/png')}
 g.Kartu={DOMAIN_PORTAL,isiQR,urlPortal,kodeDariQR,kartuLama,qrObj,buatKartu,buatBelakang,siapkanLogo,tglDMY,jkNama};
 })(window);
