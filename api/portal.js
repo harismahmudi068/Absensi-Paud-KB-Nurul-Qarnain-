@@ -482,7 +482,7 @@ module.exports = async (req, res) => {
     const cari =
       (await L.panggil(
         `/rest/v1/siswa?kode_qr=eq.${encodeURIComponent(k)}` +
-          `&select=id,sekolah_id,nama,nama_panggilan,nisn,kelas_id,aktif,tempat_lahir,tgl_lahir,jenis_kelamin,alamat,tahun_masuk,foto_path,siswa_wali(wali(no_wa)),sekolah:sekolah(nama,status)&limit=2`,
+          `&select=id,sekolah_id,nama,nama_panggilan,nisn,kelas_id,aktif,kode_scan,tempat_lahir,tgl_lahir,jenis_kelamin,alamat,tahun_masuk,foto_path,siswa_wali(wali(no_wa)),sekolah:sekolah(nama,status)&limit=2`,
         'GET'
       )) || [];
     if (cari.length !== 1) {
@@ -617,6 +617,7 @@ module.exports = async (req, res) => {
         masuk: s.tahun_masuk || '',
         wa,
         kode_qr: k,
+        kode_scan: s.kode_scan || '',
         foto: await fotoP
       },
       sekolah: {
