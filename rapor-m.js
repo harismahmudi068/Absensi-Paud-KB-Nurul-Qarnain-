@@ -16,7 +16,8 @@ const PKME = { kid: 0, M: null, versi: 0, dirty: false, boleh: null, ro: true, b
     + '.pmk .input,.pmk .select,.pki .input,.pki .select,.pkb>.input,.pkb>.select{display:block;width:100%;box-sizing:border-box;margin:0 0 12px}'
     + '.pmk textarea,.pki textarea,.pkb textarea{resize:vertical}'
     + '.pmk .pki{padding:12px 0}.pmx .mu{margin:10px 0 4px}.pmx label.l,.pkb label.l{display:block;margin:12px 0 4px;font-weight:800;font-size:12px}'
-    + '.pmh{margin:10px 0 8px}.pkb .tb{margin-top:12px}.pmk>.pmh+.input{margin-top:0}';
+    + '.pmh{margin:10px 0 8px}.pkb .tb{margin-top:12px}.pmk>.pmh+.input{margin-top:0}'
+    + '.pmpil{border:1px dashed var(--bd);border-radius:12px;padding:10px;margin:10px 0}.pmpr{display:flex;gap:8px;align-items:flex-start;padding:6px 0}.pmpr input{margin-top:3px}';
   document.head.appendChild(st);
 })();
 
@@ -129,7 +130,7 @@ function pmCek(M0) {
 /* ---------------- Keadaan dan pembuka ---------------- */
 function pmMuatDari(row, kid) {
   if (kid) PKME.kid = kid;
-  PKME.M = pmNorm(row ? pmKlon(row.isi) : { aspek: [], kd: {} }); PKME.versi = row ? (row.versi || 0) : 0; PKME.dirty = false; PKME.ring = '';
+  PKME.M = pmNorm(row ? pmKlon(row.isi) : { aspek: [], kd: {} }); PKME.versi = row ? (row.versi || 0) : 0; PKME.dirty = false; PKME.ring = ''; PKME.pil = null;
 }
 const pmUbah = () => { PKME.dirty = true; const e = $('#pmDirty'); if (e) e.style.display = ''; };
 function pmBuka(kid) {
@@ -184,8 +185,8 @@ function pmHtmlAspek(M, ro) {
     }).join('');
     return pmDet('a' + ai, `${esc(na ? na + '. ' : '')}${esc(a.n || '(belum bernama)')} <span class="mu">${jml} indikator</span>`,
       `<div class="pmh"><span>Nama aspek</span><span class="pmb">${pmBtn(`pmGeser('a',${ai},0,0,-1)`, '↑', ro)}${pmBtn(`pmGeser('a',${ai},0,0,1)`, '↓', ro)}${pmBtn(`pmHapus('a',${ai})`, '🗑', ro)}</span></div>`
-      + pmIn(`pmSetA(${ai},this.value)`, a.n, 'Nama aspek', ro) + subs + (ro ? '' : `<div class="tb"><button class="btn soft sm" onclick="pmTambah('s',${ai})">➕ Kategori</button></div>`));
-  }).join('') + (ro ? '' : '<div class="tb"><button class="btn soft sm" onclick="pmTambah(\'a\')">➕ Aspek</button></div>');
+      + pmIn(`pmSetA(${ai},this.value)`, a.n, 'Nama aspek', ro) + subs + (ro ? '' : `<div class="tb" style="flex-wrap:wrap"><button class="btn soft sm" onclick="pmTambah('s',${ai})">➕ Kategori</button><button class="btn soft sm" onclick="pmPilBuka('s',${ai})">📋 Pilih dari yang ada</button></div>` + pmPilHtml('s', ai)));
+  }).join('') + (ro ? '' : '<div class="tb" style="flex-wrap:wrap"><button class="btn soft sm" onclick="pmTambah(\'a\')">➕ Aspek</button><button class="btn soft sm" onclick="pmPilBuka(\'a\')">📋 Pilih dari yang ada</button></div>' + pmPilHtml('a'));
 }
 const PM_CFG = [
   ['Singkatan level', [['lv', 4, 0]]],
@@ -270,6 +271,71 @@ function pmHapusKd(id) {
     if (dipakai.length && !await konfirmasi('KD ini dipakai ' + dipakai.length + ' indikator. Hapus KD dan lepaskan dari indikator tersebut?', { judul: 'Hapus KD', ya: 'Hapus', bahaya: 1 })) return;
     dipakai.forEach(i => { delete i.kd; }); delete PKME.M.kd[id]; pmUbah(); pmRender();
   });
+}
+/* ---- Pilih aspek/kategori dari yang sudah ada (kelompok ini dan kelompok lain). Struktur saja; indikator (beserta KD) opsional ---- */
+function pmPilSumber() {
+  const L = PKR.kel.filter(k => k.id === PKME.kid || PKR.mas.has(k.id));
+  L.sort((a, b) => (b.id === PKME.kid) - (a.id === PKME.kid));
+  return L.map(k => ({ kid: k.id, nama: k.nama, M: k.id === PKME.kid ? PKME.M : pmNorm(pmKlon(PKR.mas.get(k.id).isi)) }));
+}
+const pmPilRow = (key, judul, ket, p) => `<label class="pmpr"><input type="checkbox" onchange="pmPilCek('${esc(key)}',this.checked)"${p.sel.has(key) ? ' checked' : ''}> <span><b>${esc(judul)}</b><span class="mu"> · ${esc(ket)}</span></span></label>`;
+function pmPilHtml(t, ai) {
+  const p = PKME.pil; if (PKME.ro || !p || p.t !== t || (t === 's' && p.ai !== ai)) return '';
+  let h = '';
+  pmPilSumber().forEach(g => {
+    let rows = '';
+    g.M.aspek.forEach((a, i2) => {
+      if (t === 'a') rows += pmPilRow(g.kid + '|' + i2, pmStr(a.n).trim() || '(belum bernama)', a.sub.filter(s => pmStr(s.n).trim()).length + ' kategori · ' + a.sub.reduce((x, s) => x + s.ind.length, 0) + ' indikator', p);
+      else a.sub.forEach((s, s2) => { if (pmStr(s.n).trim()) rows += pmPilRow(g.kid + '|' + i2 + '|' + s2, s.n, (pmStr(a.n).trim() || '(aspek)') + ' · ' + s.ind.length + ' indikator', p); });
+    });
+    if (rows) h += `<div class="mu" style="margin:10px 0 4px"><b>${esc(g.nama)}</b>${g.kid === PKME.kid ? ' (kelompok ini)' : ''}</div>` + rows;
+  });
+  if (!h) h = '<div class="mu">Belum ada ' + (t === 'a' ? 'aspek' : 'kategori') + ' di kelompok ini maupun kelompok lain.</div>';
+  return `<div class="pmpil"><div class="pmh"><span>Pilih ${t === 'a' ? 'aspek' : 'kategori'} yang sudah ada</span></div>${h}<label class="l"><input type="checkbox" onchange="PKME.pil.ind=this.checked"${p.ind ? ' checked' : ''}> Ikut salin indikator (beserta KD)</label><div class="mu">Tanpa centang ini hanya nama ${t === 'a' ? 'aspek dan kategorinya' : 'kategori'} yang disalin. Nama yang sudah ada dilewati.</div><div class="tb" style="flex-wrap:wrap;gap:10px"><button class="btn success grow" onclick="pmPilTambah()">➕ Tambahkan yang dipilih</button><button class="btn soft grow" onclick="pmPilTutup()">Batal</button></div></div>`;
+}
+function pmPilBuka(t, ai) {
+  if (PKME.ro) return;
+  const p = PKME.pil; if (p && p.t === t && (t === 'a' || p.ai === ai)) PKME.pil = null;
+  else { PKME.pil = { t, ai: t === 's' ? ai : 0, sel: new Set(), ind: false }; PKME.buka.add('aspek'); if (t === 's') PKME.buka.add('a' + ai); }
+  pmRender();
+}
+function pmPilTutup() { PKME.pil = null; pmRender(); }
+function pmPilCek(key, on) { if (!PKME.pil) return; if (on) PKME.pil.sel.add(key); else PKME.pil.sel.delete(key); }
+function pmPilTambah() {
+  const p = PKME.pil, M = PKME.M; if (!p || PKME.ro) return;
+  if (!p.sel.size) return toast('Centang dulu yang ingin ditambahkan', false);
+  const src = pmPilSumber(), norm = x => pmStr(x).replace(/\s+/g, ' ').trim().toLowerCase();
+  let nA = 0, nS = 0, nI = 0, lewat = 0;
+  /* KD ikut terbawa: dicocokkan dengan kode yang sama di master ini, bila belum ada dibuat baru */
+  const kdId = (SM, id) => {
+    const k = SM.kd[id]; if (!k) return null;
+    const ada = norm(k.k) ? Object.keys(M.kd).find(x => norm(M.kd[x].k) === norm(k.k)) : null;
+    if (ada) return ada;
+    const nid = pmIdBaru(M, 'k'); M.kd[nid] = pmKlon(k); return nid;
+  };
+  const salinSub = (SM, s) => {
+    const o = { n: s.n, ind: [] };
+    if (p.ind) s.ind.forEach(i => { const c = pmKlon(i); c.id = pmIdBaru(M, 'i'); if (i.kd) { const nk = kdId(SM, i.kd); if (nk) c.kd = nk; else delete c.kd; } o.ind.push(c); nI++; });
+    return o;
+  };
+  const cari = kid => src.find(g => g.kid === +kid);
+  [...p.sel].forEach(key => {
+    const [kid, i2, s2] = key.split('|'), g = cari(kid), a = g && g.M.aspek[+i2]; if (!a) return;
+    if (p.t === 'a') {
+      if (M.aspek.some(x => norm(x.n) === norm(a.n))) { lewat++; return; }
+      const subs = a.sub.filter(s => p.ind || pmStr(s.n).trim()).map(s => salinSub(g.M, s));
+      if (!subs.length) subs.push({ n: '', ind: [] });
+      M.aspek.push({ n: a.n, sub: subs }); nA++; nS += subs.filter(s => pmStr(s.n).trim()).length; PKME.buka.add('a' + (M.aspek.length - 1));
+    } else {
+      const s = a.sub[+s2], T = pmA(p.ai); if (!s || !T) return;
+      if (T.sub.some(x => norm(x.n) === norm(s.n))) { lewat++; return; }
+      T.sub.push(salinSub(g.M, s)); nS++;
+    }
+  });
+  PKME.pil = null;
+  if (nA || nS || nI) pmUbah();
+  pmRender();
+  toast((nA ? nA + ' aspek, ' : '') + nS + ' kategori, ' + nI + ' indikator ditambahkan' + (lewat ? '. ' + lewat + ' dilewati karena namanya sudah ada' : '') + '. Tekan Simpan master untuk menyimpan', !!(nA || nS || nI));
 }
 function pmGeser(t, ai, si, ii, d) {
   const L = t === 'a' ? PKME.M.aspek : t === 's' ? pmA(ai).sub : pmS(ai, si).ind, i = t === 'a' ? ai : t === 's' ? si : ii, j = i + d;
