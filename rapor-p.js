@@ -155,9 +155,9 @@ function pkKepHTML(e, kl) {
   const dis = e.b ? '' : ' disabled';
   /* kelas akhir: Tinggal kelas atau Lulus. Kelas lain: Naik kelas atau Tinggal kelas (Lulus tidak ditampilkan). Pilihan yang sudah tersimpan tetap ditampilkan. */
   let op = kl.akhir ? ['tinggal', 'lulus'] : ['naik', 'tinggal']; if (e.kj && !op.includes(e.kj)) op = op.concat(e.kj);
-  const tuj = kl.urutan != null ? S.kelas.filter(c => c.urutan != null && c.urutan > kl.urutan) : [];
+  const tuj = kl.urutan != null ? kelasTujuanNaik(kl.urutan) : [];
   h += `<div class="fd"><select id="pkKj" class="select" onchange="pkKepUbah()"${dis}><option value="">Belum diputuskan</option>${op.map(j => `<option value="${j}"${e.kj === j ? ' selected' : ''}>${J[j]}</option>`).join('')}</select></div>`;
-  if (op.includes('naik')) h += `<div class="fd" id="pkKtw" style="${e.kj === 'naik' ? '' : 'display:none'}"><label class="l">Kelas tujuan</label><select id="pkKt" class="select"${dis}><option value="">- Pilih kelas tujuan -</option>${tuj.map(c => `<option value="${c.id}"${String(e.kt) === String(c.id) ? ' selected' : ''}>${esc(c.nama)}</option>`).join('')}</select>${tuj.length ? '' : '<div class="mu">Tidak ada kelas dengan urutan lebih tinggi. Periksa urutan kelas di menu Kelas dan Jam Masuk.</div>'}</div>`;
+  if (op.includes('naik')) h += `<div class="fd" id="pkKtw" style="${e.kj === 'naik' ? '' : 'display:none'}"><label class="l">Kelas tujuan</label><select id="pkKt" class="select"${dis}><option value="">- Pilih kelas tujuan -</option>${tuj.map(c => `<option value="${c.id}"${String(e.kt) === String(c.id) ? ' selected' : ''}>${esc(c.nama)}</option>`).join('')}</select>${tuj.length ? '' : '<div class="mu">Tidak ada kelas 1 atau 2 tingkat di atasnya. Periksa urutan kelas di menu Kelas dan Jam Masuk.</div>'}</div>`;
   return h + '<div class="mu">Tersimpan sebagai keputusan sementara saat Simpan draf (sama dengan menu Kelola Siswa), lalu disahkan di tab Pengesahan.</div>';
 }
 function pkKepUbah() { const e = window._kepE || PKR.ed, v = $('#pkKj').value; e.kj = v; const w = $('#pkKtw'); if (w) w.style.display = v === 'naik' ? '' : 'none'; }
@@ -407,7 +407,7 @@ async function pkHapusKel(id) {
   guard(async () => { await pnTry(() => dbq(db.from('rapor_kelompok').delete().eq('id', id))); await pkMuat(); renderV(); toast('Kelompok dihapus'); });
 }
 function pkSalinMaster(id) {
-  const k = PKR.kel.find(x => x.id === id), sumber = PKR.kel.filter(x => PKR.mas.has(x.id)); if (!k || role === 'Guru' || !sumber.length) return;
+  const k = PKR.kel.find(x => x.id === id), sumber = PKR.kel.filter(x => x.id !== id && PKR.mas.has(x.id) && ((PKR.mas.get(x.id).isi || {}).aspek || []).length); if (!k || role === 'Guru') return; if (!sumber.length) return toast('Belum ada kelompok lain yang master-nya berisi indikator', false);
   form('Salin master ke ' + k.nama, [{ k: 'dari', l: 'Salin indikator dari kelompok', o: sumber.map(x => x.nama), v: sumber[0].nama }], async v => {
     const src = sumber.find(x => x.nama === v.dari); if (!src) throw new Error('Kelompok sumber tidak ditemukan');
     await pnTry(() => dbq(db.rpc('rapor_master_simpan', { p_kelompok: id, p_isi: PKR.mas.get(src.id).isi, p_versi: 0, p_ringkas: 'Disalin dari ' + src.nama })));
