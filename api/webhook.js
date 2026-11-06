@@ -179,11 +179,12 @@ function isiBukanHariSekolah(tidakAktif) {
 function balasanSakit(nama, tgl, lanjut = null) { return bungkusBalasan([isiSakit(nama, tgl, lanjut)]); }
 function balasanIzin(nama, tgl, tidakAktif = []) { return bungkusBalasan([isiIzin(nama, tgl, tidakAktif)]); }
 function balasanBukanHariSekolah(tidakAktif) { return bungkusBalasan([isiBukanHariSekolah(tidakAktif)]); }
-function balasanTanggalLampau() {
+function balasanTanggalLampau(tambahan = []) {
   return bungkusBalasan([
     'Mohon maaf, Bunda. Tanggal yang disebutkan pada pesan Bunda sudah lewat, sehingga laporan belum kami catat. 🙏',
     `📅 *Hari ini:* ${formatTanggal(tanggal())}`,
-    'Mohon periksa kembali tanggal dan harinya, kemudian kirim kembali pesannya. 😊'
+    'Mohon periksa kembali tanggal dan harinya, kemudian kirim kembali pesannya. 😊',
+    ...tambahan
   ]);
 }
 
@@ -240,39 +241,10 @@ function notifikasiRaguDetail(pengirim, namaAnak, pesan, opsi = {}) {
   return baris.join('\n');
 }
 
+// Notifikasi ragu untuk kepala sekolah. Pesan nama salah/anak tidak jelas untuk wali:
+// lihat balasanNamaBeda() dan balasanMintaNamaAnak().
 function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
-  if (!opsi.namaBeda) return notifikasiRaguDetail(pengirim, namaAnak, pesan, opsi);
-  const { namaDiPesan = [], namaBeda = false, statusDugaan = '', tampilkanPesan = true, alasanRagu = '', jumlahHari = 0 } = opsi;
-  const intro = namaBeda
-    ? 'Sistem menginformasikan bahwa nama anak yang tertulis di pesan *berbeda* dengan anak yang terdaftar di nomor pengirim.'
-    : alasanRagu === 'izin_panjang'
-      ? `Sistem menerima laporan izin yang *melebihi ${BATAS_JUMLAH_HARI_IZIN} hari*${jumlahHari ? ` (sekitar ${jumlahHari} hari)` : ''}, sehingga izin ini belum dicatat otomatis.`
-    : alasanRagu === 'waktu'
-      ? 'Sistem menerima laporan izin/sakit, tetapi tanggal atau waktu yang dimaksud belum jelas atau tidak dapat dihitung secara otomatis.'
-      : 'Sistem menerima pesan yang kemungkinan berkaitan dengan izin/sakit, tetapi belum dapat memastikan maksudnya.';
-  const baris = [
-    salam(), '',
-    // Judul hanya untuk notifikasi ke kepala sekolah; versi nama beda (grup/pribadi) tanpa judul.
-    ...(namaBeda ? [] : ['⚠️ *Pemberitahuan: Pesan Perlu Dicek*', '']),
-    intro, '',
-    `👤 *Pengirim:* ${pengirim || '-'}`,
-    `👧 *Nama anak${namaBeda ? ' (terdaftar di nomor ini)' : ''}:* *${namaAnak || 'Belum berhasil diidentifikasi'}*`
-  ];
-  if (namaBeda && namaDiPesan.length) baris.push(`📝 *Nama di pesan:* *${namaDiPesan.join(' | ')}*`);
-  // Dugaan isi pesan ikut disembunyikan jika isi pesan tidak ditampilkan (grup/pribadi).
-  if (tampilkanPesan && (statusDugaan === 'sakit' || statusDugaan === 'izin')) baris.push(`🔎 *Dugaan isi pesan:* ${statusDugaan}`);
-  if (tampilkanPesan) baris.push(`💬 *Pesan:* "${String(pesan || '').slice(0, 1000)}"`);
-  baris.push(
-    '',
-    namaBeda
-      ? `Mohon perbaiki nama anak pada pesan sesuai data yang terdaftar: *${namaAnak || '-'}*. 🙏`
-      : alasanRagu === 'izin_panjang'
-        ? `📌 *Catatan:* Izin melebihi ${BATAS_JUMLAH_HARI_IZIN} hari. Mohon dikonfirmasi kepada wali murid dan dicatat secara manual. 🙏`
-        : 'Mohon dilakukan pengecekan secara manual. 🙏',
-    '',
-    penutup()
-  );
-  return baris.join('\n');
+  return notifikasiRaguDetail(pengirim, namaAnak, pesan, opsi);
 }
 
 function notifikasiAIGagal(pengirim, namaAnak, pesan, error) {
@@ -631,7 +603,7 @@ async function catatPesan(dari, isi, hasil, cek) {
   await sb('pesan_masuk', { method: 'POST', body: { sekolah_id: K().sekolahId, dari_nomor: dari, isi, hasil, perlu_dicek: cek }, prefer: 'return=minimal' });
 }
 
-async function simpan(dari, pesan, anak, status, catatan, rencana) {
+async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []) {
   // Tanggal dihitung per anak, karena libur_tanggal bisa khusus kelas tertentu.
   const per = anak.map(s => ({ s, ...rencana.untuk(s.kelas_id) }));
   const aktif = per.filter(p => p.tanggal.length);
@@ -720,19 +692,31 @@ async function simpan(dari, pesan, anak, status, catatan, rencana) {
   for (const [label, daftar] of tercatatKelompok) bagian.push(isiSudahTercatat(daftarNama(daftar), label));
 
   // Satu salam pembuka dan satu salam penutup untuk seluruh balasan.
+  // Bagian tambahan (mis. nama yang ditolak) ikut dalam pesan yang sama.
+  bagian.push(...tambahan);
   return { balasan: bungkusBalasan(bagian) };
 }
 
 // Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
-async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa }) {
+async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa, namaSalah = [], namaTerdaftar = '' }) {
   const rencana = await buatRencana(status, waktu);
+  // Nama yang tidak cocok (sebagian nama di pesan cocok): ditolak SETELAH tanggal/waktu diperiksa.
+  // Teksnya digabung ke balasan wali; ragam kalimat bergantung pada hasil pemeriksaan tanggal.
+  const bagianNama = (mode, cocok = '') => namaSalah.length ? [bagianNamaSalah(namaSalah, namaTerdaftar, mode, cocok)] : [];
+  const catatNama = async () => {
+    if (namaSalah.length) {
+      await catatPesan(dari, pesan, `Nama tidak cocok ditolak: ${namaSalah.join(' | ')}`.slice(0, 300), true).catch(() => {});
+    }
+  };
   if (!rencana.ok && rencana.lampau) {
     await catatPesan(dari, pesan, 'Ditolak: tanggal sudah lampau, wali diminta memeriksa dan mengirim ulang', false);
-    await kirimBalasanWali(target, balasanTanggalLampau(), bahasa);
+    await catatNama();
+    await kirimBalasanWali(target, balasanTanggalLampau(bagianNama('netral')), bahasa);
     return;
   }
   if (!rencana.ok) {
     await catatPesan(dari, pesan, `Ragu: ${rencana.alasan}`.slice(0, 300), true);
+    await catatNama();
     const info = {
       statusDugaan: status,
       alasanAI: catatan && catatan !== pesan ? catatan : '',
@@ -741,9 +725,13 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
     await kirimRagu(target, dari, daftarNama(anak), pesan, rencana.izinPanjang
       ? { ...info, alasanRagu: 'izin_panjang', jumlahHari: rencana.izinPanjang }
       : { ...info, alasanRagu: 'waktu' });
+    // Tidak ada balasan sukses untuk digabung, jadi penolakan nama dikirim sendiri ke wali.
+    const tambahan = bagianNama('netral', daftarNama(anak));
+    if (tambahan.length) await kirimBalasanWali(target, bungkusBalasan(tambahan), bahasa);
     return;
   }
-  const hasil = await simpan(dari, pesan, anak, status, catatan, rencana);
+  const hasil = await simpan(dari, pesan, anak, status, catatan, rencana, bagianNama('sebagian'));
+  await catatNama();
   if (hasil.balasan) await kirimBalasanWali(target, hasil.balasan, bahasa);
 }
 
@@ -823,6 +811,45 @@ function deteksiCepat(t) {
   return null;
 }
 
+// Mendeteksi kemungkinan nama anak yang TIDAK terdaftar di nomor pengirim.
+// Cara kerja: kata kunci izin/sakit dibuang, lalu setiap kata yang tersisa harus berupa
+// nama anak terdaftar atau kata umum. Kata lain dianggap "asing" -> pesan dianalisis AI.
+// Salah deteksi hanya berakibat pesan diproses AI (lebih lambat), bukan salah catat.
+const KATA_UMUM = new Set((
+  'assalamualaikum assalamu alaikum alaikumsalam waalaikumsalam wassalamualaikum wassalam wr wb ' +
+  'warahmatullahi wabarakatuh salam selamat pagi siang sore malam bu ibu bunda pak bapak bang kak mas mbak ' +
+  'ustadzah ustazah ustadz ustaz guru kepala sekolah kelas wali ortu orang tua mama papa mami papi umi abi ' +
+  'mohon maaf izin ijin terima kasih makasih terimakasih trims thanks tks ya yah yaa dong nih ini itu hari ' +
+  'saya aku kami kita kakak adik anak anaknya ananda putra putri nya tidak tak nggak gak ga ngga bisa dapat ' +
+  'masuk hadir belajar karena sebab dan atau dengan untuk dari di ke yg yang sedang lagi besok lusa tadi nanti ' +
+  'ada jadi sudah belum mau akan pada hanya juga sih deh pun lah kah doa doanya semoga cepat sembuh segera ' +
+  'ok oke baik siap tolong sampaikan kepada pesan laporan lapor info informasi pemberitahuan kurang enak badan ' +
+  'sehat fit keduanya kedua semua semuanya dua berdua duaduanya sakit demam flu batuk pilek panas diare muntah ' +
+  'pusing cacar tipes dbd opname acara keluar kota mudik keperluan keluarga permisi libur sampai selama mulai ' +
+  'tanggal tgl senin selasa rabu kamis jumat sabtu minggu pekan depan lalu bulan hari'
+).split(/\s+/));
+
+function tokenKata(teks) {
+  return String(teks || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function adaNamaAsing(pesan, anak) {
+  const dikenal = new Set();
+  for (const s of anak) {
+    tokenKata(s.nama).forEach(t => dikenal.add(t));
+    tokenKata(s.nama_panggilan).forEach(t => dikenal.add(t));
+  }
+  const bersih = String(pesan || '')
+    .replace(new RegExp(SAKIT.source, 'gi'), ' ')
+    .replace(new RegExp(IZIN.source, 'gi'), ' ');
+  return tokenKata(bersih).some(t => t.length >= 2 && !dikenal.has(t) && !KATA_UMUM.has(t));
+}
+
 function cariAnakDariNama(pesan, anak) {
   const t = pesan.toLowerCase();
   return anak.filter(s => {
@@ -841,14 +868,52 @@ async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = nul
 }
 
 // Notifikasi "ragu" (aturan sama untuk grup dan chat pribadi):
-// - Ragu karena NAMA BERBEDA -> dibalas langsung ke tempat pesan masuk
-//   (grup PAUD jika dari grup, chat pribadi pengirim jika dari chat pribadi).
-// - Semua ragu lainnya (maksud/waktu tidak jelas, anak tidak teridentifikasi)
+// - Ragu karena NAMA BERBEDA, atau ANAK TIDAK JELAS (anak lebih dari satu tetapi nama tidak disebut)
+//   -> dibalas langsung ke tempat pesan masuk (grup PAUD jika dari grup, chat pribadi pengirim
+//   jika dari chat pribadi). Kepala sekolah TIDAK diberi notifikasi untuk dua kasus ini.
+// - Semua ragu lainnya (maksud/waktu tidak jelas, izin terlalu panjang)
 //   -> dikirim ke kepala sekolah saja.
+function balasanMintaNamaAnak(daftar) {
+  return bungkusBalasan([
+    'Mohon maaf, Bunda. Kami belum bisa memastikan anak mana yang dimaksud pada pesan Bunda, sehingga laporan belum dicatat. 🙏',
+    `👧 *Anak terdaftar di nomor ini:* ${daftar || '-'}`,
+    'Mohon kirim kembali pesannya dengan menyebutkan nama anak sesuai data di atas. 😊'
+  ]);
+}
+
+// Bagian pesan untuk nama yang tidak cocok dengan data terdaftar. Ragam (mode):
+// - 'semua'    : semua nama di pesan salah, tidak ada yang dicatat.
+// - 'sebagian' : sebagian nama cocok dan SUDAH dicatat; hanya nama yang salah ditolak.
+// - 'netral'   : anak yang cocok BELUM dicatat (tanggal/waktu perlu dicek atau sudah lampau).
+//                Jika namaCocok diisi, wali diberi tahu laporan anak tersebut sedang diperiksa.
+function bagianNamaSalah(namaSalah, daftar, mode = 'semua', namaCocok = '') {
+  const n = (namaSalah || []).filter(Boolean).join(', ') || '-';
+  const akhiran = mode === 'sebagian' ? ' untuk nama tersebut' : '';
+  const baris = [
+    `Mohon maaf, Bunda. Nama *${n}* pada pesan Bunda tidak sesuai dengan data anak yang terdaftar, sehingga${mode === 'netral' ? '' : ' laporan'}${akhiran} belum dicatat. 🙏`
+  ];
+  if (mode === 'netral' && namaCocok) baris.push('', `Laporan untuk *${namaCocok}* sedang kami periksa terlebih dahulu.`);
+  baris.push(
+    '',
+    `👧 *Anak terdaftar di nomor ini:* ${daftar || '-'}`,
+    '',
+    mode === 'semua'
+      ? 'Mohon kirim kembali pesannya dengan menyebutkan nama anak sesuai data di atas. 😊'
+      : 'Mohon kirim kembali laporannya untuk anak yang dimaksud dengan nama sesuai data di atas. 😊'
+  );
+  return baris.join('\n');
+}
+
+function balasanNamaBeda(namaSalah, daftar) {
+  return bungkusBalasan([bagianNamaSalah(namaSalah, daftar, 'semua')]);
+}
+
 async function kirimRagu(target, dari, nama, pesan, opsi = {}) {
   if (opsi.namaBeda) {
     // Ke grup/chat pribadi: isi pesan asli TIDAK ditampilkan.
-    await kirimBalasanWali(target, notifikasiRagu(dari, nama, pesan, { ...opsi, tampilkanPesan: false }), opsi.bahasa);
+    await kirimBalasanWali(target, balasanNamaBeda(opsi.namaSalah || opsi.namaDiPesan, opsi.namaTerdaftar || nama), opsi.bahasa);
+  } else if (opsi.alasanRagu === 'anak_tidak_jelas') {
+    await kirimBalasanWali(target, balasanMintaNamaAnak(opsi.namaTerdaftar), opsi.bahasa);
   } else {
     await notifikasiKeKepala(dari, nama, pesan, 'ragu', null, opsi);
   }
@@ -931,7 +996,9 @@ async function proses(b) {
 
 async function prosesPesan({ pesan, dari, target, anak, kunci }) {
   // 4. Deteksi cepat hanya untuk kalimat yang cukup aman. SAKIT tetap menang atas IZIN.
-  const cepat = deteksiCepat(pesan);
+  // Jika ada kata yang bukan nama anak terdaftar dan bukan kata umum (kemungkinan nama anak lain
+  // atau nama salah), pesan diserahkan ke AI supaya nama dibandingkan dengan data terdaftar.
+  const cepat = adaNamaAsing(pesan, anak) ? null : deteksiCepat(pesan);
   if (cepat) {
     let pilih = [];
     if (anak.length === 1) pilih = anak;
@@ -963,20 +1030,24 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
     return;
   }
 
-  if (hasilAI.kategori === 'ragu' || hasilAI.nama_beda) {
+  if (hasilAI.kategori === 'ragu' || (hasilAI.nama_beda && !hasilAI.nama_sebagian)) {
     // Nama anak SELALU dari data terdaftar di nomor pengirim, bukan dari isi pesan.
     const nama = hasilAI.nama_anak
       || (anak.length === 1 ? anak[0].nama : '')
       || 'Belum berhasil diidentifikasi';
     const catatan = hasilAI.nama_beda
       ? `Ragu: nama di pesan (${(hasilAI.nama_di_pesan || []).join(' | ')}) berbeda dengan anak terdaftar (${nama})`
-      : 'Ragu: perlu pengecekan guru';
+      : (hasilAI.alasan_ragu === 'anak_tidak_jelas'
+        ? 'Ragu: anak tidak jelas, wali diminta mengirim ulang dengan menyebut nama'
+        : 'Ragu: perlu pengecekan guru');
     await catatPesan(dari, pesan, catatan.slice(0, 300), true);
     await kirimRagu(target, dari, nama, pesan, {
       namaDiPesan: hasilAI.nama_di_pesan || [],
       namaBeda: !!hasilAI.nama_beda,
       statusDugaan: hasilAI.status_dugaan || '',
       bahasa: hasilAI.bahasa,
+      namaTerdaftar: daftarNama(anak),
+      namaSalah: hasilAI.nama_tidak_cocok || [],
       alasanRagu: hasilAI.alasan_ragu === 'anak_tidak_jelas' ? 'anak_tidak_jelas' : '',
       alasanAI: hasilAI.alasan || '',
       keyakinan: hasilAI.confidence || 0
@@ -994,6 +1065,8 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
     await catatPesan(dari, pesan, 'Ragu: anak tidak teridentifikasi', true);
     await kirimRagu(target, dari, 'Belum berhasil diidentifikasi', pesan, {
       alasanRagu: 'anak_tidak_jelas',
+      namaTerdaftar: daftarNama(anak),
+      bahasa: hasilAI.bahasa,
       namaDiPesan: hasilAI.nama_di_pesan || [],
       statusDugaan: hasilAI.status_dugaan || hasilAI.status || '',
       alasanAI: hasilAI.alasan || '',
@@ -1007,7 +1080,10 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
     dari, pesan, target, anak: pilih, status,
     catatan: hasilAI.alasan || pesan,
     waktu: hasilAI.waktu || [],
-    bahasa: hasilAI.bahasa
+    bahasa: hasilAI.bahasa,
+    // Sebagian nama cocok: yang cocok dicatat, yang salah ditolak dalam pesan yang sama.
+    namaSalah: hasilAI.nama_beda ? (hasilAI.nama_tidak_cocok || []) : [],
+    namaTerdaftar: daftarNama(anak)
   });
 }
 
