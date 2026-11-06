@@ -26,7 +26,9 @@ KATEGORI:
 ATURAN WAKTU:
 - Bandingkan semua waktu dengan tanggal_hari_ini.
 - Hari ini → tipe "hari_ini".
-- Tanggal yang sama dengan hari ini, misalnya "hari ini (06 Oktober)" → tetap "hari_ini".
+- Tanggal yang sama dengan hari ini, misalnya "hari ini (06 Oktober)" → tetap "hari_ini",
+  KECUALI pesan juga menulis nama hari (mis. "Hari: Kamis, Tanggal: 6 November 2026"). Dalam kasus itu
+  gunakan tipe "tanggal" dan isi nama_hari persis seperti tertulis, apa pun hari ini.
 - Tanggal berbeda → tipe "tanggal".
 - Hari yang disebut terpisah dibuat sebagai entri terpisah.
 - Jangan mengubah daftar hari menjadi rentang kecuali pesan jelas menyatakan rentang.
@@ -252,6 +254,33 @@ function normalisasi(raw, anak, pesan = '') {
       return hasil;
     })
     .filter(Boolean);
+
+  // Pengaman deterministik: jika pesan menulis SATU nama hari dan SATU tanggal lengkap (mis. "Hari: Kamis",
+  // "Tanggal: 6 November 2026"), pastikan nama hari ikut terbawa sebagai hari_tertulis, walaupun AI
+  // menyederhanakannya menjadi "hari_ini". Webhook lalu memeriksa kecocokan hari dan tanggalnya.
+  {
+    const NAMA_BLN = ['januari', 'februari', 'maret', 'april', 'mei', 'juni', 'juli', 'agustus', 'september', 'oktober', 'november', 'desember'];
+    const teks = String(pesan || '');
+    const hariCocok = [...teks.matchAll(/\bhari\s*[:\-]?\s*(senin|selasa|rabu|kamis|jum['’`]?at|sabtu|minggu|ahad)\b/gi)];
+    const tglCocok = [...teks.matchAll(new RegExp(`\\b(\\d{1,2})\\s+(${NAMA_BLN.join('|')})\\s+(\\d{4})\\b`, 'gi'))];
+    if (hariCocok.length === 1 && tglCocok.length === 1) {
+      const hari = normHari(hariCocok[0][1]);
+      const bulan = NAMA_BLN.indexOf(tglCocok[0][2].toLowerCase()) + 1;
+      if (hari && bulan) {
+        const entri = {
+          tipe: 'tanggal',
+          tanggal: Number(tglCocok[0][1]),
+          bulan,
+          tahun: Number(tglCocok[0][3]),
+          hari_tertulis: hari,
+          jumlah_hari: 1
+        };
+        const i = waktu.findIndex(w => (w.tipe === 'hari_ini' || w.tipe === 'tanggal') && !w.hari_tertulis);
+        if (i >= 0) waktu[i] = entri;
+        else if (waktu.length === 0) waktu.push(entri);
+      }
+    }
+  }
 
   const waktu_final = waktu.length > 0 ? waktu : (kategori === 'izin_sakit' ? [{ tipe: 'hari_ini', jumlah_hari: 1 }] : []);
   const status_dugaan = status;
