@@ -492,8 +492,8 @@ html[data-tema=gelap] .usblay.ok{background:#16311f}html[data-tema=gelap] .usbla
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="/kartu.js?v=20261106b"></script>
-<script src="/rapor.js?v=20261104f"></script>
-<script src="/rapor-p.js?v=20261104h"></script>
+<script src="/rapor.js?v=20261106a"></script>
+<script src="/rapor-p.js?v=20261106a"></script>
 <script src="/rapor-m.js?v=20261104e"></script>
 <style id="patch-tampilan">
 :root{--hdrbg:#166534}html[data-tema=gelap]{--hdrbg:#0F3D24}
@@ -684,7 +684,7 @@ select.click-fx,.select.click-fx{animation:btnClick .38s ease-out}
 <section class="content" id="v"></section></main></div>
 <nav class="bottom hid" id="bn"></nav>
 <div class="mb" id="drw" onclick="if(event.target===this)drw(0)"><div class="modal"><div class="mh"><b>Menu</b><button onclick="drw(0)">✕</button></div><div class="mbody"><div id="dn" class="nav"></div></div></div></div>
-<div class="mb" id="md" onclick="if(event.target===this&&!this.classList.contains('besar'))closeM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="closeM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" id="mtp" onclick="closeM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
+<div class="mb" id="md" onclick="if(event.target===this&&!this.classList.contains('besar'))tutupM()"><div class="modal"><div class="mh"><b id="mt"></b><button onclick="tutupM()">✕</button></div><div class="mbody" id="mbd"></div><div class="mf"><button class="btn soft" id="mtp" onclick="tutupM()">Tutup</button><button class="btn success" id="ms">Simpan</button></div></div></div>
 <div class="mb" id="fk" style="z-index:140" onclick="if(event.target===this)fotoBatal()"><div class="modal" style="width:min(380px,100%);height:auto;max-height:94vh"><div class="mh"><b>Atur foto</b><button onclick="fotoBatal()">✕</button></div><div class="mbody" style="text-align:center"><div class="mu" style="font-size:13px;margin-bottom:10px">Geser foto untuk mengatur posisi. Cubit layar atau pakai penggeser untuk memperbesar.</div><canvas id="fkc" width="480" height="640" style="width:240px;height:320px;max-width:100%;touch-action:none;border-radius:14px;border:3px solid var(--g);background:#eef6f1;cursor:grab"></canvas><div style="display:flex;align-items:center;gap:10px;margin-top:12px;padding:0 6px"><span aria-hidden="true">🔍</span><input id="fkz" type="range" min="1" max="3" step="0.01" value="1" style="flex:1" aria-label="Perbesar foto"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" onclick="fotoBatal()">Batal</button><button class="btn success" id="fkok">Lanjut</button></div></div></div>
 <div class="mb" id="kal" style="z-index:140" onclick="if(event.target===this)kalTutup()"><div class="modal" style="width:min(400px,100%);height:auto;max-height:94vh"><div class="mh"><b>⚙ Kalibrasi cetak belakang</b><button onclick="kalTutup()">✕</button></div><div class="mbody" style="text-align:center"><div class="mu" style="font-size:13px;margin-bottom:10px">Geser posisi kartu pada PDF <b>belakang</b> bila hasil cetak bolak-balik kurang pas. Positif = ke kanan / ke bawah. PDF depan tidak terpengaruh.</div><div id="kalPrev"></div><div class="kalrow"><span>Geser X (mm)</span><button type="button" onclick="kalUbah('x',-0.1)" aria-label="Kurangi X">−</button><input id="kalx" class="input" type="number" step="0.1" min="-5" max="5" inputmode="decimal" onchange="kalIsi('x',this.value)"><button type="button" onclick="kalUbah('x',0.1)" aria-label="Tambah X">+</button></div><div class="kalrow"><span>Geser Y (mm)</span><button type="button" onclick="kalUbah('y',-0.1)" aria-label="Kurangi Y">−</button><input id="kaly" class="input" type="number" step="0.1" min="-5" max="5" inputmode="decimal" onchange="kalIsi('y',this.value)"><button type="button" onclick="kalUbah('y',0.1)" aria-label="Tambah Y">+</button></div><div class="mu" style="font-size:12px;margin-top:6px">Rentang -5 sampai +5 mm. Tersimpan di perangkat ini.</div></div><div class="mf" style="flex-wrap:wrap;justify-content:center"><button class="btn soft sm" onclick="kalNol()">Reset ke 0</button><button class="btn soft sm" onclick="kalUji(this)">🧪 Cetak lembar uji</button><button class="btn success sm" onclick="kalSimpan()">Simpan</button></div></div></div>
 <div class="mb" id="cf" style="z-index:150"><div class="modal" style="width:min(400px,100%)"><div class="mbody" style="text-align:center;padding:24px 20px 14px"><div id="cfi" style="font-size:42px;line-height:1"></div><h3 id="cft" style="margin:10px 0 6px"></h3><img id="cfg" alt="Pratinjau" style="display:none;max-width:160px;max-height:160px;margin:10px auto;padding:8px;background:#fff;border:1px solid #d6e4dc;border-radius:14px;object-fit:contain"><div id="cfm" class="mu" style="font-size:14px;white-space:pre-line"></div></div><div class="mf" style="justify-content:center"><button class="btn soft" id="cfn">Batal</button><button class="btn success" id="cfy">Ya</button></div></div></div>
@@ -864,7 +864,7 @@ let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],k
 async function dbq(p){const r=await p;if(r.error)throw r.error;return r.data}
 let ldn=0;function ld(on,m){ldn=Math.max(0,ldn+(on?1:-1));if(on)$('#ldt').textContent=m||'Memuat...';$('#ld').style.display=ldn?'flex':'none'}
 const guard=(fn,q)=>{if(!q)ld(1);return fn().catch(e=>toast((e&&e.message)||String(e),false)).finally(()=>{if(!q)ld(0)})};
-function resetTutup(){const b=$('#mtp');if(!b)return;b.textContent='Tutup';b.className='btn soft';b.onclick=()=>closeM()}
+function resetTutup(){const b=$('#mtp');if(!b)return;b.textContent='Tutup';b.className='btn soft';b.onclick=()=>tutupM()}
 function info(t,h){resetTutup();$('#mt').textContent=t;$('#mbd').innerHTML=h;$('#ms').style.display='none';$('#md').classList.add('show')}
 function peringatan(ket,e){try{console.warn(ket,e)}catch(x){}toast(ket+(e&&e.message?': '+e.message:''),false)}
 function toast(m,ok=true){const t=$('#ts');if(!ok)m=idErr(m);t.textContent=(ok?'✓ ':'⚠ ')+m;t.className='toast '+(ok?'ok':'err');t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200)}
@@ -1108,11 +1108,12 @@ function formReset(){info('Bantuan akun',`<div class="note">Pilih masalah yang A
 <button class="btn success" style="width:100%;margin:6px 0" onclick="mulaiReset('keduanya')">🔁 Lupa username dan sandi</button>
 <button class="btn soft" style="width:100%;margin:6px 0" onclick="mulaiReset('hilang')">📵 Nomor WhatsApp saya hilang</button>`)}
 function mulaiReset(mode){if(mode==='hilang')return langkahHilang1();
+ if(otpLanjut('reset',m=>m.mode===mode))return;
  const jd={sandi:'Lupa sandi',username:'Lupa username',keduanya:'Lupa username dan sandi'}[mode];
  form(jd,[{k:'wa',l:'Nomor WhatsApp yang terdaftar di akun Anda (contoh 08123456789)'}],async v=>{
   const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp tidak valid');
   await apiPublik({aksi:'reset_kirim',nomor:wa});toast('Jika nomor terdaftar, kode dikirim ke WhatsApp');
-  setTimeout(()=>langkahReset2(mode,wa),150)});$('#ms').textContent='Kirim kode'}
+  otpSimpan('reset',{mode,wa},()=>langkahReset2(mode,wa),()=>mulaiReset(mode));setTimeout(()=>langkahReset2(mode,wa),150)});$('#ms').textContent='Kirim kode'}
 function langkahReset2(mode,wa){const f=[{k:'kode',l:'Kode 6 angka dari WhatsApp ('+fmtWA(wa)+')',ver:kd=>apiPublik({aksi:'otp_cek',keperluan:'reset',nomor:wa,kode:kd})}];
  if(mode!=='sandi')f.push({k:'user',l:'Username baru (huruf kecil, tanpa spasi)'});
  if(mode!=='username'){f.push({k:'sandi',l:'Kata sandi baru (minimal 6 karakter)',t:'password'});f.push({k:'sandi2',l:'Ulangi kata sandi baru',t:'password'})}
@@ -1121,19 +1122,19 @@ function langkahReset2(mode,wa){const f=[{k:'kode',l:'Kode 6 angka dari WhatsApp
   const un=(v.user||'').toLowerCase();
   if(mode!=='sandi'&&!/^[a-z0-9._-]{3,20}$/.test(un))throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah');
   if(mode!=='username'){if((v.sandi||'').length<6)throw new Error('Kata sandi minimal 6 karakter');if(v.sandi!==v.sandi2)throw new Error('Ulangi kata sandi dengan benar')}
-  const j=await apiPublik({aksi:'reset_selesai',mode,nomor:wa,kode:v.kode,username_baru:un,sandi_baru:v.sandi||''});
+  const j=await apiPublik({aksi:'reset_selesai',mode,nomor:wa,kode:v.kode,username_baru:un,sandi_baru:v.sandi||''});otpHapus('reset');
   setTimeout(()=>info('Berhasil',`<div class="note">Akun Anda sudah diperbarui. Username Anda sekarang: <b>${esc(j.username)}</b>. Silakan masuk.</div>`),150)});$('#ms').textContent='Simpan'}
-function langkahHilang1(){form('Nomor WhatsApp hilang',[{k:'nama',l:'Nama lengkap'},{k:'sekolah',l:'Nama sekolah tempat Anda mengajar'},{k:'ulama',l:'Username lama (kosongkan bila lupa)'},{k:'wa',l:'Nomor WhatsApp BARU yang aktif (contoh 08123456789)'}],async v=>{
+function langkahHilang1(){if(otpLanjut('hilang_publik'))return;form('Nomor WhatsApp hilang',[{k:'nama',l:'Nama lengkap'},{k:'sekolah',l:'Nama sekolah tempat Anda mengajar'},{k:'ulama',l:'Username lama (kosongkan bila lupa)'},{k:'wa',l:'Nomor WhatsApp BARU yang aktif (contoh 08123456789)'}],async v=>{
   const wa=normWA(v.wa);if((v.nama||'').length<3||(v.sekolah||'').length<3)throw new Error('Isi nama lengkap dan nama sekolah');if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp baru tidak valid');
   await apiPublik({aksi:'hilang_otp',nomor:wa});toast('Kode dikirim ke nomor baru');
-  setTimeout(()=>langkahHilang2({nama:v.nama,sekolah:v.sekolah,ulama:(v.ulama||'').toLowerCase(),wa}),150)});$('#ms').textContent='Kirim kode ke nomor baru'}
+  const d={nama:v.nama,sekolah:v.sekolah,ulama:(v.ulama||'').toLowerCase(),wa};otpSimpan('hilang_publik',{},()=>langkahHilang2(d),()=>langkahHilang1());setTimeout(()=>langkahHilang2(d),150)});$('#ms').textContent='Kirim kode ke nomor baru'}
 function langkahHilang2(d){form('Verifikasi dan data akun baru',[{k:'kode',l:'Kode 6 angka yang dikirim ke nomor baru ('+fmtWA(d.wa)+')',ver:kd=>apiPublik({aksi:'otp_cek',keperluan:'nomor_hilang',nomor:d.wa,kode:kd})},{k:'ubaru',l:'Username baru (kosongkan bila tidak ingin mengganti)'},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak ingin mengganti)',t:'password'},{k:'sandi2',l:'Ulangi kata sandi baru',t:'password'}],async v=>{
   if(!/^\d{6}$/.test(v.kode))throw new Error('Kode harus 6 angka');
   const ub=(v.ubaru||'').toLowerCase();
   if(ub&&!/^[a-z0-9._-]{3,20}$/.test(ub))throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah');
   if(v.sandi&&v.sandi.length<6)throw new Error('Kata sandi minimal 6 karakter');
   if(v.sandi!==(v.sandi2||''))throw new Error('Ulangi kata sandi dengan benar');
-  await apiPublik({aksi:'hilang_kirim',nama:d.nama,nama_sekolah:d.sekolah,username_lama:d.ulama,nomor:d.wa,kode:v.kode,username_baru:ub,sandi_baru:v.sandi||''});
+  await apiPublik({aksi:'hilang_kirim',nama:d.nama,nama_sekolah:d.sekolah,username_lama:d.ulama,nomor:d.wa,kode:v.kode,username_baru:ub,sandi_baru:v.sandi||''});otpHapus('hilang_publik');
   setTimeout(()=>info('Permintaan terkirim','<div class="note">Permintaan Anda sudah dikirim ke admin untuk diperiksa. Anda akan dikabari lewat WhatsApp di nomor baru setelah disetujui. Akun lama Anda tidak berubah sebelum disetujui.</div>'),150)});$('#ms').textContent='Kirim permintaan'}
 async function apiPublik(body){const r=await fetch('/api/publik',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('Layanan pendaftaran belum tersedia (404). Hubungi admin');throw new Error(j.error||('Gagal ('+r.status+')'))}return j}
 function kirimKodeDaftar(){const b=$('#dfKb'),e=$('#dfErr');if(b.disabled)return;e.textContent='';const wa=$('#dfWa').value.trim();if(!wa){e.textContent='Isi nomor WhatsApp dulu';return}
@@ -1494,7 +1495,7 @@ function renderV(){
  if(_tb)utabTengah(_sl);
  if(view==='kartu')muatGambarKartu().catch(e=>toast('Gagal menyiapkan kartu: '+(e.message||e),false));
 }
-function form(t,f,cb){window._fver={};f.forEach(x=>{if(x.ver)_fver[x.k]=x.ver});$('#ms').textContent='Simpan';$('#ms').style.display='';$('#mt').textContent=t;$('#mbd').innerHTML='<div class="fg">'+f.map(x=>`<div class="fd"><label class="l">${x.l}</label>${x.ro?`<input id="f_${x.k}" class="input" value="${esc(x.v||'')}" readonly style="background:#f1f5f2;color:var(--mu)">`:x.o?`<select id="f_${x.k}" class="select">${x.o.map(o=>`<option ${o===x.v?'selected':''}>${esc(o)}</option>`).join('')}</select>`:x.t==='date'||x.t==='year'?dt(x.t,x.v||'','','',{id:'f_'+x.k,min:x.t==='year'?'1990-01-01':(x.min||'2000-01-01'),max:x.t==='year'?(+TODAY.slice(0,4)+1)+'-12-31':'2099-12-31',kosong:x.t==='date',ref:x.ref}):x.ver?`<div style="display:flex;gap:8px"><input id="f_${x.k}" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="flex:1" value="${esc(x.v||'')}"><button type="button" class="btn soft" onclick="formVer('${x.k}')">Verifikasi</button></div><div id="fv_${x.k}" class="mu" style="margin-top:4px"></div>`:`<input id="f_${x.k}" class="input" type="${x.t||'text'}" value="${esc(x.v||'')}">`}</div>`).join('')+'</div>';
+function form(t,f,cb){window._otpAktif=f.some(x=>!!x.ver);window._fver={};f.forEach(x=>{if(x.ver)_fver[x.k]=x.ver});$('#ms').textContent='Simpan';$('#ms').style.display='';$('#mt').textContent=t;$('#mbd').innerHTML='<div class="fg">'+f.map(x=>`<div class="fd"><label class="l">${x.l}</label>${x.ro?`<input id="f_${x.k}" class="input" value="${esc(x.v||'')}" readonly style="background:#f1f5f2;color:var(--mu)">`:x.o?`<select id="f_${x.k}" class="select">${x.o.map(o=>`<option ${o===x.v?'selected':''}>${esc(o)}</option>`).join('')}</select>`:x.t==='date'||x.t==='year'?dt(x.t,x.v||'','','',{id:'f_'+x.k,min:x.t==='year'?'1990-01-01':(x.min||'2000-01-01'),max:x.t==='year'?(+TODAY.slice(0,4)+1)+'-12-31':'2099-12-31',kosong:x.t==='date',ref:x.ref}):x.ver?`<div style="display:flex;gap:8px"><input id="f_${x.k}" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="flex:1" value="${esc(x.v||'')}"><button type="button" class="btn soft" onclick="formVer('${x.k}')">Verifikasi</button></div><div id="fv_${x.k}" class="mu" style="margin-top:4px"></div>`:`<input id="f_${x.k}" class="input" type="${x.t||'text'}" value="${esc(x.v||'')}">`}</div>`).join('')+'</div>';
  enhanceCustomSelects($('#mbd'));enhanceSecretInputs($('#mbd'));f.forEach(x=>{if(x.pkb)setTimeout(()=>pasangPkForm(x.k,1),0)});
  $('#ms').onclick=()=>{const v={};f.forEach(x=>v[x.k]=$('#f_'+x.k).value.trim());Promise.resolve().then(()=>cb(v)).then(()=>closeM()).catch(e=>toast(e.message||String(e),false))};$('#md').classList.add('show')}
 async function formVer(k){const el=$('#f_'+k),o=$('#fv_'+k),fn=window._fver&&_fver[k];if(!el||!fn||!o)return;const kode=el.value.trim();
@@ -1506,24 +1507,33 @@ async function verifikasiDaftar(){const wa=normWA($('#dfWa').value),kode=$('#dfK
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
  try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
-function closeM(){const pv=$('#rpPrev');if(pv){pv.querySelectorAll('canvas').forEach(c=>{c.width=c.height=0});pv.innerHTML=''}$('#md').classList.remove('show','besar');const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
+function closeM(){const pv=$('#rpPrev');if(pv){pv.querySelectorAll('canvas').forEach(c=>{c.width=c.height=0});pv.innerHTML=''}$('#md').classList.remove('show','besar');window._otpAktif=false;const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
+/* Verifikasi kode (OTP): bila popup tertutup tanpa sengaja, tombol yang sama langsung membuka lagi pemasukan kode (10 menit) */
+const OTP_TUNDA={};
+function otpSimpan(k,meta,buka,mulai){OTP_TUNDA[k]={t:Date.now(),meta:meta||{},buka,mulai}}
+function otpHapus(k){delete OTP_TUNDA[k]}
+function otpLanjut(k,cek,args){const p=OTP_TUNDA[k];if(!p)return false;if(Date.now()-p.t>10*60000||(cek&&!cek(p.meta))){delete OTP_TUNDA[k];return false}
+ p.buka(...(args||[]));const b=$('#mbd');if(b)b.insertAdjacentHTML('beforeend','<div class="note" style="margin-top:10px">Kode yang sudah dikirim tadi masih bisa dipakai. Bila kode tidak masuk atau sudah kedaluwarsa, kirim kode baru.<div class="tb" style="margin:8px 0 0"><button type="button" class="btn soft sm" onclick="otpUlang(\''+k+'\')">↻ Kirim kode baru</button></div></div>');return true}
+function otpUlang(k){const p=OTP_TUNDA[k];delete OTP_TUNDA[k];closeM();if(p&&p.mulai)setTimeout(p.mulai,150)}
+async function tutupM(){if(window._otpAktif&&$('#md').classList.contains('show')){const ya=await konfirmasi('Kode verifikasi sudah dikirim. Bila ditutup, tekan tombol yang sama lagi dalam 10 menit untuk langsung memasukkan kode tanpa mengirim kode baru.\n\nTutup sekarang?',{judul:'Tutup verifikasi?',ikon:'🔑',ya:'Tutup'});if(!ya)return}closeM()}
 function konfirmasi(pesan,o){o=o||{};const _g=$('#cfg');if(_g){if(o.gambar){_g.src=o.gambar;_g.style.display='block'}else{_g.removeAttribute('src');_g.style.display='none'}}return new Promise(res=>{const m=$('#cf'),y=$('#cfy'),n=$('#cfn');$('#cfi').textContent=o.ikon||(o.bahaya?'🗑️':'❓');$('#cft').textContent=o.judul||'Konfirmasi';$('#cfm').textContent=pesan;y.textContent=o.ya||'Ya';y.className='btn '+(o.bahaya?'danger':'success');
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
  document.addEventListener('keydown',kd);y.onclick=()=>fin(true);n.onclick=()=>fin(false);m.onclick=e=>{if(e.target===m)fin(false)};m.classList.add('show');y.focus()})}
 const V={};
 function nomorHilangProfil(){if(MB())return toast('Tidak tersedia di mode bantuan',false);
  const sk=(MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||'';if(!sk||!PROFIL)return toast('Data sekolah tidak ditemukan',false);
+ if(otpLanjut('hilang_profil'))return;
  form('Nomor WhatsApp hilang',[{k:'wa',l:'Nomor WhatsApp BARU yang aktif (contoh 08123456789)'}],async v=>{
   const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp baru tidak valid');
   await apiPublik({aksi:'hilang_otp',nomor:wa});toast('Kode dikirim ke nomor baru');
-  setTimeout(()=>{form('Verifikasi nomor baru',[{k:'kode',l:'Kode 6 angka yang dikirim ke nomor baru ('+fmtWA(wa)+')',ver:kd=>apiPublik({aksi:'otp_cek',keperluan:'nomor_hilang',nomor:wa,kode:kd})},{k:'ubaru',l:'Username baru (kosongkan bila tidak ingin mengganti)'},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak ingin mengganti)',t:'password'},{k:'sandi2',l:'Ulangi kata sandi baru',t:'password'}],async z=>{
+  const bukaV=()=>{form('Verifikasi nomor baru',[{k:'kode',l:'Kode 6 angka yang dikirim ke nomor baru ('+fmtWA(wa)+')',ver:kd=>apiPublik({aksi:'otp_cek',keperluan:'nomor_hilang',nomor:wa,kode:kd})},{k:'ubaru',l:'Username baru (kosongkan bila tidak ingin mengganti)'},{k:'sandi',l:'Kata sandi baru (kosongkan bila tidak ingin mengganti)',t:'password'},{k:'sandi2',l:'Ulangi kata sandi baru',t:'password'}],async z=>{
     if(!/^\d{6}$/.test(z.kode))throw new Error('Kode harus 6 angka');
     const ub=(z.ubaru||'').trim().toLowerCase();
     if(ub&&!/^[a-z0-9._-]{3,20}$/.test(ub))throw new Error('Username 3-20 karakter: huruf kecil, angka, titik, minus, atau garis bawah');
     if(z.sandi&&z.sandi.length<6)throw new Error('Kata sandi minimal 6 karakter');
     if(z.sandi!==(z.sandi2||''))throw new Error('Ulangi kata sandi dengan benar');
-    await apiPublik({aksi:'hilang_kirim',nama:PROFIL.nama,nama_sekolah:sk,username_lama:PROFIL.username,nomor:wa,kode:z.kode,username_baru:ub,sandi_baru:z.sandi||''});
-    setTimeout(()=>info('Permintaan terkirim','<div class="note">Permintaan ganti nomor sudah dikirim ke admin untuk diperiksa. Anda akan dikabari lewat WhatsApp di nomor baru setelah disetujui. Nomor, username, dan kata sandi lama tidak berubah sebelum disetujui.</div>'),150)});$('#ms').textContent='Kirim permintaan'},150)});$('#ms').textContent='Kirim kode ke nomor baru'}
+    await apiPublik({aksi:'hilang_kirim',nama:PROFIL.nama,nama_sekolah:sk,username_lama:PROFIL.username,nomor:wa,kode:z.kode,username_baru:ub,sandi_baru:z.sandi||''});otpHapus('hilang_profil');
+    setTimeout(()=>info('Permintaan terkirim','<div class="note">Permintaan ganti nomor sudah dikirim ke admin untuk diperiksa. Anda akan dikabari lewat WhatsApp di nomor baru setelah disetujui. Nomor, username, dan kata sandi lama tidak berubah sebelum disetujui.</div>'),150)});$('#ms').textContent='Kirim permintaan'};otpSimpan('hilang_profil',{},bukaV,()=>nomorHilangProfil());setTimeout(bukaV,150)});$('#ms').textContent='Kirim kode ke nomor baru'}
 /* ---------- pengingat kelengkapan profil & passkey di dashboard ---------- */
 async function muatStatusProfil(){try{if(role==='Developer'||MB()||!me)return;
  S.nomor=await muatNomor();
@@ -1567,7 +1577,7 @@ async function hubungiOperator(){
  if(ops.length===1)return bukaWAFitur(ops[0].no_wa);
  OPSX=ops;
  info('Hubungi Operator','<div class="note">Pilih operator yang ingin dihubungi.</div>'+ops.map((o,i)=>`<button class="btn success" style="width:100%;margin:6px 0;text-align:left" onclick="closeM();bukaWAFitur(OPSX[${i}].no_wa)">💬 ${esc(o.nama||'Operator')}</button>`).join(''));
- {const b=$('#mtp');if(b){b.textContent='Tutup';b.className='btn soft';b.onclick=()=>closeM()}}
+ {const b=$('#mtp');if(b){b.textContent='Tutup';b.className='btn soft';b.onclick=()=>tutupM()}}
 }
 async function muatRingDash(){try{if(role==='Developer'||MB()||!SEK)return;KL.ring=(await dbq(db.rpc('keputusan_validasi',{p_sekolah:SEK})))||null}catch(e){}}
 function mulaiSahkan(kid){KL.tab='pengesahan';KL.dq='';KL.dk='';KL.hm=false;KL.hs.clear();lompatKe('kelola','klKelas'+kid)}
@@ -1773,10 +1783,11 @@ function fmtWA(n){const d=String(n||'').replace(/\D/g,'');return d.startsWith('6
 function mintaIzin(lanjut){if(MB())return lanjut(null);
  if(role==='Developer')return lanjut(null);
  if(izinKelola&&Date.now()<izinExp)return lanjut(izinKelola);
+ if(otpLanjut('izin_kelola',null,[lanjut]))return;
  guard(async()=>{const j=await apiGuru({aksi:'otp_kelola_kirim'});toast('Kode dikirim ke WhatsApp '+(j.nomor||'Anda'));
-  setTimeout(()=>{form('Verifikasi pemilik akun',[{k:'kode',l:'Masukkan kode 6 angka yang dikirim ke WhatsApp Anda ('+esc(j.nomor||'')+')',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'kelola_guru',kode:kd})}],async v=>{
-    const k=await apiGuru({aksi:'otp_kelola_verifikasi',kode:v.kode});izinKelola=k.izin;izinExp=Date.now()+14*60000;setTimeout(()=>lanjut(izinKelola),150)});
-   $('#ms').textContent='Verifikasi'},150)})}
+  const bukaV=lj=>{form('Verifikasi pemilik akun',[{k:'kode',l:'Masukkan kode 6 angka yang dikirim ke WhatsApp Anda ('+esc(j.nomor||'')+')',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'kelola_guru',kode:kd})}],async v=>{
+    const k=await apiGuru({aksi:'otp_kelola_verifikasi',kode:v.kode});izinKelola=k.izin;izinExp=Date.now()+14*60000;otpHapus('izin_kelola');setTimeout(()=>lj(izinKelola),150)});
+   $('#ms').textContent='Verifikasi'};otpSimpan('izin_kelola',{},bukaV,()=>mintaIzin(lanjut));setTimeout(()=>bukaV(lanjut),150)})}
 function formGuruBaru(wa,izin){const opsi=['Guru','Operator','Pengelola/Pengasuh','Wakil Kepala Sekolah','Kepala Sekolah'];
  form('Tambah guru baru',[{k:'nama',l:'Nama guru'},{k:'nip',l:'NIP (opsional)'},{k:'user',l:'Username (huruf kecil, tanpa spasi)'},{k:'sandi',l:'Kata sandi awal (minimal 6 karakter)',t:'password'},{k:'role',l:'Peran',o:opsi}],async v=>{
   const jk=KEYR[v.role]==='kepala_sekolah';
@@ -1794,15 +1805,16 @@ function addGuru(){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Ke
   setTimeout(()=>formGuruBaru(wa,izin),150)}))}
 function gantiNomor(op){if(MB())return toast('Tidak tersedia di mode bantuan',false);
  const tetap=op&&op.wa?normWA(op.wa):'';
+ if(otpLanjut('ganti_nomor',m=>!tetap||m.wa===tetap))return;
  setTimeout(()=>pasangPkForm('sandi'),0);
  form('Nomor WhatsApp saya',[tetap?{k:'wa',l:'Nomor WhatsApp baru (dari Pengaturan)',ro:1,v:fmtWA(tetap)}:{k:'wa',l:'Nomor WhatsApp baru (contoh 08123456789)'},{k:'sandi',l:'Kata sandi saat ini',t:'password'}],async v=>{
   const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp tidak valid');if(!v.sandi&&!pkFresh())throw new Error('Isi kata sandi saat ini atau verifikasi dengan passkey');
   const j=await apiGuru({aksi:'nomor_otp_kirim',no_wa_baru:wa,...bodySandi(v.sandi)});
-  setTimeout(()=>{const f=[{k:'kb',l:'Kode yang dikirim ke nomor BARU ('+fmtWA(wa)+')',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'ganti_baru',no_wa_baru:wa,kode:kd})}];if(j.perlu_kode_lama)f.push({k:'kl',l:'Kode yang dikirim ke nomor LAMA',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'ganti_lama',kode:kd})});
-   form('Verifikasi nomor WhatsApp',f,async z=>{await apiGuru({aksi:'nomor_simpan',no_wa_baru:wa,kode_baru:z.kb,kode_lama:z.kl||''});await muatProfil();
+  const bukaV=()=>{const f=[{k:'kb',l:'Kode yang dikirim ke nomor BARU ('+fmtWA(wa)+')',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'ganti_baru',no_wa_baru:wa,kode:kd})}];if(j.perlu_kode_lama)f.push({k:'kl',l:'Kode yang dikirim ke nomor LAMA',ver:kd=>apiGuru({aksi:'otp_cek',jenis:'ganti_lama',kode:kd})});
+   form('Verifikasi nomor WhatsApp',f,async z=>{await apiGuru({aksi:'nomor_simpan',no_wa_baru:wa,kode_baru:z.kb,kode_lama:z.kl||''});otpHapus('ganti_nomor');await muatProfil();
     let okP=true;if(role==='Kepala Sekolah'){try{await apiPengaturan({aksi:'simpan',nomor_kepala:fmtWA(wa)});await muatRahasia()}catch(e){okP=false;console.warn(e)}}
     if(okP)toast(role==='Kepala Sekolah'?'Nomor WhatsApp diperbarui di Profil dan Pengaturan':'Nomor WhatsApp diperbarui');else toast('Nomor di Profil sudah diperbarui, tetapi di Pengaturan belum. Buka Pengaturan lalu simpan ulang.',false);renderV()});
-   $('#ms').textContent='Verifikasi'},150)});$('#ms').textContent='Kirim kode'}
+   $('#ms').textContent='Verifikasi'};otpSimpan('ganti_nomor',{wa},bukaV,()=>gantiNomor(op));setTimeout(bukaV,150)});$('#ms').textContent='Kirim kode'}
 function setGuruRole(id,r){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Operator, atau Developer yang dapat mengubah peran guru',false);
  const g=S.guru.find(x=>x.id===id)||{};
  const jalan=async()=>{try{await apiGuru({aksi:'ubah_role',id,role:r});
@@ -2666,7 +2678,7 @@ function panelKelasHtml(){
  if(!adalahKepala()){
   const wn=id=>{const g=S.guru.find(x=>x.id===id);return g?g.nama:'-'};
   return `<div class="panel" id="pnKelas"><div class="ph">🏫 Kelas dan Jam Masuk</div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Urutan kelas menentukan arah naik kelas. Data ini hanya dapat diubah oleh Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, atau Operator.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <b>${esc(k.jam)}</b></span><span>Wali kelas <b>${esc(wn(k.wali))}</b></span><span>Urutan <b>${k.urutan==null?'-':k.urutan}</b></span>${k.akhir?'<span><b>✓ Kelas akhir (kelulusan)</b></span>':''}</div>`).join('')||'<div class="mu">Belum ada kelas.</div>'}</div></div></div>`}
- return `<div class="panel" id="pnKelas"><div class="ph">🏫 Kelas dan Jam Masuk <button id="btnTambahKelas" class="btn success" onclick="addKelas()">+ Tambah Kelas</button></div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Urutan kelas (1, 2, 3, ...) menentukan arah naik kelas: siswa hanya boleh naik ke kelas dengan urutan lebih tinggi. Centang Kelas akhir pada kelas yang menjadi kelas kelulusan. Batas masuk, wali kelas, dan Kelas akhir tersimpan otomatis. Urutan kelas disimpan dengan tombol Simpan.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <input type="time" class="input" value="${k.jam}" onchange="setJam(${k.id},this.value)"></span><span>Wali kelas <select class="select" onchange="setWaliKelas(${k.id},this.value)">${woptGuru(k.wali)}</select></span><span>Urutan <select class="select urutan-sel" data-urutan="1">${urutanOpt(k.urutan)}</select></span><span><label class="cbl"><input type="checkbox" ${k.akhir?'checked':''} onchange="setKelasAkhir(${k.id},this.checked)"> Kelas akhir (kelulusan)</label></span><div class="ci-act"><button class="btn sm soft" onclick="ubahKelas(${k.id})">Ubah nama kelas</button><button class="btn sm success" onclick="simpanKelas(${k.id},this)">Simpan</button><button class="btn sm danger" onclick="delKelas(${k.id})">Hapus</button></div></div>`).join('')}</div></div></div>`}
+ return `<div class="panel" id="pnKelas"><div class="ph">🏫 Kelas dan Jam Masuk <button id="btnTambahKelas" class="btn success" onclick="addKelas()">+ Tambah Kelas</button></div><div class="pb"><div class="note">Batas jam masuk menentukan status Terlambat saat scan. Urutan kelas (1, 2, 3, ...) menentukan arah naik kelas: siswa hanya boleh naik ke kelas dengan urutan lebih tinggi. Centang Kelas akhir pada kelas yang menjadi kelas kelulusan. Batas masuk, wali kelas, urutan kelas, dan Kelas akhir tersimpan otomatis begitu diubah.</div><div class="cls">${S.kelas.map(k=>`<div class="ci"><b>Kelas ${esc(k.nama)}</b><span>Batas masuk <input type="time" class="input" value="${k.jam}" onchange="setJam(${k.id},this.value)"></span><span>Wali kelas <select class="select" onchange="setWaliKelas(${k.id},this.value)">${woptGuru(k.wali)}</select></span><span>Urutan <select class="select urutan-sel" data-urutan="1" onchange="setUrutan(${k.id},this.value)">${urutanOpt(k.urutan)}</select></span><span><label class="cbl"><input type="checkbox" ${k.akhir?'checked':''} onchange="setKelasAkhir(${k.id},this.checked)"> Kelas akhir (kelulusan)</label></span><div class="ci-act"><button class="btn sm soft" onclick="ubahKelas(${k.id})">Ubah nama kelas</button><button class="btn sm danger" onclick="delKelas(${k.id})">Hapus</button></div></div>`).join('')}</div></div></div>`}
 V.kelasjam=()=>panelKelasHtml();
 V.pengaturan=()=>`${taInit()}<div class="panel" id="pnTahunAjaran"><div class="ph">🎓 Tahun Ajaran <span class="mu">Sekarang: ${esc(S.set.tahun_ajaran||'-')}</span></div><div class="pb"><div class="note">Tahun ajaran baru hanya bisa dimulai setelah keputusan akhir tahun (naik kelas, tinggal kelas, lulus) disahkan di menu Kelola Siswa. Siswa naik dan tinggal kelas tetap tersimpan; siswa lulus, siswa nonaktif, dan wali yang tidak lagi punya anak di sekolah akan dihapus. Seluruh absensi lama, laporan orang tua, dan pesan WhatsApp juga dihapus. Data guru dan kelas tetap ada. Unduh rekap total tahun ajaran di bawah ini sebelum menghapus. Bila masih ada saldo Tabungan Siswa, Anda memilih apakah saldo siswa yang naik atau tinggal kelas dibawa (riwayat diringkas jadi satu saldo awal) atau seluruh tabungan ditutup. Saldo dan riwayat siswa lulus dan nonaktif selalu dihapus. PDF rekap tabungan per kelas wajib diunduh di halaman konfirmasi.</div>
 <div class="tb"><span class="mu">Dari</span>${dt('month',taA,"taA=this.value")}<span class="mu">Sampai</span>${dt('month',taB,"taB=this.value")}<select class="select" onchange="taK=this.value">${kopt(taK,1)}</select></div>
@@ -3363,7 +3375,7 @@ function pnNilaiHTML(){const pil=pnPilK()+pnPeriode();if(!pnK)return pil+PKH;con
   const isi=r?r.nilai.filter(x=>x.n!=null).length:0,tot=r&&terbit?r.nilai.length:pnMapel.length;
   const stt=terbit?'<span class="badge hadir">Terbit</span>'+(r.dikirim_pada?'<div class="mu">Terkirim '+fmt(String(r.dikirim_pada).slice(0,10))+'</div>':''):r?'<span class="badge terlambat">Draf</span>'+(pnUas2()&&lk&&!kep?'<div class="mu">Siap diterbitkan (tanpa keputusan)</div>':'')+(!lk&&isi===r.nilai.length&&r.nilai.length?'<div class="mu">Mapel/KKM berubah, simpan ulang</div>':''):'<span class="mu">Belum diisi</span>';
   const bt=b&&r&&!terbit&&lk?`<button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button>`:'';
-  return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${isi} / ${tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit||!b?'soft':'success'}" onclick="pnBuka(${s.id})">${terbit||!b?'👁 Lihat nilai':'✍️ Isi'}</button>${bt}${terbit&&b?`<button class="btn pnk soft" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button>`:''}${r?`<button class="btn pnk soft" onclick="pnKepLihat(${s.id})">📋 Lihat raport</button><button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 Download PDF</button>`:''}</div></td></tr>`}).join('');
+  return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${isi} / ${tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit||!b?'soft':'success'}" onclick="pnBuka(${s.id})">${terbit||!b?'👁 Lihat nilai':'✍️ Isi'}</button>${bt}${terbit&&b?`<button class="btn pnk soft" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button>`:''}${r?`<button class="btn pnk soft" onclick="pnKepLihat(${s.id})">Raport 👀</button><button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 Download PDF</button>`:''}</div></td></tr>`}).join('');
  const tgl=`<div class="tbbox"><b>📅 Periode perhitungan kehadiran</b><div class="mu" style="margin:4px 0 8px">Sakit, izin, dan alpa dihitung dari absensi pada rentang tanggal ini. Atur sesuai kalender sekolah.</div><div class="tb" style="flex-wrap:wrap;align-items:center;margin:0"><span class="mu">Mulai</span>${dt('date',rg[0],'pnSetTgl(0,this.value)','',{id:'pnTa'})}<span class="mu">sampai</span>${dt('date',rg[1],'pnSetTgl(1,this.value)','',{id:'pnTb'})}<button class="btn soft sm" onclick="pnResetTgl()">↺ Bawaan semester</button></div><div class="mu" style="margin-top:6px">Angka kehadiran yang sudah tersimpan di draf tidak berubah. Untuk menghitung ulang satu siswa, buka lembar nilainya lalu tekan ↻ Ambil dari absensi.</div></div>`;
  const cari=`<div class="tb tab-choice">${cpick('pnSiswaPick','nama siswa','',sis.map(s=>({value:s.id,label:s.nama})),'pnPilihSiswa','Cari nama siswa')}</div>`;
  let h=pil+cari+tgl+`<div class="note">Kelas <b>${esc(kl.nama)}</b> · ${pnSem===1?'Semester 1':'Semester 2'} · ${pnJenis}. Terbit: <b>${nt}</b> · Draf: <b>${nd}</b> · Belum diisi: <b>${sis.length-nt-nd}</b>.${b?(kl.wali?'':'<br>Kelas ini belum punya wali kelas, jadi semua guru dapat mengisi dan menerbitkan.'):'<br>Anda hanya dapat melihat nilai kelas ini.'}</div>`;
