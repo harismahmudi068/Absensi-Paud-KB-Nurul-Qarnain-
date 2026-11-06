@@ -112,7 +112,7 @@ function pkInfo(s, r, i, b) {
   const kg = PKR.kel.find(k => k.id === ((r && r.kelompok_id) || (pkKel(s) || {}).id)) || {}, terbit = !!r && r.status === 'terbit';
   const stt = terbit ? '<span class="badge hadir">Terbit</span>' : r ? '<span class="badge terlambat">Draf</span>' + (h.tot && h.isi === h.tot ? '<div class="mu">Lengkap</div>' : '') : '<span class="mu">Belum diisi</span>';
   const siap = !!r && !terbit && h.tot > 0 && h.isi === h.tot, bt = b && siap ? `<button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button>` : '';
-  const tr = `<tr><td>${i + 1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(kg.nama || '')}</div></td><td>${h.isi} / ${h.tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit || !b ? 'soft' : 'success'}" onclick="pnBuka(${s.id})">${terbit || !b ? '👁 Lihat' : '✍️ Isi'}</button>${bt}${terbit && b ? `<button class="btn pnk soft" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button>` : ''}${r ? `<button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>` : ''}</div></td></tr>`;
+  const tr = `<tr><td>${i + 1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(kg.nama || '')}</div></td><td>${h.isi} / ${h.tot}</td><td>${stt}</td><td><div class="pnka"><button class="btn pnk ${terbit || !b ? 'soft' : 'success'}" onclick="pnBuka(${s.id})">${terbit || !b ? '👁 Lihat' : '✍️ Isi'}</button>${bt}${terbit && b ? `<button class="btn pnk soft" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button>` : ''}${r ? `<button class="btn pnk soft" onclick="pnKepLihat(${s.id})">Raport 👀</button><button class="btn pnk soft" onclick="pnPdf([${r.id}],this)">📄 PDF</button>` : ''}</div></td></tr>`;
   return { terbit, tr, siap: siap ? r.id : 0 };
 }
 
