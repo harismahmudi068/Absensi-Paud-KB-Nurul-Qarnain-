@@ -165,7 +165,10 @@ function rapikanPenanda(w) {
   return hasil;
 }
 
-function normalisasi(raw, anak) {
+// Pesan yang jelas menunjuk SEMUA anak ("kedua anak saya", "keduanya", "semua").
+const SEMUA_ANAK = /\b(kedua|keduanya|kedua-duanya|dua-duanya|duaduanya|berdua|bertiga|semua|semuanya|anak-anak|anak2|kakak\s*(dan|&)?\s*adik|adik\s*(dan|&)?\s*kakak)\b/i;
+
+function normalisasi(raw, anak, pesan = '') {
   const daftar = Array.isArray(anak) ? anak : [];
   let kategori = ['izin_sakit', 'bukan_izin_sakit', 'ragu'].includes(raw?.kategori) ? raw.kategori : 'ragu';
   let status = ['izin', 'sakit', 'tidak_ada'].includes(raw?.status) ? raw.status : 'tidak_ada';
@@ -181,6 +184,7 @@ function normalisasi(raw, anak) {
   const nama_di_pesan = daftar_nama.map(x => x.nama);
   let siswa_ids = [];
   let nama_beda = false;
+  const nama_tidak_cocok = [];
 
   if (daftar_nama.length > 0) {
     const idCocok = new Set();
@@ -194,6 +198,7 @@ function normalisasi(raw, anak) {
         // PERBAIKAN: Jika nama tidak mirip sama sekali (misal diketik "Hanum", tapi yang terdaftar "Alif Putra"),
         // maka status langsung ditandai beda, meskipun wali murid tersebut hanya punya 1 anak.
         nama_beda = true;
+        if (!nama_tidak_cocok.includes(x.nama)) nama_tidak_cocok.push(x.nama);
       }
     }
     siswa_ids = [...idCocok];
@@ -203,9 +208,13 @@ function normalisasi(raw, anak) {
     if (daftar.length === 1) {
       siswa_ids = [String(daftar[0].id)];
     } else {
-      siswa_ids = Array.isArray(raw?.siswa_ids)
-        ? raw.siswa_ids.map(String).filter(id => validIds.has(id))
+      // Anak lebih dari satu dan tidak ada nama di pesan: tebakan AI TIDAK dipakai, kecuali pesan
+      // jelas menunjuk semua anak ("kedua anak saya") dan AI memilih semua anak terdaftar.
+      // Selain itu hasilnya kosong -> "anak tidak jelas" -> wali diminta menyebut nama.
+      const dariAI = Array.isArray(raw?.siswa_ids)
+        ? [...new Set(raw.siswa_ids.map(String).filter(id => validIds.has(id)))]
         : [];
+      siswa_ids = (SEMUA_ANAK.test(String(pesan || '')) && dariAI.length === daftar.length) ? dariAI : [];
     }
   }
 
@@ -236,7 +245,10 @@ function normalisasi(raw, anak) {
   if (kategori === 'bukan_izin_sakit') status = 'tidak_ada';
 
   let alasan_ragu = '';
-  if (nama_beda && kategori === 'izin_sakit') {
+  // Sebagian nama cocok: anak yang cocok tetap dicatat (izin_sakit), nama yang salah ditolak oleh Webhook.
+  // Semua nama salah: seluruh pesan ditolak (ragu).
+  const nama_sebagian = nama_beda && kategori === 'izin_sakit' && siswa_ids.length > 0;
+  if (nama_beda && kategori === 'izin_sakit' && !nama_sebagian) {
     kategori = 'ragu';
     status = 'tidak_ada';
     alasan_ragu = 'nama_beda';
@@ -262,6 +274,8 @@ function normalisasi(raw, anak) {
     nama_anak,
     nama_di_pesan,
     nama_beda,
+    nama_tidak_cocok,
+    nama_sebagian,
     alasan_ragu,
     alasan: typeof raw?.alasan === 'string' ? raw.alasan.trim() : '',
     confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0,
@@ -375,7 +389,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
       throw new Error(`Respons Gemini bukan JSON valid: ${content.slice(0, 1000)}`);
     }
 
-    return normalisasi(hasil, anak);
+    return normalisasi(hasil, anak, pesan);
   } catch (e) {
     throw buatErrorAI(e);
   }
