@@ -37,6 +37,8 @@ ATURAN WAKTU:
 - Hari yang disebut "masuk", "hadir", atau "sekolah" bukan hari izin.
 - Contoh: "izin Senin, Rabu dan Kamis tapi Selasa masuk" → hanya Senin, Rabu, Kamis.
 - Gabungkan hari dan tanggal yang merujuk waktu yang sama.
+- Jika pesan menyebut nama hari DAN tanggal sekaligus (misalnya "Hari: Jumat, Tanggal: 6 November 2026"), buat SATU entri bertipe "tanggal" dan isi juga nama_hari persis seperti yang tertulis di pesan. Jangan memperbaiki atau menyesuaikan nama hari walaupun tidak cocok dengan tanggalnya; sistem yang memeriksa kecocokannya.
+- "Ahad" sama dengan hari Minggu; tulis nama_hari "minggu".
 - Bersihkan simbol WhatsApp (*, _, ~).
 - Tanggal bisa ditulis dengan angka. Urutannya selalu HARI/BULAN/TAHUN (kebiasaan Indonesia), bukan bulan/hari:
   "08/10/2026", "8-10-2026", "08.10.26", "8/10" → tanggal 8, bulan 10.
@@ -137,6 +139,14 @@ function adaKemiripan(namaPesan, siswa) {
 }
 
 // Merapikan 1 penanda waktu (hari pertama maupun "sampai"). Mengembalikan null jika tidak valid.
+// Nama hari dari AI/pesan -> bentuk baku. Tanda baca dibuang ("jum’at" / "jum'at" -> "jumat"),
+// "ahad" dibaca "minggu". Mengembalikan '' jika bukan nama hari.
+function normHari(x) {
+  let hari = String(x || '').trim().toLowerCase().replace(/[^a-z]/g, '');
+  if (hari === 'ahad') hari = 'minggu';
+  return ['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'].includes(hari) ? hari : '';
+}
+
 function rapikanPenanda(w) {
   const tipe = ['hari_ini', 'besok', 'lusa', 'nama_hari', 'tanggal', 'lampau'].includes(w?.tipe) ? w.tipe : null;
   if (!tipe) return null;
@@ -144,8 +154,8 @@ function rapikanPenanda(w) {
   const hasil = { tipe };
 
   if (tipe === 'nama_hari') {
-    const hari = String(w?.nama_hari || '').trim().toLowerCase();
-    if (!['minggu', 'senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu'].includes(hari)) return null;
+    const hari = normHari(w?.nama_hari);
+    if (!hari) return null;
     hasil.nama_hari = hari;
     hasil.pekan_depan = w?.pekan_depan === true;
   }
@@ -154,6 +164,11 @@ function rapikanPenanda(w) {
     const d = Number(w?.tanggal);
     if (!Number.isInteger(d) || d < 1 || d > 31) return null;
     hasil.tanggal = d;
+
+    // Nama hari yang ikut tertulis bersama tanggal (apa adanya). Webhook mencocokkannya dengan
+    // hari sebenarnya dari tanggal itu; jika berbeda, pesan ditolak dan wali diminta memeriksa.
+    const hariTertulis = normHari(w?.nama_hari);
+    if (hariTertulis) hasil.hari_tertulis = hariTertulis;
 
     const bulan = Number(w?.bulan);
     if (Number.isInteger(bulan) && bulan >= 1 && bulan <= 12) hasil.bulan = bulan;
