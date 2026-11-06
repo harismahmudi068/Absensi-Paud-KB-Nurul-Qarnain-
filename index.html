@@ -3456,7 +3456,7 @@ function pnKepLihatHTML(s,r){const stt=r.status==='terbit'?'<span class="badge h
 function pnKepLihat(sid){const kl=pnKl(pnK),r0=pnRap.find(x=>x.siswa_id===sid),s=S.siswa.find(x=>x.id===sid);if(!kl||!r0||!s)return toast('Raport siswa ini belum ada',false);
  guard(async()=>{let r=r0;if(r.fmt!=='perkembangan'&&r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}
   const D=await rpDataD(r);info('Raport '+s.nama,pnKepLihatHTML(s,r));$('#md').classList.add('besar');
-  const w=$('#rpPrev'),bd=$('#mbd');RP.lb=Math.min(760,Math.max(260,((bd&&bd.clientWidth)||360)-40));Rapor.pratinjau(w,[D],RP.lb)})}
+  const w=$('#rpPrev'),bd=$('#mbd');RP.lb=Math.min(1000,Math.max(240,((w&&w.clientWidth)||((bd&&bd.clientWidth)||360)-24)-20));Rapor.pratinjau(w,[D],RP.lb)})}
 function pnKepHTML(){const pil=pnPilK();if(!pnK)return pil+PKH;const kl=pnKl(pnK);if(!kl)return pil+PKH;
  if(!S.set.tahun_ajaran)return pil+'<div class="note">Tahun ajaran belum diatur. Isi dulu di menu Pengaturan.</div>';
  if(pnKey!==pnKunci())return pil+'<div class="note">⏳ Memuat...</div>';
@@ -4333,7 +4333,7 @@ function rpLihat(id){const kl=pnKl(RP.k);if(!kl)return;
  guard(async()=>{const r=await rpAmbil(id),s=S.siswa.find(x=>x.id===r.siswa_id);if(!s)throw new Error('Data siswa tidak ditemukan.');
   const D=await rpDataD(r);
   info('Raport '+s.nama,rpLihatHTML(r,s,pnBoleh(kl)));$('#md').classList.add('besar');
-  const w=$('#rpPrev'),bd=$('#mbd');RP.lb=Math.min(760,Math.max(260,((bd&&bd.clientWidth)||360)-40));
+  const w=$('#rpPrev'),bd=$('#mbd');RP.lb=Math.min(1000,Math.max(240,((w&&w.clientWidth)||((bd&&bd.clientWidth)||360)-24)-20));
   Rapor.pratinjau(w,[D],RP.lb)})}
 async function rpPdf(id,btn){let r;try{r=await rpAmbil(id)}catch(e){return toast(e.message||String(e),false)}
  const s=S.siswa.find(x=>x.id===r.siswa_id)||{},bersih=t=>String(t||'').replace(/[^\w\-]+/g,'-').replace(/^-+|-+$/g,'');
