@@ -275,11 +275,15 @@ const Rapor = (() => {
 
     /* --- Tanda tangan --- */
     let sy = Math.max(y + 4, 238); if (sy + 32 > 288) sy = halBaru() + 6;
-    const sx = [L + 30, 105, R - 30], lab = ['Orang Tua / Wali', 'Wali Kelas', 'Kepala Sekolah'], nm = ['', (D.wali || {}).nama, (D.kepsek || {}).nama], np = ['', (D.wali || {}).nip, (D.kepsek || {}).nip];
-    sx.forEach((x, i) => {
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(lab[i], x, sy, { align: 'center' });
-      const ny = sy + 26; doc.text('( ' + (nm[i] || '............................') + ' )', x, ny, { align: 'center' });
-      if (i > 0) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (np[i] || '...............'), x, ny + 4.5, { align: 'center' }); }
+    const wl0 = D.wali || {}, kp0 = D.kepsek || {}, PT = [{ l: 'Orang Tua / Wali', ot: 1 }];
+    if (wl0.nama) PT.push({ l: 'Wali Kelas', n: wl0.nama, p: wl0.nip });
+    if (kp0.nama) PT.push({ l: 'Kepala Sekolah', n: kp0.nama, p: kp0.nip });
+    const sx = PT.length === 3 ? [L + 30, 105, R - 30] : PT.length === 2 ? [L + 45, R - 45] : [105];
+    PT.forEach((q, i) => {
+      const x = sx[i];
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(q.l, x, sy, { align: 'center' });
+      const ny = sy + 26; doc.text('( ' + (q.n || '............................') + ' )', x, ny, { align: 'center' });
+      if (!q.ot) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (q.p || '...............'), x, ny + 4.5, { align: 'center' }); }
     });
   }
 
@@ -417,12 +421,14 @@ const Rapor = (() => {
     /* --- Tanggal dan tanda tangan: satu baris; Pengelola/Pengasuh hanya bila sekolah punya akunnya --- */
     if (y + 45 > 285) y = halBaru() + 2;
     if (D.tgl) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text('Diterbitkan: ' + (D.kota ? D.kota + ', ' : '') + D.tgl + '.', R, y + 4, { align: 'right' }); }
-    const pg = D.pengelola, wl = D.wali || {}, kp = D.kepsek || {};
-    const P = pg ? [['Orang Tua / Wali', '', '', true], ['Wali Kelas', wl.nama, wl.nip], ['Pengelola/Pengasuh', pg.nama, pg.nip], ['Kepala Sekolah', kp.nama, kp.nip]]
-      : [['Orang Tua / Wali', '', '', true], ['Wali Kelas', wl.nama, wl.nip], ['Kepala Sekolah', kp.nama, kp.nip]];
-    const CX = pg ? [0, 1, 2, 3].map(i => L + 22.75 + i * 45.5) : [L + 30, 105, R - 30], yl = y + 18;
+    const pg = D.pengelola && D.pengelola.nama ? D.pengelola : null, wl = D.wali || {}, kp = D.kepsek || {};
+    const P = [['Orang Tua / Wali', '', '', true]];
+    if (wl.nama) P.push(['Wali Kelas', wl.nama, wl.nip]);
+    if (pg) P.push(['Pengelola/Pengasuh', pg.nama, pg.nip]);
+    if (kp.nama) P.push(['Kepala Sekolah', kp.nama, kp.nip]);
+    const nP = P.length, CX = nP === 4 ? [0, 1, 2, 3].map(i => L + 22.75 + i * 45.5) : nP === 3 ? [L + 30, 105, R - 30] : nP === 2 ? [L + 45, R - 45] : [105], yl = y + 18;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX);
-    doc.text('Mengetahui:', pg ? (CX[2] + CX[3]) / 2 : CX[2], yl - 6, { align: 'center' });
+    if (nP > 1) doc.text('Mengetahui:', nP === 4 ? (CX[2] + CX[3]) / 2 : CX[nP - 1], yl - 6, { align: 'center' });
     P.forEach((p, i) => {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(p[0], CX[i], yl, { align: 'center' });
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
