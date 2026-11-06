@@ -12,6 +12,10 @@
 //     Wakil, operator, dan guru lain tidak menerima notifikasi alpa.
 //   - Kegagalan pesan tambahan TIDAK membuat notifikasi dianggap gagal (agar kepala tidak
 //     menerima pesan dobel saat percobaan ulang); hanya dicatat di terakhir_error.
+//   - JEDA BERTAHAP: pesan ke kepala langsung dikirim. Pesan tambahan TIDAK dikirim sekaligus,
+//     tetapi dijadwalkan di Fonnte (parameter schedule) dengan jeda acak 30-60 detik antar
+//     penerima. Server hanya mendaftarkan jadwal (cepat), Fonnte yang mengirim sesuai jam.
+//     Status tambahan = "terjadwal" (diterima Fonnte), bukan "sudah sampai".
 
 // ============================================================
 // TUJUAN NOTIFIKASI
@@ -115,7 +119,17 @@ function formatTanggal(tanggal) {
 // ============================================================
 // KIRIM WHATSAPP MELALUI FONNTE
 // ============================================================
-async function kirimFonnte(token, nomorTujuan, teks) {
+// jadwal (opsional) = unix timestamp dalam detik; bila diisi, Fonnte mengirim pada jam itu.
+async function kirimFonnte(token, nomorTujuan, teks, jadwal) {
+
+  const isi = {
+    target: nomorTujuan,
+    message: teks
+  };
+
+  if (jadwal) {
+    isi.schedule = Math.floor(Number(jadwal));
+  }
 
   const response = await fetch(
     'https://api.fonnte.com/send',
@@ -125,10 +139,7 @@ async function kirimFonnte(token, nomorTujuan, teks) {
         Authorization: token,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        target: nomorTujuan,
-        message: teks
-      })
+      body: JSON.stringify(isi)
     }
   );
 
@@ -153,15 +164,27 @@ const RE_WA = /^628\d{8,12}$/;
 const bersihNomor = (n) => String(n || '').replace(/\D/g, '');
 const RE_ID = /^[0-9a-f-]{36}$/i;
 
-// Kirim banyak pesan, 5 sekaligus agar tidak melewati batas waktu fungsi dan tidak memicu spam.
-// Mengembalikan daftar kegagalan (teks) dan jumlah yang berhasil.
+// Jeda antar penerima (detik), dipilih ACAK agar tidak berpola tetap.
+const JEDA_MIN = 30;
+const JEDA_MAX = 60;
+const jedaAcak = () => JEDA_MIN + Math.floor(Math.random() * (JEDA_MAX - JEDA_MIN + 1));
+
+// Jadwalkan banyak pesan di Fonnte: penerima pertama 30-60 detik dari sekarang, penerima
+// berikutnya 30-60 detik setelah penerima sebelumnya. Pendaftaran jadwal dilakukan 5 sekaligus
+// (hanya mendaftar, bukan mengirim) agar cepat dan tidak melewati batas waktu fungsi.
+// Mengembalikan daftar kegagalan pendaftaran (teks) dan jumlah yang berhasil dijadwalkan.
 async function kirimBanyak(token, daftar) {
   const gagal = [];
   let ok = 0;
-  for (let i = 0; i < daftar.length; i += 5) {
-    const bagian = daftar.slice(i, i + 5);
+  let waktu = Math.floor(Date.now() / 1000);
+  const berjadwal = daftar.map((x) => {
+    waktu += jedaAcak();
+    return { ...x, waktu };
+  });
+  for (let i = 0; i < berjadwal.length; i += 5) {
+    const bagian = berjadwal.slice(i, i + 5);
     const hasil = await Promise.allSettled(
-      bagian.map((x) => kirimFonnte(token, x.nomor, x.teks))
+      bagian.map((x) => kirimFonnte(token, x.nomor, x.teks, x.waktu))
     );
     hasil.forEach((h, j) => {
       if (h.status === 'fulfilled') ok++;
@@ -471,7 +494,7 @@ module.exports = async (req, res) => {
 
       if (tambahan.gagal.length) {
         await updateNotifikasi(id, {
-          terakhir_error: ('Sebagian pesan tambahan gagal: ' + tambahan.gagal.join('; ')).slice(0, 500)
+          terakhir_error: ('Sebagian pesan tambahan gagal dijadwalkan: ' + tambahan.gagal.join('; ')).slice(0, 500)
         }, tabel);
       }
     } catch (e) {
@@ -479,7 +502,7 @@ module.exports = async (req, res) => {
       tambahan.gagal.push(String(e.message || e));
       try {
         await updateNotifikasi(id, {
-          terakhir_error: ('Pesan tambahan gagal: ' + String(e.message || e)).slice(0, 500)
+          terakhir_error: ('Pesan tambahan gagal dijadwalkan: ' + String(e.message || e)).slice(0, 500)
         }, tabel);
       } catch (_) {}
     }
@@ -491,6 +514,7 @@ module.exports = async (req, res) => {
       id,
       tanggal,
       tambahan_terkirim: tambahan.ok,
+      tambahan_terjadwal: tambahan.ok,
       tambahan_gagal: tambahan.gagal.length
     });
 
