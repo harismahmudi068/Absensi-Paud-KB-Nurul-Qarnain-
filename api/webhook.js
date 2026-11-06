@@ -188,6 +188,19 @@ function balasanTanggalLampau(tambahan = []) {
   ]);
 }
 
+// Balasan jika nama hari pada pesan tidak cocok dengan tanggalnya (mis. "Kamis, 6 November 2026"
+// padahal 6 November 2026 hari Jumat). Tidak ada yang dicatat; wali diminta memeriksa dan mengirim ulang.
+function balasanHariTanggalBeda(beda, tambahan = []) {
+  const [Y, M, D] = beda.iso.split('-').map(Number);
+  const tertulis = `${NAMA_HARI[INDEKS_HARI[beda.hari]]}, ${D} ${NAMA_BULAN[M - 1]} ${Y}`;
+  return bungkusBalasan([
+    `Mohon maaf, Bunda. Hari dan tanggal pada pesan Bunda tidak sesuai: *${tertulis}* (${D} ${NAMA_BULAN[M - 1]} ${Y} jatuh pada hari *${NAMA_HARI[indeksHari(beda.iso)]}*), sehingga laporan belum dicatat. 🙏`,
+    `📅 *Hari ini:* ${formatTanggal(tanggal())}`,
+    'Mohon periksa kembali hari dan tanggalnya, kemudian kirim kembali pesannya. 😊',
+    ...tambahan
+  ]);
+}
+
 // Nama pada pesan yang tidak mirip dengan nama anak terdaftar (perbandingan per kata)
 function namaYangBerbeda(namaDiPesan, namaTerdaftar) {
   const kata = String(namaTerdaftar || '').toLowerCase().split(/[\s|]+/).filter(x => x.length > 2);
@@ -544,6 +557,18 @@ function hitungAkhir(s, mulai, T) {
 // Menyusun tanggal yang akan dicatat. Hasilnya `untuk(kelasId)` karena libur_tanggal bisa khusus per kelas.
 // - sakit : HARI_SAKIT_OTOMATIS hari sekolah aktif mulai hari ini (hanya jika pesan bicara hari ini).
 // - izin  : sesuai tanggal/hari yang disebut (tanpa penanda waktu = hari ini).
+// Mencari penanda tanggal yang nama harinya tidak cocok dengan hari sebenarnya dari tanggal itu.
+function cariHariTanggalBeda(entri, T) {
+  for (const w of entri) {
+    for (const x of [w, w && w.sampai]) {
+      if (!x || x.tipe !== 'tanggal' || !x.hari_tertulis) continue;
+      const iso = hitungTanggal(x, T, true);
+      if (iso && indeksHari(iso) !== INDEKS_HARI[x.hari_tertulis]) return { hari: x.hari_tertulis, iso };
+    }
+  }
+  return null;
+}
+
 async function buatRencana(status, waktu) {
   const T = tanggal();
   const entri = Array.isArray(waktu) ? waktu : [];
@@ -551,10 +576,20 @@ async function buatRencana(status, waktu) {
   if (entri.some(w => waktuLampau(w, T))) {
     return { ok: false, lampau: true, alasan: 'tanggal sudah lampau' };
   }
+  // Nama hari dan tanggal pada pesan saling bertentangan: tidak dicatat, wali diminta memeriksa.
+  const beda = cariHariTanggalBeda(entri, T);
+  if (beda) return { ok: false, hariTanggalBeda: beda, alasan: 'hari dan tanggal tidak cocok' };
   const libur = await ambilLibur(T, tambahHari(T, BATAS_HARI_KE_DEPAN + BATAS_JUMLAH_HARI_IZIN + 15));
 
   if (status === 'sakit') {
-    if (entri.some(w => w.tipe !== 'hari_ini')) {
+    // Laporan sakit hanya untuk HARI INI. Dianggap hari ini: tipe hari_ini, tanggal yang sama dengan
+    // hari ini (mis. "Tanggal: 6 November 2026" dikirim pada 6 November 2026), atau nama hari yang
+    // sama dengan hari ini (mis. "Hari: Jumat" dikirim pada hari Jumat).
+    const hariIni = indeksHari(T);
+    const untukHariIni = x => x.tipe === 'hari_ini'
+      || (x.tipe === 'tanggal' && hitungTanggal(x, T) === T)
+      || (x.tipe === 'nama_hari' && !x.pekan_depan && INDEKS_HARI[x.nama_hari] === hariIni);
+    if (entri.some(x => !untukHariIni(x))) {
       return { ok: false, alasan: 'sakit untuk waktu selain hari ini' };
     }
     return {
@@ -712,6 +747,12 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
     await catatPesan(dari, pesan, 'Ditolak: tanggal sudah lampau, wali diminta memeriksa dan mengirim ulang', false);
     await catatNama();
     await kirimBalasanWali(target, balasanTanggalLampau(bagianNama('netral')), bahasa);
+    return;
+  }
+  if (!rencana.ok && rencana.hariTanggalBeda) {
+    await catatPesan(dari, pesan, 'Ditolak: hari dan tanggal pada pesan tidak cocok, wali diminta memeriksa dan mengirim ulang', false);
+    await catatNama();
+    await kirimBalasanWali(target, balasanHariTanggalBeda(rencana.hariTanggalBeda, bagianNama('netral')), bahasa);
     return;
   }
   if (!rencana.ok) {
