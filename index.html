@@ -487,7 +487,7 @@ html[data-tema=gelap] .usblay.siap .usbcap,html[data-tema=gelap] .usblay.scan .u
 html[data-tema=gelap] .usblay.no .usbcap{color:#ffb4b4}
 html[data-tema=gelap] .usblay.ok{background:#16311f}html[data-tema=gelap] .usblay.no{background:#3a1c1f}
 .kalrow{display:flex;align-items:center;gap:8px;margin:10px 0}.kalrow>span{flex:1;text-align:left;font-weight:700;font-size:14px}.kalrow button{width:44px;height:44px;flex:0 0 44px;border-radius:12px;border:1px solid var(--bd2,var(--bd));background:var(--mint,#eef6ee);color:var(--gd,var(--tx));font-size:22px;font-weight:800;padding:0;cursor:pointer}.kalrow input{width:84px;flex:0 0 84px;text-align:center;font-weight:800;font-size:16px;padding:0 6px}
-</style>
+.kwrap.knon{background:#c9ced3}.kwrap.knon.siap .kimg{opacity:.4;filter:grayscale(.5)}.kwrap .knlbl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;font-weight:800;font-size:clamp(22px,7vw,34px);line-height:1.1;color:#d4202f;text-shadow:0 0 6px #fff,0 0 3px #fff;pointer-events:none;z-index:3}</style>
 <script>(function(){var K='tema_ui';function ap(t){document.documentElement.setAttribute('data-tema',t);var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',t==='gelap'?'#0F3D24':'#166534');var b=document.getElementById('tmBtn');if(b)b.setAttribute('aria-pressed',t==='gelap'?'true':'false')}var t='terang';try{t=localStorage.getItem(K)||'terang'}catch(e){}ap(t);window.tmToggle=function(){var n=document.documentElement.getAttribute('data-tema')==='gelap'?'terang':'gelap';ap(n);try{localStorage.setItem(K,n)}catch(e){}};document.addEventListener('DOMContentLoaded',function(){ap(document.documentElement.getAttribute('data-tema')||'terang')})})();</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.108.1/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
@@ -2368,8 +2368,8 @@ const kalBulat=v=>{v=Math.round((parseFloat(v)||0)*10)/10;return Math.max(-5,Mat
 function kalMuat(){try{const o=JSON.parse(localStorage.getItem(KALK)||'{}');return{x:kalBulat(o.x),y:kalBulat(o.y)}}catch(e){return{x:0,y:0}}}
 let KAL=kalMuat(),kalT={x:0,y:0};
 const daftarKartuTampil=()=>S.siswa.filter(s=>!kk||kk==='*'||s.kelas===kk).sort((a,b)=>String(a.kelas).localeCompare(String(b.kelas),'id')||(a.aktif===b.aktif?0:a.aktif?-1:1)||String(a.nama).localeCompare(String(b.nama),'id')||(a.id>b.id?1:a.id<b.id?-1:0));
-const kbeku=s=>`<div class="kwrap" style="background:#c9ced3;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px;color:#4b5563"><b style="font-size:16px">Siswa nonaktif</b><span style="font-size:12px;margin-top:4px">${esc(s.nama)}${s.kelas?' - '+esc(s.kelas):''}</span></div>`;
-const kimgK=(s,sd)=>s.aktif?kimg(s,sd):kbeku(s);
+const kbeku=(s,sd)=>`<div class="kwrap knon"><div class="kspin"><div class="kspn"></div>Memuat kartu...</div><img class="kimg" data-kartu-id="${s.id}" data-sisi="${sd}" alt=""><div class="knlbl">Siswa nonaktif</div></div>`;
+const kimgK=(s,sd)=>s.aktif?kimg(s,sd):kbeku(s,sd);
 const kelasLinkSemua=()=>S.siswa.filter(s=>kk==='*'||s.kelas===kk).sort((a,b)=>(kk==='*'?String(a.kelas).localeCompare(String(b.kelas),'id'):0)||(a.aktif===b.aktif?0:a.aktif?-1:1)||String(a.nama).localeCompare(String(b.nama),'id'));
 const daftarKartu=()=>act().filter(s=>!kk||kk==='*'||s.kelas===kk).sort((a,b)=>String(a.kelas).localeCompare(String(b.kelas),'id')||String(a.nama).localeCompare(String(b.nama),'id')||(a.id>b.id?1:a.id<b.id?-1:0));
 const kalFmt=v=>v===0?'0':v.toFixed(1),kalTeks=o=>'X '+(o.x>0?'+':'')+kalFmt(o.x)+' mm, Y '+(o.y>0?'+':'')+kalFmt(o.y)+' mm';
