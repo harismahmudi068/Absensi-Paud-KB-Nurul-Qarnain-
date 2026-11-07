@@ -4307,7 +4307,7 @@ function devKirim(){const d=S.devKirim;
  let h='',n=0;
  m.forEach(list=>{if(n++>=40)return;const c={'Terkirim':0,'Terjadwal':0,'Belum ada kabar':0,'Gagal':0};list.forEach(r=>{c[rkStatus(r)[1]]++});
   const awal=list[list.length-1],chip=(ik,tx,v)=>v?'<span>'+ik+' '+tx+' '+v+'</span>':'';
-  h+='<details class="rk"><summary><b>'+esc(awal.judul||RK_JENIS[awal.jenis]||'Pengiriman')+'</b><span class="mu"> · '+esc(awal.sekolah||'-')+' · '+esc(rkWaktu(awal.dibuat))+' · '+list.length+' pesan</span><div class="rkc">'
+  h+='<details class="rk"><summary><b>'+esc(awal.judul||RK_JENIS[awal.jenis]||'Pengiriman')+'</b>'+(list.some(r=>r.oleh_developer)?' <span class="mu">🛠 Oleh Developer</span>':'')+'<span class="mu"> · '+esc(awal.sekolah||'-')+' · '+esc(rkWaktu(awal.dibuat))+' · '+list.length+' pesan</span><div class="rkc">'
    +chip('✅','Terkirim',c['Terkirim'])+chip('⏳','Terjadwal',c['Terjadwal'])+chip('❔','Belum ada kabar',c['Belum ada kabar'])+chip('❌','Gagal',c['Gagal'])+'</div></summary><div class="rkb">'
    +list.slice().reverse().map(r=>{const st=rkStatus(r);let ex='';if(r.error)ex=esc(r.error);else if(r.status_fonnte)ex='Fonnte: '+esc(r.status_fonnte)+((r.state_fonnte!==null&&r.state_fonnte!=='')?' / state '+esc(r.state_fonnte):'');
     return '<div class="rkr"><div>'+esc(r.label||'-')+' <span class="mu">'+esc(fmtWA(r.nomor)||r.nomor||'')+'</span>'+(ex?'<small>'+ex+'</small>':'')+'</div><div class="rkt">'+st[0]+' '+st[1]+'</div></div>'}).join('')+'</div></details>'});
