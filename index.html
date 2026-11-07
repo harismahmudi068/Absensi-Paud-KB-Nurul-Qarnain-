@@ -493,8 +493,8 @@ html[data-tema=gelap] .usblay.ok{background:#16311f}html[data-tema=gelap] .usbla
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script src="/kartu.js?v=20261106b"></script>
 <script src="/rapor.js?v=20261106a"></script>
-<script src="/rapor-p.js?v=20261106a"></script>
-<script src="/rapor-m.js?v=20261104e"></script>
+<script src="/rapor-p.js?v=20261107a"></script>
+<script src="/rapor-m.js?v=20261107a"></script>
 <style id="patch-tampilan">
 :root{--hdrbg:#166534}html[data-tema=gelap]{--hdrbg:#0F3D24}
 .top,html[data-tema=gelap] .top{background:var(--hdrbg)!important;color:#fff;border-bottom:0;-webkit-backdrop-filter:none;backdrop-filter:none;height:auto;min-height:calc(62px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px);box-sizing:border-box}
@@ -876,8 +876,53 @@ let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],k
 async function dbq(p){const r=await p;if(r.error)throw r.error;return r.data}
 let ldn=0;function ld(on,m){ldn=Math.max(0,ldn+(on?1:-1));if(on)$('#ldt').textContent=m||'Memuat...';$('#ld').style.display=ldn?'flex':'none'}
 const guard=(fn,q)=>{if(!q)ld(1);return fn().catch(e=>toast((e&&e.message)||String(e),false)).finally(()=>{if(!q)ld(0)})};
+/* ---------- Penjaga perubahan yang belum disimpan (konfirmasi Simpan / Abaikan sebelum keluar) ---------- */
+const JGM={},JG_TOLAK=/^(Hapus|Tolak|Koreksi|Beritahu|Batalkan|Verifikasi|Atur ulang|Nomor WhatsApp hilang)/i;
+const jgEl=ids=>ids.map(i=>document.getElementById(i)).filter(Boolean);
+const jgBeda=ids=>jgEl(ids).some(e=>String(e.value||'').trim()!==String(e.defaultValue||'').trim());
+const jgReset=ids=>jgEl(ids).forEach(e=>{e.value=e.defaultValue});
+const jgDiModal=ids=>jgEl(ids).some(e=>e.closest&&e.closest('#md'));
+const jgSnap=r=>Array.prototype.map.call(r.querySelectorAll('input,select,textarea'),e=>(/csel-search|cpick-search/.test(e.className)||e.type==='button')?'':(e.type==='checkbox'||e.type==='radio')?(e.checked?'1':'0'):String(e.value)).join('\u0001');
+function absKotor(){if(view!=='absensi'||mMulti||!draft)return false;const b=A(attDate)||{};for(const id in draft){const d=draft[id],o=b[id];if(!o||o.st!==d.st||o.cara!==d.cara||(o.cat||'')!==(d.cat||''))return true}for(const id in b)if(!draft[id])return true;return false}
+const JG_TETAP=[
+ {id:'absensi',scope:'halaman',ket:'Absensi harian',kotor:()=>absKotor(),simpan:()=>saveAtt(),abaikan:()=>{draft=null}},
+ {id:'multi',scope:'halaman',ket:'Absensi multi hari',kotor:()=>view==='absensi'&&mMulti&&mSel.size>0,simpan:()=>mhTerapkan(),abaikan:()=>{mSel.clear()}},
+ {id:'ns',ids:['nsInp'],ket:'Nama sekolah',kotor:()=>jgBeda(['nsInp']),simpan:()=>simpanNamaSekolah(document.getElementById('nsBtn')),abaikan:()=>jgReset(['nsInp'])},
+ {id:'alamat',ids:['alInp','ktInp'],ket:'Alamat sekolah',kotor:()=>jgBeda(['alInp','ktInp']),simpan:()=>simpanAlamat(null),abaikan:()=>jgReset(['alInp','ktInp'])},
+ {id:'koneksi',ids:['rhAI','rhNK'],ket:'Kunci AI dan nomor Kepala Sekolah',kotor:()=>jgBeda(['rhAI','rhNK']),simpan:()=>simpanKoneksi(null),abaikan:()=>jgReset(['rhAI','rhNK'])},
+ {id:'jam',ids:['nsJamMulai','nsJamAkhir'],ket:'Jam notifikasi',kotor:()=>jgBeda(['nsJamMulai','nsJamAkhir']),simpan:()=>simpanJamNS(),abaikan:()=>jgReset(['nsJamMulai','nsJamAkhir'])},
+ {id:'tabungan',ids:['tbJml','tbCat'],ket:'Transaksi tabungan',kotor:()=>jgBeda(['tbJml','tbCat']),simpan:()=>{const b=document.querySelector('button[onclick^="tabSimpan"]');return b?tabSimpan(/tarik/.test(b.getAttribute('onclick'))?'tarik':'setor'):false},abaikan:()=>jgReset(['tbJml','tbCat'])},
+ {id:'kal',scope:'kal',ket:'Kalibrasi cetak belakang',kotor:()=>!!document.getElementById('kal')&&document.getElementById('kal').classList.contains('show')&&(kalT.x!==KAL.x||kalT.y!==KAL.y),simpan:()=>kalSimpan(),abaikan:()=>{kalT={x:KAL.x,y:KAL.y}}}
+];
+/* modal #md: snapshot isian saat dibuka; dianggap berubah bila isiannya berbeda */
+function jagaModal(ket,simpan,aktif){
+ if(aktif===false||!simpan){delete JGM.modal;return}
+ const b=document.getElementById('mbd'),root=b.firstElementChild,snap=jgSnap(b);
+ JGM.modal={id:'modal',scope:'modal',ket:ket||'formulir',simpan,abaikan:()=>{delete JGM.modal},
+  kotor:()=>document.getElementById('md').classList.contains('show')&&document.getElementById('mbd').firstElementChild===root&&jgSnap(document.getElementById('mbd'))!==snap}}
+/* modal #md dengan penanda berubah sendiri (mis. editor master indikator) */
+function jagaKhusus(o){const root=document.getElementById('mbd').firstElementChild,k=o.kotor,a=o.abaikan;
+ JGM.modal=Object.assign({id:'modal',scope:'modal'},o,{kotor:()=>document.getElementById('md').classList.contains('show')&&document.getElementById('mbd').firstElementChild===root&&!!k(),abaikan:()=>{try{a&&a()}catch(e){}delete JGM.modal}})}
+function jagaKotorList(sel){const out=[];for(const e of JG_TETAP.concat(Object.values(JGM))){let d=false;try{d=!!e.kotor()}catch(x){}if(!d)continue;const sc=e.ids?(jgDiModal(e.ids)?'modal':'halaman'):e.scope;if(sel==='semua'||sel.indexOf(e.id)>-1||sel.indexOf(sc)>-1)out.push(e)}return out}
+function jagaDialog(daftar){return new Promise(res=>{let m=document.getElementById('jg');
+ if(!m){m=document.createElement('div');m.id='jg';m.className='mb';m.style.zIndex='170';
+  m.innerHTML='<div class="modal" style="width:min(400px,100%)"><div class="mbody" style="text-align:center;padding:24px 20px 14px"><div style="font-size:42px;line-height:1">💾</div><h3 style="margin:10px 0 6px">Perubahan belum disimpan</h3><div id="jgm" class="mu" style="font-size:14px;white-space:pre-line"></div></div><div class="mf" style="flex-direction:column;justify-content:stretch;gap:8px"><button type="button" class="btn success" id="jgS" style="width:100%">Simpan</button><button type="button" class="btn danger" id="jgA" style="width:100%">Abaikan perubahan</button><button type="button" class="btn soft" id="jgK" style="width:100%">Kembali mengedit</button></div></div>';document.body.appendChild(m)}
+ document.getElementById('jgm').textContent='Ada perubahan yang belum disimpan pada: '+daftar.join(', ')+'.\n\nSimpan sekarang, atau abaikan perubahan?';
+ const kd=e=>{if(e.key==='Escape')fin('kembali')},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');m.onclick=null;res(v)};
+ document.addEventListener('keydown',kd);
+ document.getElementById('jgS').onclick=()=>fin('simpan');document.getElementById('jgA').onclick=()=>fin('abaikan');document.getElementById('jgK').onclick=()=>fin('kembali');
+ m.onclick=e=>{if(e.target===m)fin('kembali')};m.classList.add('show');document.getElementById('jgK').focus()})}
+/* true bila boleh lanjut keluar; false bila pengguna kembali mengedit atau penyimpanan gagal */
+async function jagaTanya(sel){const k=jagaKotorList(sel);if(!k.length)return true;
+ const p=await jagaDialog(k.map(x=>x.ket));
+ if(p==='kembali')return false;
+ if(p==='abaikan'){k.forEach(x=>{try{x.abaikan&&x.abaikan()}catch(e){}});return true}
+ for(const x of k){let ok=false;try{ok=!!await x.simpan()}catch(e){toast((e&&e.message)||String(e),false)}if(!ok)return false}
+ return true}
+window.addEventListener('beforeunload',e=>{if(jagaKotorList('semua').length){e.preventDefault();e.returnValue='';return ''}});
+
 function resetTutup(){const b=$('#mtp');if(!b)return;b.textContent='Tutup';b.className='btn soft';b.onclick=()=>tutupM()}
-function info(t,h){resetTutup();$('#mt').textContent=t;$('#mbd').innerHTML=h;$('#ms').style.display='none';$('#md').classList.add('show')}
+function info(t,h){delete JGM.modal;resetTutup();$('#mt').textContent=t;$('#mbd').innerHTML=h;$('#ms').style.display='none';$('#md').classList.add('show')}
 function peringatan(ket,e){try{console.warn(ket,e)}catch(x){}toast(ket+(e&&e.message?': '+e.message:''),false)}
 function toast(m,ok=true){const t=$('#ts');if(!ok)m=idErr(m);t.textContent=(ok?'✓ ':'⚠ ')+m;t.className='toast '+(ok?'ok':'err');t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3200)}
 const A=d=>S.absen[d]||{},act=()=>S.siswa.filter(s=>s.aktif),kelola=()=>role!=='Guru',allowed=id=>MENUS.find(m=>m[0]===id)[3].includes(RC[role])&&(id!=='tabungan'||!!(S.set&&S.set.tabungan_aktif))&&(id!=='piket'||!!(S.set&&S.set.piket_aktif))&&(id!=='hafalan'||!!(S.set&&S.set.hafalan_aktif));
@@ -1394,11 +1439,11 @@ async function masukSekolah(m){try{cmKosong();SEK=m.sekolah_id;role=LBL[m.role];
  catch(e){await gagalMuat(e)}}
 function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''));{const b=$('#mtp');if(b){b.textContent='Keluar';b.className='btn danger';b.onclick=()=>{closeM();keluar()}}}}
 async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
-async function gantiSekolah(){if(scanKunci())return tolakKunci();await stopScan();drw(0);tampilPilihSekolah()}
+async function gantiSekolah(){if(scanKunci())return tolakKunci();if(!await jagaTanya('semua'))return;await stopScan();drw(0);tampilPilihSekolah()}
 /* ---- Beralih akun tanpa keluar: pilih akun passkey lain di HP ini, verifikasi, lalu aplikasi dimuat ulang ke akun itu.
    Akun sekarang tetap aktif bila dibatalkan atau gagal. ---- */
 const akunLain=()=>(PK_OK&&!MB())?pkAkunList().filter(x=>!PROFIL||x.u!==PROFIL.username):[];
-async function beralihAkun(){if(scanKunci())return tolakKunci();if(MB())return toast('Tidak tersedia di mode bantuan',false);await stopScan();drw(0);
+async function beralihAkun(){if(scanKunci())return tolakKunci();if(MB())return toast('Tidak tersedia di mode bantuan',false);if(!await jagaTanya('semua'))return;await stopScan();drw(0);
  const a=akunLain();if(!a.length)return toast('Belum ada akun lain di HP ini. Aktifkan passkey di akun lain lewat menu Profil Saya',false);
  info('Beralih akun','<div class="note">Pilih akun yang ingin dibuka. Anda akan diminta sidik jari atau kunci layar akun itu. Bila dibatalkan, akun sekarang tetap aktif.</div>'
   +(PROFIL?'<div class="mu" style="margin:6px 0">Akun sekarang: <b>'+esc(PROFIL.nama||PROFIL.username)+'</b></div>':'')
@@ -1416,7 +1461,8 @@ function pkBeralih(credId){guard(async()=>{
  try{if('caches' in window){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}}catch(e){}
  try{const c=new URL(location.href);c.search='';c.hash='';location.replace(c.href)}catch(e){location.reload()}
 },1)}
-function tanyaKeluar(){
+async function tanyaKeluar(){
+ if(!await jagaTanya('semua'))return;
  const banyak=Array.isArray(MEMB)&&MEMB.length>1&&role!=='Developer',banyakAkun=akunLain().length>0;
  info('Keluar dari halaman ini?','<div style="text-align:center"><div style="font-size:42px;line-height:1">🚪</div><div class="mu" style="font-size:14px;margin:10px 0 16px">Apakah Anda benar-benar ingin keluar dari halaman ini?'+(banyak?'<br>Akun Anda terdaftar di lebih dari satu sekolah, jadi Anda juga bisa beralih sekolah tanpa keluar.':'')+(banyakAkun?'<br>Ada akun lain di HP ini, jadi Anda juga bisa beralih akun tanpa keluar.':'')+'</div><div class="fg"><button class="btn danger" style="width:100%" onclick="closeM();keluar()">Ya, keluar</button>'+(banyak?'<button class="btn success" style="width:100%" onclick="closeM();gantiSekolah()">🔁 Beralih sekolah</button>':'')+(banyakAkun?'<button class="btn success" style="width:100%" onclick="closeM();beralihAkun()">👤 Beralih akun</button>':'')+'<button class="btn soft" style="width:100%" onclick="closeM()">Batal</button></div></div>')}
 async function keluar(){
@@ -1506,7 +1552,7 @@ let drwT=null;
 function drw(o){const d=$('#drw');if(o){clearTimeout(drwT);d.classList.remove('closing');d.classList.add('show');return}
  if(!d.classList.contains('show')||d.classList.contains('closing'))return;
  d.classList.add('closing');clearTimeout(drwT);drwT=setTimeout(()=>d.classList.remove('show','closing'),310)}
-async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
+async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();if(!await jagaTanya('semua'))return;tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
  try{if(LOAD[id]){const ck=cmKunci(id);if(!(ck&&!paksa&&cmOk(ck[0],ck[1]))){const v0=cmVer;await LOAD[id](paksa);if(ck&&v0===cmVer)cmCatat(ck[0],v0)}}}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),bt=m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`;let h;
@@ -1543,7 +1589,7 @@ function renderV(){
 }
 function form(t,f,cb){window._otpAktif=f.some(x=>!!x.ver);window._fver={};f.forEach(x=>{if(x.ver)_fver[x.k]=x.ver});$('#ms').textContent='Simpan';$('#ms').style.display='';$('#mt').textContent=t;$('#mbd').innerHTML='<div class="fg">'+f.map(x=>`<div class="fd"><label class="l">${x.l}</label>${x.ro?`<input id="f_${x.k}" class="input" value="${esc(x.v||'')}" readonly style="background:#f1f5f2;color:var(--mu)">`:x.o?`<select id="f_${x.k}" class="select">${x.o.map(o=>`<option ${o===x.v?'selected':''}>${esc(o)}</option>`).join('')}</select>`:x.t==='date'||x.t==='year'?dt(x.t,x.v||'','','',{id:'f_'+x.k,min:x.t==='year'?'1990-01-01':(x.min||'2000-01-01'),max:x.t==='year'?(+TODAY.slice(0,4)+1)+'-12-31':'2099-12-31',kosong:x.t==='date',ref:x.ref}):x.ver?`<div style="display:flex;gap:8px"><input id="f_${x.k}" class="input" inputmode="numeric" maxlength="6" autocomplete="one-time-code" style="flex:1" value="${esc(x.v||'')}"><button type="button" class="btn soft" onclick="formVer('${x.k}')">Verifikasi</button></div><div id="fv_${x.k}" class="mu" style="margin-top:4px"></div>`:`<input id="f_${x.k}" class="input" type="${x.t||'text'}" value="${esc(x.v||'')}">`}</div>`).join('')+'</div>';
  enhanceCustomSelects($('#mbd'));enhanceSecretInputs($('#mbd'));f.forEach(x=>{if(x.pkb)setTimeout(()=>pasangPkForm(x.k,1),0)});
- $('#ms').onclick=()=>{const v={};f.forEach(x=>v[x.k]=$('#f_'+x.k).value.trim());Promise.resolve().then(()=>cb(v)).then(()=>closeM()).catch(e=>toast(e.message||String(e),false))};$('#md').classList.add('show')}
+ $('#ms').onclick=()=>{const v={};f.forEach(x=>v[x.k]=$('#f_'+x.k).value.trim());return Promise.resolve().then(()=>cb(v)).then(()=>{closeM();return true}).catch(e=>{toast(e.message||String(e),false);return false})};$('#md').classList.add('show');jagaModal(t,$('#ms').onclick,!window._otpAktif&&!JG_TOLAK.test(String(t)))}
 async function formVer(k){const el=$('#f_'+k),o=$('#fv_'+k),fn=window._fver&&_fver[k];if(!el||!fn||!o)return;const kode=el.value.trim();
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
@@ -1553,7 +1599,7 @@ async function verifikasiDaftar(){const wa=normWA($('#dfWa').value),kode=$('#dfK
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
  try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
-function closeM(){const pv=$('#rpPrev');if(pv){pv.querySelectorAll('canvas').forEach(c=>{c.width=c.height=0});pv.innerHTML=''}$('#md').classList.remove('show','besar');window._otpAktif=false;window._pnOk=null;const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
+function closeM(){delete JGM.modal;const pv=$('#rpPrev');if(pv){pv.querySelectorAll('canvas').forEach(c=>{c.width=c.height=0});pv.innerHTML=''}$('#md').classList.remove('show','besar');window._otpAktif=false;window._pnOk=null;const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
 /* Verifikasi kode (OTP): bila popup tertutup tanpa sengaja, tombol yang sama langsung membuka lagi pemasukan kode (10 menit) */
 const OTP_TUNDA={};
 function otpSimpan(k,meta,buka,mulai){OTP_TUNDA[k]={t:Date.now(),meta:meta||{},buka,mulai}}
@@ -1561,7 +1607,7 @@ function otpHapus(k){delete OTP_TUNDA[k]}
 function otpLanjut(k,cek,args){const p=OTP_TUNDA[k];if(!p)return false;if(Date.now()-p.t>10*60000||(cek&&!cek(p.meta))){delete OTP_TUNDA[k];return false}
  p.buka(...(args||[]));const b=$('#mbd');if(b)b.insertAdjacentHTML('beforeend','<div class="note" style="margin-top:10px">Kode yang sudah dikirim tadi masih bisa dipakai. Bila kode tidak masuk atau sudah kedaluwarsa, kirim kode baru.<div class="tb" style="margin:8px 0 0"><button type="button" class="btn soft sm" onclick="otpUlang(\''+k+'\')">↻ Kirim kode baru</button></div></div>');return true}
 function otpUlang(k){const p=OTP_TUNDA[k];delete OTP_TUNDA[k];closeM();if(p&&p.mulai)setTimeout(p.mulai,150)}
-async function tutupM(){if(window._otpAktif&&$('#md').classList.contains('show')){const ya=await konfirmasi('Kode verifikasi sudah dikirim. Bila ditutup, tekan tombol yang sama lagi dalam 10 menit untuk langsung memasukkan kode tanpa mengirim kode baru.\n\nTutup sekarang?',{judul:'Tutup verifikasi?',ikon:'🔑',ya:'Tutup'});if(!ya)return}closeM()}
+async function tutupM(){if(!await jagaTanya(['modal']))return;if(window._otpAktif&&$('#md').classList.contains('show')){const ya=await konfirmasi('Kode verifikasi sudah dikirim. Bila ditutup, tekan tombol yang sama lagi dalam 10 menit untuk langsung memasukkan kode tanpa mengirim kode baru.\n\nTutup sekarang?',{judul:'Tutup verifikasi?',ikon:'🔑',ya:'Tutup'});if(!ya)return}closeM()}
 function konfirmasi(pesan,o){o=o||{};const _g=$('#cfg');if(_g){if(o.gambar){_g.src=o.gambar;_g.style.display='block'}else{_g.removeAttribute('src');_g.style.display='none'}}return new Promise(res=>{const m=$('#cf'),y=$('#cfy'),n=$('#cfn');$('#cfi').textContent=o.ikon||(o.bahaya?'🗑️':'❓');$('#cft').textContent=o.judul||'Konfirmasi';$('#cfm').textContent=pesan;y.textContent=o.ya||'Ya';y.className='btn '+(o.bahaya?'danger':'success');
  const kd=e=>{if(e.key==='Escape')fin(false)},fin=v=>{document.removeEventListener('keydown',kd);m.classList.remove('show');y.onclick=n.onclick=m.onclick=null;res(v)};
  document.addEventListener('keydown',kd);y.onclick=()=>fin(true);n.onclick=()=>fin(false);m.onclick=e=>{if(e.target===m)fin(false)};m.classList.add('show');y.focus()})}
@@ -1918,17 +1964,17 @@ V.absensi=()=>{if(mMulti)return mhView();if(!draft)draft=JSON.parse(JSON.stringi
  ${lib?`<div class="note">🏖 ${esc(lib)} sedang libur. Konfirmasi diperlukan sebelum absensi dapat dimulai.</div>`:''}
  <div class="cards">${absensiCards(l,lv)}</div></div></div>
  <div style="height:76px"></div><div class="save"><div><b>${isi} dari ${l.length} terisi</b><div class="mu">${l.length-isi} dikosongkan (bisa diisi orang tua lewat WhatsApp)</div></div><button class="btn success sm dl" style="padding:7px 18px" onclick="saveAtt()">💾 Simpan</button></div>`};
-function setAttKelas(v){attKelas=v||'';attQ='';draft=null;catBuka.clear();mSel.clear();liburPrompted={};document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));renderV()}
+async function setAttKelas(v){if((v||'')!==attKelas&&!await jagaTanya(['absensi','multi'])){renderV();return}attKelas=v||'';attQ='';draft=null;catBuka.clear();mSel.clear();liburPrompted={};document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));renderV()}
 function cariAbsensiInput(el){attQ=el.value;const l=act().filter(s=>attKelas&&(attKelas==='*'||s.kelas===attKelas)),lv=l.filter(s=>!attQ||s.nama.toLowerCase().includes(attQ.toLowerCase())||s.pan.toLowerCase().includes(attQ.toLowerCase())||String(s.nisn||'').includes(attQ.trim())||cocokWA(s.wa,attQ));const c=document.querySelector('#v .cards');if(c){c.innerHTML=mMulti?mhCards(lv):absensiCards(l,lv);if(mMulti)mhUpd()}}
-function setAtt(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return toast('Tanggal absensi tidak valid',false);attDate=v;draft=null;catBuka.clear();liburPrompted={};guard(async()=>{await muatRange(v,v);renderV()})}
+async function setAtt(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return toast('Tanggal absensi tidak valid',false);if(v!==attDate&&!await jagaTanya(['absensi'])){renderV();return}attDate=v;draft=null;catBuka.clear();liburPrompted={};guard(async()=>{await muatRange(v,v);renderV()})}
 async function pick(id,st){const s=S.siswa.find(x=>x.id===id);if(!await okLib(s.kelas,attDate))return;const o=draft[id]||{},sama=o.st===st,adaJam=['Hadir','Terlambat'],pakaiJam=adaJam.includes(o.st)&&adaJam.includes(st);draft[id]={st,cara:'manual',cat:(sama||o.ketik)?(o.cat||''):'',ketik:!!o.ketik,jam:pakaiJam?(o.jam||''):'',iso:pakaiJam?(o.iso||null):null};renderV()}
 function clr(id){delete draft[id];renderV()}
-function saveAtt(){guard(async()=>{const before=A(attDate),ups=[],del=[],now=new Date().toISOString();
+function saveAtt(){return guard(async()=>{const before=A(attDate),ups=[],del=[],now=new Date().toISOString();
  Object.keys(draft).forEach(id=>{const d=draft[id],b=before[id];if(!b||b.st!==d.st||b.cara!==d.cara||(b.cat||'')!==(d.cat||''))ups.push({siswa_id:+id,tanggal:attDate,status:low(d.st),cara:d.cara,catatan:(d.cat||'').trim()||null,jam_datang:d.iso||null,diubah:now,diubah_oleh:me})});
  Object.keys(before).forEach(id=>{if(!draft[id])del.push(+id)});
  if(ups.length)await dbq(db.from('absensi').upsert(ups,{onConflict:'siswa_id,tanggal'}));
  if(del.length)await dbq(db.from('absensi').delete().eq('tanggal',attDate).in('siswa_id',del));
- await muatRange(attDate,attDate);draft=null;toast(ups.length||del.length?'Absensi tersimpan':'Tidak ada perubahan');renderV()})}
+ await muatRange(attDate,attDate);draft=null;toast(ups.length||del.length?'Absensi tersimpan':'Tidak ada perubahan');renderV();return true})}
 function markLibur(){if(!attKelas)return toast(PK,false);guard(async()=>{const siswa=kelasTerpilih(attKelas),now=new Date().toISOString();if(!siswa.length)return toast('Tidak ada siswa pada kelas yang dipilih',false);const rows=siswa.map(s=>({siswa_id:s.id,tanggal:attDate,status:'libur',cara:'manual',catatan:null,jam_datang:null,diubah:now,diubah_oleh:me}));await dbq(db.from('absensi').upsert(rows,{onConflict:'siswa_id,tanggal'}));if(S.absen[attDate])siswa.forEach(s=>delete S.absen[attDate][s.id]);S.absen[attDate]=S.absen[attDate]||{};siswa.forEach(s=>{S.absen[attDate][s.id]={st:'Libur',cara:'manual',cat:'',jam:'',iso:null}});draft=null;Object.keys(okL).filter(x=>x.startsWith(attDate+'|')).forEach(x=>delete okL[x]);Object.keys(liburPrompted).filter(x=>x.startsWith(attDate+'|')).forEach(x=>delete liburPrompted[x]);toast(siswa.length+' siswa ditandai Libur');await go('dashboard')})}
 /* ---------- absensi multi hari (batch) ---------- */
 const MH_MAKS=31,MH_CHUNK=500,MH_DEL=200,MH_ST=['Hadir','Terlambat','Izin','Sakit','Alpa','Libur','Kosongkan'];
@@ -1956,13 +2002,13 @@ function mhAll(on){const {lv}=mhLv();lv.forEach(s=>on?mSel.add(s.id):mSel.delete
 function mhSt(x){mStatus=x;renderV()}
 function mhTglA(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return;mA=v;if(mB<mA)mB=mA;const mx=tglTambah(mA,MH_MAKS-1);if(mB>mx)mB=mx;renderV()}
 function mhTglB(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return;mB=v;renderV()}
-async function mhToggle(){if(!mMulti){if(draft&&JSON.stringify(draft)!==JSON.stringify(A(attDate))&&!await konfirmasi('Ada perubahan absensi tanggal ini yang belum disimpan. Beralih ke mode multi hari tanpa menyimpannya?',{judul:'Perubahan belum disimpan',ya:'Lanjutkan'}))return;mMulti=true;mA=attDate||TODAY;mB=mA;mSel.clear();mStatus='Hadir';mCat='';mLewat=true;mTimpa=false}else{mMulti=false;mSel.clear()}draft=null;renderV()}
+async function mhToggle(){if(!await jagaTanya(mMulti?['multi']:['absensi']))return;if(!mMulti){if(draft&&JSON.stringify(draft)!==JSON.stringify(A(attDate))&&!await konfirmasi('Ada perubahan absensi tanggal ini yang belum disimpan. Beralih ke mode multi hari tanpa menyimpannya?',{judul:'Perubahan belum disimpan',ya:'Lanjutkan'}))return;mMulti=true;mA=attDate||TODAY;mB=mA;mSel.clear();mStatus='Hadir';mCat='';mLewat=true;mTimpa=false}else{mMulti=false;mSel.clear()}draft=null;renderV()}
 function mhTerapkan(){
  if(!attKelas)return toast(PK,false);
  const hari=mHari();if(!hari.length)return toast('Rentang tanggal tidak valid',false);if(hari.length>MH_MAKS)return toast('Maksimal '+MH_MAKS+' hari per proses',false);
  const siswa=act().filter(s=>mSel.has(s.id)&&(attKelas==='*'||s.kelas===attKelas));if(!siswa.length)return toast('Pilih minimal satu anak',false);
  const kosong=mStatus==='Kosongkan',lewat=mLewat&&mStatus!=='Libur',cat=kosong?null:((mCat||'').trim().slice(0,150)||null),a=mA,b=mB,st=mStatus;
- (async()=>{
+ return (async()=>{
   let termuat=false;await guard(async()=>{await muatRange(a,b);termuat=true});if(!termuat)return;
   const now=new Date().toISOString(),ups=[],hapus=new Map();let baru=0,timpa=0,timpaLuar=0,nLibur=0,nTerisi=0;
   for(const s of siswa)for(const d of hari){
@@ -1988,7 +2034,8 @@ function mhTerapkan(){
    await muatRange(a,b)});
   draft=null;if(!gagal.length){mMulti=false;mSel.clear()}renderV();
   if(gagal.length)await konfirmasi(ok+' dari '+total+' data berhasil, '+gagal.length+' bagian gagal:\n\n'+gagal.slice(0,6).join('\n')+(gagal.length>6?'\n... dan '+(gagal.length-6)+' lainnya':'')+'\n\nSilakan periksa koneksi lalu ulangi proses untuk bagian yang gagal.',{judul:'Sebagian gagal disimpan',ikon:'⚠️',ya:'Tutup'});
-  else toast((kosong?nHapus+' data dikosongkan':ok+' data absensi disimpan')+' untuk '+siswa.length+' anak')
+  else toast((kosong?nHapus+' data dikosongkan':ok+' data absensi disimpan')+' untuk '+siswa.length+' anak');
+  return !gagal.length
  })()}
 /* ---------- scan ---------- */
 /* ---------- scanner keyboard (USB / Bluetooth HID) ---------- */
@@ -2434,11 +2481,11 @@ const kalFmt=v=>v===0?'0':v.toFixed(1),kalTeks=o=>'X '+(o.x>0?'+':'')+kalFmt(o.x
 function kalPrev(){const e=$('#kalPrev');if(!e)return;e.innerHTML='<svg viewBox="-7 -7 100 68.7" style="width:100%;max-width:270px;display:block;margin:0 auto" aria-hidden="true"><rect x="0" y="0" width="85.6" height="53.98" rx="3" fill="none" stroke="#8a948d" stroke-width=".6" stroke-dasharray="2 1.5"/><rect x="'+kalT.x+'" y="'+kalT.y+'" width="85.6" height="53.98" rx="3" fill="rgba(21,148,71,.16)" stroke="#159447" stroke-width=".9"/><text x="42.8" y="30" font-size="6" text-anchor="middle" fill="currentColor" opacity=".7">'+kalTeks(kalT)+'</text></svg><div class="mu" style="font-size:12px;margin-top:4px">Abu putus-putus = posisi awal, hijau = posisi belakang setelah digeser (pratinjau dibesarkan)</div>'}
 function kalTampil(){$('#kalx').value=kalFmt(kalT.x);$('#kaly').value=kalFmt(kalT.y);kalPrev()}
 function kalBuka(){kalT={x:KAL.x,y:KAL.y};kalTampil();$('#kal').classList.add('show')}
-function kalTutup(){$('#kal').classList.remove('show')}
+async function kalTutup(){if(!await jagaTanya(['kal']))return;$('#kal').classList.remove('show')}
 function kalUbah(k,d){kalT[k]=kalBulat(kalT[k]+d);kalTampil()}
 function kalIsi(k,v){kalT[k]=kalBulat(v);kalTampil()}
 function kalNol(){kalT={x:0,y:0};KAL={x:0,y:0};try{localStorage.removeItem(KALK)}catch(e){}kalTampil()}
-function kalSimpan(){KAL={x:kalT.x,y:kalT.y};try{localStorage.setItem(KALK,JSON.stringify(KAL))}catch(e){}kalTutup();toast('Kalibrasi disimpan: '+kalTeks(KAL))}
+function kalSimpan(){KAL={x:kalT.x,y:kalT.y};try{localStorage.setItem(KALK,JSON.stringify(KAL))}catch(e){}kalTutup();toast('Kalibrasi disimpan: '+kalTeks(KAL));return true}
 async function kalUji(btn){await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membuat lembar uji...'))return;try{await jedaUnduh();
  const KW=85.6,KH=53.98,GX=10,GY=8,C=2,R=4,x0=(210-(C*KW+(C-1)*GX))/2,y0=(297-(R*KH+(R-1)*GY))/2,doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
  [0,1].forEach(pg=>{if(pg)doc.addPage();
@@ -2830,8 +2877,8 @@ function simpanKoneksi(btn){const ai=$('#rhAI').value.trim(),nk=$('#rhNK').value
  const ubah=own&&role==='Kepala Sekolah'&&!!nk&&normWA(nk)!==normWA(cur);
  if(ubah&&!/^628\d{8,12}$/.test(normWA(nk)))return toast('Nomor WhatsApp tidak valid',false);
  if(own&&!ubah&&!ai)return toast('Tidak ada perubahan untuk disimpan',false);
- guard(async()=>{if(Object.keys(b).length>1){await apiPengaturan(b);await segarCfg();toast('Konfigurasi disimpan')}
-  if(ubah)setTimeout(()=>gantiNomor({wa:normWA(nk)}),400)})}
+ return guard(async()=>{if(Object.keys(b).length>1){await apiPengaturan(b);await segarCfg();toast('Konfigurasi disimpan')}
+  if(ubah)setTimeout(()=>gantiNomor({wa:normWA(nk)}),400);return true})}
 async function hapusRahasia(f){if(!await konfirmasi('Hapus kunci API AI sekolah ini? Fitur AI berhenti sampai diisi lagi.',{judul:'Hapus kunci AI',ya:'Hapus',bahaya:1}))return;
  guard(async()=>{await apiPengaturan({aksi:'simpan',hapus:[f]});await segarCfg();toast('Kunci AI dihapus')})}
 function tambahToken(){form('Tambah token Fonnte',[{k:'label',l:'Nama (contoh Kelas A)'},{k:'token',l:'Token Fonnte',t:'password'},{k:'perangkat',l:'Nomor WhatsApp perangkat (opsional, contoh 08123456789)'}],async v=>{
@@ -2877,7 +2924,7 @@ async function hapusLogo(){if(MB&&MB())return toast('Tidak tersedia di mode bant
  if(!await konfirmasi('Hapus logo sekolah?\n\nLogo di menu samping, dashboard, dan kartu pelajar akan kembali ke tampilan bawaan.',{bahaya:true,judul:'Hapus logo',ya:'Hapus'}))return;
  guard(async()=>{await simpanLogo(null);toast('Logo sekolah dihapus')})}
 function simpanAlamat(btn){const al=$('#alInp').value.trim(),kt=$('#ktInp').value.trim();if(btn)btn.disabled=true;
- guard(async()=>{try{const r=await dbq(db.from('pengaturan').update({alamat:al||null,kota:kt||null}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan');S.set.alamat=al;S.set.kota=kt;toast('Alamat sekolah disimpan');renderV()}finally{if(btn)btn.disabled=false}})}
+ return guard(async()=>{try{const r=await dbq(db.from('pengaturan').update({alamat:al||null,kota:kt||null}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan');S.set.alamat=al;S.set.kota=kt;toast('Alamat sekolah disimpan');renderV();return true}finally{if(btn)btn.disabled=false}})}
 async function simpanNamaSekolah(btn){const v=String($('#nsInp').value||'').replace(/\s+/g,' ').trim();
  if(!v)return toast('Nama sekolah wajib diisi',false);if(v===ns())return toast('Nama sekolah belum berubah',false);
  if(btn)btn.disabled=true;ld(1,'Menyimpan nama sekolah...');
@@ -2888,7 +2935,7 @@ async function simpanNamaSekolah(btn){const v=String($('#nsInp').value||'').repl
  const r=await dbq(db.from('pengaturan').update({nama_sekolah:v}).select('id'));if(!r||!r.length)throw new Error('Nama sekolah tidak tersimpan. Pastikan baris pengaturan (id 1) ada dan Anda berhak mengubahnya');
   S.set.nama_sekolah=v;try{localStorage.setItem('nama_sekolah',v);sessionStorage.setItem('bukaView','pengaturan')}catch(e){}
   ld(0);const o=document.createElement('div');o.className='nsfx';o.innerHTML='<div class="nsb"><div class="nsi">🏫</div><div class="nsc">✓</div><b></b><small>Nama sekolah disimpan. Memuat ulang...</small></div>';o.querySelector('b').textContent=v;document.body.appendChild(o);
-  setTimeout(()=>location.reload(),1700)}
+  try{const _i=document.getElementById('nsInp');if(_i)_i.defaultValue=v}catch(_e){}setTimeout(()=>location.reload(),1700);return true}
  catch(e){ld(0);if(btn)btn.disabled=false;const m=(e&&e.message)||String(e);toast(/nama_sekolah/.test(m)&&!/tidak tersimpan/.test(m)?'Kolom nama_sekolah belum ada di tabel pengaturan. Jalankan SQL penambahan kolom di Supabase terlebih dahulu':m,false)}}
 const setIzinFoto=v=>guard(async()=>{try{await dbq(db.from('pengaturan').update({izin_foto_ortu:!!v}))}catch(e){if(/izin_foto_ortu/i.test(String((e&&e.message)||e)))throw new Error('Kolom izin_foto_ortu belum ada. Jalankan SQL Tahap 3 di Supabase.');throw e}await muatDasar();toast(v?'Orang tua boleh mengubah foto anak':'Orang tua tidak dapat mengubah foto anak');renderV()});
 const setAlpa=o=>guard(async()=>{await dbq(db.from('pengaturan').update(o));await muatDasar();toast('Pengaturan disimpan');renderV()});
@@ -3217,9 +3264,9 @@ async function muatTabungan(){const a=await dbq(db.rpc('tabungan_saldo',{p_sekol
 const fmtIn=v=>String(v||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 let tabP='in',tabS=0,tabBln=TODAY.slice(0,7),tabRw=[],tabRekD=null;
 const tabWali=k=>{const w=ttdWali(k);return w?w.nama:'-'},tabAdaWali=k=>{const x=S.kelas.find(c=>c.nama===k);return !!x&&x.wali===me};
-function tabHal(p){tabP=p;tabRekD=null;renderV();if(p==='rek')tabMuatRek()}
-function tabPilihK(v){tabK=v;tabS=0;tabRw=[];tabRekD=null;renderV();if(tabP==='rek'&&v)tabMuatRek()}
-function tabPilihS(v){tabS=Number(v)||0;guard(async()=>{await tabMuatRw();renderV()})}
+async function tabHal(p){if(p!==tabP&&!await jagaTanya(['tabungan'])){renderV();return}tabP=p;tabRekD=null;renderV();if(p==='rek')tabMuatRek()}
+async function tabPilihK(v){if(v!==tabK&&!await jagaTanya(['tabungan'])){renderV();return}tabK=v;tabS=0;tabRw=[];tabRekD=null;renderV();if(tabP==='rek'&&v)tabMuatRek()}
+async function tabPilihS(v){if((Number(v)||0)!==tabS&&!await jagaTanya(['tabungan'])){renderV();return}tabS=Number(v)||0;guard(async()=>{await tabMuatRw();renderV()})}
 function tabSetBln(v){if(!/^\d{4}-\d{2}$/.test(v||''))return;tabBln=v;tabRekD=null;renderV();tabMuatRek()}
 async function tabMuatRw(){tabRw=tabS?(await dbq(db.from('tabungan_transaksi').select('*').eq('siswa_id',tabS).order('id',{ascending:true}).limit(5000)))||[]:[]}
 async function tabRekRaw(){const ids=S.tab.filter(r=>r.kelas_nama===tabK).map(r=>r.siswa_id);if(!ids.length){tabRekD=[];return}
@@ -3291,10 +3338,10 @@ function pkTambahAnak(d){const j=S.pkJenis.find(x=>x.id===pkJ),kl=S.kelas.find(k
  resetTutup();$('#mt').textContent=HR[d]+' · '+j.nama+' · Kelas '+kl.nama;
  $('#mbd').innerHTML=`<div class="note">Centang anak yang piket.</div><div id="pkCek">${sis.map(s=>`<label class="cbl" style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" value="${s.id}"> ${esc(s.nama)}</label>`).join('')}</div><div class="fd" style="margin-top:8px"><label class="l">Catatan (opsional)</label><input id="pkCat" class="input" maxlength="120"></div>`;
  const m=$('#ms');m.style.display='';m.textContent='Simpan';
- m.onclick=()=>guard(async()=>{const ids=[...document.querySelectorAll('#pkCek input:checked')].map(x=>+x.value);if(!ids.length)throw new Error('Pilih minimal satu anak');const cat=($('#pkCat').value||'').trim()||null;
+ const _sim=m.onclick=()=>guard(async()=>{const ids=[...document.querySelectorAll('#pkCek input:checked')].map(x=>+x.value);if(!ids.length)throw new Error('Pilih minimal satu anak');const cat=($('#pkCat').value||'').trim()||null;
   await pkTry(()=>dbq(db.from('piket_jadwal').insert(ids.map(id=>({jenis_id:j.id,hari:d,kelas_id:kl.id,siswa_id:id,catatan:cat})))));
-  closeM();await muatPiket();renderV();toast(ids.length+' anak dijadwalkan')});
- $('#md').classList.add('show')}
+  closeM();await muatPiket();renderV();toast(ids.length+' anak dijadwalkan');return true});
+ $('#md').classList.add('show');jagaModal(HR[d]+' (piket)',_sim)}
 function pkTambahSemua(d){const j=S.pkJenis.find(x=>x.id===pkJ);if(!j)return;
  form(HR[d]+' · '+j.nama,[{k:'kls',l:'Kelas yang ikut',o:['Seluruh kelas',...S.kelas.map(k=>k.nama)]},{k:'cat',l:'Catatan (opsional, contoh: Kerja bakti halaman)'}],async v=>{
   const kl=v.kls==='Seluruh kelas'?null:S.kelas.find(k=>k.nama===v.kls);
@@ -3477,7 +3524,7 @@ function pnBuka(sid){const s=S.siswa.find(x=>x.id===sid),kl=pnKl(pnK);if(!s||!kl
  h+=pnKepForm(sid,b,kl);
  h+=b?`<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pnSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pnSimpan(true)">Simpan &amp; berikutnya ➜</button></div><div class="tb"><button class="btn success grow" onclick="pnSimpan('terbitlanjut')">🚀 Terbitkan &amp; lanjutkan</button></div>`:kunci?(pnBoleh(kl)?`<div class="note">Raport ini sudah terbit dan terkunci. Untuk mengubahnya, batalkan penerbitan dulu.</div><div class="tb"><button class="btn danger" onclick="pnBatal(${rap.id})">Batalkan penerbitan</button></div>`:'<div class="note">Raport ini sudah terbit dan terkunci.</div>'):'<div class="note">Anda hanya dapat melihat nilai kelas ini.</div>';
  if(rap)h+=`<div class="tb"><button class="btn soft sm" onclick="pnPdf([${rap.id}],this)">📄 Unduh PDF (data yang tersimpan)</button></div>`;
- $('#mt').textContent=(kunci?'Raport ':'Nilai ')+s.nama;{const ms=$('#ms');if(b){ms.style.display='';ms.textContent='💾 Simpan draf';ms.className='btn success';ms.disabled=false;ms.onclick=()=>pnSimpan(false)}else ms.style.display='none'}$('#mbd').innerHTML=h;$('#md').classList.add('besar');$('#md').classList.add('show')}
+ $('#mt').textContent=(kunci?'Raport ':'Nilai ')+s.nama;{const ms=$('#ms');if(b){ms.style.display='';ms.textContent='💾 Simpan draf';ms.className='btn success';ms.disabled=false;ms.onclick=()=>pnSimpan(false)}else ms.style.display='none'}$('#mbd').innerHTML=h;$('#md').classList.add('besar');$('#md').classList.add('show');if(b)jagaModal((kunci?'Raport ':'Nilai ')+s.nama,()=>pnSimpan(false));else jagaModal(0,0,false)}
 function pnHit(i){const e=(window._pnEnt||[])[i],el=$('#pnN'+i),c=$('#pnP'+i),t=$('#pnD'+i);if(!e||!el||!c)return;let n=null;
  try{n=pnNum(el.value)}catch(_){c.textContent='!';c.className='badge Alpa';return}
  const p=pnPred(n,e.k);c.textContent=p||'-';c.className='badge '+(pnPredCls[p]||'');if(t)t.placeholder=p?pnDesk(p,e.m):'Dibuat otomatis sesuai predikat'}
@@ -3493,11 +3540,11 @@ function pnSimpan(lanjut){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl))return;let d;t
  if(d.kepAda&&d.kj==='naik'&&!d.kt)return toast('Pilih kelas tujuan untuk keputusan Naik kelas',false);
  const sis=pnDaftar(),nxt=sis[sis.findIndex(x=>x.id===pnSis)+1],kos=(d.nilai||[]).filter(x=>x.n==null).map(x=>x.m);
  if(lanjut==='terbitlanjut'){if(kos.length)return toast('Belum bisa diterbitkan. Nilai belum diisi: '+kos.join(', '),false);if(!pnOkTerbit()){pnTanyaTerbit().then(ya=>{if(ya)pnSimpan('terbitlanjut')});return}}
- guard(async()=>{const hs=await pnTry(()=>dbq(db.from('rapor').upsert({siswa_id:pnSis,kelas_id:kl.id,kelas_nama:kl.nama,tahun_ajaran:S.set.tahun_ajaran,semester:pnSem,jenis:pnJenis,status:'draf',nilai:d.nilai,sakit:d.sakit,izin:d.izin,alpa:d.alpa,catatan:d.catatan},{onConflict:'siswa_id,tahun_ajaran,semester,jenis'}).select('*')));
+ return guard(async()=>{const hs=await pnTry(()=>dbq(db.from('rapor').upsert({siswa_id:pnSis,kelas_id:kl.id,kelas_nama:kl.nama,tahun_ajaran:S.set.tahun_ajaran,semester:pnSem,jenis:pnJenis,status:'draf',nilai:d.nilai,sakit:d.sakit,izin:d.izin,alpa:d.alpa,catatan:d.catatan},{onConflict:'siswa_id,tahun_ajaran,semester,jenis'}).select('*')));
   if(!pnPasang((hs||[])[0]))await pnMuat();
   let kepGagal='';if(d.kepAda){try{await pkKepSimpan(window._kepE,kl,{kj:d.kj,kt:d.kt})}catch(x){kepGagal=' Keputusan akhir tahun TIDAK tersimpan: '+(x.message||x)}}
-  if(lanjut==='terbitlanjut'){await pnTerbitLanjut(pnSis,kepGagal);return}
-  if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':'')+kepGagal,!kepGagal)}else{closeM();renderV();toast('Draf nilai tersimpan'+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':'')+kepGagal,!kepGagal)}})}
+  if(lanjut==='terbitlanjut'){await pnTerbitLanjut(pnSis,kepGagal);return true}
+  if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':'')+kepGagal,!kepGagal)}else{closeM();renderV();toast('Draf nilai tersimpan'+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':'')+kepGagal,!kepGagal)}return true})}
 /* Terbitkan & lanjutkan (angka dan level): simpan, terbitkan siswa ini, lalu buka siswa berikutnya yang belum terbit.
    Konfirmasi hanya ditanya sekali per kelas dan periode selama popup belum ditutup. */
 const pnOkKey=()=>pnK+'|'+pnSem+'|'+pnJenis,pnOkTerbit=()=>window._pnOk===pnOkKey();
@@ -3887,7 +3934,7 @@ function tabUbah(id){const x=tabRw.find(r=>r.id===id);if(!x)return;
   await muatTabungan();await tabMuatRw();toast('Transaksi diperbarui. Saldo '+rp(baru));renderV()});
  const e=$('#f_jml');if(e)e.oninput=function(){this.value=fmtIn(this.value)};$('#ms').textContent='Simpan perubahan'}
 function tabSimpan(jenis){const jml=Number(String($('#tbJml').value).replace(/\D/g,'')),r=S.tab.find(x=>x.siswa_id===tabS);if(!jml)return toast('Isi jumlah dengan angka lebih dari 0',false);if(jenis==='tarik'&&jml>Number(r.saldo))return toast('Saldo tidak cukup. Saldo sekarang '+rp(r.saldo),false);
- guard(async()=>{const baru=await dbq(db.rpc('tabungan_catat',{p_siswa:tabS,p_jenis:jenis,p_jumlah:jml,p_tanggal:$('#tbTgl').value||null,p_catatan:($('#tbCat').value||'').trim()||null}));await muatTabungan();await tabMuatRw();toast((jenis==='setor'?'Setoran ':'Penarikan ')+rp(jml)+' dicatat. Saldo '+rp(baru));renderV()})}
+ return guard(async()=>{const baru=await dbq(db.rpc('tabungan_catat',{p_siswa:tabS,p_jenis:jenis,p_jumlah:jml,p_tanggal:$('#tbTgl').value||null,p_catatan:($('#tbCat').value||'').trim()||null}));await muatTabungan();await tabMuatRw();toast((jenis==='setor'?'Setoran ':'Penarikan ')+rp(jml)+' dicatat. Saldo '+rp(baru));renderV();return true})}
 function tabUnduhS(t,btn){const r=S.tab.find(x=>x.siswa_id===tabS);if(!r)return;const rows=tabBarisAsc(tabRw).reverse().map(o=>[fmt(o.x.tanggal),jamJkt(o.x.dibuat),tabJenis(o.x),o.m,o.k,o.s,tabCat(o.x),o.x.nama_pencatat||'-']);
  tabBerkas(t,'rekap-tabungan-'+r.nama.replace(/[^\w]+/g,'-'),'REKAP TABUNGAN','Nama: '+r.nama+'  |  NISN: '+(r.nisn||'-')+'  |  Kelas: '+r.kelas_nama+'  |  Saldo: '+rp(r.saldo),['Tanggal','Jam','Jenis','Masuk (Rp)','Keluar (Rp)','Saldo (Rp)','Catatan','Dicatat oleh'],rows,r.kelas_nama,btn,[3,4,5])}
 function tabRekHTML(){const D=tabRekD;if(!D)return '<div class="note">⏳ Memuat rekap...</div>';const T=k=>D.reduce((a,d)=>a+d[k],0),R=v=>`<td style="text-align:right">${rp(v)}</td>`;
@@ -4305,11 +4352,11 @@ function devNotifSiswa(){const d=S.devNS;
 function muatUlangNS(){guard(async()=>{S.devNS=await dbq(db.rpc('developer_notif_siswa')).catch(e=>({error:(e&&e.message)||String(e)}));S.devNSJam=await dbq(db.rpc('developer_jam_notif_siswa')).catch(()=>null);renderV()})}
 function simpanJamNS(){const m=parseInt($('#nsJamMulai').value,10),a=parseInt($('#nsJamAkhir').value,10);
  if(!Number.isInteger(m)||!Number.isInteger(a)||m<0||m>22||a<1||a>23||m>=a){toast('Jam tidak valid: mulai 0-22, sampai 1-23, dan jam mulai harus lebih kecil dari jam sampai',false);return}
- guard(async()=>{if(!await konfirmasi('Notifikasi siswa akan dikirim pukul '+String(m).padStart(2,'0')+'.00-'+String(a).padStart(2,'0')+'.00 WIB. Notifikasi di luar jam itu diabaikan. Simpan?',{judul:'Ubah jam notifikasi',ikon:'🕒',ya:'Simpan'}))return;
+ return guard(async()=>{if(!await konfirmasi('Notifikasi siswa akan dikirim pukul '+String(m).padStart(2,'0')+'.00-'+String(a).padStart(2,'0')+'.00 WIB. Notifikasi di luar jam itu diabaikan. Simpan?',{judul:'Ubah jam notifikasi',ikon:'🕒',ya:'Simpan'}))return;
   await dbq(db.rpc('developer_atur_jam_notif_siswa',{p_mulai:m,p_akhir:a}));
   S.devNSJam=await dbq(db.rpc('developer_jam_notif_siswa')).catch(()=>null);
   S.devNS=await dbq(db.rpc('developer_notif_siswa')).catch(e=>({error:(e&&e.message)||String(e)}));
-  toast('Jam notifikasi disimpan dan jadwal cron diperbarui');renderV()})}
+  toast('Jam notifikasi disimpan dan jadwal cron diperbarui');renderV();return true})}
 function prosesAntreanNS(){guard(async()=>{await dbq(db.rpc('developer_proses_antrean_siswa'));toast('Antrean diproses. Tunggu beberapa detik lalu tekan Muat ulang untuk melihat hasilnya')})}
 function devNotifLibur(){const d=S.devNL;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat status notifikasi libur...</div></div></div>';
