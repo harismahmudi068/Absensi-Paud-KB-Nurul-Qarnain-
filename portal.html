@@ -516,7 +516,7 @@ function profilBuka(){const s=S.siswa,o=$('#fo');
   '<div class="fsep">🔒 Diatur oleh sekolah</div>'+ro('Kelas',s.kelas)+ro('NISN',s.nisn)+ro('Tahun masuk',s.masuk)+
   '<div class="fe" id="ffe" role="alert"></div><div class="fa"><button type="button" class="bt fx" id="fbt">Batal</button><button type="button" class="ya fx" id="fya">Simpan</button></div></div>';
  $('#dd-jk .ddb').addEventListener('click',()=>$('#tgbox').classList.remove('open'));o.onclick=e=>{if(e.target===o)profilCoba()};$('#fbt').onclick=profilCoba;$('#fya').onclick=()=>profilSimpan();
- PF.awal=profilNilai();void o.offsetWidth;o.classList.add('on')}
+ PF.awal=profilNilai();PF.buka=1;profilRiwayatPasang();void o.offsetWidth;o.classList.add('on')}
 /* Nilai semua isian profil (dinormalkan) untuk mendeteksi ada tidaknya perubahan yang belum disimpan */
 function profilNilai(){return ['fnm','fpn','ftp','ftg','fal','fwa'].map(id=>{const e=$('#'+id);return e?e.value.trim().replace(/\s+/g,' '):''}).join('\u0001')+'\u0001'+((DD.jk&&DD.jk.val)||'')}
 /* Dipanggil saat Batal / ketuk area luar: kalau ada perubahan, tanya dulu */
@@ -524,7 +524,21 @@ async function profilCoba(){if(PF.busy||PF.tanya)return;
  if(profilNilai()===PF.awal)return profilTutup();
  PF.tanya=1;const r=await konfirm3({ikon:'📝',judul:'Simpan perubahan?',isi:'Data yang Anda ubah belum disimpan. Mau diapakan?',warna:'#159447'});PF.tanya=0;
  if(r==='buang')profilTutup();else if(r==='simpan')profilSimpan(1)}
-function profilTutup(){const o=$('#fo');o.classList.remove('on');setTimeout(()=>{if(!o.classList.contains('on'))o.innerHTML=''},500)}
+/* Pengaman refresh & tombol Kembali browser selama form Ubah profil terbuka */
+function profilRiwayatPasang(){if(PF.hs)return;try{history.pushState({pf:1},'')}catch(e){return}PF.hs=1}
+function profilRiwayatLepas(){if(!PF.hs)return;PF.hs=0;PF.abaikan=1;try{history.back()}catch(e){PF.abaikan=0}}
+window.addEventListener('popstate',()=>{
+ if(PF.abaikan){PF.abaikan=0;return}
+ if(!PF.hs)return;
+ PF.hs=0;
+ if(!PF.buka)return;
+ const fk=$('#fk');
+ if(PF.busy||PF.tanya||(fk&&fk.classList.contains('on'))){profilRiwayatPasang();return}
+ if(profilNilai()===PF.awal)return profilTutup();
+ profilRiwayatPasang();profilCoba()});
+window.addEventListener('beforeunload',e=>{
+ if(PF.buka&&(PF.busy||profilNilai()!==PF.awal)){e.preventDefault();e.returnValue=''}});
+function profilTutup(){PF.buka=0;profilRiwayatLepas();const o=$('#fo');o.classList.remove('on');setTimeout(()=>{if(!o.classList.contains('on'))o.innerHTML=''},500)}
 async function profilSimpan(lewat){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$('#fya'),bt=$('#fbt'),v=id=>$('#'+id).value.trim().replace(/\s+/g,' ');
  const nama=v('fnm'),pan=v('fpn'),tempat=v('ftp'),tg=$('#ftg').value,jk=DD.jk.val||'',alamat=v('fal'),raw=$('#fwa').value.trim(),wa=raw?normWA(raw):'',lama=String(s.wa||'');
  fe.textContent='';const salah=t=>{fe.textContent=t};
