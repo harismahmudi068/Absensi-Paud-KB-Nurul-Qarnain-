@@ -405,6 +405,13 @@ async function raporTerbit(id, sid) {
   const dasar = `/rest/v1/rapor?siswa_id=eq.${id}&sekolah_id=eq.${sid}&status=eq.terbit&order=tahun_ajaran.desc,semester.desc,jenis.asc`;
   try { return await semua(`${dasar}&select=${COL_RAPOR}`); } catch (e) { return await semua(`${dasar}&select=${COL_RAPOR_DASAR}`); }
 }
+// Hanya kunci yang dipakai rapor.js (aspek, kd, nomor, set) yang dikirim ke orang tua; riwayat perubahan master (nama pengubah, waktu) tidak ikut.
+function bersihMaster(m) {
+  if (!m || typeof m !== 'object' || Array.isArray(m)) return null;
+  const o = {};
+  ['aspek', 'kd', 'nomor', 'set'].forEach((k) => { if (m[k] !== undefined) o[k] = m[k]; });
+  return o;
+}
 // Raport perkembangan: sertakan salinan indikator beku (rapor_salinan), nama kelompok, dan label kelompok.
 async function petaRapor(rows, sid) {
   rows = rows || [];
@@ -430,7 +437,7 @@ async function petaRapor(rows, sid) {
         fmt: 'perkembangan', status: 'terbit', data: { n: d.n || {}, o: d.o || {}, oc: d.oc || {}, tb: Array.isArray(d.tb) ? d.tb : [], bl: Array.isArray(d.bl) && d.bl.length <= 12 && d.bl.every((k) => typeof k === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(k)) ? d.bl : [] },
         diterbitkan_pada: r.diterbitkan_pada || null, pengelola_nama: r.pengelola_nama || '', pengelola_nip: r.pengelola_nip || '',
         kelompok_nama: kel[r.kelompok_id] || '', kelompok_label: mode === 'kelas' ? 'Kelompok' : 'Kelompok Usia',
-        master: (r.salinan_hash && sal[r.salinan_hash]) || null
+        master: bersihMaster(r.salinan_hash && sal[r.salinan_hash])
       });
     }
     return o;
