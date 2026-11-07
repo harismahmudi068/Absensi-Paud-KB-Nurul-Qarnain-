@@ -2,10 +2,47 @@
 // Butuh Environment Variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // Token Fonnte dibaca per sekolah dari tabel pengaturan_rahasia (Pengaturan > Koneksi).
 // Masa transisi: FONNTE_TOKEN lama hanya cadangan untuk sekolah pertama.
+//
+// Dua cara pakai (POST):
+//   1. Satu pesan  : { sekolah_id, nomor, teks }            -> dikirim langsung.
+//      Opsional untuk riwayat: jenis, judul, label, batch (lihat langkah-kirim-log.sql).
+//   2. Banyak pesan: { sekolah_id, pesan:[{nomor,teks}], mulai } -> DIJADWALKAN bertahap di Fonnte
+//      dengan jeda acak 15-30 detik antar nomor (parameter schedule). Maksimal 10 pesan per
+//      permintaan; index mengirim beberapa permintaan berurutan dan meneruskan nilai "berikutnya"
+//      (jam terakhir yang terjadwal) sebagai "mulai" permintaan selanjutnya agar jeda tetap sambung.
+const crypto = require('crypto');
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ENV_FONNTE = process.env.FONNTE_TOKEN || '';
 const SEKOLAH_PERTAMA = 1;
+
+const JEDA_MIN = 15;            // detik
+const JEDA_MAX = 30;            // detik
+const MAKS_BATCH = 10;          // pesan per permintaan
+const MAKS_MULAI = 2 * 3600;    // "mulai" dari index dianggap wajar bila paling jauh 2 jam ke depan
+const RE_NOMOR = /^628\d{8,12}$/;
+const jedaAcak = () => JEDA_MIN + Math.floor(Math.random() * (JEDA_MAX - JEDA_MIN + 1));
+
+const JENIS_OK = ['laporan', 'link', 'tabungan', 'raport', 'libur', 'alpa', 'lainnya'];
+const potong = (x, n) => String(x == null ? '' : x).trim().slice(0, n);
+const idFonnte = (j) => {
+  const v = j && j.id;
+  const a = Array.isArray(v) ? v[0] : v;
+  return a == null || a === '' ? null : String(a);
+};
+
+// Mencatat riwayat ke tabel kirim_log. Gagal mencatat TIDAK boleh menggagalkan pengiriman.
+async function catatLog(baris) {
+  if (!baris.length) return;
+  try {
+    const r = await fetch(SB + '/rest/v1/kirim_log', {
+      method: 'POST',
+      headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify(baris)
+    });
+    if (!r.ok) console.error('Catat riwayat kirim gagal:', r.status, await r.text());
+  } catch (e) { console.error('Catat riwayat kirim gagal:', e); }
+}
 
 async function sb(path, token) {
   const h = { apikey: KEY };
@@ -13,6 +50,20 @@ async function sb(path, token) {
   const r = await fetch(SB + path, { headers: h });
   if (!r.ok) throw new Error('Sesi tidak valid');
   return r.json();
+}
+
+// jadwal (opsional) = unix timestamp dalam detik; bila diisi, Fonnte mengirim pada jam itu.
+async function kirimFonnte(token, nomor, teks, jadwal) {
+  const isi = { target: nomor, message: teks };
+  if (jadwal) isi.schedule = Math.floor(Number(jadwal));
+  const r = await fetch('https://api.fonnte.com/send', {
+    method: 'POST',
+    headers: { Authorization: token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(isi)
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.status === false) throw new Error(j.reason || 'Fonnte menolak pesan');
+  return j;
 }
 
 module.exports = async (req, res) => {
@@ -35,17 +86,84 @@ module.exports = async (req, res) => {
     const t0 = (await sb(`/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=token&order=id.asc&limit=1`))[0] || {};
     const FONNTE = t0.token || (sekolahId === SEKOLAH_PERTAMA ? ENV_FONNTE : '');
     if (!FONNTE) return res.status(500).json({ error: 'Token Fonnte sekolah belum diisi di Pengaturan > Koneksi' });
+
+    // ---------- BANYAK PESAN: dijadwalkan bertahap ----------
+    if (Array.isArray(b.pesan)) {
+      const daftar = b.pesan;
+      if (!daftar.length) return res.status(400).json({ error: 'Daftar pesan kosong' });
+      if (daftar.length > MAKS_BATCH) return res.status(400).json({ error: 'Maksimal ' + MAKS_BATCH + ' pesan per permintaan' });
+      const sekarang = Math.floor(Date.now() / 1000);
+      let waktu = sekarang;
+      const mulai = Math.floor(Number(b.mulai) || 0);
+      if (mulai > sekarang && mulai <= sekarang + MAKS_MULAI) waktu = mulai;
+      const hasil = new Array(daftar.length);
+      const ids = new Array(daftar.length).fill(null);
+      const jam = new Array(daftar.length).fill(null);
+      const meta = {
+        jenis: JENIS_OK.includes(b.jenis) ? b.jenis : 'lainnya',
+        judul: potong(b.judul, 120),
+        batch: potong(b.batch, 60) || crypto.randomUUID()
+      };
+      const antre = [];
+      daftar.forEach((x, i) => {
+        const nomor = String((x && x.nomor) || '').replace(/\D/g, '');
+        const teks = String((x && x.teks) || '');
+        if (!RE_NOMOR.test(nomor)) { hasil[i] = { ok: false, error: 'Nomor tidak valid' }; return; }
+        if (!teks) { hasil[i] = { ok: false, error: 'Pesan kosong' }; return; }
+        waktu += jedaAcak();
+        jam[i] = waktu;
+        antre.push({ i, nomor, teks, waktu });
+      });
+      // Hanya mendaftarkan jadwal ke Fonnte (cepat); 5 permintaan sekaligus.
+      for (let k = 0; k < antre.length; k += 5) {
+        const bag = antre.slice(k, k + 5);
+        const hs = await Promise.allSettled(bag.map((x) => kirimFonnte(FONNTE, x.nomor, x.teks, x.waktu)));
+        hs.forEach((h, j) => {
+          if (h.status === 'fulfilled') {
+            hasil[bag[j].i] = { ok: true };
+            ids[bag[j].i] = idFonnte(h.value);
+          } else {
+            hasil[bag[j].i] = { ok: false, error: String((h.reason && h.reason.message) || h.reason) };
+          }
+        });
+      }
+      // Catat riwayat (satu baris per pesan, termasuk yang ditolak).
+      await catatLog(daftar.map((x, i) => ({
+        sekolah_id: sekolahId,
+        batch_id: meta.batch,
+        jenis: meta.jenis,
+        judul: meta.judul,
+        label: potong(x && x.label, 120),
+        nomor: String((x && x.nomor) || '').replace(/\D/g, '').slice(0, 20) || '-',
+        fonnte_id: ids[i],
+        status: hasil[i].ok ? 'terjadwal' : 'gagal',
+        error: hasil[i].ok ? null : potong(hasil[i].error, 300),
+        jadwal_pada: hasil[i].ok && jam[i] ? new Date(jam[i] * 1000).toISOString() : null
+      })));
+      return res.status(200).json({ ok: true, hasil, berikutnya: waktu, batch_id: meta.batch });
+    }
+
+    // ---------- SATU PESAN: langsung ----------
     const nomor = String(b.nomor || '').replace(/\D/g, '');
     const teks = String(b.teks || '');
-    if (!/^628\d{8,12}$/.test(nomor)) return res.status(400).json({ error: 'Nomor tidak valid' });
+    if (!RE_NOMOR.test(nomor)) return res.status(400).json({ error: 'Nomor tidak valid' });
     if (!teks) return res.status(400).json({ error: 'Pesan kosong' });
-    const r = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { Authorization: FONNTE, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: nomor, message: teks })
-    });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok || j.status === false) return res.status(502).json({ error: j.reason || 'Fonnte menolak pesan' });
+    const metaSatu = {
+      sekolah_id: sekolahId,
+      batch_id: potong(b.batch, 60) || crypto.randomUUID(),
+      jenis: JENIS_OK.includes(b.jenis) ? b.jenis : 'lainnya',
+      judul: potong(b.judul, 120),
+      label: potong(b.label, 120),
+      nomor
+    };
+    let balasan;
+    try {
+      balasan = await kirimFonnte(FONNTE, nomor, teks);
+    } catch (e) {
+      await catatLog([{ ...metaSatu, status: 'gagal', error: potong(e.message || 'Fonnte menolak pesan', 300) }]);
+      return res.status(502).json({ error: e.message || 'Fonnte menolak pesan' });
+    }
+    await catatLog([{ ...metaSatu, fonnte_id: idFonnte(balasan), status: 'terjadwal' }]);
     return res.status(200).json({ ok: true });
   } catch (e) {
     return res.status(400).json({ error: e.message });
