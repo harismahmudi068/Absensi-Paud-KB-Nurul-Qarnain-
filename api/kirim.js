@@ -75,6 +75,7 @@ module.exports = async (req, res) => {
     const user = await sb('/auth/v1/user', token);
     const p = (await sb(`/rest/v1/profil?id=eq.${user.id}&select=aktif,role`))[0];
     if (!p || !p.aktif) return res.status(403).json({ error: 'Akun tidak aktif' });
+    const olehDev = p.role === 'developer';   // pengiriman developer ditandai: tersembunyi dari staf sekolah, tetap lengkap di role Developer
     const b = req.body || {};
     const sekolahId = Number(b.sekolah_id);
     if (!Number.isInteger(sekolahId) || sekolahId <= 0) return res.status(400).json({ error: 'Sekolah tidak valid' });
@@ -130,6 +131,7 @@ module.exports = async (req, res) => {
       // Catat riwayat (satu baris per pesan, termasuk yang ditolak).
       await catatLog(daftar.map((x, i) => ({
         sekolah_id: sekolahId,
+        oleh_developer: olehDev,
         batch_id: meta.batch,
         jenis: meta.jenis,
         judul: meta.judul,
@@ -150,6 +152,7 @@ module.exports = async (req, res) => {
     if (!teks) return res.status(400).json({ error: 'Pesan kosong' });
     const metaSatu = {
       sekolah_id: sekolahId,
+      oleh_developer: olehDev,
       batch_id: potong(b.batch, 60) || crypto.randomUUID(),
       jenis: JENIS_OK.includes(b.jenis) ? b.jenis : 'lainnya',
       judul: potong(b.judul, 120),
