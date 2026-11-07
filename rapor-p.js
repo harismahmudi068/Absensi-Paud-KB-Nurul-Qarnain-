@@ -188,7 +188,7 @@ function pkRender() {
   h += `<div class="tbkh">Catatan dan rekomendasi pendidik</div><textarea id="pkCat" class="input" rows="4" maxlength="600" placeholder=""${dis}>${esc(e.cat)}</textarea><div class="mu">Dikosongkan = dibuat otomatis dari nilai (lihat contoh di kolom ini). Isi bila ingin menulis sendiri.</div>`;
   h += pkKepHTML(e, kl);
   const lama = e.r && e.r.salinan_hash && PKR.sal.has(e.r.salinan_hash) && PKR.mas.has(e.kid) && JSON.stringify(PKR.sal.get(e.r.salinan_hash)) !== JSON.stringify(PKR.mas.get(e.kid).isi);
-  if (e.b) h += '<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pkSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pkSimpan(true)">Simpan &amp; berikutnya ➜</button></div><div class="tb"><button class="btn success grow" onclick="pkSimpan(\'terbit\')">🚀 Simpan &amp; terbitkan</button></div>' + (lama ? '<div class="note">Draf ini masih memakai indikator lama (salinan saat terbit sebelumnya). Indikator master sudah berubah.</div><div class="tb"><button class="btn soft sm" onclick="pkPakaiBaru()">🔄 Pakai indikator terbaru</button></div>' : '');
+  if (e.b) h += '<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pkSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pkSimpan(true)">Simpan &amp; berikutnya ➜</button></div><div class="tb" style="flex-wrap:wrap"><button class="btn soft grow" onclick="pkSimpan(\'terbit\')">🚀 Simpan &amp; terbitkan</button><button class="btn success grow" onclick="pkSimpan(\'terbitlanjut\')">🚀 Terbitkan &amp; lanjutkan</button></div>' + (lama ? '<div class="note">Draf ini masih memakai indikator lama (salinan saat terbit sebelumnya). Indikator master sudah berubah.</div><div class="tb"><button class="btn soft sm" onclick="pkPakaiBaru()">🔄 Pakai indikator terbaru</button></div>' : '');
   else if (e.kunci && pnBoleh(kl) && e.r) h += `<div class="note">Raport ini sudah terbit dan terkunci. Indikatornya memakai salinan yang dibekukan saat terbit.</div><div class="tb" style="flex-wrap:wrap"><button class="btn soft grow" onclick="closeM();pnTerbitUlang([${e.r.id}])">🔄 Terbitkan ulang (indikator lama)</button><button class="btn soft grow" onclick="closeM();pnTerbitUlang([${e.r.id}],true)">🔄 Terbitkan ulang, pakai indikator terbaru</button></div><div class="tb"><button class="btn danger" onclick="pnBatal(${e.r.id})">Batalkan penerbitan</button></div>`;
   else h += '<div class="note">Anda hanya dapat melihat raport ini.</div>';
   if (e.r) h += `<div class="tb"><button class="btn soft sm" onclick="pnPdf([${e.r.id}],this)">📄 Unduh PDF (data yang tersimpan)</button></div>`;
@@ -276,14 +276,16 @@ function pkSimpan(lanjut) {
   ids.forEach(id => { const v = +e.n[id]; if (v >= 1 && v <= 4) n[id] = v; if (e.o[id]) o[id] = e.o[id]; if (e.oc[id]) oc[id] = e.oc[id]; });
   if (pnUas2() && !(e.kep && e.kep.status !== 'sementara') && k.kj === 'naik' && !k.kt) return toast('Pilih kelas tujuan untuk keputusan Naik kelas', false);
   const kur = pkKurangAspek(e.M, n);
-  if (lanjut === 'terbit' && kur.length) { pkTampilKurang(kur); return toast('Belum bisa diterbitkan: ' + kur.length + ' tabel belum lengkap', false); }
+  if ((lanjut === 'terbit' || lanjut === 'terbitlanjut') && kur.length) { pkTampilKurang(kur); return toast('Belum bisa diterbitkan: ' + kur.length + ' tabel belum lengkap', false); }
   const ktr = kur.length ? ' Belum lengkap: ' + kur.map(x => x.n).join(', ') + '.' : '';
   const data = { n }; if (Object.keys(o).length) data.o = o; if (Object.keys(oc).length) data.oc = oc; if (k.tb.some(r => r.some(v => v))) { data.tb = k.tb; data.bl = k.bl; }
   const sis = pnDaftar().filter(pkFmtS), nxt = sis[sis.findIndex(x => x.id === e.sid) + 1];
+  if (lanjut === 'terbitlanjut' && !pnOkTerbit()) { pnTanyaTerbit().then(ya => { if (ya) pkSimpan('terbitlanjut'); }); return; }
   guard(async () => {
     const hs = await pnTry(() => dbq(db.from('rapor').upsert({ siswa_id: e.sid, kelas_id: kl.id, kelas_nama: kl.nama, tahun_ajaran: S.set.tahun_ajaran, semester: pnSem, jenis: pnJenis, status: 'draf', fmt: 'perkembangan', kelompok_id: e.kid, salinan_hash: (e.r && e.r.salinan_hash) || null, nilai: [], data, sakit: k.sakit, izin: k.izin, alpa: k.alpa, catatan: k.cat || null }, { onConflict: 'siswa_id,tahun_ajaran,semester,jenis' }).select('*')));
     let kepGagal = ''; try { await pkKepSimpan(e, kl, k); } catch (x) { kepGagal = ' Keputusan akhir tahun TIDAK tersimpan: ' + (x.message || x); }
     if (!pnPasang((hs || [])[0])) await pnMuat();   // cukup memperbarui baris siswa ini, tidak memuat ulang satu kelas
+    if (lanjut === 'terbitlanjut') { await pnTerbitLanjut(e.sid, kepGagal); return; }
     if (lanjut === 'terbit') { closeM(); renderV(); const rr = pkRap(e.sid); if (rr) pnTerbit([rr.id]); return; }
     if (lanjut && nxt) { renderV(); pnBuka(nxt.id); toast('Tersimpan. Lanjut ke ' + nxt.nama + '.' + ktr + kepGagal, !kepGagal); } else { closeM(); renderV(); toast('Draf tersimpan.' + ktr + kepGagal, !kepGagal); }
   });
