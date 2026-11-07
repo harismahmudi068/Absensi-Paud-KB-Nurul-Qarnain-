@@ -184,6 +184,7 @@ function barisLog(lg, nama, nomor, status, resp, err, waktu) {
   return {
     sekolah_id: lg.sekolahId,
     batch_id: lg.batch,
+    oleh_developer: !!lg.olehDev,   // true = pesan uji dari tombol Developer: tersembunyi dari staf sekolah
     jenis: lg.jenis,
     judul: String(lg.judul || '').slice(0, 120),
     label: String(nama || '').slice(0, 120),
@@ -518,7 +519,9 @@ module.exports = async (req, res) => {
       sekolahId,
       jenis: jenisNotif,
       judul: 'Notifikasi ' + jenisNotif + (tanggal ? ' ' + tanggal : ''),
-      batch: crypto.randomUUID()
+      batch: crypto.randomUUID(),
+      // 'uji' hanya dikirim fungsi database developer_uji_notif_libur (dilindungi X-Alpa-Secret)
+      olehDev: body.uji === true
     };
 
     const balasanKepala = await kirimFonnte(token, nomorTujuan, teks);
