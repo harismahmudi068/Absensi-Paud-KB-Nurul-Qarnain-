@@ -11,6 +11,7 @@
 //      permintaan; index mengirim beberapa permintaan berurutan dan meneruskan nilai "berikutnya"
 //      (jam terakhir yang terjadwal) sebagai "mulai" permintaan selanjutnya agar jeda tetap sambung.
 const crypto = require('crypto');
+const LIB = require('./_lib');
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ENV_FONNTE = process.env.FONNTE_TOKEN || '';
@@ -75,10 +76,13 @@ module.exports = async (req, res) => {
     const user = await sb('/auth/v1/user', token);
     const p = (await sb(`/rest/v1/profil?id=eq.${user.id}&select=aktif,role`))[0];
     if (!p || !p.aktif) return res.status(403).json({ error: 'Akun tidak aktif' });
-    const olehDev = p.role === 'developer';   // pengiriman developer ditandai: tersembunyi dari staf sekolah, tetap lengkap di role Developer
     const b = req.body || {};
     const sekolahId = Number(b.sekolah_id);
     if (!Number.isInteger(sekolahId) || sekolahId <= 0) return res.status(400).json({ error: 'Sekolah tidak valid' });
+    // Pengiriman Developer ditandai: tersembunyi dari staf sekolah, tetap lengkap di role Developer.
+    // Termasuk saat Developer memakai "Masuk sebagai" (mode bantuan): sesinya milik akun guru,
+    // tetapi token X-Bantuan yang bertanda tangan server membuktikan itu Developer.
+    const olehDev = p.role === 'developer' || LIB.bantuanCek(String(req.headers['x-bantuan'] || ''), user.id, sekolahId);
     if (p.role !== 'developer') {
       const m = (await sb(`/rest/v1/keanggotaan?profil_id=eq.${user.id}&sekolah_id=eq.${sekolahId}&select=role,aktif`))[0];
       if (!m || !m.aktif || !['guru', 'operator', 'pengelola', 'wakil_kepala', 'kepala_sekolah'].includes(m.role)) return res.status(403).json({ error: 'Tidak punya akses ke sekolah ini' });
