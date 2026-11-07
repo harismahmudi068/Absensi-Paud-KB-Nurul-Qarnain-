@@ -1108,7 +1108,7 @@ const statusRekap=(s,d)=>dayStat(s,d)||'Belum';
 function ringkas(s,b,rekap=false){const c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0},ds=hariBulan(b,rekap);ds.forEach(d=>{const st=rekap?statusRekap(s,d):dayStat(s,d);c[st]=(c[st]||0)+1});const n=ds.length;return{c,n,ds,pct:n?Math.round((c.Hadir+c.Terlambat+c.Libur)*100/n):0}}
 const segarkan=()=>dbq(db.rpc('segarkan_libur',{p_sekolah:SEK}));
 /* ---------- login + navigasi ---------- */
-function loginView(msg){tampilTombolPasskey();try{if(localStorage.getItem('pk_beralih')==='1'){localStorage.removeItem('pk_beralih');if(PK_OK&&pkAkunList().length)setTimeout(pilihAkunPasskey,400)}}catch(e){}const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=idErr(msg||'')}
+function loginView(msg){tampilTombolPasskey();const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=idErr(msg||'')}
 function formDaftarSekolah(){info('Daftarkan sekolah','<div class="note">Isi data sekolah dan akun Anda. Pendaftaran akan diperiksa admin; akun aktif setelah disetujui dan Anda dihubungi lewat WhatsApp.</div>'
  +'<div class="fg">'
  +'<div class="fd"><label class="l">Saya mendaftar sebagai</label><select id="dfPr" class="select tanpa-cari" onchange="ubahPeranDaftar()"><option value="kepala_sekolah">Kepala Sekolah</option><option value="operator">Operator</option></select></div>'
@@ -1395,12 +1395,31 @@ async function masukSekolah(m){try{cmKosong();SEK=m.sekolah_id;role=LBL[m.role];
 function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''));{const b=$('#mtp');if(b){b.textContent='Keluar';b.className='btn danger';b.onclick=()=>{closeM();keluar()}}}}
 async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
 async function gantiSekolah(){if(scanKunci())return tolakKunci();await stopScan();drw(0);tampilPilihSekolah()}
+/* ---- Beralih akun tanpa keluar: pilih akun passkey lain di HP ini, verifikasi, lalu aplikasi dimuat ulang ke akun itu.
+   Akun sekarang tetap aktif bila dibatalkan atau gagal. ---- */
+const akunLain=()=>(PK_OK&&!MB())?pkAkunList().filter(x=>!PROFIL||x.u!==PROFIL.username):[];
+async function beralihAkun(){if(scanKunci())return tolakKunci();if(MB())return toast('Tidak tersedia di mode bantuan',false);await stopScan();drw(0);
+ const a=akunLain();if(!a.length)return toast('Belum ada akun lain di HP ini. Aktifkan passkey di akun lain lewat menu Profil Saya',false);
+ info('Beralih akun','<div class="note">Pilih akun yang ingin dibuka. Anda akan diminta sidik jari atau kunci layar akun itu. Bila dibatalkan, akun sekarang tetap aktif.</div>'
+  +(PROFIL?'<div class="mu" style="margin:6px 0">Akun sekarang: <b>'+esc(PROFIL.nama||PROFIL.username)+'</b></div>':'')
+  +a.map(x=>`<button class="btn soft" style="width:100%;text-align:left;margin:6px 0" onclick="closeM();pkBeralih('${esc(x.c)}')">👤 <b>${esc(x.n||x.u)}</b><div class="mu">${esc(x.u)}</div></button>`).join(''))}
+function pkBeralih(credId){guard(async()=>{
+ const o={allowId:credId,hasil:null},pulih=pkSadap(o);let x;
+ try{try{x=await db.auth.signInWithPasskey()}finally{pulih()}
+  if(x.error)throw x.error;if(!x.data||!x.data.session||!x.data.user)throw new Error('Passkey tidak menghasilkan sesi')}
+ catch(e){
+  if(/webauthn_credential_not_found/.test(pkKode(e)))pkAkunHapus(credId);
+  throw new Error(pkPesan(e))}
+ if(x.data.user.id===me)return toast('Itu akun yang sedang dipakai');
+ ld(1,'Beralih akun...');
+ try{sessionStorage.clear()}catch(e){}
+ try{if('caches' in window){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}}catch(e){}
+ try{const c=new URL(location.href);c.search='';c.hash='';location.replace(c.href)}catch(e){location.reload()}
+},1)}
 function tanyaKeluar(){
- const banyak=Array.isArray(MEMB)&&MEMB.length>1&&role!=='Developer',banyakAkun=PK_OK&&pkAkunList().length>1;
- info('Keluar dari halaman ini?','<div style="text-align:center"><div style="font-size:42px;line-height:1">🚪</div><div class="mu" style="font-size:14px;margin:10px 0 16px">Apakah Anda benar-benar ingin keluar dari halaman ini?'+(banyak?'<br>Akun Anda terdaftar di lebih dari satu sekolah, jadi Anda juga bisa beralih sekolah tanpa keluar.':'')+(banyakAkun?'<br>Ada lebih dari satu akun di HP ini, jadi Anda juga bisa beralih akun.':'')+'</div><div class="fg"><button class="btn danger" style="width:100%" onclick="closeM();keluar()">Ya, keluar</button>'+(banyak?'<button class="btn success" style="width:100%" onclick="closeM();gantiSekolah()">🔁 Beralih sekolah</button>':'')+(banyakAkun?'<button class="btn success" style="width:100%" onclick="closeM();beralihAkun()">👤 Beralih akun</button>':'')+'<button class="btn soft" style="width:100%" onclick="closeM()">Batal</button></div></div>')}
-/* Beralih akun: keluar dari akun ini (hanya di perangkat ini), lalu langsung tampil pilihan akun passkey yang terdaftar di HP */
-async function beralihAkun(){if(scanKunci())return tolakKunci();try{localStorage.setItem('pk_beralih','1')}catch(e){}return keluar(true)}
-async function keluar(lokal){
+ const banyak=Array.isArray(MEMB)&&MEMB.length>1&&role!=='Developer',banyakAkun=akunLain().length>0;
+ info('Keluar dari halaman ini?','<div style="text-align:center"><div style="font-size:42px;line-height:1">🚪</div><div class="mu" style="font-size:14px;margin:10px 0 16px">Apakah Anda benar-benar ingin keluar dari halaman ini?'+(banyak?'<br>Akun Anda terdaftar di lebih dari satu sekolah, jadi Anda juga bisa beralih sekolah tanpa keluar.':'')+(banyakAkun?'<br>Ada akun lain di HP ini, jadi Anda juga bisa beralih akun tanpa keluar.':'')+'</div><div class="fg"><button class="btn danger" style="width:100%" onclick="closeM();keluar()">Ya, keluar</button>'+(banyak?'<button class="btn success" style="width:100%" onclick="closeM();gantiSekolah()">🔁 Beralih sekolah</button>':'')+(banyakAkun?'<button class="btn success" style="width:100%" onclick="closeM();beralihAkun()">👤 Beralih akun</button>':'')+'<button class="btn soft" style="width:100%" onclick="closeM()">Batal</button></div></div>')}
+async function keluar(){
   if(scanKunci())return tolakKunci();
   /*
    * LOGOUT TOTAL APLIKASI
@@ -1412,12 +1431,12 @@ async function keluar(lokal){
   try{await stopScan('keluar')}catch(e){}
 
   // 1. Putuskan sesi Supabase terlebih dahulu.
-  try{await db.auth.signOut({scope:lokal===true?'local':'global'})}
+  try{await db.auth.signOut({scope:'global'})}
   catch(e){try{await db.auth.signOut()}catch(_e){}}
 
   // 2. Bersihkan sessionStorage dan localStorage aplikasi.
   try{sessionStorage.clear()}catch(e){}
-  const _pks={};try{['pk_aktif','pk_akun','pk_beralih','tema_ui','logo_sekolah','suara_scanner','antrian_scan'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
+  const _pks={};try{['pk_aktif','pk_akun','tema_ui','logo_sekolah','suara_scanner','antrian_scan'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
   try{Object.keys(localStorage).filter(k=>/^pk_(off|pil)_/.test(k)).forEach(k=>{_pks[k]=localStorage.getItem(k)})}catch(e){}
   try{localStorage.clear()}catch(e){}
   try{Object.keys(_pks).forEach(k=>localStorage.setItem(k,_pks[k]))}catch(e){}
@@ -1493,7 +1512,7 @@ function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),bt=m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`;let h;
  if(role==='Developer')h=ms.map(bt).join('');
  else{const pakai=new Set();h=MENU_GRUP.map(([j,ids])=>{const it=ids.map(i=>ms.find(m=>m[0]===i)).filter(Boolean);it.forEach(m=>pakai.add(m[0]));return it.length?`<div class="ngrp"><div class="ngt">${j}</div>${it.map(bt).join('')}</div>`:''}).join('');const sisa=ms.filter(m=>!pakai.has(m[0]));if(sisa.length)h+=`<div class="ngrp">${sisa.map(bt).join('')}</div>`}
- const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Beralih sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=(role==='Developer'?['developer']:['dashboard','absensi','scan','tabungan']).filter(allowed).slice(0,4);
+ const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Beralih sekolah</button>':'')+(akunLain().length?'<button onclick="beralihAkun()"><span>👤</span>Beralih akun</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=(role==='Developer'?['developer']:['dashboard','absensi','scan','tabungan']).filter(allowed).slice(0,4);
  $('#bn').innerHTML=pref.map(id=>{const m=MENUS.find(x=>x[0]===id);return `<button class="${view===id?'on':''}" onclick="go('${id}')"><span>${id==='scan'?'<svg width="32" height="32" viewBox="0 0 32 32" style="display:block;margin:-2px auto 1px"><rect x="1.5" y="1.5" width="29" height="29" rx="7" fill="none" stroke="currentColor" stroke-width="2.4"/><g fill="currentColor"><rect x="7" y="8" width="2" height="16"/><rect x="10.5" y="8" width="1" height="16"/><rect x="13" y="8" width="3" height="16"/><rect x="17.5" y="8" width="1.2" height="16"/><rect x="20.2" y="8" width="2.2" height="16"/><rect x="24" y="8" width="1" height="16"/></g></svg>':m[2]}</span>${m[1]}</button>`}).join('')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`;
  $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
 let ks='depan';
