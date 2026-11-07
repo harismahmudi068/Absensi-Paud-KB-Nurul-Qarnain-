@@ -1155,6 +1155,20 @@ async function cariSekolah(kunci) {
   };
 }
 
+// [STATUS KIRIM] Apakah ini KABAR STATUS pesan keluar dari Fonnte (bukan pesan masuk dari wali)?
+// Ya hanya bila TIDAK ada isi pesan, TIDAK ada pengirim, dan ada id/stateid. Pesan biasa tidak
+// pernah memenuhi syarat ini sehingga alur di bawahnya tidak berubah sama sekali.
+function adalKabarStatus(b) {
+  try {
+    if (!b || typeof b !== 'object') return false;
+    const k = {};
+    for (const x of Object.keys(b)) k[String(x).toLowerCase()] = b[x];
+    if (String(k.message || k.text || '').trim()) return false;
+    if (k.sender) return false;
+    return Boolean(k.stateid || (k.id && k.status !== undefined));
+  } catch (e) { return false; }
+}
+
 module.exports = async (req, res) => {
   const kunci = String((req.query && req.query.key) || '').trim();
 
@@ -1167,6 +1181,12 @@ module.exports = async (req, res) => {
       console.error('Cek kunci Webhook gagal:', e);
       return res.status(200).send('Kunci tidak dapat diperiksa');
     }
+  }
+
+  // [STATUS KIRIM] Kabar status dialihkan ke status-kirim.js; pesan biasa lanjut seperti semula.
+  if (adalKabarStatus(req.body)) {
+    try { return await require('./status-kirim')(req, res); }
+    catch (e) { console.error('Pengalihan status gagal:', e); return res.status(200).json({ ok: true }); }
   }
 
   let ctx;
