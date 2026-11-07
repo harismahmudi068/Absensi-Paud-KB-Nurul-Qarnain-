@@ -193,6 +193,7 @@ function pkRender() {
   else h += '<div class="note">Anda hanya dapat melihat raport ini.</div>';
   if (e.r) h += `<div class="tb"><button class="btn soft sm" onclick="pnPdf([${e.r.id}],this)">📄 Unduh PDF (data yang tersimpan)</button></div>`;
   $('#mt').textContent = (e.kunci ? 'Raport ' : 'Nilai ') + s.nama; const ms = $('#ms'); if (ms) { if (e.b) { ms.style.display = ''; ms.textContent = '💾 Simpan draf'; ms.className = 'btn success'; ms.disabled = false; ms.onclick = () => pkSimpan(false); } else ms.style.display = 'none'; } $('#mbd').innerHTML = h; $('#md').classList.add('besar'); $('#md').classList.add('show');
+  if (e.b) jagaModal((e.kunci ? 'Raport ' : 'Nilai ') + s.nama, () => pkSimpan(false)); else jagaModal(0, 0, false);
   const a0 = $('#pka_0'); if (a0) { a0.open = true; pkIsi(0); } pkProg();
 }
 function pkRowHTML(x) {
@@ -281,13 +282,14 @@ function pkSimpan(lanjut) {
   const data = { n }; if (Object.keys(o).length) data.o = o; if (Object.keys(oc).length) data.oc = oc; if (k.tb.some(r => r.some(v => v))) { data.tb = k.tb; data.bl = k.bl; }
   const sis = pnDaftar().filter(pkFmtS), nxt = sis[sis.findIndex(x => x.id === e.sid) + 1];
   if (lanjut === 'terbitlanjut' && !pnOkTerbit()) { pnTanyaTerbit().then(ya => { if (ya) pkSimpan('terbitlanjut'); }); return; }
-  guard(async () => {
+  return guard(async () => {
     const hs = await pnTry(() => dbq(db.from('rapor').upsert({ siswa_id: e.sid, kelas_id: kl.id, kelas_nama: kl.nama, tahun_ajaran: S.set.tahun_ajaran, semester: pnSem, jenis: pnJenis, status: 'draf', fmt: 'perkembangan', kelompok_id: e.kid, salinan_hash: (e.r && e.r.salinan_hash) || null, nilai: [], data, sakit: k.sakit, izin: k.izin, alpa: k.alpa, catatan: k.cat || null }, { onConflict: 'siswa_id,tahun_ajaran,semester,jenis' }).select('*')));
     let kepGagal = ''; try { await pkKepSimpan(e, kl, k); } catch (x) { kepGagal = ' Keputusan akhir tahun TIDAK tersimpan: ' + (x.message || x); }
     if (!pnPasang((hs || [])[0])) await pnMuat();   // cukup memperbarui baris siswa ini, tidak memuat ulang satu kelas
-    if (lanjut === 'terbitlanjut') { await pnTerbitLanjut(e.sid, kepGagal); return; }
-    if (lanjut === 'terbit') { closeM(); renderV(); const rr = pkRap(e.sid); if (rr) pnTerbit([rr.id]); return; }
+    if (lanjut === 'terbitlanjut') { await pnTerbitLanjut(e.sid, kepGagal); return true; }
+    if (lanjut === 'terbit') { closeM(); renderV(); const rr = pkRap(e.sid); if (rr) pnTerbit([rr.id]); return true; }
     if (lanjut && nxt) { renderV(); pnBuka(nxt.id); toast('Tersimpan. Lanjut ke ' + nxt.nama + '.' + ktr + kepGagal, !kepGagal); } else { closeM(); renderV(); toast('Draf tersimpan.' + ktr + kepGagal, !kepGagal); }
+    return true;
   });
 }
 
@@ -393,8 +395,8 @@ function pkFormKel(id) {
   if (mode === 'usia') h += `<div class="fd"><label class="l">Usia minimum (bulan)</label><input id="pkfMin" class="input" inputmode="numeric" maxlength="3" value="${a.min == null ? '' : a.min}"></div><div class="fd"><label class="l">Usia maksimum (bulan)</label><input id="pkfMax" class="input" inputmode="numeric" maxlength="3" value="${a.max == null ? '' : a.max}"></div><div class="mu">Contoh: kelompok 3-4 tahun = 36 sampai 59 bulan.</div>`;
   else h += `<div class="fd"><label class="l">Kelas yang memakai kelompok ini</label>${S.kelas.map(c => `<label style="display:flex;gap:8px;align-items:center;padding:4px 0"><input type="checkbox" class="pkfK" value="${c.id}"${(a.kelas || []).includes(c.id) ? ' checked' : ''}> ${esc(c.nama)}</label>`).join('')}</div>`;
   $('#mbd').innerHTML = h + '</div>'; $('#ms').textContent = 'Simpan'; $('#ms').style.display = '';
-  $('#ms').onclick = () => { Promise.resolve().then(() => pkSimpanKel(id)).then(() => closeM()).catch(e => toast(e.message || String(e), false)); };
-  $('#md').classList.add('show');
+  $('#ms').onclick = () => Promise.resolve().then(() => pkSimpanKel(id)).then(() => { closeM(); return true; }).catch(e => { toast(e.message || String(e), false); return false; });
+  $('#md').classList.add('show'); jagaModal(k ? 'Ubah kelompok' : 'Tambah kelompok', $('#ms').onclick);
 }
 async function pkSimpanKel(id) {
   const nama = ($('#pkfN').value || '').trim(); if (!nama) throw new Error('Nama kelompok wajib diisi'); let aturan;
