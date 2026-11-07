@@ -88,6 +88,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .dlg{width:100%;max-width:340px;background:var(--c2);color:var(--tx);border-radius:20px;padding:20px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.4);text-align:center;transform:translateY(12px) scale(.96);transition:transform .2s}.ov.on .dlg{transform:none}
 .dlg .di{font-size:34px}.dlg h3{margin:6px 0 4px;font-size:17px;color:var(--tt)}.dlg p{margin:0 0 14px;color:var(--mu);font-size:14px;word-break:break-word}
 .dlg .da{display:flex;gap:8px}.dlg .da button{flex:1;border:0;border-radius:12px;padding:12px;font:inherit;font-weight:800;cursor:pointer}
+.dlg .da.t3{flex-direction:column}.dlg .da.t3 button{flex:none}.dlg .da.t3 .bg{color:#d83d4d;border-color:rgba(216,61,77,.55)}
 .dlg .da .bt{background:transparent;color:var(--tx);border:1.5px solid var(--ln)}.dlg .da .ya{background:var(--g);color:#fff}
 .dlg .wn{display:block;text-align:left;margin:-2px 0 14px;padding:10px 12px;border-radius:12px;font-size:13px;line-height:1.45;background:#fff3d1;border:1.5px solid #e9b949;color:#5c3f00}.dlg .wn b{display:block;margin-bottom:2px;font-size:13.5px;color:#7a4e00}.dlg .wn span{display:block}
 html[data-tm=n] .dlg .wn{background:rgba(255,200,80,.16);border-color:rgba(255,215,110,.6);color:#fff1c2}html[data-tm=n] .dlg .wn b{color:#ffe08a}
@@ -230,7 +231,7 @@ html.rg .pill{background:rgba(8,40,22,.88)}
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" media="print" onload="this.media='all'"><noscript><link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet"></noscript>
 <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script defer src="/kartu.js?v=20261106a"></script>
-<script defer src="/rapor.js?v=20261106a"></script>
+<script defer src="/rapor.js?v=20261107a"></script>
 </head><body>
 <div class="scene" id="scene"></div>
 <div class="top"><div class="hd" id="hd"></div><div class="as">Assalamualaikum</div><div class="nm" id="nm">&nbsp;</div><div class="gt" id="gt">&nbsp;</div></div>
@@ -344,6 +345,12 @@ function konfirm(o){return new Promise(ok=>{const ov=$('#ov');
  const tutup=v=>{ov.classList.remove('on');document.removeEventListener('keydown',kd);setTimeout(()=>{ov.innerHTML=''},220);ok(v)},kd=e=>{if(e.key==='Escape')tutup(false)};
  ov.onclick=e=>{if(e.target===ov)tutup(false)};ov.querySelector('.bt').onclick=()=>tutup(false);const y=ov.querySelector('.ya');y.onclick=()=>tutup(true);
  document.addEventListener('keydown',kd);ov.classList.add('on');y.focus()})}
+/* Konfirmasi 3 pilihan untuk perubahan yang belum disimpan: simpan / buang / edit lagi (ketuk luar kotak atau Esc = edit lagi, paling aman) */
+function konfirm3(o){return new Promise(ok=>{const ov=$('#ov');
+ ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true"><div class="di">'+o.ikon+'</div><h3>'+esc(o.judul)+'</h3><p>'+esc(o.isi)+'</p><div class="da t3"><button type="button" class="ya fx" data-v="simpan" style="background:'+o.warna+'">Simpan</button><button type="button" class="bt bg fx" data-v="buang">Buang</button><button type="button" class="bt fx" data-v="edit">Edit lagi</button></div></div>';
+ const tutup=v=>{ov.classList.remove('on');document.removeEventListener('keydown',kd);setTimeout(()=>{ov.innerHTML=''},220);ok(v)},kd=e=>{if(e.key==='Escape')tutup('edit')};
+ ov.onclick=e=>{if(e.target===ov)tutup('edit')};ov.querySelectorAll('button').forEach(b=>{b.onclick=()=>tutup(b.dataset.v)});
+ document.addEventListener('keydown',kd);ov.classList.add('on');ov.querySelector('.ya').focus()})}
 
 /* Animasi amplop: terbuka, dokumen masuk, tertutup; sukses jadi pesawat kertas terbang, gagal tetap + tanda X */
 const slp=ms=>new Promise(r=>setTimeout(r,ms)),RM=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -508,10 +515,17 @@ function profilBuka(){const s=S.siswa,o=$('#fo');
   f('fwa','WhatsApp orang tua',waLokal(s.wa),'type="tel" inputmode="numeric" maxlength="16" placeholder="081234567890"')+
   '<div class="fsep">🔒 Diatur oleh sekolah</div>'+ro('Kelas',s.kelas)+ro('NISN',s.nisn)+ro('Tahun masuk',s.masuk)+
   '<div class="fe" id="ffe" role="alert"></div><div class="fa"><button type="button" class="bt fx" id="fbt">Batal</button><button type="button" class="ya fx" id="fya">Simpan</button></div></div>';
- $('#dd-jk .ddb').addEventListener('click',()=>$('#tgbox').classList.remove('open'));o.onclick=e=>{if(e.target===o&&!PF.busy)profilTutup()};$('#fbt').onclick=()=>{if(!PF.busy)profilTutup()};$('#fya').onclick=profilSimpan;
- void o.offsetWidth;o.classList.add('on')}
+ $('#dd-jk .ddb').addEventListener('click',()=>$('#tgbox').classList.remove('open'));o.onclick=e=>{if(e.target===o)profilCoba()};$('#fbt').onclick=profilCoba;$('#fya').onclick=()=>profilSimpan();
+ PF.awal=profilNilai();void o.offsetWidth;o.classList.add('on')}
+/* Nilai semua isian profil (dinormalkan) untuk mendeteksi ada tidaknya perubahan yang belum disimpan */
+function profilNilai(){return ['fnm','fpn','ftp','ftg','fal','fwa'].map(id=>{const e=$('#'+id);return e?e.value.trim().replace(/\s+/g,' '):''}).join('\u0001')+'\u0001'+((DD.jk&&DD.jk.val)||'')}
+/* Dipanggil saat Batal / ketuk area luar: kalau ada perubahan, tanya dulu */
+async function profilCoba(){if(PF.busy||PF.tanya)return;
+ if(profilNilai()===PF.awal)return profilTutup();
+ PF.tanya=1;const r=await konfirm3({ikon:'📝',judul:'Simpan perubahan?',isi:'Data yang Anda ubah belum disimpan. Mau diapakan?',warna:'#159447'});PF.tanya=0;
+ if(r==='buang')profilTutup();else if(r==='simpan')profilSimpan(1)}
 function profilTutup(){const o=$('#fo');o.classList.remove('on');setTimeout(()=>{if(!o.classList.contains('on'))o.innerHTML=''},500)}
-async function profilSimpan(){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$('#fya'),bt=$('#fbt'),v=id=>$('#'+id).value.trim().replace(/\s+/g,' ');
+async function profilSimpan(lewat){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$('#fya'),bt=$('#fbt'),v=id=>$('#'+id).value.trim().replace(/\s+/g,' ');
  const nama=v('fnm'),pan=v('fpn'),tempat=v('ftp'),tg=$('#ftg').value,jk=DD.jk.val||'',alamat=v('fal'),raw=$('#fwa').value.trim(),wa=raw?normWA(raw):'',lama=String(s.wa||'');
  fe.textContent='';const salah=t=>{fe.textContent=t};
  if(nama.length<2)return salah('Nama lengkap wajib diisi');
@@ -519,8 +533,8 @@ async function profilSimpan(){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'),y=$
  if(tg&&(tg<'1990-01-01'||tg>S.hari))return salah('Tanggal lahir tidak valid');
  if(raw&&!/^62\d{8,13}$/.test(wa))return salah('Nomor WhatsApp tidak valid. Contoh: 081234567890');
  if(!wa&&lama)return salah('Nomor WhatsApp tidak boleh dikosongkan');
- PF.busy=1;const fo=$('#fo');fo.classList.remove('on');await slp(RM?0:450);
- if(!await konfirm({ikon:'📝',judul:'Simpan perubahan profil?',isi:'Pastikan data anak Anda sudah benar sebelum disimpan dan diperbarui.',batal:'Cek lagi',ya:'Ya, simpan',warna:'#159447',cat:wa!==lama?['Nomor WhatsApp diganti','Nomor '+waLokal(wa)+' harus terdaftar di grup WhatsApp sekolah supaya izin lewat WhatsApp tetap bisa dilakukan. Pastikan nomor ini sudah terdaftar.']:null})){fo.classList.add('on');PF.busy=0;return}
+ PF.busy=1;const fo=$('#fo');fo.classList.remove('on');
+ if(!(lewat&&wa===lama)){await slp(RM?0:450);if(!await konfirm({ikon:'📝',judul:'Simpan perubahan profil?',isi:'Pastikan data anak Anda sudah benar sebelum disimpan dan diperbarui.',batal:'Cek lagi',ya:'Ya, simpan',warna:'#159447',cat:wa!==lama?['Nomor WhatsApp diganti','Nomor '+waLokal(wa)+' harus terdaftar di grup WhatsApp sekolah supaya izin lewat WhatsApp tetap bisa dilakukan. Pastikan nomor ini sudah terdaftar.']:null})){fo.classList.add('on');PF.busy=0;return}}
  PF.busy=1;y.disabled=true;bt.disabled=true;
  const body=JSON.stringify({k:m[1],nama,pan,tempat,tgl:tg,jk,alamat,wa});
  try{for(;;){
