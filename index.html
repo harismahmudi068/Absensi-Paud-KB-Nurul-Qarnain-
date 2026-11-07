@@ -1108,7 +1108,7 @@ const statusRekap=(s,d)=>dayStat(s,d)||'Belum';
 function ringkas(s,b,rekap=false){const c={Hadir:0,Terlambat:0,Izin:0,Sakit:0,Alpa:0,Libur:0,Belum:0},ds=hariBulan(b,rekap);ds.forEach(d=>{const st=rekap?statusRekap(s,d):dayStat(s,d);c[st]=(c[st]||0)+1});const n=ds.length;return{c,n,ds,pct:n?Math.round((c.Hadir+c.Terlambat+c.Libur)*100/n):0}}
 const segarkan=()=>dbq(db.rpc('segarkan_libur',{p_sekolah:SEK}));
 /* ---------- login + navigasi ---------- */
-function loginView(msg){tampilTombolPasskey();const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=idErr(msg||'')}
+function loginView(msg){tampilTombolPasskey();try{if(localStorage.getItem('pk_beralih')==='1'){localStorage.removeItem('pk_beralih');if(PK_OK&&pkAkunList().length)setTimeout(pilihAkunPasskey,400)}}catch(e){}const _d=$('#dua');if(_d)_d.classList.add('hid');try{sessionStorage.removeItem('mode_bantuan');sessionStorage.removeItem('dev_sesi')}catch(e){}pasangBanner();S.set={};terapNama();$('#lg').classList.remove('hid');$('#ap').classList.add('hid');$('#bn').classList.add('hid');$('#lerr').textContent=idErr(msg||'')}
 function formDaftarSekolah(){info('Daftarkan sekolah','<div class="note">Isi data sekolah dan akun Anda. Pendaftaran akan diperiksa admin; akun aktif setelah disetujui dan Anda dihubungi lewat WhatsApp.</div>'
  +'<div class="fg">'
  +'<div class="fd"><label class="l">Saya mendaftar sebagai</label><select id="dfPr" class="select tanpa-cari" onchange="ubahPeranDaftar()"><option value="kepala_sekolah">Kepala Sekolah</option><option value="operator">Operator</option></select></div>'
@@ -1396,9 +1396,11 @@ function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda 
 async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
 async function gantiSekolah(){if(scanKunci())return tolakKunci();await stopScan();drw(0);tampilPilihSekolah()}
 function tanyaKeluar(){
- const banyak=Array.isArray(MEMB)&&MEMB.length>1&&role!=='Developer';
- info('Keluar dari halaman ini?','<div style="text-align:center"><div style="font-size:42px;line-height:1">🚪</div><div class="mu" style="font-size:14px;margin:10px 0 16px">Apakah Anda benar-benar ingin keluar dari halaman ini?'+(banyak?'<br>Akun Anda terdaftar di lebih dari satu sekolah, jadi Anda juga bisa berpindah sekolah tanpa keluar.':'')+'</div><div class="fg"><button class="btn danger" style="width:100%" onclick="closeM();keluar()">Ya, keluar</button>'+(banyak?'<button class="btn success" style="width:100%" onclick="closeM();gantiSekolah()">🔁 Pindah akun sekolah</button>':'')+'<button class="btn soft" style="width:100%" onclick="closeM()">Batal</button></div></div>')}
-async function keluar(){
+ const banyak=Array.isArray(MEMB)&&MEMB.length>1&&role!=='Developer',banyakAkun=PK_OK&&pkAkunList().length>1;
+ info('Keluar dari halaman ini?','<div style="text-align:center"><div style="font-size:42px;line-height:1">🚪</div><div class="mu" style="font-size:14px;margin:10px 0 16px">Apakah Anda benar-benar ingin keluar dari halaman ini?'+(banyak?'<br>Akun Anda terdaftar di lebih dari satu sekolah, jadi Anda juga bisa beralih sekolah tanpa keluar.':'')+(banyakAkun?'<br>Ada lebih dari satu akun di HP ini, jadi Anda juga bisa beralih akun.':'')+'</div><div class="fg"><button class="btn danger" style="width:100%" onclick="closeM();keluar()">Ya, keluar</button>'+(banyak?'<button class="btn success" style="width:100%" onclick="closeM();gantiSekolah()">🔁 Beralih sekolah</button>':'')+(banyakAkun?'<button class="btn success" style="width:100%" onclick="closeM();beralihAkun()">👤 Beralih akun</button>':'')+'<button class="btn soft" style="width:100%" onclick="closeM()">Batal</button></div></div>')}
+/* Beralih akun: keluar dari akun ini (hanya di perangkat ini), lalu langsung tampil pilihan akun passkey yang terdaftar di HP */
+async function beralihAkun(){if(scanKunci())return tolakKunci();try{localStorage.setItem('pk_beralih','1')}catch(e){}return keluar(true)}
+async function keluar(lokal){
   if(scanKunci())return tolakKunci();
   /*
    * LOGOUT TOTAL APLIKASI
@@ -1410,12 +1412,12 @@ async function keluar(){
   try{await stopScan('keluar')}catch(e){}
 
   // 1. Putuskan sesi Supabase terlebih dahulu.
-  try{await db.auth.signOut({scope:'global'})}
+  try{await db.auth.signOut({scope:lokal===true?'local':'global'})}
   catch(e){try{await db.auth.signOut()}catch(_e){}}
 
   // 2. Bersihkan sessionStorage dan localStorage aplikasi.
   try{sessionStorage.clear()}catch(e){}
-  const _pks={};try{['pk_aktif','pk_akun','tema_ui','logo_sekolah','suara_scanner','antrian_scan'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
+  const _pks={};try{['pk_aktif','pk_akun','pk_beralih','tema_ui','logo_sekolah','suara_scanner','antrian_scan'].forEach(k=>{const v=localStorage.getItem(k);if(v!=null)_pks[k]=v})}catch(e){}
   try{Object.keys(localStorage).filter(k=>/^pk_(off|pil)_/.test(k)).forEach(k=>{_pks[k]=localStorage.getItem(k)})}catch(e){}
   try{localStorage.clear()}catch(e){}
   try{Object.keys(_pks).forEach(k=>localStorage.setItem(k,_pks[k]))}catch(e){}
@@ -1491,7 +1493,7 @@ function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),bt=m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`;let h;
  if(role==='Developer')h=ms.map(bt).join('');
  else{const pakai=new Set();h=MENU_GRUP.map(([j,ids])=>{const it=ids.map(i=>ms.find(m=>m[0]===i)).filter(Boolean);it.forEach(m=>pakai.add(m[0]));return it.length?`<div class="ngrp"><div class="ngt">${j}</div>${it.map(bt).join('')}</div>`:''}).join('');const sisa=ms.filter(m=>!pakai.has(m[0]));if(sisa.length)h+=`<div class="ngrp">${sisa.map(bt).join('')}</div>`}
- const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Ganti sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=(role==='Developer'?['developer']:['dashboard','absensi','scan','tabungan']).filter(allowed).slice(0,4);
+ const hx=h+(MEMB.length>1?'<button onclick="gantiSekolah()"><span>🔁</span>Beralih sekolah</button>':'');$('#sn').innerHTML=hx;$('#dn').innerHTML=hx;const pref=(role==='Developer'?['developer']:['dashboard','absensi','scan','tabungan']).filter(allowed).slice(0,4);
  $('#bn').innerHTML=pref.map(id=>{const m=MENUS.find(x=>x[0]===id);return `<button class="${view===id?'on':''}" onclick="go('${id}')"><span>${id==='scan'?'<svg width="32" height="32" viewBox="0 0 32 32" style="display:block;margin:-2px auto 1px"><rect x="1.5" y="1.5" width="29" height="29" rx="7" fill="none" stroke="currentColor" stroke-width="2.4"/><g fill="currentColor"><rect x="7" y="8" width="2" height="16"/><rect x="10.5" y="8" width="1" height="16"/><rect x="13" y="8" width="3" height="16"/><rect x="17.5" y="8" width="1.2" height="16"/><rect x="20.2" y="8" width="2.2" height="16"/><rect x="24" y="8" width="1" height="16"/></g></svg>':m[2]}</span>${m[1]}</button>`}).join('')+`<button onclick="drw(1)"><span>☰</span>Menu</button>`;
  $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
 let ks='depan';
@@ -1532,7 +1534,7 @@ async function verifikasiDaftar(){const wa=normWA($('#dfWa').value),kode=$('#dfK
  if(!/^\d{6}$/.test(kode)){o.style.color='var(--rd)';o.textContent='Kode harus 6 angka';return}
  o.style.color='';o.textContent='Memeriksa...';
  try{await apiPublik({aksi:'otp_cek',keperluan:'daftar',nomor:wa,kode});o.style.color='#1f9d55';o.textContent='✓ Kode benar. Silakan lanjutkan.'}catch(e){o.style.color='var(--rd)';o.textContent='✗ '+idErr(e.message||e)}}
-function closeM(){const pv=$('#rpPrev');if(pv){pv.querySelectorAll('canvas').forEach(c=>{c.width=c.height=0});pv.innerHTML=''}$('#md').classList.remove('show','besar');window._otpAktif=false;const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
+function closeM(){const pv=$('#rpPrev');if(pv){pv.querySelectorAll('canvas').forEach(c=>{c.width=c.height=0});pv.innerHTML=''}$('#md').classList.remove('show','besar');window._otpAktif=false;window._pnOk=null;const m=$('#ms');if(m){m.className='btn success';m.disabled=false}resetTutup()}
 /* Verifikasi kode (OTP): bila popup tertutup tanpa sengaja, tombol yang sama langsung membuka lagi pemasukan kode (10 menit) */
 const OTP_TUNDA={};
 function otpSimpan(k,meta,buka,mulai){OTP_TUNDA[k]={t:Date.now(),meta:meta||{},buka,mulai}}
@@ -3454,9 +3456,9 @@ function pnBuka(sid){const s=S.siswa.find(x=>x.id===sid),kl=pnKl(pnK);if(!s||!kl
  h+=`<div class="tbkh">Kehadiran <span class="mu">(hari)</span></div><div class="tb" style="flex-wrap:wrap;align-items:flex-end"><div class="fd" style="flex:1;min-width:80px"><label class="l">Sakit</label><input id="pnSk" class="input" inputmode="numeric" maxlength="3" value="${v.sakit}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Izin</label><input id="pnIz" class="input" inputmode="numeric" maxlength="3" value="${v.izin}"${dis}></div><div class="fd" style="flex:1;min-width:80px"><label class="l">Tanpa keterangan</label><input id="pnAl" class="input" inputmode="numeric" maxlength="3" value="${v.alpa}"${dis}></div></div>${b?`<div class="tb" style="flex-wrap:wrap;align-items:center"><button class="btn soft sm" onclick="pnAmbilKeh()">↻ Ambil dari absensi</button><span class="mu">${fmt(pnRange()[0])} sampai ${fmt(pnRange()[1])}</span></div>`:''}`;
  h+=`<div class="tbkh">Catatan wali kelas</div><textarea id="pnCat" class="input" rows="3" maxlength="600" placeholder="Catatan untuk orang tua (opsional)"${dis}>${esc(v.catatan)}</textarea>`;
  h+=pnKepForm(sid,b,kl);
- h+=b?`<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pnSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pnSimpan(true)">Simpan &amp; berikutnya ➜</button></div>`:kunci?(pnBoleh(kl)?`<div class="note">Raport ini sudah terbit dan terkunci. Untuk mengubahnya, batalkan penerbitan dulu.</div><div class="tb"><button class="btn danger" onclick="pnBatal(${rap.id})">Batalkan penerbitan</button></div>`:'<div class="note">Raport ini sudah terbit dan terkunci.</div>'):'<div class="note">Anda hanya dapat melihat nilai kelas ini.</div>';
+ h+=b?`<div class="tb" style="flex-wrap:wrap;margin-top:12px"><button class="btn success grow" onclick="pnSimpan(false)">💾 Simpan draf</button><button class="btn soft grow" onclick="pnSimpan(true)">Simpan &amp; berikutnya ➜</button></div><div class="tb"><button class="btn success grow" onclick="pnSimpan('terbitlanjut')">🚀 Terbitkan &amp; lanjutkan</button></div>`:kunci?(pnBoleh(kl)?`<div class="note">Raport ini sudah terbit dan terkunci. Untuk mengubahnya, batalkan penerbitan dulu.</div><div class="tb"><button class="btn danger" onclick="pnBatal(${rap.id})">Batalkan penerbitan</button></div>`:'<div class="note">Raport ini sudah terbit dan terkunci.</div>'):'<div class="note">Anda hanya dapat melihat nilai kelas ini.</div>';
  if(rap)h+=`<div class="tb"><button class="btn soft sm" onclick="pnPdf([${rap.id}],this)">📄 Unduh PDF (data yang tersimpan)</button></div>`;
- $('#mt').textContent=(kunci?'Raport ':'Nilai ')+s.nama;$('#ms').style.display='none';$('#mbd').innerHTML=h;$('#md').classList.add('besar');$('#md').classList.add('show')}
+ $('#mt').textContent=(kunci?'Raport ':'Nilai ')+s.nama;{const ms=$('#ms');if(b){ms.style.display='';ms.textContent='💾 Simpan draf';ms.className='btn success';ms.disabled=false;ms.onclick=()=>pnSimpan(false)}else ms.style.display='none'}$('#mbd').innerHTML=h;$('#md').classList.add('besar');$('#md').classList.add('show')}
 function pnHit(i){const e=(window._pnEnt||[])[i],el=$('#pnN'+i),c=$('#pnP'+i),t=$('#pnD'+i);if(!e||!el||!c)return;let n=null;
  try{n=pnNum(el.value)}catch(_){c.textContent='!';c.className='badge Alpa';return}
  const p=pnPred(n,e.k);c.textContent=p||'-';c.className='badge '+(pnPredCls[p]||'');if(t)t.placeholder=p?pnDesk(p,e.m):'Dibuat otomatis sesuai predikat'}
@@ -3471,10 +3473,24 @@ function pnPasang(row){if(!row||!row.siswa_id)return false;const i=pnRap.findInd
 function pnSimpan(lanjut){const kl=pnKl(pnK);if(!kl||!pnBoleh(kl))return;let d;try{d=pnBaca()}catch(e){return toast(e.message,false)}
  if(d.kepAda&&d.kj==='naik'&&!d.kt)return toast('Pilih kelas tujuan untuk keputusan Naik kelas',false);
  const sis=pnDaftar(),nxt=sis[sis.findIndex(x=>x.id===pnSis)+1],kos=(d.nilai||[]).filter(x=>x.n==null).map(x=>x.m);
+ if(lanjut==='terbitlanjut'){if(kos.length)return toast('Belum bisa diterbitkan. Nilai belum diisi: '+kos.join(', '),false);if(!pnOkTerbit()){pnTanyaTerbit().then(ya=>{if(ya)pnSimpan('terbitlanjut')});return}}
  guard(async()=>{const hs=await pnTry(()=>dbq(db.from('rapor').upsert({siswa_id:pnSis,kelas_id:kl.id,kelas_nama:kl.nama,tahun_ajaran:S.set.tahun_ajaran,semester:pnSem,jenis:pnJenis,status:'draf',nilai:d.nilai,sakit:d.sakit,izin:d.izin,alpa:d.alpa,catatan:d.catatan},{onConflict:'siswa_id,tahun_ajaran,semester,jenis'}).select('*')));
   if(!pnPasang((hs||[])[0]))await pnMuat();
   let kepGagal='';if(d.kepAda){try{await pkKepSimpan(window._kepE,kl,{kj:d.kj,kt:d.kt})}catch(x){kepGagal=' Keputusan akhir tahun TIDAK tersimpan: '+(x.message||x)}}
+  if(lanjut==='terbitlanjut'){await pnTerbitLanjut(pnSis,kepGagal);return}
   if(lanjut&&nxt){renderV();pnBuka(nxt.id);toast('Tersimpan. Lanjut ke '+nxt.nama+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':'')+kepGagal,!kepGagal)}else{closeM();renderV();toast('Draf nilai tersimpan'+(kos.length?'. Belum diisi: '+kos.join(', ')+'.':'')+kepGagal,!kepGagal)}})}
+/* Terbitkan & lanjutkan (angka dan level): simpan, terbitkan siswa ini, lalu buka siswa berikutnya yang belum terbit.
+   Konfirmasi hanya ditanya sekali per kelas dan periode selama popup belum ditutup. */
+const pnOkKey=()=>pnK+'|'+pnSem+'|'+pnJenis,pnOkTerbit=()=>window._pnOk===pnOkKey();
+async function pnTanyaTerbit(){const ya=await konfirmasi('Terbitkan raport siswa ini lalu lanjut ke siswa berikutnya? Setelah terbit, raport terkunci dan dapat dilihat orang tua di portal anak. Untuk mengubahnya, penerbitan harus dibatalkan dulu.\n\nKonfirmasi ini tidak ditanyakan lagi untuk siswa berikutnya selama popup nilai tidak ditutup.',{judul:'Terbitkan dan lanjutkan',ya:'Terbitkan',ikon:'🚀'});if(ya)window._pnOk=pnOkKey();return ya}
+async function pnTerbitLanjut(sid,ktr){const kl=pnKl(pnK),r=pnRap.find(x=>x.siswa_id===sid),s=S.siswa.find(x=>x.id===sid);if(!kl||!r||!s)return;
+ if(r.fmt!=='perkembangan'&&!pnLengkap(r))throw new Error('Draf tersimpan, tetapi belum bisa diterbitkan karena nilai belum lengkap');
+ const kur=pkKurang([r]);if(kur.length)throw new Error('Draf tersimpan, tetapi indikator belum lengkap: '+kur.join(', '));
+ await pnTerbitInti([r.id]);
+ const sis=pnDaftar(),i=sis.findIndex(x=>x.id===sid),nxt=sis.slice(i+1).find(x=>{const q=pnRap.find(y=>y.siswa_id===x.id);return !q||q.status!=='terbit'});
+ renderV();
+ if(nxt){pnBuka(nxt.id);toast('Raport '+s.nama+' diterbitkan. Lanjut ke '+nxt.nama+'.'+(ktr||''),!ktr)}
+ else{closeM();toast('Raport '+s.nama+' diterbitkan. Tidak ada siswa berikutnya yang belum terbit.'+(ktr||''),!ktr)}}
 /* inti penerbitan: dipanggil di dalam guard(). UAS Semester 2 membawa keputusan akhir ke dalam raport */
 async function pnTerbitInti(ids,baru){const kl=pnKl(pnK),semua=pnRap.filter(r=>ids.includes(r.id)),rows=semua.filter(r=>r.fmt!=='perkembangan'),w=ttdWali(kl.nama)||{},k=ttdKepsek()||{};
  const ttd={wali_nama:w.nama||null,wali_nip:w.nip||null,kepsek_nama:k.nama||null,kepsek_nip:k.nip||null};
@@ -3596,7 +3612,19 @@ async function alRapor(id){const a=(AL.data||[]).find(x=>x.id===id);if(!a)return
     if(hs.length){const sal=await dbq(db.from('rapor_salinan').select('hash,isi').in('hash',hs));(sal||[]).forEach(x=>PKR.sal.set(x.hash,x.isi))}
    }catch(e){console.warn('Indikator raport alumni belum termuat',e)}}
   if(!window._alRap.length){info('Raport '+a.nama,'<div class="note">Tidak ada raport terbit yang tersimpan untuk alumni ini.</div>');return}
-  info('Raport '+a.nama,'<div class="mu" style="margin-bottom:8px">Raport tersimpan selama data alumni ada, lalu terhapus bersama data alumni.</div>'+window._alRap.map((r,i)=>`<div class="tb" style="align-items:center"><div style="flex:1"><b>${r.jenis} Semester ${r.semester}</b><div class="mu">TA ${esc(r.tahun_ajaran)} · Kelas ${esc(r.kelas_nama||'-')}</div></div><button class="btn sm soft" onclick="alRaporPdf([${i}],this)">📄 PDF</button></div>`).join('')+`<div class="tb"><button class="btn success" onclick="alRaporPdf([${window._alRap.map((_,i)=>i).join(',')}],this)">📄 Unduh semua (${window._alRap.length})</button></div>`)})}
+  info('Raport '+a.nama,'<div class="mu" style="margin-bottom:8px">Raport tersimpan selama data alumni ada, lalu terhapus bersama data alumni.</div>'+window._alRap.map((r,i)=>`<div class="tb" style="align-items:center"><div style="flex:1"><b>${r.jenis} Semester ${r.semester}</b><div class="mu">TA ${esc(r.tahun_ajaran)} · Kelas ${esc(r.kelas_nama||'-')}</div></div><button class="btn sm soft" onclick="alRaporLihat(${i})">👁 Lihat</button><button class="btn sm soft" onclick="alRaporPdf([${i}],this)">📄 PDF</button></div>`).join('')+`<div class="tb"><button class="btn success" onclick="alRaporPdf([${window._alRap.map((_,i)=>i).join(',')}],this)">📄 Unduh semua (${window._alRap.length})</button></div>`)})}
+async function alRaporD(a,r,logo){
+ if(r.fmt==='perkembangan')return pkSusun(r,logo,{alumni:true,nama:a.nama,nisn:a.nisn||'',tempat:a.tempat_lahir||'',tgl:a.tgl_lahir||''});
+ return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:a.nama,nisn:a.nisn||'',wali:null,kepsek:null})}
+/* pratinjau satu raport alumni (satu siswa, satu raport) */
+function alRaporLihat(i){const a=window._alA,r=(window._alRap||[])[i];if(!a||!r)return;
+ guard(async()=>{await muatLib('pdf');const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),D=await alRaporD(a,r,logo);
+  info('Raport '+a.nama,`<div class="rpv"><div class="note"><b>${esc(a.nama)}</b>${a.nisn?' · NISN '+esc(a.nisn):''}<br>Kelas ${esc(r.kelas_nama||'-')} · TA ${esc(r.tahun_ajaran)} · Semester ${esc(r.semester)} · ${esc(r.jenis)}</div>
+  <div class="tb" style="flex-wrap:wrap;align-items:center"><button type="button" class="btn soft sm" onclick="rpZoom(-80)">➖ Perkecil</button><button type="button" class="btn soft sm" onclick="rpZoom(80)">➕ Perbesar</button><span class="mu">Geser untuk melihat bagian lain</span></div>
+  <div id="rpPrev" class="rpprev"><div class="note">⏳ Menyiapkan raport...</div></div>
+  <div class="tb" style="flex-wrap:wrap"><button type="button" class="btn soft grow" onclick="closeM();alRapor(${a.id})">⬅ Daftar raport</button><button type="button" class="btn success grow" onclick="alRaporPdf([${i}],this)">📄 Unduh PDF</button></div></div>`);
+  $('#md').classList.add('besar');
+  const w=$('#rpPrev'),bd=$('#mbd');RP.lb=Math.min(1000,Math.max(240,((w&&w.clientWidth)||((bd&&bd.clientWidth)||360)-24)-20));Rapor.pratinjau(w,[D],RP.lb)})}
 function alRaporPdf(idx,btn){const a=window._alA,rs=idx.map(i=>window._alRap[i]).filter(Boolean);if(!a||!rs.length)return;
  const bersih=t=>String(t||'').replace(/[^\w\-]+/g,'-').replace(/^-+|-+$/g,'');
  pnPdfBuat(rs,r=>({alumni:true,nama:a.nama,nisn:a.nisn||'',tempat:a.tempat_lahir||'',tgl:a.tgl_lahir||'',wali:null,kepsek:null}),'Raport-'+bersih(a.nama)+(rs.length===1?'-'+rs[0].jenis+'-S'+rs[0].semester+'-'+bersih(rs[0].tahun_ajaran):'-semua'),btn)}
