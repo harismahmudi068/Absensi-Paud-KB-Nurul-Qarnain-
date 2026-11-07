@@ -5,6 +5,9 @@
 //                 Pendaftar memilih peran: 'kepala_sekolah' (bawaan) atau 'operator'.
 //                 Operator wajib mengisi data kepala sekolah (nama, nomor WA, NIP opsional);
 //                 akun kepala dibuat kemudian oleh operator lewat menu Guru.
+//                 Satu nomor WhatsApp = satu akun. Bila nomor sudah punya akun AKTIF, sekolah baru
+//                 dipasang ke akun lama itu (tanpa akun baru); peran di sekolah baru mengikuti
+//                 pendaftaran. Nomor Developer atau akun yang belum aktif ditolak.
 //   reset_kirim   -> kirim kode OTP reset ke nomor WhatsApp (respons selalu seragam)
 //   reset_selesai -> reset sandi / username / keduanya setelah kode benar
 //   hilang_otp    -> kirim kode OTP ke NOMOR BARU (nomor lama hilang)
@@ -29,6 +32,24 @@ async function adaProfil(kolom, nilai) {
   return !!(r && r.length);
 }
 
+// Akun lama pemilik nomor (satu akun boleh memegang beberapa sekolah).
+// null = nomor belum punya akun. Melempar galat bila nomor tidak boleh dipakai mendaftar.
+async function akunDenganNomor(nomor) {
+  const r = await L.panggil(
+    `/rest/v1/profil?no_wa=eq.${encodeURIComponent(nomor)}&select=id,nama,aktif,role&limit=1`,
+    'GET'
+  );
+  const p = r && r[0];
+  if (!p) return null;
+  if (p.role === 'developer')
+    throw new Error('Nomor WhatsApp ini tidak dapat dipakai untuk mendaftarkan sekolah');
+  if (!p.aktif)
+    throw new Error(
+      'Akun dengan nomor WhatsApp ini belum aktif (pendaftaran sebelumnya masih diproses atau akun dinonaktifkan). Tunggu persetujuan atau hubungi admin'
+    );
+  return p;
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
     if (!L.SB || !L.KEY) return res.status(200).send('API publik belum dikonfigurasi');
@@ -51,10 +72,8 @@ module.exports = async (req, res) => {
       const nomor = L.normWA(b.nomor);
       if (!L.RE_WA.test(nomor)) throw new Error('Nomor WhatsApp tidak valid');
 
-      if (keperluan === 'daftar' && (await adaProfil('no_wa', nomor)))
-        throw new Error(
-          'Nomor WhatsApp ini sudah memiliki akun atau pendaftaran yang sedang diproses'
-        );
+      let akunAda = false;
+      if (keperluan === 'daftar') akunAda = !!(await akunDenganNomor(nomor));
 
       await L.kirimOtp({
         nomor,
@@ -62,7 +81,7 @@ module.exports = async (req, res) => {
         ip,
         pembuka: 'Kode verifikasi pendaftaran sekolah'
       });
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, akun_ada: akunAda });
     }
 
     // ---------------------------------------------------------
@@ -73,29 +92,40 @@ module.exports = async (req, res) => {
       const adaOperator = peran === 'operator';
       const namaSekolah = teks(b.nama_sekolah, 80);
       const alamat = teks(b.alamat, 150);
-      // Nama pemilik akun yang mendaftar (kepala sekolah, atau operator)
-      const namaAkun = teks(adaOperator ? b.nama_operator : b.nama_kepala, 80);
-      const nip = teks(b.nip, 30);
+      const kota = teks(b.kota, 60);
       const nomor = L.normWA(b.nomor);
       const username = String(b.username || '').trim().toLowerCase();
       const sandi = String(b.sandi || '');
+
+      if (namaSekolah.length < 3) throw new Error('Nama sekolah minimal 3 karakter');
+      if (!L.RE_WA.test(nomor)) throw new Error('Nomor WhatsApp tidak valid');
+
+      // Satu nomor = satu akun. Bila sudah punya akun aktif, sekolah baru dipasang ke akun itu:
+      // username, sandi, nama, dan NIP akun lama tidak berubah.
+      const akunLama = await akunDenganNomor(nomor);
+
+      // Nama pemilik akun yang mendaftar (kepala sekolah, atau operator)
+      const namaAkun = akunLama
+        ? akunLama.nama || ''
+        : teks(adaOperator ? b.nama_operator : b.nama_kepala, 80);
+      const nip = akunLama ? '' : teks(b.nip, 30);
       // Data kepala sekolah: untuk pendaftar kepala = dirinya sendiri; untuk operator = diisi terpisah
       const namaKepala = adaOperator ? teks(b.nama_kepala, 80) : namaAkun;
       const nipKepala = adaOperator ? teks(b.nip_kepala, 30) : nip;
       const waKepala = adaOperator ? L.normWA(b.wa_kepala) : nomor;
 
-      if (namaSekolah.length < 3) throw new Error('Nama sekolah minimal 3 karakter');
-      if (namaAkun.length < 3)
+      if (!akunLama && namaAkun.length < 3)
         throw new Error(adaOperator ? 'Nama Anda minimal 3 karakter' : 'Nama kepala sekolah minimal 3 karakter');
-      if (!L.RE_WA.test(nomor)) throw new Error('Nomor WhatsApp tidak valid');
       if (adaOperator) {
         if (namaKepala.length < 3) throw new Error('Nama kepala sekolah minimal 3 karakter');
         if (!L.RE_WA.test(waKepala)) throw new Error('Nomor WhatsApp kepala sekolah tidak valid');
         if (waKepala === nomor)
           throw new Error('Nomor WhatsApp kepala sekolah harus berbeda dari nomor Anda');
       }
-      if (!L.RE_USER.test(username)) throw new Error(L.PESAN_USER);
-      if (sandi.length < 6) throw new Error('Kata sandi minimal 6 karakter');
+      if (!akunLama) {
+        if (!L.RE_USER.test(username)) throw new Error(L.PESAN_USER);
+        if (sandi.length < 6) throw new Error('Kata sandi minimal 6 karakter');
+      }
 
       // Batas pendaftaran per perangkat per hari
       if (ip) {
@@ -109,51 +139,66 @@ module.exports = async (req, res) => {
           throw new Error('Terlalu banyak pendaftaran dari perangkat ini hari ini. Coba lagi besok');
       }
 
-      if (await adaProfil('no_wa', nomor))
-        throw new Error(
-          'Nomor WhatsApp ini sudah memiliki akun atau pendaftaran yang sedang diproses'
-        );
-      if (await adaProfil('username', username)) throw new Error('Username sudah dipakai');
+      if (akunLama) {
+        // Cegah pendaftaran ganda (mis. tombol ditekan dua kali) untuk sekolah yang sama
+        const menunggu =
+          (await L.panggil(
+            `/rest/v1/pendaftaran_sekolah?profil_id=eq.${akunLama.id}&status=eq.menunggu&select=nama_sekolah`,
+            'GET'
+          )) || [];
+        if (menunggu.some((x) => String(x.nama_sekolah || '').trim().toLowerCase() === namaSekolah.toLowerCase()))
+          throw new Error('Pendaftaran sekolah ini sudah diajukan dan sedang diperiksa admin');
+      } else if (await adaProfil('username', username)) {
+        throw new Error('Username sudah dipakai');
+      }
 
       // Bukti memegang nomor
       await L.cekOtp(nomor, 'daftar', b.kode);
 
-      // Akun dibuat NONAKTIF: baru bisa dipakai setelah disetujui developer.
-      const baru = await L.panggil('/auth/v1/admin/users', 'POST', {
-        email: username + '@absensi.local',
-        password: sandi,
-        email_confirm: true,
-        user_metadata: { nama: namaAkun }
-      });
+      // Akun baru dibuat NONAKTIF: baru bisa dipakai setelah disetujui developer.
+      // Akun lama dipakai apa adanya.
+      const baru = akunLama
+        ? null
+        : await L.panggil('/auth/v1/admin/users', 'POST', {
+            email: username + '@absensi.local',
+            password: sandi,
+            email_confirm: true,
+            user_metadata: { nama: namaAkun }
+          });
+      const profilId = akunLama ? akunLama.id : baru.id;
 
       let profilDibuat = false;
       let idDaftar = null;
       try {
-        await L.panggil(
-          '/rest/v1/profil',
-          'POST',
-          {
-            id: baru.id,
-            nama: namaAkun,
-            username,
-            // profil.role hanya mengenal kepala_sekolah/guru/developer; Operator disimpan 'guru'.
-            // Peran sebenarnya di sekolah ditentukan saat disetujui (keanggotaan.role).
-            role: adaOperator ? 'guru' : 'kepala_sekolah',
-            aktif: false,
-            no_wa: nomor,
-            nip: nip || null
-          },
-          { Prefer: 'return=minimal' }
-        );
-        profilDibuat = true;
+        if (!akunLama) {
+          await L.panggil(
+            '/rest/v1/profil',
+            'POST',
+            {
+              id: baru.id,
+              nama: namaAkun,
+              username,
+              // profil.role hanya mengenal kepala_sekolah/guru/developer; Operator disimpan 'guru'.
+              // Peran sebenarnya di sekolah ditentukan saat disetujui (keanggotaan.role).
+              role: adaOperator ? 'guru' : 'kepala_sekolah',
+              aktif: false,
+              no_wa: nomor,
+              nip: nip || null
+            },
+            { Prefer: 'return=minimal' }
+          );
+          profilDibuat = true;
+        }
 
         const d = await L.panggil(
           '/rest/v1/pendaftaran_sekolah',
           'POST',
           {
-            profil_id: baru.id,
+            profil_id: profilId,
             nama_sekolah: namaSekolah,
             alamat: alamat || null,
+            kota: kota || null,
+            akun_lama: !!akunLama,
             ip: ip || null,
             peran,
             nama_kepala: adaOperator ? namaKepala : null,
@@ -164,15 +209,19 @@ module.exports = async (req, res) => {
         );
         idDaftar = d && d[0] && d[0].id;
       } catch (e) {
+        // Hanya akun yang baru dibuat di sini yang dibatalkan; akun lama tidak pernah disentuh.
         if (profilDibuat) {
           try {
             await L.panggil(`/rest/v1/profil?id=eq.${baru.id}`, 'DELETE');
           } catch (_) {}
         }
-        try {
-          await L.panggil('/auth/v1/admin/users/' + baru.id, 'DELETE');
-        } catch (_) {}
+        if (baru) {
+          try {
+            await L.panggil('/auth/v1/admin/users/' + baru.id, 'DELETE');
+          } catch (_) {}
+        }
         const m = e.message || '';
+        if (akunLama) throw new Error(m);
         if (/no_wa/i.test(m) && L.pesanDuplikat(e))
           throw new Error('Nomor WhatsApp ini sudah memiliki akun atau pendaftaran');
         throw new Error(L.pesanDuplikat(e) ? 'Username sudah dipakai' : m);
@@ -184,6 +233,8 @@ module.exports = async (req, res) => {
           '',
           `🏫 ${namaSekolah}`,
           alamat ? `📍 ${alamat}` : null,
+          kota ? `🏙️ ${kota}` : null,
+          akunLama ? `♻️ Akun lama (menambah sekolah): ${namaAkun}` : null,
           adaOperator ? `🧑‍💼 Didaftarkan oleh Operator: ${namaAkun}` : null,
           adaOperator ? `📱 WhatsApp operator: ${nomor}` : null,
           `👤 Kepala sekolah: ${namaKepala}`,
@@ -195,7 +246,7 @@ module.exports = async (req, res) => {
           .join('\n')
       );
 
-      return res.status(200).json({ ok: true, id: idDaftar });
+      return res.status(200).json({ ok: true, id: idDaftar, akun_lama: !!akunLama });
     }
 
     // ---------------------------------------------------------
