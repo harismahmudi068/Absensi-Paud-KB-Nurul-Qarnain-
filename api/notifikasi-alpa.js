@@ -27,6 +27,7 @@ const SEKOLAH_PERTAMA = 1;
 // ============================================================
 // ENVIRONMENT VARIABLES
 // ============================================================
+const crypto = require('crypto');
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ENV_FONNTE = process.env.FONNTE_TOKEN || '';
@@ -169,12 +170,47 @@ const JEDA_MIN = 30;
 const JEDA_MAX = 60;
 const jedaAcak = () => JEDA_MIN + Math.floor(Math.random() * (JEDA_MAX - JEDA_MIN + 1));
 
+// ------------------------------------------------------------
+// RIWAYAT KIRIM (tabel kirim_log, lihat langkah-kirim-log.sql)
+// Gagal mencatat TIDAK boleh menggagalkan notifikasi.
+// ------------------------------------------------------------
+const idFonnte = (j) => {
+  const v = j && j.id;
+  const a = Array.isArray(v) ? v[0] : v;
+  return a == null || a === '' ? null : String(a);
+};
+
+function barisLog(lg, nama, nomor, status, resp, err, waktu) {
+  return {
+    sekolah_id: lg.sekolahId,
+    batch_id: lg.batch,
+    jenis: lg.jenis,
+    judul: String(lg.judul || '').slice(0, 120),
+    label: String(nama || '').slice(0, 120),
+    nomor: String(nomor || '').slice(0, 20) || '-',
+    fonnte_id: idFonnte(resp),
+    status,
+    error: err ? String(err).slice(0, 300) : null,
+    jadwal_pada: status === 'terjadwal' && waktu ? new Date(waktu * 1000).toISOString() : null
+  };
+}
+
+async function catatLog(baris) {
+  if (!baris.length) return;
+  try {
+    await supabase('kirim_log', { method: 'POST', body: baris, prefer: 'return=minimal' });
+  } catch (e) {
+    console.error('Catat riwayat kirim gagal:', e && e.message);
+  }
+}
+
 // Jadwalkan banyak pesan di Fonnte: penerima pertama 30-60 detik dari sekarang, penerima
 // berikutnya 30-60 detik setelah penerima sebelumnya. Pendaftaran jadwal dilakukan 5 sekaligus
 // (hanya mendaftar, bukan mengirim) agar cepat dan tidak melewati batas waktu fungsi.
 // Mengembalikan daftar kegagalan pendaftaran (teks) dan jumlah yang berhasil dijadwalkan.
-async function kirimBanyak(token, daftar) {
+async function kirimBanyak(token, daftar, lg) {
   const gagal = [];
+  const baris = [];
   let ok = 0;
   let waktu = Math.floor(Date.now() / 1000);
   const berjadwal = daftar.map((x) => {
@@ -187,10 +223,18 @@ async function kirimBanyak(token, daftar) {
       bagian.map((x) => kirimFonnte(token, x.nomor, x.teks, x.waktu))
     );
     hasil.forEach((h, j) => {
-      if (h.status === 'fulfilled') ok++;
-      else gagal.push(`${bagian[j].nama || bagian[j].nomor}: ${String((h.reason && h.reason.message) || h.reason)}`);
+      const x = bagian[j];
+      if (h.status === 'fulfilled') {
+        ok++;
+        if (lg) baris.push(barisLog(lg, x.nama, x.nomor, 'terjadwal', h.value, null, x.waktu));
+      } else {
+        const alasan = String((h.reason && h.reason.message) || h.reason);
+        gagal.push(`${x.nama || x.nomor}: ${alasan}`);
+        if (lg) baris.push(barisLog(lg, x.nama, x.nomor, 'gagal', null, alasan, null));
+      }
     });
   }
+  if (lg) await catatLog(baris);
   return { ok, gagal };
 }
 
@@ -206,7 +250,7 @@ async function anggotaAktif(sekolahId, hanyaIds) {
 }
 
 // LIBUR: semua anggota aktif sekolah (selain nomor kepala yang sudah menerima).
-async function kirimStafLibur(token, sekolahId, nomorKepala, teks) {
+async function kirimStafLibur(token, sekolahId, nomorKepala, teks, lg) {
   const pesan = teks.replace('Bapak/Ibu Kepala Sekolah', 'Bapak/Ibu');
   const sudah = new Set([nomorKepala]);
   const tujuan = [];
@@ -215,7 +259,7 @@ async function kirimStafLibur(token, sekolahId, nomorKepala, teks) {
     sudah.add(a.nomor);
     tujuan.push({ nama: a.nama, nomor: a.nomor, teks: pesan });
   }
-  return kirimBanyak(token, tujuan);
+  return kirimBanyak(token, tujuan, lg);
 }
 
 // ALPA: pesan khusus wali kelas, memakai kepala dan penutup pesan untuk kepala sekolah.
@@ -246,7 +290,7 @@ function pesanWali(teks, tanggal, daftarKelas) {
   return atas + daftar + '\n' + bawah;
 }
 
-async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa) {
+async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg) {
   if (!Array.isArray(alpa) || !alpa.length) return { ok: 0, gagal: [] };
 
   // Kelompokkan siswa alpa per kelas
@@ -283,7 +327,7 @@ async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa)
     nomor,
     teks: pesanWali(teks, tanggal, v.kelas)
   }));
-  return kirimBanyak(token, tujuan);
+  return kirimBanyak(token, tujuan, lg);
 }
 
 
@@ -469,7 +513,16 @@ module.exports = async (req, res) => {
       throw new Error('Nomor kepala sekolah belum diisi atau tidak valid di Pengaturan > Koneksi');
     }
 
-    await kirimFonnte(token, nomorTujuan, teks);
+    const jenisNotif = tabel === 'notifikasi_libur' ? 'libur' : 'alpa';
+    const lg = {
+      sekolahId,
+      jenis: jenisNotif,
+      judul: 'Notifikasi ' + jenisNotif + (tanggal ? ' ' + tanggal : ''),
+      batch: crypto.randomUUID()
+    };
+
+    const balasanKepala = await kirimFonnte(token, nomorTujuan, teks);
+    await catatLog([barisLog(lg, 'Kepala Sekolah', nomorTujuan, 'terjadwal', balasanKepala, null, null)]);
 
 
     // --------------------------------------------------------
@@ -489,8 +542,8 @@ module.exports = async (req, res) => {
     let tambahan = { ok: 0, gagal: [] };
     try {
       tambahan = tabel === 'notifikasi_libur'
-        ? await kirimStafLibur(token, sekolahId, nomorTujuan, teks)
-        : await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa);
+        ? await kirimStafLibur(token, sekolahId, nomorTujuan, teks, lg)
+        : await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa, lg);
 
       if (tambahan.gagal.length) {
         await updateNotifikasi(id, {
