@@ -240,6 +240,7 @@ function pmRender() {
   h += pmDet('aspek', 'Aspek, kategori, dan indikator', pmHtmlAspek(M, ro)) + pmDet('kd', 'Kompetensi Dasar (KD)', kd + '<div class="mu">KD dipilih per indikator dan tampil pada kolom KD raport. KD bersifat bersama satu sekolah: mengubah kode KD di sini (lalu Simpan master) otomatis mengubah KD yang sama di semua kelompok lain.</div>') + pmDet('nomor', 'Penomoran', nomor)
     + pmDet('set', 'Teks otomatis (kalimat capaian dan catatan)', pmHtmlSet(M, ro)) + pmDet('tempel', 'Impor dan template XLSX', tempel) + pmDet('riw', 'Riwayat perubahan', pmHtmlRiwayat(M));
   $('#mt').textContent = 'Indikator · ' + (k.nama || ''); const ms = $('#ms'); if (ms) { if (!ro) { ms.style.display = ''; ms.textContent = '💾 Simpan'; ms.className = 'btn success'; ms.disabled = false; ms.onclick = () => pmSimpan(); } else ms.style.display = 'none'; } $('#mbd').innerHTML = h; $('#mbd').querySelectorAll('select[disabled]').forEach(x => { x.dataset.cselReady = '1'; }); if (typeof enhanceCustomSelects === 'function') enhanceCustomSelects($('#mbd')); $('#md').classList.add('besar'); $('#md').classList.add('show');
+  if (!ro) jagaKhusus({ ket: 'Master indikator', kotor: () => PKME.dirty, simpan: () => pmSimpan(), abaikan: () => { PKME.dirty = false; } }); else jagaModal(0, 0, false);
   $('#mbd').scrollTop = sc[0]; $('#md').scrollTop = sc[1];
 }
 
@@ -441,7 +442,7 @@ function pmSimpan() {
   if (PKME.ro) return; let M; try { M = pmCek(PKME.M); } catch (e) { return toast(e.message, false); }
   const ring = String(PKME.ring || '').trim().slice(0, 120) || 'Diubah lewat editor';
   const kdUbah = pmKdPerubahan(M), asal = (PKR.kel.find(x => x.id === PKME.kid) || {}).nama || '';
-  guard(async () => {
+  return guard(async () => {
     /* KD bersama satu sekolah: kode KD yang diubah ikut berubah di semua kelompok lain yang memakai KD itu */
     const ter = kdUbah.length ? pmKdTerdampak(kdUbah) : [];
     if (ter.length && !await konfirmasi('KD diubah: ' + kdUbah.map(c => c.lama + ' → ' + c.baru).join(', ') + '.\n\nPerubahan ini juga akan mengubah KD yang sama pada ' + ter.length + ' kelompok lain:\n' + ter.slice(0, 8).map(t => '- ' + t.nama + ' (' + t.ind + ' indikator)').join('\n') + (ter.length > 8 ? '\n... dan ' + (ter.length - 8) + ' lainnya' : '') + '\n\nRaport yang sudah terbit tidak berubah sampai diterbitkan ulang.', { judul: 'Ubah KD di semua kelompok', ya: 'Simpan dan ubah semua', ikon: '🔁' })) return;
@@ -455,6 +456,7 @@ function pmSimpan() {
     if (kdUbah.length) { sebar = await pmKdSebar(kdUbah, null, asal); PKME.sinkron = (PKME.sinkron || []).concat(sebar.gagal); if (sebar.ok.length) await pkMuat(); }
     pmMuatDari(PKR.mas.get(PKME.kid), PKME.kid); pmRender(); renderV();
     toast('Master disimpan (versi ' + PKME.versi + ')' + (sebar && sebar.ok.length ? '. KD ikut diubah di ' + sebar.ok.length + ' kelompok lain' : '') + (sebar && sebar.gagal.length ? '. GAGAL diubah di: ' + [...new Set(sebar.gagal.map(g => g.nama))].join(', ') + ' (tekan Ulangi di bagian atas editor)' : ''), !(sebar && sebar.gagal.length));
+    return true;
   });
 }
 /* ---- KD bersama: identitas KD = kode (tanpa beda huruf besar/spasi). Ubah kode di satu kelompok, ubah di semua ---- */
