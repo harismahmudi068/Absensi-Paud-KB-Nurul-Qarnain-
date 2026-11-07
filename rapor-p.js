@@ -296,8 +296,10 @@ function pkKepO(r) {
   if (!(pnUas2() && r.jenis === 'UAS' && +r.semester === 2)) return {};
   const k = pnKepKep.get(r.siswa_id); return k ? { keputusan: k.jenis, kelasTujuan: k.kelas_tujuan_nama || '' } : {};
 }
-function pkSusun(r, logo) {
-  const s = S.siswa.find(x => x.id === r.siswa_id) || {}, kg = PKR.kel.find(k => k.id === r.kelompok_id) || pkKel(s) || {};
+function pkSusun(r, logo, info) {
+  let s = S.siswa.find(x => x.id === r.siswa_id) || {};
+  if (info && info.alumni) s = { nama: info.nama, nisn: info.nisn, tempat: info.tempat, tgl: info.tgl };
+  const kg = PKR.kel.find(k => k.id === r.kelompok_id) || pkKel(s) || {};
   return Rapor.susun(r, { logo, sekolah: ns(), alamat: (S.set && S.set.alamat) || '', kota: kotaTtd(), nama: s.nama, panggilan: s.pan, nisn: s.nisn, kelas: r.kelas_nama, tempatLahir: s.tempat, tglLahir: s.tgl,
     kelompok: kg.nama || '', kelompokLabel: pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok Usia', master: pkMasterS(s, r), wali: ttdWali(r.kelas_nama) || {}, kepsek: ttdKepsek(), pengelola: pkPengelola(), ...pkKepO(r) });
 }
