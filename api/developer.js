@@ -85,7 +85,7 @@ module.exports = async (req, res) => {
       const id = Number(b.id);
       if (!Number.isInteger(id) || id <= 0) throw new Error('Pendaftaran tidak valid');
       const d = await satu(
-        `/rest/v1/pendaftaran_sekolah?id=eq.${id}&select=nama_sekolah,profil_id,status`
+        `/rest/v1/pendaftaran_sekolah?id=eq.${id}&select=nama_sekolah,profil_id,status,akun_lama`
       );
       if (!d || d.status !== 'menunggu')
         throw new Error('Pendaftaran tidak ditemukan atau sudah diproses');
@@ -108,7 +108,9 @@ module.exports = async (req, res) => {
         try {
           await L.kirimDev(
             kepala.no_wa,
-            `✅ Pendaftaran sekolah *${d.nama_sekolah}* telah disetujui.\n\nSilakan masuk ke ${alamatAplikasi} dengan username *${kepala.username}* dan kata sandi yang Anda buat.`
+            d.akun_lama
+              ? `✅ Pendaftaran sekolah *${d.nama_sekolah}* telah disetujui dan ditambahkan ke akun Anda.\n\nMasuk ke ${alamatAplikasi} dengan username *${kepala.username}* dan kata sandi lama Anda, lalu pilih sekolah ini di halaman Pilih sekolah.`
+              : `✅ Pendaftaran sekolah *${d.nama_sekolah}* telah disetujui.\n\nSilakan masuk ke ${alamatAplikasi} dengan username *${kepala.username}* dan kata sandi yang Anda buat.`
           );
         } catch (e) {
           console.error('Pemberitahuan persetujuan gagal:', e.message);
@@ -125,14 +127,15 @@ module.exports = async (req, res) => {
       if (!Number.isInteger(id) || id <= 0) throw new Error('Pendaftaran tidak valid');
       const alasan = teks(b.alasan, 200);
       const d = await satu(
-        `/rest/v1/pendaftaran_sekolah?id=eq.${id}&select=nama_sekolah,profil_id,status`
+        `/rest/v1/pendaftaran_sekolah?id=eq.${id}&select=nama_sekolah,profil_id,status,akun_lama`
       );
       if (!d || d.status !== 'menunggu')
         throw new Error('Pendaftaran tidak ditemukan atau sudah diproses');
       const kepala = d.profil_id
         ? await satu(`/rest/v1/profil?id=eq.${d.profil_id}&select=no_wa,aktif`)
         : null;
-      if (kepala && kepala.aktif)
+      // Akun lama (menambah sekolah) memang sudah aktif dan TIDAK boleh dihapus saat ditolak
+      if (kepala && kepala.aktif && !d.akun_lama)
         throw new Error('Akun pendaftar sudah aktif, penolakan dibatalkan');
 
       await L.panggil(`/rest/v1/pendaftaran_sekolah?id=eq.${id}`, 'PATCH', {
@@ -142,8 +145,8 @@ module.exports = async (req, res) => {
         diproses_oleh: user.id
       }, { Prefer: 'return=minimal' });
 
-      // Hapus akun pendaftar agar username dan nomornya bisa dipakai lagi
-      if (d.profil_id) {
+      // Hapus akun pendaftar agar username dan nomornya bisa dipakai lagi (bukan untuk akun lama)
+      if (d.profil_id && !d.akun_lama) {
         try {
           await L.panggil(`/rest/v1/profil?id=eq.${d.profil_id}`, 'DELETE');
         } catch (e) {
