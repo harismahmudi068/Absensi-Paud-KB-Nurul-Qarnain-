@@ -531,9 +531,27 @@ module.exports = async (req, res) => {
       // Pemberitahuan hanya ke nomor baru. Bila gagal terkirim, nomor tetap sudah tersimpan.
       let terkirim = false;
       try {
+        const tampil = baru.replace(/^62/, '0').replace(/^(\d{4})(\d{4})(\d+)$/, '$1-$2-$3');
         await kirimDev(
           baru,
-          `Halo ${t.nama}, nomor WhatsApp akun absensi Anda berhasil diubah menjadi ${baru.startsWith('62') ? '0' + baru.slice(2) : baru}. Mulai sekarang nomor ini dipakai untuk kode verifikasi akun Anda. Jika Anda tidak merasa meminta perubahan ini, segera hubungi Developer.`
+          [
+            "Assalamu'alaikum warahmatullahi wabarakatuh.",
+            '',
+            `Yth. ${t.nama},`,
+            '',
+            'Kami informasikan bahwa nomor WhatsApp yang terdaftar pada akun absensi Anda telah berhasil diperbarui menjadi:',
+            '',
+            `📱 ${tampil}`,
+            '',
+            'Mulai saat ini, nomor tersebut akan digunakan sebagai nomor utama untuk menerima kode verifikasi akun.',
+            '',
+            '⚠️ Penting:',
+            'Apabila Anda tidak merasa melakukan atau meminta perubahan nomor WhatsApp ini, segera hubungi Developer untuk mendapatkan bantuan dan memastikan keamanan akun Anda.',
+            '',
+            'Terima kasih atas perhatian dan kerja samanya.',
+            '',
+            "Wassalamu'alaikum warahmatullahi wabarakatuh."
+          ].join('\n')
         );
         terkirim = true;
       } catch (e) {
