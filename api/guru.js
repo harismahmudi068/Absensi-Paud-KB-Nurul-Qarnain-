@@ -10,6 +10,7 @@
 // (fungsi database ganti_kepala_sekolah, satu transaksi).
 // Aksi khusus Developer:
 //   reset (atur sandi baru), hapus_akun (hapus akun seluruhnya),
+//   dev_ubah_nomor (ubah nomor WhatsApp guru tanpa OTP, tanpa Masuk sebagai; pemberitahuan hanya ke nomor baru),
 //   hapus_akun_batch (hapus banyak akun yang tidak aktif di sekolah mana pun sekaligus)
 // Aksi untuk pemilik akun sendiri (semua pengguna aktif):
 //   akun_sendiri (ganti username dan/atau sandi, wajib sandi saat ini atau verifikasi passkey)
@@ -18,7 +19,7 @@ const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const crypto = require('crypto');
-const { kirimOtp, cekOtp, lihatOtp, ipDari, verifPasskey, bantuanCek, catatLog } = require('./_lib');
+const { kirimOtp, cekOtp, lihatOtp, ipDari, verifPasskey, bantuanCek, catatLog, kirimDev } = require('./_lib');
 
 const RE_UUID = /^[0-9a-f-]{36}$/i;
 const RE_USER = /^[a-z0-9._-]{3,20}$/;
@@ -491,6 +492,54 @@ module.exports = async (req, res) => {
       await panggil(`/rest/v1/profil?id=eq.${id}`, 'DELETE');
       await panggil('/auth/v1/admin/users/' + id, 'DELETE');
       return res.status(200).json({ ok: true });
+    }
+
+    // =============================================================
+    // UBAH NOMOR WHATSAPP GURU (khusus Developer, tanpa OTP, tanpa Masuk sebagai)
+    // Nomor melekat pada akun, jadi berlaku di semua sekolah guru itu.
+    // =============================================================
+    if (b.aksi === 'dev_ubah_nomor') {
+      if (!isDev)
+        return res.status(403).json({ error: 'Hanya Developer yang boleh' });
+      const id = String(b.id || '');
+      if (!RE_UUID.test(id)) return res.status(400).json({ error: 'ID tidak valid' });
+      const baru = normWA(b.no_wa_baru);
+      if (!RE_WA.test(baru)) throw new Error('Nomor WhatsApp baru tidak valid');
+
+      const tp = (await panggil(`/rest/v1/profil?id=eq.${id}&select=id,nama,role,no_wa`, 'GET')) || [];
+      const t = tp[0];
+      if (!t) return res.status(404).json({ error: 'Akun guru tidak ditemukan' });
+      if (t.role === 'developer')
+        return res.status(400).json({ error: 'Nomor akun Developer diubah lewat menu Profil Saya' });
+      if ((t.no_wa || '') === baru) throw new Error('Nomor baru sama dengan nomor sekarang');
+
+      const ada = await cariProfilByWA(baru);
+      if (ada && ada.id !== id) throw new Error('Nomor WhatsApp sudah dipakai akun lain');
+
+      try {
+        await panggil(`/rest/v1/profil?id=eq.${id}`, 'PATCH', { no_wa: baru }, { Prefer: 'return=minimal' });
+      } catch (e) {
+        throw new Error(pesanDuplikat(e) ? 'Nomor WhatsApp sudah dipakai akun lain' : e.message);
+      }
+
+      await catatLog({
+        pelaku: user.id,
+        aksi: 'dev_ubah_nomor',
+        rincian: `Nomor WhatsApp ${t.nama} diubah Developer dari ${t.no_wa || '(kosong)'} menjadi ${baru}`
+      });
+
+      // Pemberitahuan hanya ke nomor baru. Bila gagal terkirim, nomor tetap sudah tersimpan.
+      let terkirim = false;
+      try {
+        await kirimDev(
+          baru,
+          `Halo ${t.nama}, nomor WhatsApp akun absensi Anda berhasil diubah menjadi ${baru.startsWith('62') ? '0' + baru.slice(2) : baru}. Mulai sekarang nomor ini dipakai untuk kode verifikasi akun Anda. Jika Anda tidak merasa meminta perubahan ini, segera hubungi Developer.`
+        );
+        terkirim = true;
+      } catch (e) {
+        console.error('Pemberitahuan nomor baru gagal:', e.message);
+      }
+      return res.status(200).json({ ok: true, terkirim });
     }
 
     // =============================================================
