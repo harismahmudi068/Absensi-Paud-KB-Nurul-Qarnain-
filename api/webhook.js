@@ -128,7 +128,7 @@ async function catatBalasan(target, hasil) {
         batch_id: crypto.randomUUID(),
         jenis: 'balasan',
         judul: 'Balasan pesan wali',
-        label: c.dariGrup ? 'Balasan (grup)' : 'Balasan',
+        label: ('Balasan' + (c.dariGrup ? ' (grup)' : '') + (c.namaAnak ? ' · ' + c.namaAnak : '')).slice(0, 120),
         nomor: String(c.pengirim).replace(/\D/g, '').slice(0, 20) || '-',
         fonnte_id: hasil.id,
         status: hasil.ok ? 'terjadwal' : 'gagal',
@@ -773,6 +773,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
 
 // Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
 async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa, namaSalah = [], namaTerdaftar = '' }) {
+  K().namaAnak = daftarNama(anak);
   const rencana = await buatRencana(status, waktu);
   // Nama yang tidak cocok (sebagian nama di pesan cocok): ditolak SETELAH tanggal/waktu diperiksa.
   // Teksnya digabung ke balasan wali; ragam kalimat bergantung pada hasil pemeriksaan tanggal.
@@ -990,9 +991,11 @@ function balasanNamaBeda(namaSalah, daftar) {
 
 async function kirimRagu(target, dari, nama, pesan, opsi = {}) {
   if (opsi.namaBeda) {
+    K().namaAnak = opsi.namaTerdaftar || nama || '';
     // Ke grup/chat pribadi: isi pesan asli TIDAK ditampilkan.
     await kirimBalasanWali(target, balasanNamaBeda(opsi.namaSalah || opsi.namaDiPesan, opsi.namaTerdaftar || nama), opsi.bahasa);
   } else if (opsi.alasanRagu === 'anak_tidak_jelas') {
+    K().namaAnak = 'Anak belum teridentifikasi';
     await kirimBalasanWali(target, balasanMintaNamaAnak(opsi.namaTerdaftar), opsi.bahasa);
   } else {
     await notifikasiKeKepala(dari, nama, pesan, 'ragu', null, opsi);
