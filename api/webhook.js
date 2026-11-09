@@ -84,9 +84,10 @@ async function sb(path, { method = 'GET', body, prefer } = {}) {
   return t ? JSON.parse(t) : null;
 }
 
-async function kirimFonnte(target, teks) {
+// Versi rinci: mengembalikan { ok, id, error } agar balasan ke wali bisa dicatat di kirim_log.
+async function kirimFonnteRinci(target, teks) {
   const tokenFonnte = K().tokenFonnte;
-  if (!target || !tokenFonnte) return false;
+  if (!target || !tokenFonnte) return { ok: false, id: null, error: 'Token atau nomor tujuan kosong' };
   try {
     const r = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
@@ -94,12 +95,48 @@ async function kirimFonnte(target, teks) {
       body: new URLSearchParams({ target: String(target), message: teks })
     });
     const raw = await r.text();
-    if (!r.ok) { console.error('Fonnte HTTP error:', r.status, raw); return false; }
-    try { if (JSON.parse(raw).status === false) return false; } catch (_) {}
-    return true;
+    if (!r.ok) { console.error('Fonnte HTTP error:', r.status, raw); return { ok: false, id: null, error: 'Fonnte HTTP ' + r.status }; }
+    let j = null;
+    try { j = JSON.parse(raw); } catch (_) {}
+    if (j && j.status === false) return { ok: false, id: null, error: String(j.reason || 'Fonnte menolak pesan').slice(0, 300) };
+    const v = j && j.id;
+    const a = Array.isArray(v) ? v[0] : v;
+    return { ok: true, id: a == null || a === '' ? null : String(a), error: null };
   } catch (e) {
     console.error('Gagal mengirim Fonnte:', e);
-    return false;
+    return { ok: false, id: null, error: 'Gagal terhubung ke Fonnte' };
+  }
+}
+
+async function kirimFonnte(target, teks) {
+  return (await kirimFonnteRinci(target, teks)).ok;
+}
+
+// Mencatat balasan ke wali di kirim_log (jenis 'balasan') supaya statusnya (terkirim/sampai/terbaca)
+// ikut diperbarui oleh status-kirim.js dan tampil di menu Pesan WA. Gagal mencatat TIDAK boleh
+// menggagalkan balasan. Kolom nomor selalu diisi nomor PENGIRIM (bukan ID grup) agar cocok dengan
+// dari_nomor di pesan_masuk; label membedakan balasan pribadi dan balasan grup.
+async function catatBalasan(target, hasil) {
+  try {
+    const c = K();
+    if (!c.sekolahId || !c.pengirim) return;
+    await sb('kirim_log', {
+      method: 'POST',
+      prefer: 'return=minimal',
+      body: {
+        sekolah_id: c.sekolahId,
+        batch_id: crypto.randomUUID(),
+        jenis: 'balasan',
+        judul: 'Balasan pesan wali',
+        label: c.dariGrup ? 'Balasan (grup)' : 'Balasan',
+        nomor: String(c.pengirim).replace(/\D/g, '').slice(0, 20) || '-',
+        fonnte_id: hasil.id,
+        status: hasil.ok ? 'terjadwal' : 'gagal',
+        error: hasil.ok ? null : hasil.error
+      }
+    });
+  } catch (e) {
+    console.error('Catat balasan ke kirim_log gagal:', e.message || e);
   }
 }
 
@@ -125,7 +162,9 @@ async function kirimBalasanWali(target, teks, bahasa) {
       isi = teks;
     }
   }
-  return kirimFonnte(target, isi);
+  const hasil = await kirimFonnteRinci(target, isi);
+  await catatBalasan(target, hasil);
+  return hasil.ok;
 }
 
 function salam() { return 'Assalamu’alaikum warahmatullahi wabarakatuh.'; }
@@ -1014,6 +1053,8 @@ async function proses(b) {
   const ctx = K();
   if (groupId && !(ctx.grup || []).some((g) => g.grup_id === groupId)) return;
   ctx.tokenFonnte = pilihToken(b, groupId);
+  ctx.pengirim = dari;
+  ctx.dariGrup = !!groupId;
 
   // 2. Hanya nomor wali terdaftar yang boleh diproses.
   if (!dari) return;
