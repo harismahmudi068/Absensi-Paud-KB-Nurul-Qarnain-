@@ -1063,9 +1063,9 @@ let PES_ADA_KOL=true;
 const PES_SIARAN=new Set(['laporan','link','tabungan','raport','libur','alpa']);
 const pesNorm=x=>{let d=String(x||'').replace(/\D/g,'');if(d.startsWith('0'))d='62'+d.slice(1);return d};
 /* balasan otomatis: ada pesan keluar (bukan siaran laporan/link/dll) ke nomor yang sama setelah pesan masuk, dan tidak gagal */
-function pesBalasOto(p,kl){const n=pesNorm(p.dari_nomor),t=new Date(p.waktu).getTime();for(const r of kl){if(pesNorm(r.nomor)===n&&!PES_SIARAN.has(r.jenis)&&r.status!=='gagal'&&new Date(r.dibuat).getTime()>t)return r.dibuat}return ''}
-const muatPesan=async()=>{const rows=await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100));PES_ADA_KOL=!rows.length||('sudah_dibalas' in rows[0]);let kl=[];try{kl=await dbq(db.from('kirim_log').select('nomor,jenis,status,dibuat').eq('sekolah_id',SEK).order('dibuat',{ascending:true}).limit(1000))||[]}catch(e){}
- S.pesan=rows.map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek,dibalas:!!p.sudah_dibalas,dibalasPada:p.dibalas_pada||'',auto:pesBalasOto(p,kl)}))};
+function pesBalasOto(p,kl,rows){const n=pesNorm(p.dari_nomor),t=new Date(p.waktu).getTime();let nx=Infinity;for(const r of rows){if(pesNorm(r.dari_nomor)===n){const w=new Date(r.waktu).getTime();if(w>t&&w<nx)nx=w}}let b='',bt=Infinity;for(const r of kl){if(pesNorm(r.nomor)!==n||PES_SIARAN.has(r.jenis)||r.status==='gagal')continue;const d=new Date(r.dibuat).getTime();if(d>t&&d<=nx&&d<bt){bt=d;b=r.dibuat}}return b}
+const muatPesan=async()=>{const rows=await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100));PES_ADA_KOL=!rows.length||('sudah_dibalas' in rows[0]);let kl=[];try{const t0=rows.length?rows.reduce((m,r)=>r.waktu<m?r.waktu:m,rows[0].waktu):null;let q=db.from('kirim_log').select('nomor,jenis,status,dibuat').eq('sekolah_id',SEK).or('jenis.is.null,jenis.not.in.('+[...PES_SIARAN].join(',')+')');if(t0)q=q.gte('dibuat',t0);kl=await dbq(q.order('dibuat',{ascending:false}).limit(1000))||[]}catch(e){}
+ S.pesan=rows.map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek,dibalas:!!p.sudah_dibalas,dibalasPada:p.dibalas_pada||'',auto:pesBalasOto(p,kl,rows)}))};
 const muatGuruData=async()=>{const k=await dbq(db.from('keanggotaan').select('role,aktif,profil(id,nama,username,role,aktif,nip,dibuat)').eq('sekolah_id',SEK));return k.filter(x=>x.profil).map(x=>({...x.profil,role:x.role,aktif:x.aktif})).sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'))};
 async function muatNomor(){const r=await dbq(db.rpc('nomor_wa_guru',{p_sekolah:SEK}));const m={};(r||[]).forEach(x=>{m[x.profil_id]=x.no_wa||''});return m}
 const muatProfil=async()=>{const [g,n]=await Promise.all([muatGuruData(),muatNomor()]);S.guru=g;S.nomor=n};
@@ -2709,7 +2709,7 @@ async function kirimBertahap(items,meta){const hasil=[];let mulai=0;
  return hasil}
 
 /* ===== Riwayat Kirim (tabel kirim_log; diisi server, status diperbarui webhook Fonnte) ===== */
-const RK_JENIS={laporan:'Laporan kehadiran',link:'Link halaman anak',tabungan:'Laporan tabungan',raport:'Tautan raport',libur:'Notifikasi libur',alpa:'Notifikasi alpa',lainnya:'Lainnya'};
+const RK_JENIS={balasan:'Balasan pesan wali',laporan:'Laporan kehadiran',link:'Link halaman anak',tabungan:'Laporan tabungan',raport:'Tautan raport',libur:'Notifikasi libur',alpa:'Notifikasi alpa',lainnya:'Lainnya'};
 function rkMeta(jenis){let judul=RK_JENIS[jenis]||'Pengiriman';try{if(jenis==='laporan')judul='Laporan '+fmtB(lb);else if(jenis==='tabungan')judul='Laporan tabungan '+fmtB(tabBln)}catch(e){}
  const batch=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10);return{jenis,judul,batch}}
 function rkWaktu(t){try{return new Date(t).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}}
@@ -2916,7 +2916,7 @@ function pesRkTampil(){const el=$('#rkIsi');if(!el)return;const f=pesRkF?pesRkRo
 async function pesRkMuat(){try{const rows=await dbq(db.from('kirim_log').select('batch_id,jenis,judul,label,nomor,status,status_fonnte,state_fonnte,error,jadwal_pada,dibuat,waktu_terkirim,waktu_sampai,waktu_terbaca').eq('sekolah_id',SEK).order('dibuat',{ascending:false}).limit(400));pesRkRows=rows||[];pesRkTampil()}catch(e){const el=$('#rkIsi');if(el)el.innerHTML='<div class="note">Riwayat belum bisa dibaca: '+esc(e.message||String(e))+'</div>'}}
 function pesBalasSel(p){if(p.dibalas)return '<div class="rkt">✅ Sudah dibalas</div><div class="mu">manual'+(p.dibalasPada?' · '+rkJam(p.dibalasPada):'')+'</div>';
  if(p.auto)return '<div class="rkt">✅ Dibalas</div><div class="mu">otomatis · '+rkJam(p.auto)+'</div>';
- return '<div class="rkt">⏳ Belum dibalas</div>'}
+ return '<div class="rkt">⏳ Belum dibalas</div>'+(/^ragu/i.test(p.hasil||'')?'<div class="mu">⚠ Perlu perhatian</div>':'')}
 function tandaiBalas(id,on){if(!PES_ADA_KOL)return toast('Kolom sudah_dibalas belum ada di tabel pesan_masuk. Jalankan SQL penambahan kolom di Supabase dulu.',false);
  guard(async()=>{await dbq(db.from('pesan_masuk').update({sudah_dibalas:on,dibalas_pada:on?new Date().toISOString():null}).eq('id',id));await muatPesan();renderV()})}
 function pesHal(t){pesTab=t;pHapusMode=false;psel.clear();renderV()}
