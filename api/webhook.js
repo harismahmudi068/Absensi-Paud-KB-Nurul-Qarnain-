@@ -36,9 +36,13 @@ const BATAS_JUMLAH_HARI_IZIN = 30; // izin lebih dari ini tidak dicatat otomatis
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-// Nomor WhatsApp developer (format 628xxxx) untuk laporan error sistem, mis. Gemini gagal.
-// Diisi di Vercel > Environment Variables dengan nama DEVELOPER_WA. Kosong = tidak dikirim.
-const DEVELOPER_WA = String(process.env.DEVELOPER_WA || '').replace(/\D/g, '').replace(/^0/, '62');
+// Nomor WhatsApp developer untuk laporan error sistem (mis. Gemini gagal), dibaca dari variabel
+// Vercel DEV_WA. Boleh satu nomor, atau beberapa nomor dipisah koma/titik koma/spasi.
+// Format 08xxx, 628xxx, atau +62 8xx diterima; nomor tidak valid diabaikan.
+const NOMOR_DEVELOPER = String(process.env.DEV_WA || '')
+  .split(/[,;\s]+/)
+  .map(x => x.replace(/\D/g, '').replace(/^0/, '62'))
+  .filter(x => /^628\d{8,12}$/.test(x));
 
 // Status yang TIDAK boleh ditimpa pesan izin/sakit wali, lalu dibalas "sudah tercatat".
 // Alpa boleh ditimpa. Libur juga tidak ditimpa, tetapi dibalas seperti hari libur biasa (lihat simpan()).
@@ -1019,11 +1023,13 @@ async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = nul
     // Developer diberi tahu lebih dulu. Catatan "sudah diinformasikan" hanya dicantumkan
     // di pesan kepala sekolah bila pesan ke developer benar-benar diterima Fonnte.
     let devDiberitahu = false;
-    if (RE_WA.test(DEVELOPER_WA)) {
-      try { devDiberitahu = await kirimFonnte(DEVELOPER_WA, notifikasiAIGagalDeveloper(dari, nama, pesan, error)); }
-      catch (e) { console.error('Gagal kirim notifikasi ke developer:', e && e.message); }
+    if (NOMOR_DEVELOPER.length) {
+      const teksDev = notifikasiAIGagalDeveloper(dari, nama, pesan, error);
+      const hasil = await Promise.allSettled(NOMOR_DEVELOPER.map(n => kirimFonnte(n, teksDev)));
+      devDiberitahu = hasil.some(h => h.status === 'fulfilled' && h.value === true);
+      if (!devDiberitahu) console.error('Gagal kirim notifikasi Gemini error ke developer');
     } else {
-      console.warn('DEVELOPER_WA belum diisi/valid: notifikasi Gemini error ke developer dilewati');
+      console.warn('DEV_WA belum diisi/valid: notifikasi Gemini error ke developer dilewati');
     }
     if (nomorKepala) await kirimFonnte(nomor(nomorKepala), notifikasiAIGagal(dari, nama, pesan, error, devDiberitahu));
     return;
