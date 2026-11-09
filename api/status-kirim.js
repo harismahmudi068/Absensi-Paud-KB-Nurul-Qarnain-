@@ -9,6 +9,11 @@
 //   2. id saja      -> status pesan itu
 //   3. stateid saja -> state pesan itu (kabar lanjutan)
 // Nilai asli dari Fonnte disimpan apa adanya (status_fonnte, state_fonnte).
+//
+// Jam tiap tahap (centang) disimpan per pesan: waktu_terkirim (sent / state 2),
+// waktu_sampai (delivered / state 3), waktu_terbaca (read / state 4). Jam = saat server menerima kabar.
+// Tiap jam diisi SEKALI. Kabar yang datang terlambat (tahapnya lebih rendah dari yang sudah tersimpan,
+// mis. state 2 setelah read) tidak menimpa state, tidak mengubah jam, dan tidak menurunkan tanda.
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -29,6 +34,15 @@ async function cariSekolahId(kunci) {
   return Array.isArray(rows) && rows[0] ? rows[0].sekolah_id : null;
 }
 
+// Tingkat tahap: 1 terkirim (sent / 2), 2 sampai (delivered / 3), 3 terbaca (read / 4); 0 = belum atau tidak dikenal.
+function tingkat(nilai) {
+  const v = String(nilai === undefined || nilai === null ? '' : nilai).toLowerCase().trim();
+  if (v === 'read' || v === '4') return 3;
+  if (v === 'delivered' || v === '3') return 2;
+  if (v === 'sent' || v === '2') return 1;
+  return 0;
+}
+
 // Arti nilai Fonnte -> status di riwayat. null = tidak mengubah status (menunggu, belum dikenal).
 function petaStatus(status, state) {
   const s = String(status || '').toLowerCase().trim();
@@ -36,6 +50,7 @@ function petaStatus(status, state) {
   if (t === '0') return { status: 'gagal', error: 'Tidak sampai ke penerima (dibatasi WhatsApp)' };
   if (['sent', 'delivered', 'read'].includes(s)) return { status: 'terkirim' };
   if (['invalid', 'expired', 'failed', 'fail', 'error', 'rejected'].includes(s)) return { status: 'gagal', error: 'Fonnte: ' + s };
+  if (Math.max(tingkat(s), tingkat(t)) >= 1) return { status: 'terkirim' };   // kabar lanjutan tanpa status (delivered/read/state angka)
   return null;
 }
 
@@ -50,7 +65,7 @@ async function terapkan(sekolahId, b) {
   if (!id && !stateid) return;
 
   const saring = id ? `fonnte_id=eq.${encodeURIComponent(id)}` : `stateid=eq.${encodeURIComponent(stateid)}`;
-  const cari = () => sb(`kirim_log?sekolah_id=eq.${sekolahId}&${saring}&select=id,status,stateid`);
+  const cari = () => sb(`kirim_log?sekolah_id=eq.${sekolahId}&${saring}&select=id,status,stateid,status_fonnte,state_fonnte,waktu_terkirim,waktu_sampai,waktu_terbaca`);
 
   let rows = (await cari()) || [];
   if (!rows.length) {            // kabar kadang tiba sebelum riwayat tersimpan
@@ -60,11 +75,24 @@ async function terapkan(sekolahId, b) {
   if (!rows.length) return;      // bukan pesan dari sistem ini (mis. balasan webhook): abaikan
 
   const peta = petaStatus(status, state);
+  const tahap = Math.max(tingkat(status), tingkat(state));
   for (const row of rows) {
-    const patch = { diubah: new Date().toISOString() };
+    const sekarang = new Date().toISOString();
+    const tersimpan = Math.max(
+      tingkat(row.status_fonnte), tingkat(row.state_fonnte),
+      row.waktu_terbaca ? 3 : row.waktu_sampai ? 2 : row.waktu_terkirim ? 1 : 0
+    );
+    // Kabar lama yang datang terlambat (mis. state 2 sesudah read): jangan timpa. state 0 (gagal) selalu diterapkan.
+    const mundur = state !== '0' && tahap < tersimpan;
+    const patch = { diubah: sekarang };
     if (id && stateid) patch.stateid = stateid;
-    if (status) patch.status_fonnte = status;
-    if (state) patch.state_fonnte = state;
+    if (!mundur) {
+      if (status) patch.status_fonnte = status;
+      if (state) patch.state_fonnte = state;
+      if (tahap === 1 && !row.waktu_terkirim) patch.waktu_terkirim = sekarang;
+      if (tahap === 2 && !row.waktu_sampai) patch.waktu_sampai = sekarang;
+      if (tahap === 3 && !row.waktu_terbaca) patch.waktu_terbaca = sekarang;
+    }
     if (peta) {
       if (peta.status === 'gagal') { patch.status = 'gagal'; patch.error = peta.error; }
       else if (peta.status === 'terkirim' && row.status !== 'gagal') { patch.status = 'terkirim'; patch.error = null; }
