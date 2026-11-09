@@ -685,6 +685,10 @@ select.click-fx,.select.click-fx{animation:btnClick .38s ease-out}
 .rkr:last-child{border-bottom:0}
 .rkr small{display:block;opacity:.7;margin-top:2px}
 .rkt{white-space:nowrap;font-weight:700}
+.rkck{display:inline-block;vertical-align:-1px;opacity:.7}
+.rkck.rkbiru{opacity:1;color:#34b7f1}
+.rkw{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;font-size:12px;opacity:.85}
+.rkw span{white-space:nowrap}
 </style>
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">Selamat Datang</h2><p class="mu" style="text-align:center;margin:0 0 16px">di Sistem Absensi. Silakan masukkan username dan kata sandi Anda.</p>
@@ -2662,20 +2666,37 @@ const RK_JENIS={laporan:'Laporan kehadiran',link:'Link halaman anak',tabungan:'L
 function rkMeta(jenis){let judul=RK_JENIS[jenis]||'Pengiriman';try{if(jenis==='laporan')judul='Laporan '+fmtB(lb);else if(jenis==='tabungan')judul='Laporan tabungan '+fmtB(tabBln)}catch(e){}
  const batch=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,10);return{jenis,judul,batch}}
 function rkWaktu(t){try{return new Date(t).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}catch(e){return ''}}
-function rkStatus(r){if(r.status==='gagal')return['❌','Gagal'];if(r.status==='terkirim')return['✅','Terkirim'];
- const acuan=new Date(r.jadwal_pada||r.dibuat).getTime();if(Date.now()-acuan>15*60000)return['❔','Belum ada kabar'];return['⏳','Terjadwal']}
+function rkIkon(n,biru){const p1='<path d="M1.5 6L4.8 9.3L11.5 2"/>',p2='<path d="M5.5 6L8.8 9.3L15.5 2"/>';return'<svg class="rkck'+(biru?' rkbiru':'')+'" width="17" height="11" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(n===2?p1+p2:p1)+'</svg>'}
+function rkJam(t){if(!t)return'–';try{const d=new Date(t),z='Asia/Jakarta',tg=x=>x.toLocaleDateString('en-CA',{timeZone:z}),jm=d.toLocaleTimeString('en-GB',{timeZone:z,hourCycle:'h23',hour:'2-digit',minute:'2-digit',second:'2-digit'});return(tg(d)===tg(new Date())?'':d.toLocaleDateString('id-ID',{timeZone:z,day:'numeric',month:'short'})+' ')+jm}catch(e){return'–'}}
+/* Tahap pesan: terjadwal -> diproses -> terkirim (sent, centang 1) -> sampai (delivered, centang 2) -> terbaca (read, centang 2 biru); gagal */
+function rkTahap(r){if(r.status==='gagal')return'gagal';
+ const sf=String(r.state_fonnte==null?'':r.state_fonnte).toLowerCase(),tf=String(r.status_fonnte||'').toLowerCase();
+ if(r.waktu_terbaca||sf==='read'||sf==='4'||tf==='read')return'terbaca';
+ if(r.waktu_sampai||sf==='delivered'||sf==='3'||tf==='delivered')return'sampai';
+ if(r.status==='terkirim'||r.waktu_terkirim)return'terkirim';
+ const sel=Date.now()-new Date(r.jadwal_pada||r.dibuat).getTime();if(sel<0)return'terjadwal';if(sel>15*60000)return'nokabar';return'proses'}
+function rkLabel(t){return{gagal:['❌','Gagal'],terbaca:[rkIkon(2,1),'Terbaca'],sampai:[rkIkon(2),'Sampai'],terkirim:[rkIkon(1),'Terkirim'],proses:['🔄','Diproses'],terjadwal:['⏳','Terjadwal'],nokabar:['❔','Belum ada kabar']}[t]}
+function rkChips(list){const c={};list.forEach(r=>{const t=rkTahap(r);c[t]=(c[t]||0)+1});
+ return['terjadwal','proses','nokabar','terkirim','sampai','terbaca','gagal'].filter(t=>c[t]).map(t=>{const l=rkLabel(t);return'<span>'+l[0]+' '+l[1]+' '+c[t]+'</span>'}).join('')}
+function rkBaris(r,dev){const t=rkTahap(r),lb=rkLabel(t),rank={terkirim:1,sampai:2,terbaca:3}[t]||0;
+ const nm=dev?esc(r.label||'-')+' <span class="mu">'+esc(fmtWA(r.nomor)||r.nomor||'')+'</span>':esc(r.label||r.nomor);
+ let ex='';if(r.error)ex=esc(r.error);else if(dev&&r.status_fonnte)ex='Fonnte: '+esc(r.status_fonnte)+((r.state_fonnte!==null&&r.state_fonnte!=='')?' / state '+esc(r.state_fonnte):'');
+ let w='';if(t!=='gagal'){w+='<span>⏳ '+rkJam(r.jadwal_pada||r.dibuat)+'</span>';
+  if(rank>=1)w+='<span>'+rkIkon(1)+' '+rkJam(r.waktu_terkirim)+'</span>';
+  if(rank>=2)w+='<span>'+rkIkon(2)+' '+rkJam(r.waktu_sampai)+'</span>';
+  if(rank>=3)w+='<span>'+rkIkon(2,1)+' '+rkJam(r.waktu_terbaca)+'</span>'}
+ return'<div class="rkr"><div>'+nm+(ex?'<small>'+ex+'</small>':'')+(w?'<div class="rkw">'+w+'</div>':'')+'</div><div class="rkt">'+lb[0]+' '+lb[1]+'</div></div>'}
 function rkHtml(rows){if(!rows.length)return'<div class="note">Belum ada riwayat pengiriman. Riwayat muncul setelah tombol kirim dipakai.</div>';
  const m=new Map();rows.forEach(r=>{if(!m.has(r.batch_id))m.set(r.batch_id,[]);m.get(r.batch_id).push(r)});
  let h='',n=0;
- m.forEach(list=>{if(n++>=15)return;const c={'Terkirim':0,'Terjadwal':0,'Belum ada kabar':0,'Gagal':0};list.forEach(r=>{c[rkStatus(r)[1]]++});
+ m.forEach(list=>{if(n++>=15)return;
   const awal=list[list.length-1];
   const chip=(ik,tx,v)=>v?'<span>'+ik+' '+tx+' '+v+'</span>':'';
   h+='<details class="rk"><summary><b>'+esc(awal.judul||RK_JENIS[awal.jenis]||'Pengiriman')+'</b><span class="mu"> · '+esc(rkWaktu(awal.dibuat))+' · '+list.length+' pesan</span><div class="rkc">'
-   +chip('✅','Terkirim',c['Terkirim'])+chip('⏳','Terjadwal',c['Terjadwal'])+chip('❔','Belum ada kabar',c['Belum ada kabar'])+chip('❌','Gagal',c['Gagal'])+'</div></summary><div class="rkb">'
-   +list.slice().reverse().map(r=>{const st=rkStatus(r);let ex='';if(r.error)ex=esc(r.error);else if(r.status_fonnte)ex='Fonnte: '+esc(r.status_fonnte)+((r.state_fonnte!==null&&r.state_fonnte!=='')?' / state '+esc(r.state_fonnte):'');
-    return'<div class="rkr"><div>'+esc(r.label||r.nomor)+(ex?'<small>'+ex+'</small>':'')+'</div><div class="rkt">'+st[0]+' '+st[1]+'</div></div>'}).join('')+'</div></details>'});
- return h+'<div class="mu">Menampilkan pengiriman terbaru. Terkirim berarti sudah dikirim Fonnte ke WhatsApp, bukan jaminan sudah dibaca. Riwayat disimpan 7 hari.</div>'}
-async function rkMuat(){try{const rows=await dbq(db.from('kirim_log').select('batch_id,jenis,judul,label,nomor,status,status_fonnte,state_fonnte,error,jadwal_pada,dibuat').eq('sekolah_id',SEK).order('dibuat',{ascending:false}).limit(400));
+   +rkChips(list)+'</div></summary><div class="rkb">'
+   +list.slice().reverse().map(r=>rkBaris(r,0)).join('')+'</div></details>'});
+ return h+'<div class="mu">Menampilkan pengiriman terbaru. Penanda seperti WhatsApp: ✓ terkirim, ✓✓ sampai ke HP, ✓✓ biru terbaca. Jam (WIB) dicatat saat kabar diterima server; terbaca hanya muncul bila penerima mengaktifkan tanda baca. Riwayat disimpan 7 hari.</div>'}
+async function rkMuat(){try{const rows=await dbq(db.from('kirim_log').select('batch_id,jenis,judul,label,nomor,status,status_fonnte,state_fonnte,error,jadwal_pada,dibuat,waktu_terkirim,waktu_sampai,waktu_terbaca').eq('sekolah_id',SEK).order('dibuat',{ascending:false}).limit(400));
  const el=$('#rkIsi');if(el)el.innerHTML=rkHtml(rows||[])}catch(e){const el=$('#rkIsi');if(el)el.innerHTML='<div class="note">Riwayat belum bisa dibaca: '+esc(e.message||String(e))+'</div>'}}
 function riwayatKirim(){info('📋 Riwayat Kirim','<div id="rkIsi"><div class="note">Memuat...</div></div><div class="tb" style="margin-top:12px"><button class="btn soft" onclick="rkMuat()">🔄 Perbarui</button></div>');rkMuat()}
 /* ===== akhir Riwayat Kirim ===== */
@@ -4437,17 +4458,16 @@ function devKirim(){const d=S.devKirim;
  const opt='<option value="">Semua sekolah</option>'+sk.map(x=>`<option value="${x.id}" ${String(x.id)===devKirimSek?'selected':''}>${esc(x.nama)}${x.status!=='aktif'?' (nonaktif)':''}</option>`).join('');
  const m=new Map();rows.forEach(r=>{if(!m.has(r.batch_id))m.set(r.batch_id,[]);m.get(r.batch_id).push(r)});
  let h='',n=0;
- m.forEach(list=>{if(n++>=40)return;const c={'Terkirim':0,'Terjadwal':0,'Belum ada kabar':0,'Gagal':0};list.forEach(r=>{c[rkStatus(r)[1]]++});
+ m.forEach(list=>{if(n++>=40)return;
   const awal=list[list.length-1],chip=(ik,tx,v)=>v?'<span>'+ik+' '+tx+' '+v+'</span>':'';
   h+='<details class="rk"><summary><b>'+esc(awal.judul||RK_JENIS[awal.jenis]||'Pengiriman')+'</b>'+(list.some(r=>r.oleh_developer)?' <span class="mu">🛠 Oleh Developer</span>':'')+'<span class="mu"> · '+esc(awal.sekolah||'-')+' · '+esc(rkWaktu(awal.dibuat))+' · '+list.length+' pesan</span><div class="rkc">'
-   +chip('✅','Terkirim',c['Terkirim'])+chip('⏳','Terjadwal',c['Terjadwal'])+chip('❔','Belum ada kabar',c['Belum ada kabar'])+chip('❌','Gagal',c['Gagal'])+'</div></summary><div class="rkb">'
-   +list.slice().reverse().map(r=>{const st=rkStatus(r);let ex='';if(r.error)ex=esc(r.error);else if(r.status_fonnte)ex='Fonnte: '+esc(r.status_fonnte)+((r.state_fonnte!==null&&r.state_fonnte!=='')?' / state '+esc(r.state_fonnte):'');
-    return '<div class="rkr"><div>'+esc(r.label||'-')+' <span class="mu">'+esc(fmtWA(r.nomor)||r.nomor||'')+'</span>'+(ex?'<small>'+ex+'</small>':'')+'</div><div class="rkt">'+st[0]+' '+st[1]+'</div></div>'}).join('')+'</div></details>'});
+   +rkChips(list)+'</div></summary><div class="rkb">'
+   +list.slice().reverse().map(r=>rkBaris(r,1)).join('')+'</div></details>'});
  const rentang=tot?'Tertua '+waktuId(rg.tertua)+' · terbaru '+waktuId(rg.terbaru):'';
  return `<div class="panel"><div class="ph">📤 Riwayat Kirim WhatsApp <span class="tb" style="margin:0"><button class="btn soft sm" onclick="devKirimMuat()">↻ Perbarui</button><button class="btn danger sm" ${tot?'':'disabled'} onclick="devKirimHapus()">🗑 Hapus riwayat</button></span></div><div class="pb"><label class="l">Tampilkan riwayat dari</label><select class="select" onchange="devKirimSek=this.value;devKirimMuat()">${opt}</select>
 <div class="cards" style="margin-top:10px"><div class="card stat"><b>${tot}</b>Total pesan</div><div class="card stat"><b>${Number(rg.terkirim)||0}</b>Terkirim</div><div class="card stat"><b>${Number(rg.gagal)||0}</b>Gagal</div><div class="card stat"><b>${Number(rg.terjadwal)||0}</b>Terjadwal / belum ada kabar</div></div>
 <div class="note">Riwayat disimpan 7 hari saja dan dibersihkan otomatis tiap hari pukul 02.30 WIB (tugas bersihkan-kirim-log). Tombol Hapus riwayat menghapus ${devKirimSek?'riwayat sekolah yang dipilih':'riwayat SEMUA sekolah'} dan tidak bisa dikembalikan; pesan WhatsApp yang sudah terkirim tidak terpengaruh.${rentang?'<br>'+rentang:''}</div></div></div>
-<div class="panel"><div class="ph">📋 Pengiriman terbaru <span class="mu">${rows.length} pesan dimuat</span></div><div class="pb">${h||'<div class="mu">Belum ada riwayat pengiriman.</div>'}${rows.length?'<div class="mu">Menampilkan sampai 300 pesan dan 40 pengiriman terbaru. Terkirim berarti sudah dikirim Fonnte ke WhatsApp, bukan jaminan sudah dibaca.</div>':''}</div></div>`}
+<div class="panel"><div class="ph">📋 Pengiriman terbaru <span class="mu">${rows.length} pesan dimuat</span></div><div class="pb">${h||'<div class="mu">Belum ada riwayat pengiriman.</div>'}${rows.length?'<div class="mu">Menampilkan sampai 300 pesan dan 40 pengiriman terbaru. Penanda seperti WhatsApp: ✓ terkirim, ✓✓ sampai ke HP, ✓✓ biru terbaca. Jam (WIB) dicatat saat kabar diterima server.</div>':''}</div></div>`}
 async function devKirimHapus(){const sid=devKirimSek?Number(devKirimSek):null,x=sid?(S.devSek||[]).find(v=>v.id===sid):null,tot=Number(((S.devKirim||{}).ringkas||{}).total)||0;
  if(!tot)return toast('Tidak ada riwayat untuk dihapus',false);
  if(!await konfirmasi('Hapus '+tot+' riwayat kirim '+(x?'milik '+x.nama:'dari SEMUA sekolah')+'?\n\nTidak bisa dikembalikan. Pesan WhatsApp yang sudah terkirim tidak terpengaruh.',{judul:'Hapus riwayat kirim',ya:'Hapus riwayat',bahaya:1}))return;
