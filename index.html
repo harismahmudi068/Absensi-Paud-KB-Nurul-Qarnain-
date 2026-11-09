@@ -1059,7 +1059,13 @@ async function muatDasar(){
  S.siswa=s.map(x=>({id:x.id,nama:x.nama,pan:x.nama_panggilan,nisn:x.nisn||'',kelas:kn(x.kelas_id),kelas_id:x.kelas_id,aktif:x.aktif,kode_qr:x.kode_qr,kode_scan:x.kode_scan||'',sekolah_id:x.sekolah_id,km:x.kelompok_manual||null,foto_path:x.foto_path||'',tgl:x.tgl_lahir||'',tempat:x.tempat_lahir||'',jk:x.jenis_kelamin||'',alamat:x.alamat||'',masuk:x.tahun_masuk||'',wa:(x.siswa_wali||[]).map(w=>w.wali&&w.wali.no_wa).filter(Boolean)[0]||''}));
  S.guru=p;S.nomor=nm||{};S.nasional=(ln||[]).map(x=>({tgl:x.tanggal,ket:x.keterangan||'Libur nasional'}));S.nasMap=new Map(S.nasional.map(x=>[x.tgl,x.ket]));S.mingguan=lm.map(x=>x.hari);S.libur=lt.map(x=>({id:x.id,tgl:x.mulai,sampai:x.sampai,ket:x.keterangan||'',kelas:x.kelas_id?kn(x.kelas_id):'',sumber:x.sumber||''}));await muatBatal();
  S.set=pr||{};S.set.jam=(S.set.alpa_jam||'10:00').slice(0,5);S.set.njam=(S.set.notif_libur_jam||'06:00').slice(0,5);try{await Kartu.siapkanLogo(logoOk(S.set.logo)?S.set.logo:null)}catch(e){console.warn('Logo sekolah belum bisa disiapkan',e)}terapNama()}
-const muatPesan=async()=>{S.pesan=(await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100))).map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek}))};
+let PES_ADA_KOL=true;
+const PES_SIARAN=new Set(['laporan','link','tabungan','raport','libur','alpa']);
+const pesNorm=x=>{let d=String(x||'').replace(/\D/g,'');if(d.startsWith('0'))d='62'+d.slice(1);return d};
+/* balasan otomatis: ada pesan keluar (bukan siaran laporan/link/dll) ke nomor yang sama setelah pesan masuk, dan tidak gagal */
+function pesBalasOto(p,kl){const n=pesNorm(p.dari_nomor),t=new Date(p.waktu).getTime();for(const r of kl){if(pesNorm(r.nomor)===n&&!PES_SIARAN.has(r.jenis)&&r.status!=='gagal'&&new Date(r.dibuat).getTime()>t)return r.dibuat}return ''}
+const muatPesan=async()=>{const rows=await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100));PES_ADA_KOL=!rows.length||('sudah_dibalas' in rows[0]);let kl=[];try{kl=await dbq(db.from('kirim_log').select('nomor,jenis,status,dibuat').eq('sekolah_id',SEK).order('dibuat',{ascending:true}).limit(1000))||[]}catch(e){}
+ S.pesan=rows.map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek,dibalas:!!p.sudah_dibalas,dibalasPada:p.dibalas_pada||'',auto:pesBalasOto(p,kl)}))};
 const muatGuruData=async()=>{const k=await dbq(db.from('keanggotaan').select('role,aktif,profil(id,nama,username,role,aktif,nip,dibuat)').eq('sekolah_id',SEK));return k.filter(x=>x.profil).map(x=>({...x.profil,role:x.role,aktif:x.aktif})).sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'))};
 async function muatNomor(){const r=await dbq(db.rpc('nomor_wa_guru',{p_sekolah:SEK}));const m={};(r||[]).forEach(x=>{m[x.profil_id]=x.no_wa||''});return m}
 const muatProfil=async()=>{const [g,n]=await Promise.all([muatGuruData(),muatNomor()]);S.guru=g;S.nomor=n};
@@ -1579,7 +1585,7 @@ let drwT=null;
 function drw(o){const d=$('#drw');if(o){clearTimeout(drwT);d.classList.remove('closing');d.classList.add('show');return}
  if(!d.classList.contains('show')||d.classList.contains('closing'))return;
  d.classList.add('closing');clearTimeout(drwT);drwT=setTimeout(()=>d.classList.remove('show','closing'),310)}
-async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();if(!await jagaTanya('semua'))return;tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
+async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();if(!await jagaTanya('semua'))return;tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;if(id!=='pesan'){pHapusMode=false;pesTab='masuk';psel.clear()}if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
  try{if(LOAD[id]){const ck=cmKunci(id);if(!(ck&&!paksa&&cmOk(ck[0],ck[1]))){const v0=cmVer;await LOAD[id](paksa);if(ck&&v0===cmVer)cmCatat(ck[0],v0)}}}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),bt=m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`;let h;
@@ -1612,7 +1618,7 @@ async function muatGambarKartu(){
  kartuIO=io;imgs.forEach(im=>io.observe(im));
 }
 function renderV(){
- tutupAksi();const _tb=view==='kelola'||view==='tabungan'||view==='piket'||view==='hafalan'||view==='penilaian',_sl=_tb?(document.querySelector('#v .utabs')||{}).scrollLeft:0;
+ tutupAksi();const _tb=view==='kelola'||view==='tabungan'||view==='piket'||view==='hafalan'||view==='penilaian'||view==='pesan',_sl=_tb?(document.querySelector('#v .utabs')||{}).scrollLeft:0;
  $('#v').innerHTML=V[view]();
  if(document.getElementById('hrJam'))hrMulai();
  if(role==='Developer')renderNavDev();
@@ -2889,12 +2895,37 @@ function addLibur(){form('Tambah Libur',[{k:'tgl',l:'Mulai tanggal',t:'date',v:T
  await dbq(db.from('libur_tanggal').insert({mulai:v.tgl,sampai:v.sampai||v.tgl,kelas_id:v.kelas==='Semua'?null:kid(v.kelas),keterangan:v.ket||null}));await muatDasar();await segarkan();renderV()})}
 async function delLibur(id){if(!await konfirmasi('Hapus jadwal libur ini?',{judul:'Hapus jadwal libur',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.from('libur_tanggal').delete().eq('id',id));await muatDasar();await segarkan();renderV()})}
 /* ---------- pesan WA ---------- */
-let psel=new Set();
-V.pesan=()=>{const all=S.pesan.length&&S.pesan.every(p=>psel.has(p.id));return `<div class="panel"><div class="ph">💬 Pesan WhatsApp Masuk <button id="pHapusBtn" class="btn danger sm" ${psel.size?'':'disabled'} onclick="hapusPesan()">🗑 Hapus terpilih (${psel.size})</button></div><div class="pb"><div class="note">Semua pesan dari orang tua tercatat di sini (100 terbaru). Centang pesan yang ingin dihapus, atau centang kotak di judul kolom untuk memilih semua.</div>${tab(['<input type="checkbox" '+(all?'checked':'')+' id="pCekAll" onchange="pilihSemuaPesan(this.checked)">','Waktu','Dari','Isi','Hasil','Aksi'],S.pesan.map(p=>`<tr><td><input type="checkbox" class="ckp" ${psel.has(p.id)?'checked':''} onchange="pilihPesan(${p.id},this.checked)"></td><td>${esc(p.waktu)}</td><td>${esc(p.dari)}</td><td>${esc(p.isi)}</td><td>${esc(p.hasil)}</td><td>${p.cek?`<button class="btn sm orange" onclick="doneMsg(${p.id})">Tandai selesai</button>`:'<span class="mu">Selesai</span>'}</td></tr>`).join(''))}</div></div>`};
+let psel=new Set(),pHapusMode=false,pesTab='masuk';
+V.pesan=()=>{
+ const tbar=`<div class="utabs">${[['masuk','💬 Pesan Masuk'],['riwayat','📋 Riwayat Status Pesan']].map(x=>`<button class="utab${pesTab===x[0]?' on':''}" onclick="pesHal('${x[0]}')">${x[1]}</button>`).join('')}</div>`;
+ if(pesTab==='riwayat'){setTimeout(()=>{if(view==='pesan'&&pesTab==='riwayat')pesRkMuat()},0);
+  return `<div class="panel"><div class="ph">💬 Pesan WA <button class="btn soft sm" onclick="pesRkMuat()">🔄 Perbarui</button></div><div class="pb">${tbar}<div class="tb"><select class="select" onchange="pesRkF=this.value;pesRkTampil()">${PES_ST.map(x=>`<option value="${x[0]}"${pesRkF===x[0]?' selected':''}>${x[1]}</option>`).join('')}</select></div><div id="rkIsi"><div class="note">Memuat...</div></div></div></div>`}
+ const all=S.pesan.length&&S.pesan.every(p=>psel.has(p.id));
+ const aksi=pHapusMode
+  ?`<span class="tb tbgrid" style="margin:0"><button id="pHapusBtn" class="btn danger sm" ${psel.size?'':'disabled'} onclick="hapusPesan()">🗑 Hapus terpilih (${psel.size})</button><button class="btn soft sm" onclick="batalHapusPesan()">✖ Batal</button></span>`
+  :`<button class="btn danger sm" onclick="bukaHapusPesan()">🗑 Hapus</button>`;
+ const head=pHapusMode
+  ?['<input type="checkbox" '+(all?'checked':'')+' id="pCekAll" onchange="pilihSemuaPesan(this.checked)">','Waktu','Dari','Isi','Hasil','Status Balasan','Aksi']
+  :['Waktu','Dari','Isi','Hasil','Status Balasan','Aksi'];
+ const rows=S.pesan.map(p=>`<tr>${pHapusMode?`<td><input type="checkbox" class="ckp" ${psel.has(p.id)?'checked':''} onchange="pilihPesan(${p.id},this.checked)"></td>`:''}<td>${esc(p.waktu)}</td><td>${esc(p.dari)}</td><td>${esc(p.isi)}</td><td>${esc(p.hasil)}</td><td>${pesBalasSel(p)}</td><td><div style="display:flex;flex-direction:column;gap:6px">${p.cek?`<button class="btn sm orange" onclick="doneMsg(${p.id})">Tandai selesai</button>`:'<span class="mu">Selesai</span>'}${p.dibalas?`<button class="btn sm soft" onclick="tandaiBalas(${p.id},false)">Batal dibalas</button>`:`<button class="btn sm success" onclick="tandaiBalas(${p.id},true)">Tandai dibalas</button>`}</div></td></tr>`).join('');
+ return `<div class="panel"><div class="ph">💬 Pesan WhatsApp Masuk ${aksi}</div><div class="pb">${tbar}<div class="note">${pHapusMode?'Mode hapus aktif. Centang pesan yang ingin dihapus, atau centang kotak di judul kolom untuk memilih semua. Tekan Batal untuk keluar tanpa menghapus.':'Semua pesan dari orang tua tercatat di sini (100 terbaru). Tekan tombol Hapus bila ingin memilih pesan untuk dihapus.'}</div>${tab(head,rows)}</div></div>`};
+let pesRkRows=[],pesRkF='';
+const PES_ST=[['','Semua status'],['terjadwal','Terjadwal'],['proses','Diproses'],['nokabar','Belum ada kabar'],['terkirim','Terkirim'],['sampai','Sampai'],['terbaca','Terbaca'],['gagal','Gagal']];
+function pesRkTampil(){const el=$('#rkIsi');if(!el)return;const f=pesRkF?pesRkRows.filter(r=>rkTahap(r)===pesRkF):pesRkRows;
+ el.innerHTML=(pesRkF?'<div class="mu" style="margin-bottom:8px">Menampilkan '+f.length+' dari '+pesRkRows.length+' pesan</div>':'')+(pesRkF&&!f.length?'<div class="note">Tidak ada pesan dengan status ini.</div>':rkHtml(f))}
+async function pesRkMuat(){try{const rows=await dbq(db.from('kirim_log').select('batch_id,jenis,judul,label,nomor,status,status_fonnte,state_fonnte,error,jadwal_pada,dibuat,waktu_terkirim,waktu_sampai,waktu_terbaca').eq('sekolah_id',SEK).order('dibuat',{ascending:false}).limit(400));pesRkRows=rows||[];pesRkTampil()}catch(e){const el=$('#rkIsi');if(el)el.innerHTML='<div class="note">Riwayat belum bisa dibaca: '+esc(e.message||String(e))+'</div>'}}
+function pesBalasSel(p){if(p.dibalas)return '<div class="rkt">✅ Sudah dibalas</div><div class="mu">manual'+(p.dibalasPada?' · '+rkJam(p.dibalasPada):'')+'</div>';
+ if(p.auto)return '<div class="rkt">✅ Dibalas</div><div class="mu">otomatis · '+rkJam(p.auto)+'</div>';
+ return '<div class="rkt">⏳ Belum dibalas</div>'}
+function tandaiBalas(id,on){if(!PES_ADA_KOL)return toast('Kolom sudah_dibalas belum ada di tabel pesan_masuk. Jalankan SQL penambahan kolom di Supabase dulu.',false);
+ guard(async()=>{await dbq(db.from('pesan_masuk').update({sudah_dibalas:on,dibalas_pada:on?new Date().toISOString():null}).eq('id',id));await muatPesan();renderV()})}
+function pesHal(t){pesTab=t;pHapusMode=false;psel.clear();renderV()}
+function bukaHapusPesan(){pHapusMode=true;psel.clear();renderV()}
+function batalHapusPesan(){pHapusMode=false;psel.clear();renderV()}
 function pesanCekUI(){const r=cekBaris('#v .ckp');cekHdr('pCekAll',r.length,r.filter(x=>x.checked).length);cekBtn('pHapusBtn',psel.size,'🗑 Hapus terpilih')}
 function pilihPesan(id,on){on?psel.add(id):psel.delete(id);pesanCekUI()}
 function pilihSemuaPesan(on){psel=new Set(on?S.pesan.map(p=>p.id):[]);cekBaris('#v .ckp').forEach(x=>x.checked=on);pesanCekUI()}
-async function hapusPesan(){const ids=[...psel];if(!ids.length||!await konfirmasi('Hapus '+ids.length+' pesan terpilih? Tidak bisa dikembalikan.',{judul:'Hapus pesan',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.from('pesan_masuk').delete().in('id',ids));psel.clear();await muatPesan();toast(ids.length+' pesan dihapus');renderV()})}
+async function hapusPesan(){const ids=[...psel];if(!ids.length||!await konfirmasi('Hapus '+ids.length+' pesan terpilih? Tidak bisa dikembalikan.',{judul:'Hapus pesan',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.from('pesan_masuk').delete().in('id',ids));psel.clear();pHapusMode=false;await muatPesan();toast(ids.length+' pesan dihapus');renderV()})}
 
 function doneMsg(id){guard(async()=>{await dbq(db.from('pesan_masuk').update({perlu_dicek:false}).eq('id',id));await muatPesan();renderV()})}
 /* ---------- pengaturan ---------- */
