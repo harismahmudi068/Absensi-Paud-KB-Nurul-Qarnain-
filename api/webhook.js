@@ -36,6 +36,9 @@ const BATAS_JUMLAH_HARI_IZIN = 30; // izin lebih dari ini tidak dicatat otomatis
 
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Nomor WhatsApp developer (format 628xxxx) untuk laporan error sistem, mis. Gemini gagal.
+// Diisi di Vercel > Environment Variables dengan nama DEVELOPER_WA. Kosong = tidak dikirim.
+const DEVELOPER_WA = String(process.env.DEVELOPER_WA || '').replace(/\D/g, '').replace(/^0/, '62');
 
 // Status yang TIDAK boleh ditimpa pesan izin/sakit wali, lalu dibalas "sudah tercatat".
 // Alpa boleh ditimpa. Libur juga tidak ditimpa, tetapi dibalas seperti hari libur biasa (lihat simpan()).
@@ -85,14 +88,17 @@ async function sb(path, { method = 'GET', body, prefer } = {}) {
 }
 
 // Versi rinci: mengembalikan { ok, id, error } agar balasan ke wali bisa dicatat di kirim_log.
-async function kirimFonnteRinci(target, teks) {
+// jadwal (opsional) = unix timestamp detik; bila diisi, Fonnte yang mengirim pada jam tersebut.
+async function kirimFonnteRinci(target, teks, jadwal) {
   const tokenFonnte = K().tokenFonnte;
   if (!target || !tokenFonnte) return { ok: false, id: null, error: 'Token atau nomor tujuan kosong' };
   try {
     const r = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
       headers: { Authorization: tokenFonnte, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ target: String(target), message: teks })
+      body: new URLSearchParams(jadwal
+        ? { target: String(target), message: teks, schedule: String(Math.floor(Number(jadwal))) }
+        : { target: String(target), message: teks })
     });
     const raw = await r.text();
     if (!r.ok) { console.error('Fonnte HTTP error:', r.status, raw); return { ok: false, id: null, error: 'Fonnte HTTP ' + r.status }; }
@@ -108,8 +114,8 @@ async function kirimFonnteRinci(target, teks) {
   }
 }
 
-async function kirimFonnte(target, teks) {
-  return (await kirimFonnteRinci(target, teks)).ok;
+async function kirimFonnte(target, teks, jadwal) {
+  return (await kirimFonnteRinci(target, teks, jadwal)).ok;
 }
 
 // Mencatat balasan ke wali di kirim_log (jenis 'balasan') supaya statusnya (terkirim/sampai/terbaca)
@@ -299,7 +305,7 @@ function notifikasiRagu(pengirim, namaAnak, pesan, opsi = {}) {
   return notifikasiRaguDetail(pengirim, namaAnak, pesan, opsi);
 }
 
-function notifikasiAIGagal(pengirim, namaAnak, pesan, error) {
+function notifikasiAIGagal(pengirim, namaAnak, pesan, error, devDiberitahu = false) {
   const detail = String(error?.message || error || 'Kesalahan tidak diketahui').slice(0, 500);
   return [
     salam(),
@@ -314,6 +320,7 @@ function notifikasiAIGagal(pengirim, namaAnak, pesan, error) {
     '⚠️ Absensi belum diubah secara otomatis. Mohon dilakukan pengecekan dan pencatatan secara manual jika diperlukan. 🙏',
     '',
     `🔧 *Status sistem:* ${detail}`,
+    ...(devDiberitahu ? ['', '📨 Hal ini sudah diinformasikan kepada developer.'] : []),
     '',
     penutup()
   ].join('\n');
@@ -801,7 +808,8 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
     const info = {
       statusDugaan: status,
       alasanAI: catatan && catatan !== pesan ? catatan : '',
-      detailWaktu: rencana.alasan || ''
+      detailWaktu: rencana.alasan || '',
+      anakTerkait: anak
     };
     await kirimRagu(target, dari, daftarNama(anak), pesan, rencana.izinPanjang
       ? { ...info, alasanRagu: 'izin_panjang', jumlahHari: rencana.izinPanjang }
@@ -939,13 +947,92 @@ function cariAnakDariNama(pesan, anak) {
   });
 }
 
+const RE_WA = /^628\d{8,12}$/;
+const JEDA_MIN = 30; // detik, jeda acak antar penerima notifikasi ragu
+const JEDA_MAX = 60;
+const RE_UUID = /^[0-9a-f-]{36}$/i;
+
+// Pesan untuk developer: error Gemini lengkap dengan konteks teknis (bukan untuk kepala sekolah).
+function notifikasiAIGagalDeveloper(pengirim, namaAnak, pesan, error) {
+  const detail = String(error?.message || error || 'Kesalahan tidak diketahui').slice(0, 500);
+  const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
+  return [
+    '🚨 *[DEVELOPER] Gemini Error di Webhook*',
+    '',
+    `🏫 *Sekolah ID:* ${K().sekolahId || '-'}`,
+    `🕒 *Waktu:* ${waktu} WIB`,
+    `👤 *Pengirim:* ${pengirim || '-'}`,
+    `👧 *Anak:* ${namaAnak || '-'}`,
+    `💬 *Pesan:* "${String(pesan || '').slice(0, 300)}"`,
+    '',
+    `🔧 *Error:* ${detail}`,
+    '',
+    'Absensi tidak diubah otomatis. Pesan perlu dicek manual.'
+  ].join('\n');
+}
+
+// Mengirim notifikasi ragu ke wali kelas dari anak yang dimaksud (hanya jika kelasnya punya wali).
+// Wali harus anggota aktif sekolah ini, profil aktif, dan punya nomor WhatsApp valid.
+// Gagal di sini TIDAK boleh mengganggu alur utama.
+async function kirimKeWaliKelas(anakTerkait, teks, nomorKepala) {
+  try {
+    const sekolahId = K().sekolahId;
+    const kelasIds = [...new Set((anakTerkait || [])
+      .map(s => Number(s && s.kelas_id))
+      .filter(n => Number.isInteger(n) && n > 0))];
+    if (!sekolahId || !kelasIds.length) return;
+
+    const kelas = (await sb(`kelas?sekolah_id=eq.${sekolahId}&id=in.(${kelasIds.join(',')})&select=id,nama,wali_profil_id`)) || [];
+    const waliIds = [...new Set(kelas.map(k => k.wali_profil_id).filter(x => x && RE_UUID.test(String(x))))];
+    if (!waliIds.length) return; // kelas belum punya wali
+
+    const ang = (await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&profil_id=in.(${waliIds.join(',')})&select=profil_id`)) || [];
+    const aktifIds = [...new Set(ang.map(a => a.profil_id).filter(x => RE_UUID.test(String(x))))];
+    if (!aktifIds.length) return;
+
+    const prof = (await sb(`profil?id=in.(${aktifIds.join(',')})&aktif=eq.true&select=id,nama,no_wa`)) || [];
+    const sudah = new Set([normDevice(nomorKepala)]); // kepala sudah menerima, hindari pesan dobel
+    const tujuan = [];
+    for (const p of prof) {
+      const n = normDevice(p.no_wa);
+      if (!RE_WA.test(n) || sudah.has(n)) continue;
+      sudah.add(n);
+      tujuan.push({ nama: p.nama || n, nomor: n });
+    }
+    // Jeda: wali kelas pertama 30-60 detik dari sekarang (setelah pesan kepala), berikutnya
+    // 30-60 detik setelah wali sebelumnya. Dijadwalkan di Fonnte, server tidak menunggu.
+    let waktu = Math.floor(Date.now() / 1000);
+    tujuan.forEach(t => { waktu += JEDA_MIN + Math.floor(Math.random() * (JEDA_MAX - JEDA_MIN + 1)); t.waktu = waktu; });
+    const hasil = await Promise.allSettled(tujuan.map(t => kirimFonnte(t.nomor, teks, t.waktu)));
+    hasil.forEach((h, i) => {
+      if (h.status !== 'fulfilled' || h.value !== true) console.error('Gagal kirim notifikasi ragu ke wali kelas:', tujuan[i].nama);
+    });
+  } catch (e) {
+    console.error('Notifikasi ragu ke wali kelas error:', e && e.message);
+  }
+}
+
 async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = null, opsi = {}) {
   const nomorKepala = K().nomorKepala;
-  if (!nomorKepala) return;
-  const teks = jenis === 'ai_error'
-    ? notifikasiAIGagal(dari, nama, pesan, error)
-    : notifikasiRagu(dari, nama, pesan, opsi);
-  await kirimFonnte(nomor(nomorKepala), teks);
+
+  if (jenis === 'ai_error') {
+    // Developer diberi tahu lebih dulu. Catatan "sudah diinformasikan" hanya dicantumkan
+    // di pesan kepala sekolah bila pesan ke developer benar-benar diterima Fonnte.
+    let devDiberitahu = false;
+    if (RE_WA.test(DEVELOPER_WA)) {
+      try { devDiberitahu = await kirimFonnte(DEVELOPER_WA, notifikasiAIGagalDeveloper(dari, nama, pesan, error)); }
+      catch (e) { console.error('Gagal kirim notifikasi ke developer:', e && e.message); }
+    } else {
+      console.warn('DEVELOPER_WA belum diisi/valid: notifikasi Gemini error ke developer dilewati');
+    }
+    if (nomorKepala) await kirimFonnte(nomor(nomorKepala), notifikasiAIGagal(dari, nama, pesan, error, devDiberitahu));
+    return;
+  }
+
+  const teks = notifikasiRagu(dari, nama, pesan, opsi);
+  if (nomorKepala) await kirimFonnte(nomor(nomorKepala), teks);
+  // Ragu untuk kepala sekolah (waktu, izin panjang, maksud tidak jelas) juga ke wali kelas.
+  await kirimKeWaliKelas(opsi.anakTerkait, teks, nomorKepala);
 }
 
 // Notifikasi "ragu" (aturan sama untuk grup dan chat pribadi):
@@ -1126,7 +1213,13 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
         ? 'Ragu: anak tidak jelas, wali diminta mengirim ulang dengan menyebut nama'
         : 'Ragu: perlu pengecekan guru');
     await catatPesan(dari, pesan, catatan.slice(0, 300), true);
+    // Anak yang dimaksud (untuk mencari wali kelas): pilihan AI, lalu nama di pesan, lalu semua anak di nomor ini.
+    const idAI = (hasilAI.siswa_ids || []).map(String);
+    let anakTerkait = anak.filter(s => idAI.includes(String(s.id)));
+    if (!anakTerkait.length) anakTerkait = cariAnakDariNama(pesan, anak);
+    if (!anakTerkait.length) anakTerkait = anak;
     await kirimRagu(target, dari, nama, pesan, {
+      anakTerkait,
       namaDiPesan: hasilAI.nama_di_pesan || [],
       namaBeda: !!hasilAI.nama_beda,
       statusDugaan: hasilAI.status_dugaan || '',
