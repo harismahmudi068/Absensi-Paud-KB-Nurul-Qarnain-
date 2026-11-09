@@ -32,6 +32,13 @@ const idFonnte = (j) => {
   return a == null || a === '' ? null : String(a);
 };
 
+// Daftar ID anak yang dituju satu pesan (untuk kolom "Status pesan" per anak). Opsional, maksimal 10.
+const daftarId = (v) => {
+  if (!Array.isArray(v)) return null;
+  const a = v.map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 10);
+  return a.length ? a : null;
+};
+
 // Mencatat riwayat ke tabel kirim_log. Gagal mencatat TIDAK boleh menggagalkan pengiriman.
 async function catatLog(baris) {
   if (!baris.length) return;
@@ -142,6 +149,7 @@ module.exports = async (req, res) => {
         label: potong(x && x.label, 120),
         nomor: String((x && x.nomor) || '').replace(/\D/g, '').slice(0, 20) || '-',
         fonnte_id: ids[i],
+        siswa_ids: daftarId(x && x.siswa_ids),
         status: hasil[i].ok ? 'terjadwal' : 'gagal',
         error: hasil[i].ok ? null : potong(hasil[i].error, 300),
         jadwal_pada: hasil[i].ok && jam[i] ? new Date(jam[i] * 1000).toISOString() : null
@@ -161,6 +169,7 @@ module.exports = async (req, res) => {
       jenis: JENIS_OK.includes(b.jenis) ? b.jenis : 'lainnya',
       judul: potong(b.judul, 120),
       label: potong(b.label, 120),
+      siswa_ids: daftarId(b.siswa_ids),
       nomor
     };
     let balasan;
