@@ -978,7 +978,44 @@ function notifikasiAIGagalDeveloper(pengirim, namaAnak, pesan, error) {
 // Mengirim notifikasi ragu ke wali kelas dari anak yang dimaksud (hanya jika kelasnya punya wali).
 // Wali harus anggota aktif sekolah ini, profil aktif, dan punya nomor WhatsApp valid.
 // Gagal di sini TIDAK boleh mengganggu alur utama.
-async function kirimKeWaliKelas(anakTerkait, teks, nomorKepala) {
+// Kirim satu pesan lewat Fonnte (langsung atau terjadwal) dan catat ke kirim_log supaya statusnya
+// (terjadwal/terkirim/sampai/terbaca/gagal) muncul di menu Pesan WA dan diperbarui status-kirim.js.
+// Gagal mencatat TIDAK boleh menggagalkan pengiriman. Mengembalikan true bila Fonnte menerima pesan.
+async function kirimDanCatat(target, teks, lg) {
+  const hasil = await kirimFonnteRinci(target, teks, lg.jadwal);
+  try {
+    const c = K();
+    if (c.sekolahId) {
+      await sb('kirim_log', {
+        method: 'POST',
+        prefer: 'return=minimal',
+        body: {
+          sekolah_id: c.sekolahId,
+          batch_id: lg.batch,
+          oleh_developer: !!lg.olehDev, // true = tersembunyi dari staf sekolah
+          jenis: 'lainnya',
+          judul: String(lg.judul || '').slice(0, 120),
+          label: String(lg.label || '').slice(0, 120),
+          nomor: String(target || '').replace(/\D/g, '').slice(0, 20) || '-',
+          fonnte_id: hasil.id,
+          status: hasil.ok ? 'terjadwal' : 'gagal',
+          error: hasil.ok ? null : String(hasil.error || '').slice(0, 300),
+          jadwal_pada: hasil.ok && lg.jadwal ? new Date(lg.jadwal * 1000).toISOString() : null
+        }
+      });
+    }
+  } catch (e) {
+    console.error('Catat riwayat kirim gagal:', e && e.message);
+  }
+  return hasil.ok;
+}
+
+const jedaAcak = () => JEDA_MIN + Math.floor(Math.random() * (JEDA_MAX - JEDA_MIN + 1));
+
+// Mengirim notifikasi ragu ke wali kelas dari anak yang dimaksud (hanya jika kelasnya punya wali).
+// Wali harus anggota aktif sekolah ini, profil aktif, dan punya nomor WhatsApp valid.
+// Gagal di sini TIDAK boleh mengganggu alur utama.
+async function kirimKeWaliKelas(anakTerkait, teks, nomorKepala, batch) {
   try {
     const sekolahId = K().sekolahId;
     const kelasIds = [...new Set((anakTerkait || [])
@@ -1001,15 +1038,17 @@ async function kirimKeWaliKelas(anakTerkait, teks, nomorKepala) {
       const n = normDevice(p.no_wa);
       if (!RE_WA.test(n) || sudah.has(n)) continue;
       sudah.add(n);
-      tujuan.push({ nama: p.nama || n, nomor: n });
+      const namaKelas = kelas.filter(k => k.wali_profil_id === p.id).map(k => k.nama).join(', ');
+      tujuan.push({ label: `${p.nama || n} (wali ${namaKelas || 'kelas'})`, nomor: n });
     }
     // Jeda: wali kelas pertama 30-60 detik dari sekarang (setelah pesan kepala), berikutnya
     // 30-60 detik setelah wali sebelumnya. Dijadwalkan di Fonnte, server tidak menunggu.
     let waktu = Math.floor(Date.now() / 1000);
-    tujuan.forEach(t => { waktu += JEDA_MIN + Math.floor(Math.random() * (JEDA_MAX - JEDA_MIN + 1)); t.waktu = waktu; });
-    const hasil = await Promise.allSettled(tujuan.map(t => kirimFonnte(t.nomor, teks, t.waktu)));
+    tujuan.forEach(t => { waktu += jedaAcak(); t.waktu = waktu; });
+    const hasil = await Promise.allSettled(tujuan.map(t =>
+      kirimDanCatat(t.nomor, teks, { jadwal: t.waktu, batch, judul: 'Notifikasi ragu', label: t.label })));
     hasil.forEach((h, i) => {
-      if (h.status !== 'fulfilled' || h.value !== true) console.error('Gagal kirim notifikasi ragu ke wali kelas:', tujuan[i].nama);
+      if (h.status !== 'fulfilled' || h.value !== true) console.error('Gagal kirim notifikasi ragu ke wali kelas:', tujuan[i].label);
     });
   } catch (e) {
     console.error('Notifikasi ragu ke wali kelas error:', e && e.message);
@@ -1018,6 +1057,7 @@ async function kirimKeWaliKelas(anakTerkait, teks, nomorKepala) {
 
 async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = null, opsi = {}) {
   const nomorKepala = K().nomorKepala;
+  const batch = crypto.randomUUID();
 
   if (jenis === 'ai_error') {
     // Developer diberi tahu lebih dulu. Catatan "sudah diinformasikan" hanya dicantumkan
@@ -1025,20 +1065,27 @@ async function notifikasiKeKepala(dari, nama, pesan, jenis = 'ragu', error = nul
     let devDiberitahu = false;
     if (NOMOR_DEVELOPER.length) {
       const teksDev = notifikasiAIGagalDeveloper(dari, nama, pesan, error);
-      const hasil = await Promise.allSettled(NOMOR_DEVELOPER.map(n => kirimFonnte(n, teksDev)));
+      const hasil = await Promise.allSettled(NOMOR_DEVELOPER.map(n =>
+        kirimDanCatat(n, teksDev, { batch, judul: 'Gemini error', label: 'Developer', olehDev: true })));
       devDiberitahu = hasil.some(h => h.status === 'fulfilled' && h.value === true);
       if (!devDiberitahu) console.error('Gagal kirim notifikasi Gemini error ke developer');
     } else {
       console.warn('DEV_WA belum diisi/valid: notifikasi Gemini error ke developer dilewati');
     }
-    if (nomorKepala) await kirimFonnte(nomor(nomorKepala), notifikasiAIGagal(dari, nama, pesan, error, devDiberitahu));
+    if (nomorKepala) {
+      // Pesan kepala dijadwalkan 30-60 detik setelah pesan developer (nomor sama atau beda),
+      // supaya tidak masuk bersamaan. Bila developer tidak dikirimi, tidak perlu jeda.
+      const jadwal = NOMOR_DEVELOPER.length ? Math.floor(Date.now() / 1000) + jedaAcak() : undefined;
+      await kirimDanCatat(nomor(nomorKepala), notifikasiAIGagal(dari, nama, pesan, error, devDiberitahu),
+        { jadwal, batch, judul: 'Gemini error', label: 'Kepala Sekolah' });
+    }
     return;
   }
 
   const teks = notifikasiRagu(dari, nama, pesan, opsi);
-  if (nomorKepala) await kirimFonnte(nomor(nomorKepala), teks);
+  if (nomorKepala) await kirimDanCatat(nomor(nomorKepala), teks, { batch, judul: 'Notifikasi ragu', label: 'Kepala Sekolah' });
   // Ragu untuk kepala sekolah (waktu, izin panjang, maksud tidak jelas) juga ke wali kelas.
-  await kirimKeWaliKelas(opsi.anakTerkait, teks, nomorKepala);
+  await kirimKeWaliKelas(opsi.anakTerkait, teks, nomorKepala, batch);
 }
 
 // Notifikasi "ragu" (aturan sama untuk grup dan chat pribadi):
