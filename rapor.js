@@ -301,7 +301,9 @@ const Rapor = (() => {
       const ny = sy + 26; doc.text('( ' + (q.n || '............................') + ' )', x, ny, { align: 'center' });
       if (!q.ot) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (q.p || '...............'), x, ny + 4.5, { align: 'center' }); }
     });
-    if (D.stempel && D.stempel.url) { const school=PT.map((q,i)=>({q,x:sx[i]})).filter(x=>!x.q.ot); if(school.length){const cx=school.length>1?(school[0].x+school[school.length-1].x)/2:school[0].x;doc.addImage(D.stempel.url,'PNG',cx-12,sy+3,24,20);} }
+    const school=PT.map((q,i)=>({q,x:sx[i]})).filter(x=>!x.q.ot),scx=school.length>1?(school[0].x+school[school.length-1].x)/2:(school[0]&&school[0].x);
+    if(school.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...TX);doc.text('Mengetahui:',scx,sy-6,{align:'center'});}
+    if(D.stempel&&D.stempel.url&&school.length)doc.addImage(D.stempel.url,'PNG',scx-12,sy+3,24,20);
   }
 
   /* ---------------- DESAIN RAPORT PERKEMBANGAN (aspek > kategori > indikator) ---------------- */
@@ -452,7 +454,7 @@ const Rapor = (() => {
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
-    if (D.stempel && D.stempel.url) { const school=P.map((p,i)=>({p,x:CX[i]})).filter(x=>!x.p[3]); if(school.length){const cx=school.length>1?(school[0].x+school[school.length-1].x)/2:school[0].x;doc.addImage(D.stempel.url,'PNG',cx-12,yl+3,24,13);} }
+    if(D.stempel&&D.stempel.url){const cx=nP===4?(CX[2]+CX[3])/2:CX[nP-1];doc.addImage(D.stempel.url,'PNG',cx-12,yl+3,24,13);}
     kaki();
   }
   const gambar = (doc, D) => D && D.fmt === 'perkembangan' ? gambarP(doc, D) : gambarN(doc, D);
