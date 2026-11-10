@@ -65,8 +65,10 @@ module.exports = async (req, res) => {
     const aksi = String(b.aksi || '');
     const sid = Number(b.sekolah_id);
     const punyaSid = Number.isInteger(sid) && sid > 0;
+    const bantuan = !isDev && punyaSid && typeof L.bantuanCek === 'function' && L.bantuanCek(String(req.headers['x-bantuan'] || ''), user.id, sid);
+    if (bantuan && (aksi === 'simpan' || aksi === 'hapus')) return res.status(403).json({ error: 'Mode bantuan hanya dapat melihat, tidak boleh mengubah tanda tangan' });
 
-    if (!['lihat','daftar','ambil','ambil_banyak','simpan','hapus'].includes(aksi))
+    if (!['lihat','daftar','daftar_dev','ambil','ambil_banyak','simpan','hapus'].includes(aksi))
       return res.status(400).json({ error: 'Aksi tanda tangan tidak dikenal' });
 
     if (aksi === 'lihat') {
