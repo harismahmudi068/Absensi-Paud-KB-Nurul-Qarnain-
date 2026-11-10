@@ -280,10 +280,14 @@ function pmPreviewZoom(delta) {
   const w = $('#pmPreviewCanvas');
   if (w) Rapor.lebar(w, PM_PREVIEW_W);
 }
-function pmPreviewRender() {
-  const w = $('#pmPreviewCanvas');
+async function pmPreviewRender() {
+  let w = $('#pmPreviewCanvas');
   if (!w || !PKME.M) return;
   try {
+    const sekolah = S.kd && S.kd.sekolah ? S.kd.sekolah : {};
+    const lg = await Rapor.logoPng(sekolah.logo || '').catch(() => null);
+    w = $('#pmPreviewCanvas');
+    if (!w || !PKME.M) return;
     const M = pmNorm(pmKlon(PKME.M)), n = {};
     let ix = 0;
     Rapor.pohon(M).forEach(a => a.kat.forEach(k => k.ind.forEach(x => { n[x.i.id] = (ix++ % 4) + 1; })));
@@ -295,7 +299,7 @@ function pmPreviewRender() {
       catatan: 'Contoh catatan pendidik untuk memperlihatkan posisi dan panjang teks pada raport.'
     };
     const D = Rapor.susun(r, {
-      sekolah: ns(), alamat: (S.set && S.set.alamat) || '', kota: kotaTtd(),
+      logo: lg, sekolah: ns(), alamat: (S.set && S.set.alamat) || '', kota: kotaTtd(),
       nama: 'Rani Putri', panggilan: 'Rani', nisn: '0000000000',
       kelas: k.nama || '', kelompok: k.nama || '',
       kelompokLabel: pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok Usia',
