@@ -268,7 +268,7 @@ async function kirimStafLibur(token, sekolahId, nomorKepala, teks, lg) {
 // sudah berstatus Libur pada tanggal tersebut.
 async function dataKelasLibur(sekolahId, tanggal) {
   const [kelas, siswa, nasional, khusus, pengaturan] = await Promise.all([
-    supabase(`kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,nama&limit=5000`),
+    supabase(`kelas?sekolah_id=eq.${sekolahId}&select=id,nama&limit=5000`),
     supabase(`siswa?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,kelas_id&limit=5000`),
     supabase(`libur_nasional?tanggal=eq.${encodeURIComponent(tanggal)}&select=keterangan&limit=1`),
     supabase(`libur_tanggal?sekolah_id=eq.${sekolahId}&mulai=lte.${encodeURIComponent(tanggal)}&sampai=gte.${encodeURIComponent(tanggal)}&select=kelas_id,keterangan,masuk_kembali`),
@@ -674,7 +674,7 @@ module.exports = async (req, res) => {
     try {
       if (tabel === 'notifikasi_libur') {
         const staf = await kirimStafLibur(token, sekolahId, nomorTujuan, teks, lg);
-        const grup = await kirimGrupLibur(token, sekolahId, tanggal || String(notif.tanggal || ''), lg);
+        const grup = body.uji === true ? { ok: 0, gagal: [] } : await kirimGrupLibur(token, sekolahId, tanggal || String(notif.tanggal || ''), lg);
         tambahan = { ok: staf.ok + grup.ok, gagal: [...staf.gagal, ...grup.gagal] };
       } else {
         tambahan = await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa, lg);
