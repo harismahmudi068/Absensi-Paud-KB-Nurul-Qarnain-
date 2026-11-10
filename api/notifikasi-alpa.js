@@ -263,6 +263,134 @@ async function kirimStafLibur(token, sekolahId, nomorKepala, teks, lg) {
   return kirimBanyak(token, tujuan, lg);
 }
 
+// LIBUR: kirim satu pesan ke setiap grup yang terhubung dengan kelas yang benar-benar libur.
+// Kelas harus memiliki sebab libur yang sama dengan pemeriksaan database dan seluruh siswanya
+// sudah berstatus Libur pada tanggal tersebut.
+async function dataKelasLibur(sekolahId, tanggal) {
+  const [kelas, siswa, nasional, khusus, pengaturan] = await Promise.all([
+    supabase(\`kelas?sekolah_id=eq.\${sekolahId}&aktif=eq.true&select=id,nama&limit=5000\`),
+    supabase(\`siswa?sekolah_id=eq.\${sekolahId}&aktif=eq.true&select=id,kelas_id&limit=5000\`),
+    supabase(\`libur_nasional?tanggal=eq.\${encodeURIComponent(tanggal)}&select=keterangan&limit=1\`),
+    supabase(\`libur_tanggal?sekolah_id=eq.\${sekolahId}&mulai=lte.\${encodeURIComponent(tanggal)}&sampai=gte.\${encodeURIComponent(tanggal)}&select=kelas_id,keterangan,masuk_kembali\`),
+    supabase(\`pengaturan?sekolah_id=eq.\${sekolahId}&select=notif_libur_mingguan,nama_sekolah&limit=1\`)
+  ]);
+  const semuaSiswa = siswa || [];
+  if (!kelas?.length || !semuaSiswa.length) return { kelas: [], namaSekolah: pengaturan?.[0]?.nama_sekolah || '' };
+  const ids = semuaSiswa.map(x => Number(x.id)).filter(Number.isInteger);
+  const hadirLibur = await supabase(\`absensi?siswa_id=in.(\${ids.map(encodeURIComponent).join(',')})&tanggal=eq.\${encodeURIComponent(tanggal)}&status=eq.libur&select=siswa_id&limit=10000\`);
+  const setLibur = new Set((hadirLibur || []).map(x => String(x.siswa_id)));
+  const hari = new Date(tanggal + 'T00:00:00Z').getUTCDay();
+  const mingguan = pengaturan?.[0]?.notif_libur_mingguan
+    ? await supabase(\`libur_mingguan?sekolah_id=eq.\${sekolahId}&hari=eq.\${hari}&select=hari&limit=1\`)
+    : [];
+  const hasil = [];
+  for (const k of kelas) {
+    const anak = semuaSiswa.filter(s => Number(s.kelas_id) === Number(k.id));
+    if (!anak.length || !anak.every(s => setLibur.has(String(s.id)))) continue;
+    let sebab = null;
+    if (nasional?.length) {
+      const ket = String(nasional[0].keterangan || '').trim();
+      sebab = !ket || ket.toLowerCase() === 'libur nasional' ? 'Libur nasional' : 'Libur nasional (' + ket + ')';
+    } else {
+      const l = (khusus || []).filter(x => x.kelas_id == null || Number(x.kelas_id) === Number(k.id))
+        .sort((a,b) => Number(a.kelas_id == null) - Number(b.kelas_id == null))[0];
+      if (l) sebab = 'Libur sekolah' + (String(l.keterangan || '').trim() ? ' (' + String(l.keterangan).trim() + ')' : '');
+      else if (mingguan?.length) sebab = hari === 0 || hari === 6 ? 'Akhir pekan' : 'Libur mingguan';
+    }
+    if (sebab) hasil.push({ id: Number(k.id), nama: k.nama, sebab });
+  }
+  return { kelas: hasil, namaSekolah: pengaturan?.[0]?.nama_sekolah || '' };
+}
+
+function pesanGrupLibur(sekolah, tanggal, daftarKelas) {
+  const nama = [...new Set(daftarKelas.map(x => x.nama))].sort((a,b) => a.localeCompare(b, 'id'));
+  const sebab = [...new Set(daftarKelas.map(x => x.sebab))];
+  return [
+    '🌸 *INFORMASI LIBUR SEKOLAH*',
+    '',
+    'Assalamu’alaikum warahmatullahi wabarakatuh.',
+    '',
+    'Yth. Bapak/Ibu Wali Murid,',
+    '',
+    'Kami informasikan bahwa kegiatan belajar mengajar pada:',
+    '',
+    '📅 Hari/Tanggal: *' + formatTanggal(tanggal) + '*',
+    '',
+    '🏫 Kelas yang diliburkan: *' + nama.join(', ') + '*',
+    '📝 Keterangan: *' + sebab.join('; ') + '*',
+    '',
+    'Kegiatan belajar mengajar pada kelas tersebut diliburkan. Kegiatan belajar kembali dilaksanakan sesuai jadwal sekolah.',
+    '',
+    'Terima kasih atas perhatian dan kerja sama Bapak/Ibu. 😊',
+    '',
+    'Wassalamu’alaikum warahmatullahi wabarakatuh.',
+    '',
+    '🏫 *' + (sekolah || 'Sekolah') + '*'
+  ].join('\n');
+}
+
+async function kirimGrupLibur(tokenUtama, sekolahId, tanggal, lg) {
+  const data = await dataKelasLibur(sekolahId, tanggal);
+  if (!data.kelas.length) return { ok: 0, gagal: [] };
+  const kelasIds = data.kelas.map(x => x.id);
+  const relasi = await supabase(\`kelas_grup_wa?sekolah_id=eq.\${sekolahId}&kelas_id=in.(\${kelasIds.join(',')})&select=kelas_id,grup_wa_id\`);
+  if (!relasi?.length) return { ok: 0, gagal: [] };
+  const grupIds = [...new Set(relasi.map(x => Number(x.grup_wa_id)).filter(Number.isInteger))];
+  const [grupRows, tokenRows] = await Promise.all([
+    supabase(\`grup_wa?sekolah_id=eq.\${sekolahId}&id=in.(\${grupIds.join(',')})&select=id,grup_id,label,token_id\`),
+    supabase(\`fonnte_token?sekolah_id=eq.\${sekolahId}&select=id,token\`)
+  ]);
+  const kelasById = new Map(data.kelas.map(x => [String(x.id), x]));
+  const grupById = new Map((grupRows || []).map(x => [String(x.id), x]));
+  const tokenById = new Map((tokenRows || []).map(x => [String(x.id), x.token]));
+  const perGrup = new Map();
+  for (const r of relasi) {
+    const g = grupById.get(String(r.grup_wa_id));
+    const k = kelasById.get(String(r.kelas_id));
+    if (!g || !k || !g.grup_id) continue;
+    if (!perGrup.has(String(g.id))) perGrup.set(String(g.id), { grup:g, kelas:[] });
+    perGrup.get(String(g.id)).kelas.push(k);
+  }
+  const daftar = [...perGrup.values()].map(x => {
+    const token = x.grup.token_id ? tokenById.get(String(x.grup.token_id)) : tokenUtama;
+    return {
+      nama: 'Grup ' + (x.grup.label || x.grup.grup_id),
+      nomor: String(x.grup.grup_id),
+      token,
+      teks: pesanGrupLibur(data.namaSekolah, tanggal, x.kelas)
+    };
+  });
+  const gagal = [], logs = [];
+  let ok = 0, waktu = Math.floor(Date.now() / 1000);
+  const antre = [];
+  for (const x of daftar) {
+    if (!x.token) {
+      gagal.push(x.nama + ': token Fonnte grup tidak ditemukan');
+      logs.push(barisLog(lg, x.nama, x.nomor, 'gagal', null, 'Token Fonnte grup tidak ditemukan', null));
+      continue;
+    }
+    waktu += jedaAcak();
+    antre.push({ ...x, waktu });
+  }
+  for (let i = 0; i < antre.length; i += 5) {
+    const bagian = antre.slice(i, i + 5);
+    const hasil = await Promise.allSettled(bagian.map(x => kirimFonnte(x.token, x.nomor, x.teks, x.waktu)));
+    hasil.forEach((h, j) => {
+      const x = bagian[j];
+      if (h.status === 'fulfilled') {
+        ok++;
+        logs.push(barisLog(lg, x.nama, x.nomor, 'terjadwal', h.value, null, x.waktu));
+      } else {
+        const alasan = String((h.reason && h.reason.message) || h.reason);
+        gagal.push(x.nama + ': ' + alasan);
+        logs.push(barisLog(lg, x.nama, x.nomor, 'gagal', null, alasan, null));
+      }
+    });
+  }
+  await catatLog(logs);
+  return { ok, gagal };
+}
+
 // ALPA: pesan khusus wali kelas, memakai kepala dan penutup pesan untuk kepala sekolah.
 function pesanWali(teks, tanggal, daftarKelas) {
   const total = daftarKelas.reduce((n, k) => n + k.siswa.length, 0);
@@ -519,7 +647,7 @@ module.exports = async (req, res) => {
       sekolahId,
       jenis: jenisNotif,
       judul: 'Notifikasi ' + jenisNotif + (tanggal ? ' ' + tanggal : ''),
-      batch: crypto.randomUUID(),
+      batch: tabel === 'notifikasi_libur' ? `libur-auto-${sekolahId}-${tanggal}-${id}` : crypto.randomUUID(),
       // 'uji' hanya dikirim fungsi database developer_uji_notif_libur (dilindungi X-Alpa-Secret)
       olehDev: body.uji === true
     };
@@ -544,9 +672,13 @@ module.exports = async (req, res) => {
     // --------------------------------------------------------
     let tambahan = { ok: 0, gagal: [] };
     try {
-      tambahan = tabel === 'notifikasi_libur'
-        ? await kirimStafLibur(token, sekolahId, nomorTujuan, teks, lg)
-        : await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa, lg);
+      if (tabel === 'notifikasi_libur') {
+        const staf = await kirimStafLibur(token, sekolahId, nomorTujuan, teks, lg);
+        const grup = await kirimGrupLibur(token, sekolahId, tanggal || String(notif.tanggal || ''), lg);
+        tambahan = { ok: staf.ok + grup.ok, gagal: [...staf.gagal, ...grup.gagal] };
+      } else {
+        tambahan = await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa, lg);
+      }
 
       if (tambahan.gagal.length) {
         await updateNotifikasi(id, {
