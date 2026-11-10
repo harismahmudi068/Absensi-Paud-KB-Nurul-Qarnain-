@@ -1009,8 +1009,9 @@ const kopt2=s=>'<option value="">- Pilih kelas -</option>'+kopt(s,0);
 const kopt2s=s=>'<option value="">- Pilih kelas -</option><option value="*" '+(s==='*'?'selected':'')+'>Semua kelas</option>'+kopt(s,0);
 function enhanceCustomSelects(root=document){
  if(!window.__cselScrollHandler){let raf=0;const repos=()=>{raf=0;document.querySelectorAll('.csel.open').forEach(w=>{if(typeof w._cselReposisi==='function')w._cselReposisi()})};const jadwal=()=>{if(!raf)raf=requestAnimationFrame(repos)};window.addEventListener('scroll',jadwal,{capture:true,passive:true});window.addEventListener('resize',jadwal,{passive:true});window.__cselScrollHandler=true}
- root.querySelectorAll('select.select:not([data-csel-ready])').forEach(sel=>{
-  sel.dataset.cselReady='1';
+ const daftar=[];if(root.matches&&root.matches('select'))daftar.push(root);root.querySelectorAll('select:not([data-csel-ready])').forEach(sel=>daftar.push(sel));
+  daftar.filter(sel=>!sel.dataset.cselReady).forEach(sel=>{
+  sel.classList.add('select');sel.dataset.cselReady='1';
   const wrap=document.createElement('div');wrap.className='csel';
   const btn=document.createElement('button');btn.type='button';btn.className='csel-btn';btn.setAttribute('aria-disabled',sel.disabled?'true':'false');
   const txt=document.createElement('span'),arr=document.createElement('span');arr.className='csel-arrow';arr.textContent='▼';btn.append(txt,arr);
@@ -1022,7 +1023,7 @@ function enhanceCustomSelects(root=document){
   const rebuild=()=>{
    txt.textContent=sel.options[sel.selectedIndex]?.textContent||'Pilih kelas';
    list.innerHTML='';
-   [...sel.options].forEach((o,i)=>{const b=document.createElement('button');b.type='button';b.className='csel-opt'+(o.selected?' sel':'');b.dataset.search=o.textContent.toLowerCase();b.textContent=o.textContent;b.onclick=()=>{sel.selectedIndex=i;sel.dispatchEvent(new Event('change',{bubbles:true}));wrap.classList.remove('open','up');pop.classList.remove('csel-fixed');pop.style.left=pop.style.width=pop.style.top=pop.style.bottom=pop.style.right='';search.value='';filter();};list.appendChild(b)});
+   [...sel.options].forEach((o,i)=>{const b=document.createElement('button');b.type='button';b.disabled=!!o.disabled;b.className='csel-opt'+(o.selected?' sel':'');b.dataset.search=o.textContent.toLowerCase();b.textContent=o.textContent;b.onclick=()=>{sel.selectedIndex=i;sel.dispatchEvent(new Event('change',{bubbles:true}));wrap.classList.remove('open','up');pop.classList.remove('csel-fixed');pop.style.left=pop.style.width=pop.style.top=pop.style.bottom=pop.style.right='';search.value='';filter();};list.appendChild(b)});
   };
   const filter=()=>{const q=search.value.toLowerCase().trim();let n=0;list.querySelectorAll('.csel-opt').forEach(b=>{const ok=!q||b.dataset.search.includes(q);b.style.display=ok?'block':'none';if(ok)n++});let em=list.querySelector('.csel-empty');if(!n){if(!em){em=document.createElement('div');em.className='csel-empty';em.textContent='Tidak ditemukan';list.appendChild(em)}}else if(em)em.remove()};
   const posisikanPop=()=>{
@@ -1064,6 +1065,7 @@ function enhanceCustomSelects(root=document){
   };
   search.oninput=filter;
   sel.addEventListener('change',rebuild);
+  const optObs=new MutationObserver(()=>{rebuild();btn.setAttribute('aria-disabled',sel.disabled?'true':'false')});optObs.observe(sel,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['disabled','selected']});
   rebuild();
  });
 }
@@ -1071,7 +1073,7 @@ function cpick(id,label,value,items,onpick,placeholder){const val=String(value||
 function toggleCPick(id){document.querySelectorAll('.cpick.open').forEach(x=>{if(x.id!==id)x.classList.remove('open')});const e=$('#'+id);if(!e)return;e.classList.toggle('open');if(e.classList.contains('open')){const q=e.querySelector('.cpick-search');if(q)setTimeout(()=>q.focus(),0)}}
 function filterCPick(id,q){const e=$('#'+id);if(!e)return;const z=String(q||'').toLowerCase().trim();let n=0;e.querySelectorAll('.cpick-opt').forEach(b=>{const ok=!z||String(b.dataset.search||'').includes(z);b.style.display=ok?'block':'none';if(ok)n++});let em=e.querySelector('.cpick-empty-filter');if(!n){if(!em){em=document.createElement('div');em.className='cpick-empty cpick-empty-filter';em.textContent='Tidak ditemukan';e.querySelector('.cpick-pop').appendChild(em)}}else if(em)em.remove()}
 document.addEventListener('click',e=>{if(!e.target.closest('.cpick'))document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));if(!e.target.closest('.csel'))document.querySelectorAll('.csel.open').forEach(x=>{x.classList.remove('open','up');const p=x.querySelector('.csel-pop');if(p){p.classList.remove('csel-fixed');p.style.left=p.style.width=p.style.top=p.style.bottom=p.style.right=''}})});
-(function(){const pasang=()=>{const m=document.getElementById('mbd');if(!m||m._cselObs)return;m._cselObs=1;let q=0;new MutationObserver(()=>{if(q)return;q=1;queueMicrotask(()=>{q=0;enhanceCustomSelects(m)})}).observe(m,{childList:true,subtree:true})};pasang();document.addEventListener('DOMContentLoaded',pasang)})();
+(function(){const pasang=()=>['v','mbd'].forEach(id=>{const root=document.getElementById(id);if(!root||root._cselAutoObs)return;root._cselAutoObs=new MutationObserver(records=>{const added=[];records.forEach(r=>r.addedNodes.forEach(n=>{if(n.nodeType!==1)return;if((n.matches&&n.matches('select'))||(n.querySelector&&n.querySelector('select')))added.push(n)}));if(added.length)queueMicrotask(()=>added.forEach(n=>enhanceCustomSelects(n)))});root._cselAutoObs.observe(root,{childList:true,subtree:true})});pasang();document.addEventListener('DOMContentLoaded',pasang)})();
 const normWA=n=>{let d=String(n||'').replace(/\D/g,'');if(d[0]==='0')d='62'+d.slice(1);else if(d[0]==='8')d='62'+d;return d};
 /* pencarian nomor WhatsApp: cocok untuk 08..., 628..., atau sebagian nomor (min. 3 angka) */
 const cocokWA=(wa,z)=>{const d=String(z||'').replace(/\D/g,'');if(d.length<3)return false;const w=normWA(wa);if(!w)return false;return w.includes(d)||w.includes(normWA(d))};
