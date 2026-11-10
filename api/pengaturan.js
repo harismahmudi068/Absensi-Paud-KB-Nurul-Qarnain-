@@ -201,6 +201,31 @@ module.exports = async (req, res) => {
       return (x && x[0] && x[0].nama) || 'Sekolah';
     };
 
+    const ambilPemetaan = async () => {
+      const map = (await panggil(`/rest/v1/kelas_grup_wa?sekolah_id=eq.${sekolahId}&select=id,kelas_id,grup_wa_id&order=id.asc`, 'GET')) || [];
+      if (!map.length) return [];
+      const kIds = [...new Set(map.map(x => x.kelas_id))];
+      const gIds = [...new Set(map.map(x => x.grup_wa_id))];
+      const [kelas, grup] = await Promise.all([
+        panggil(`/rest/v1/kelas?sekolah_id=eq.${sekolahId}&id=in.(${kIds.join(',')})&select=id,nama`, 'GET'),
+        panggil(`/rest/v1/grup_wa?sekolah_id=eq.${sekolahId}&id=in.(${gIds.join(',')})&select=id,label,grup_id`, 'GET')
+      ]);
+      return map.map(x => ({
+        id: x.id, kelas_id: x.kelas_id, grup_wa_id: x.grup_wa_id,
+        kelas_nama: (kelas || []).find(k => k.id === x.kelas_id)?.nama || 'Kelas',
+        grup_label: (grup || []).find(g => g.id === x.grup_wa_id)?.label || 'Grup',
+        grup_id: (grup || []).find(g => g.id === x.grup_wa_id)?.grup_id || ''
+      }));
+    };
+    const ambilNotifLibur = async () => {
+      const rows = (await panggil(`/rest/v1/notifikasi_libur_grup?sekolah_id=eq.${sekolahId}&select=id,tanggal,jenis,kelas_nama,target,status,percobaan,error,dibuat,terkirim&order=dibuat.desc&limit=25`, 'GET')) || [];
+      return rows;
+    };
+    const ambilJamNotifLibur = async () => {
+      const rows = await panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sekolahId}&select=notif_libur_grup_jam`, 'GET');
+      return String((rows && rows[0] && rows[0].notif_libur_grup_jam) || '05:00').slice(0,5);
+    };
+
     // Penerima uji tes hanya boleh anggota aktif sekolah dengan peran pengelola.
     const ambilPenerimaTes = async () => {
       const anggota = await panggil(
@@ -249,7 +274,7 @@ module.exports = async (req, res) => {
     // BACA
     // ---------------------------------------------------------
     if (b.aksi === 'baca') {
-      const [r, tk, gp, penerimaTes] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes()]);
+      const [r, tk, gp, penerimaTes, pemetaan, notifLibur, jamNotifLibur] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes(), ambilPemetaan(), ambilNotifLibur(), ambilJamNotifLibur()]);
       const tampil = !!b.tampilkan && isDev;
       if (tampil) await catat(user.id, sekolahId, 'lihat_rahasia', 'kunci AI dan token Fonnte');
       return res.status(200).json({
@@ -263,6 +288,9 @@ module.exports = async (req, res) => {
           nilai: tampil ? t.token : undefined
         })),
         grup: gp.map((g) => ({ id: g.id, grup_id: g.grup_id, label: g.label || '', token_id: g.token_id })),
+        pemetaan,
+        notif_libur_grup: notifLibur,
+        jam_notif_libur_grup: jamNotifLibur,
         nomor_kepala: r.nomor_kepala || '',
         penerima_tes: penerimaTes
       });
@@ -385,6 +413,49 @@ module.exports = async (req, res) => {
       if (!Number.isInteger(id) || id <= 0) throw new Error('Grup tidak valid');
       await panggil(`/rest/v1/grup_wa?id=eq.${id}&sekolah_id=eq.${sekolahId}`, 'DELETE');
       await catat(user.id, sekolahId, 'grup_wa_hapus', String(id));
+      return res.status(200).json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
+    // PEMETAAN KELAS KE ID GRUP WHATSAPP (hak akses mengikuti konfigurasi)
+    // ---------------------------------------------------------
+    if (b.aksi === 'pemetaan_tambah') {
+      const kelasId = Number(b.kelas_id), grupId = Number(b.grup_wa_id);
+      if (!Number.isInteger(kelasId) || kelasId <= 0 || !Number.isInteger(grupId) || grupId <= 0)
+        throw new Error('Kelas atau grup tidak valid');
+      const [kelas, grup] = await Promise.all([
+        panggil(`/rest/v1/kelas?id=eq.${kelasId}&sekolah_id=eq.${sekolahId}&select=id`, 'GET'),
+        panggil(`/rest/v1/grup_wa?id=eq.${grupId}&sekolah_id=eq.${sekolahId}&select=id`, 'GET')
+      ]);
+      if (!kelas.length || !grup.length) throw new Error('Kelas dan grup harus berasal dari sekolah yang sama');
+      try {
+        await panggil('/rest/v1/kelas_grup_wa', 'POST',
+          { sekolah_id: sekolahId, kelas_id: kelasId, grup_wa_id: grupId },
+          { Prefer: 'return=minimal' });
+      } catch (e) {
+        if (/duplicate|unique|already/i.test(e.message)) throw new Error('Pemetaan kelas dan grup ini sudah ada');
+        throw e;
+      }
+      await catat(user.id, sekolahId, 'pemetaan_kelas_grup_tambah', kelasId + ' -> ' + grupId);
+      return res.status(200).json({ ok: true });
+    }
+
+    if (b.aksi === 'pemetaan_hapus') {
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id <= 0) throw new Error('Pemetaan tidak valid');
+      await panggil(`/rest/v1/kelas_grup_wa?id=eq.${id}&sekolah_id=eq.${sekolahId}`, 'DELETE');
+      await catat(user.id, sekolahId, 'pemetaan_kelas_grup_hapus', String(id));
+      return res.status(200).json({ ok: true });
+    }
+
+    if (b.aksi === 'set_jam_notif_libur_grup') {
+      if (!isDev) throw new Error('Hanya Developer yang boleh mengubah jam notifikasi libur grup');
+      const jam = String(b.jam || '');
+      if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(jam)) throw new Error('Format jam harus HH:MM');
+      await panggil('/rest/v1/pengaturan?on_conflict=sekolah_id', 'POST',
+        { sekolah_id: sekolahId, notif_libur_grup_jam: jam + ':00' },
+        { Prefer: 'resolution=merge-duplicates,return=minimal' });
+      await catat(user.id, sekolahId, 'ubah_jam_notifikasi_libur_grup', jam);
       return res.status(200).json({ ok: true });
     }
 
