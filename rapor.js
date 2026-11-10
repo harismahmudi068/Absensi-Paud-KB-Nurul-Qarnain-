@@ -33,6 +33,13 @@ const Rapor = (() => {
     return g;
   }
   const nip = s => { const a = String(s || '').replace(/\D/g, ''); return a.length === 18 ? a.slice(0, 8) + ' ' + a.slice(8, 14) + ' ' + a.slice(14, 15) + ' ' + a.slice(15) : String(s || '').trim(); };
+  /* wali kelas yang tampil di raport. Bila pemanggil mengirim o.wali (halaman guru: wali kelas yang SEKARANG menjabat di kelas raport itu,
+     kosong bila kelas tidak punya wali), itulah satu-satunya yang dipakai dan salinan nama di baris raport (wali_nama) diabaikan.
+     Salinan itu hanya dipakai bila o.wali tidak dikirim sama sekali (halaman portal orang tua). */
+  const waliTampil = (r, o) => {
+    if (o.wali !== undefined) return o.wali && o.wali.nama ? Object.assign({}, o.wali) : {};
+    return r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : {};
+  };
 
   /* ---------------- Raport perkembangan: aturan teks otomatis ---------------- */
   const BLN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -108,10 +115,14 @@ const Rapor = (() => {
       const i = x.i, lv = +N[i.id] || 0;
       return { no: x.no, kd: x.kd || '-', t: i.t || '', lv, cap: OV[i.id] != null && OV[i.id] !== '' ? String(OV[i.id]) : cap(i, lv, nama, S), cat: OC[i.id] != null && OC[i.id] !== '' ? String(OC[i.id]) : catI(i, lv, S) };
     }) })) }));
-    const w = r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : (o.wali || {});
+    const w = waliTampil(r, o);
     const kp = r.kepsek_nama ? { nama: r.kepsek_nama, nip: nip(r.kepsek_nip) } : (o.kepsek || {});
+    if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
+    if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
     /* pengelola: rapor terbit memakai nama yang dibekukan saat terbit; kosong = tidak ada tempat tanda tangan */
-    const pg = r.status === 'terbit' ? (r.pengelola_nama ? { nama: r.pengelola_nama, nip: nip(r.pengelola_nip) } : null) : (o.pengelola && o.pengelola.nama ? o.pengelola : null);
+    const pgAktif = o.pengelola && o.pengelola.nama ? o.pengelola : null;
+    const pg = !pgAktif ? null : (r.status === 'terbit' ? (r.pengelola_nama ? { nama: r.pengelola_nama, nip: nip(r.pengelola_nip) } : pgAktif) : pgAktif);
+    if (pg && o.pengelola && o.pengelola.ttd) pg.ttd = o.pengelola.ttd;
     /* kolom bulan: data.bl (kunci 'YYYY-MM', maksimal 12) bila valid; data lama tanpa bl = 6 bulan bawaan semester */
     const blOk = Array.isArray(d.bl) && d.bl.length > 0 && d.bl.length <= 12 && d.bl.every(k => /^\d{4}-(0[1-9]|1[0-2])$/.test(k));
     const bulan = blOk ? d.bl.map(k => d.bl.length > 6 ? BLN[+k.slice(5) - 1].slice(0, 3) : BLN[+k.slice(5) - 1]) : (r.semester === 1 ? BLN.slice(6) : BLN.slice(0, 6)), tb = d.tb || [];
@@ -120,7 +131,7 @@ const Rapor = (() => {
     const uas2 = r.jenis === 'UAS' && +r.semester === 2, kj = r.status === 'terbit' ? r.keputusan : (o.keputusan || r.keputusan), kt = r.status === 'terbit' ? r.kelas_tujuan : (o.kelasTujuan || r.kelas_tujuan);
     const kep = uas2 && ['naik', 'tinggal', 'lulus'].includes(kj) ? { j: kj, t: kj === 'naik' ? String(kt || '') : '' } : { j: '', t: '' };
     return {
-      fmt: 'perkembangan', logo: o.logo || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
+      fmt: 'perkembangan', logo: o.logo || null, stempel: o.stempel || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
       nama: o.nama || '', nisn: o.nisn || '', kelas: r.kelas_nama || o.kelas || '',
       ttl: [o.tempatLahir, tglIndo(o.tglLahir, true)].filter(Boolean).join(', '),
       kelompokLabel: o.kelompokLabel || 'Kelompok Usia', kelompok: o.kelompok || '',
@@ -136,13 +147,15 @@ const Rapor = (() => {
   const susun = (r, o) => r && r.fmt === 'perkembangan' ? susunP(r, o) : susunN(r, o);
 
   /* r = baris tabel rapor. o = {logo, sekolah, alamat, nama, nisn, kelas, wali:{nama,nip}, kepsek:{nama,nip}}
-     (wali/kepsek dari o hanya dipakai bila raport belum menyimpan salinannya) */
+     (wali dari o menjadi satu-satunya wali yang tampil bila dikirim; kepsek dari o hanya dipakai bila raport belum menyimpan salinannya) */
   function susunN(r, o) {
     o = o || {};
-    const w = r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : (o.wali || {});
+    const w = waliTampil(r, o);
     const kp = r.kepsek_nama ? { nama: r.kepsek_nama, nip: nip(r.kepsek_nip) } : (o.kepsek || {});
+    if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
+    if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
     return {
-      logo: o.logo || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
+      logo: o.logo || null, stempel: o.stempel || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
       nama: o.nama || '', nisn: o.nisn || '', kelas: r.kelas_nama || o.kelas || '',
       semTxt: r.semester + ' (' + (r.semester === 1 ? 'Ganjil' : 'Genap') + ') - ' + r.jenis, ta: r.tahun_ajaran || '',
       wali: w, kepsek: kp,
@@ -177,7 +190,12 @@ const Rapor = (() => {
     const ty = Math.max(14, pusatLogo - (tinggi - 2.7) / 2);
     doc.setFont('times', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...NV);
     spasi(tajuk, 105, ty, 1.1);
-    if (D.logo) { const m = LM, sc = Math.min(m / D.logo.w, m / D.logo.h), w = D.logo.w * sc, h = D.logo.h * sc; doc.addImage(D.logo.url, 'PNG', L + 2 + (m - w) / 2, LY + (m - h) / 2, w, h); }
+    if (D.logo && D.logo.url && D.logo.w > 0 && D.logo.h > 0) {
+      /* Fit ke kotak persegi tanpa memaksa lebar/tinggi sama: logo bulat tetap bulat. */
+      const m = LM, rasio = D.logo.w / D.logo.h;
+      const w = rasio >= 1 ? m : m * rasio, h = rasio >= 1 ? m / rasio : m;
+      doc.addImage(D.logo.url, 'PNG', L + 2 + (m - w) / 2, LY + (m - h) / 2, w, h);
+    }
     const y0 = ty + JARAK;
     doc.setFont('times', 'bold'); doc.setFontSize(15); doc.setTextColor(...NV);
     nl.forEach((t, i) => doc.text(t, 105, y0 + i * 6.5, { align: 'center' }));
@@ -190,6 +208,8 @@ const Rapor = (() => {
   }
 
   /* ---------------- DESAIN RAPORT NILAI ANGKA (format lama) ---------------- */
+  function ttdTampil(doc,url,cx,y,mw,mh){const im=imgC[url];if(!im)return;const iw=im.naturalWidth||im.width||1,ih=im.naturalHeight||im.height||1,sc=Math.min(mw/iw,mh/ih),w=iw*sc,h=ih*sc;doc.addImage(url,'PNG',cx-w/2,y+(mh-h)/2,w,h)}
+
   function gambarN(doc, D) {
     const A = alat(doc), { L, R, W, BAWAH } = A, { bingkai, judul, muat, titik, spasi } = A;
     const halBaru = () => { doc.addPage(); bingkai(); return 18; };
@@ -276,15 +296,26 @@ const Rapor = (() => {
     /* --- Tanda tangan --- */
     let sy = Math.max(y + 4, 238); if (sy + 32 > 288) sy = halBaru() + 6;
     const wl0 = D.wali || {}, kp0 = D.kepsek || {}, PT = [{ l: 'Orang Tua / Wali', ot: 1 }];
-    if (wl0.nama) PT.push({ l: 'Wali Kelas', n: wl0.nama, p: wl0.nip });
-    if (kp0.nama) PT.push({ l: 'Kepala Sekolah', n: kp0.nama, p: kp0.nip });
+    if (wl0.nama) PT.push({ l: 'Wali Kelas', n: wl0.nama, p: wl0.nip, ttd: wl0.ttd });
+    if (kp0.nama) PT.push({ l: 'Kepala Sekolah', n: kp0.nama, p: kp0.nip, ttd: kp0.ttd });
     const sx = PT.length === 3 ? [L + 30, 105, R - 30] : PT.length === 2 ? [L + 45, R - 45] : [105];
     PT.forEach((q, i) => {
       const x = sx[i];
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(q.l, x, sy, { align: 'center' });
+      if (q.ttd) ttdTampil(doc, q.ttd, x, sy + 7, 22, 13);
       const ny = sy + 26; doc.text('( ' + (q.n || '............................') + ' )', x, ny, { align: 'center' });
       if (!q.ot) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (q.p || '...............'), x, ny + 4.5, { align: 'center' }); }
     });
+    const school=PT.map((q,i)=>({q,x:sx[i]})).filter(x=>!x.q.ot),scx=school.length>1?(school[0].x+school[school.length-1].x)/2:(school[0]&&school[0].x);
+    if(school.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...TX);doc.text('Mengetahui:',scx,sy-6,{align:'center'});}
+    if(D.stempel&&D.stempel.url&&school.length){
+      /* Stempel diperbesar dan rasio gambar dipertahankan; satu penandatangan tetap di sisi kiri. */
+      const single=school.length===1, boxW=single?29:34, boxH=single?24:28;
+      const stx=single?school[0].x-36:scx-boxW/2;
+      const im=imgC[D.stempel.url], iw=im&&(im.naturalWidth||im.width)||boxW, ih=im&&(im.naturalHeight||im.height)||boxH;
+      const sc=Math.min(boxW/iw,boxH/ih), sw=iw*sc, sh=ih*sc;
+      doc.addImage(D.stempel.url,'PNG',stx+(boxW-sw)/2,sy+4+(boxH-sh)/2,sw,sh);
+    }
   }
 
   /* ---------------- DESAIN RAPORT PERKEMBANGAN (aspek > kategori > indikator) ---------------- */
@@ -422,18 +453,28 @@ const Rapor = (() => {
     if (y + 45 > 285) y = halBaru() + 2;
     if (D.tgl) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text('Diterbitkan: ' + (D.kota ? D.kota + ', ' : '') + D.tgl + '.', R, y + 4, { align: 'right' }); }
     const pg = D.pengelola && D.pengelola.nama ? D.pengelola : null, wl = D.wali || {}, kp = D.kepsek || {};
-    const P = [['Orang Tua / Wali', '', '', true]];
-    if (wl.nama) P.push(['Wali Kelas', wl.nama, wl.nip]);
-    if (pg) P.push(['Pengelola/Pengasuh', pg.nama, pg.nip]);
-    if (kp.nama) P.push(['Kepala Sekolah', kp.nama, kp.nip]);
+    const P = [['Orang Tua / Wali', '', '', true, null]];
+    if (wl.nama) P.push(['Wali Kelas', wl.nama, wl.nip, false, wl.ttd]);
+    if (pg) P.push(['Pengelola/Pengasuh', pg.nama, pg.nip, false, pg.ttd]);
+    if (kp.nama) P.push(['Kepala Sekolah', kp.nama, kp.nip, false, kp.ttd]);
     const nP = P.length, CX = nP === 4 ? [0, 1, 2, 3].map(i => L + 22.75 + i * 45.5) : nP === 3 ? [L + 30, 105, R - 30] : nP === 2 ? [L + 45, R - 45] : [105], yl = y + 18;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX);
     if (nP > 1) doc.text('Mengetahui:', nP === 4 ? (CX[2] + CX[3]) / 2 : CX[nP - 1], yl - 6, { align: 'center' });
     P.forEach((p, i) => {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(p[0], CX[i], yl, { align: 'center' });
+      if (p[4]) ttdTampil(doc, p[4], CX[i], yl + 3, 22, 11);
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
+    if(D.stempel&&D.stempel.url&&nP>1){
+      /* Stempel diperbesar tanpa mengubah rasio; satu pejabat Mengetahui tetap mendapat posisi di kiri. */
+      const single=nP!==4, boxW=single?29:32, boxH=single?24:26;
+      const center=nP===4?(CX[2]+CX[3])/2:CX[nP-1];
+      const stx=single?center-36:center-boxW/2;
+      const im=imgC[D.stempel.url], iw=im&&(im.naturalWidth||im.width)||boxW, ih=im&&(im.naturalHeight||im.height)||boxH;
+      const sc=Math.min(boxW/iw,boxH/ih), sw=iw*sc, sh=ih*sc;
+      doc.addImage(D.stempel.url,'PNG',stx+(boxW-sw)/2,yl+3+(boxH-sh)/2,sw,sh);
+    }
     kaki();
   }
   const gambar = (doc, D) => D && D.fmt === 'perkembangan' ? gambarP(doc, D) : gambarN(doc, D);

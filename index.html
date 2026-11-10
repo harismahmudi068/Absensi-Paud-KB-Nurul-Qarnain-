@@ -7,7 +7,7 @@ button,input,select{font:inherit}button{cursor:pointer}.hid{display:none!importa
 .app{display:flex;min-height:100vh}
 .sidebar{width:250px;flex:0 0 250px;background:linear-gradient(180deg,#176b3a,#0d542c 58%,#68469f);color:#fff;padding:16px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;overflow:auto}
 .logo.ada{background:transparent;border-radius:0}.logo.ada img{border-radius:0}
-.logo img,.hr-body i img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}.hr-body i{flex:0 0 auto}.hr-body i img{width:auto;height:auto;max-width:130px;max-height:88px;border-radius:0}.lgprev{width:96px;height:96px;border-radius:18px;border:1px solid var(--bd,#d6e4dc);background:#fff;display:grid;place-items:center;overflow:hidden;font-size:40px}.lgprev img{width:100%;height:100%;object-fit:contain}
+.logo img,.hr-body i img{display:block;width:100%;height:100%;object-fit:contain;border-radius:inherit}.hr-body i{flex:0 0 auto}.hr-body i img{width:auto;height:auto;max-width:130px;max-height:88px;border-radius:0}.lgprev{width:96px;height:96px;border-radius:18px;border:1px solid var(--bd,#d6e4dc);background:#fff;display:grid;place-items:center;overflow:hidden;font-size:40px}.lgprev img{width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;aspect-ratio:auto}
 .brand{display:flex;gap:10px;align-items:center;padding:6px 8px 18px}.logo{width:44px;height:44px;border-radius:14px;background:var(--cr);display:grid;place-items:center;font-size:24px}.brand small{opacity:.75}
 .nav{display:grid;gap:4px}.nav button{border:0;background:transparent;color:#eef6ee;text-align:left;padding:11px 12px;border-radius:12px;display:flex;gap:10px;font-weight:700}
 .nav button.on,.nav button:hover{background:linear-gradient(90deg,#2ab968,#168449);color:#fff}
@@ -701,6 +701,38 @@ select.click-fx,.select.click-fx{animation:btnClick .38s ease-out}
 .rkw{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;font-size:12px;opacity:.85}
 .rkw span{white-space:nowrap}
 </style>
+<style id="optimasi-animasi-ringan">
+/* Animasi ringan: utamakan perubahan warna dan bayangan, hindari hitung ulang layout */
+button,.btn{
+  transition:background-color .14s ease,color .14s ease,border-color .14s ease,box-shadow .14s ease,filter .14s ease!important;
+}
+button:active:not(:disabled){
+  transform:none!important;
+  filter:brightness(1.04);
+}
+/* Efek klik dibuat singkat dan tidak memakai efek gelombang yang mahal */
+button.click-fx,button.click-fx::after{
+  animation:none!important;
+}
+button.click-fx::after{display:none!important}
+/* Panel menu tetap bergerak halus, tetapi tombol tidak dianimasikan satu per satu */
+#drw.show .modal{animation-duration:.22s!important}
+#drw.show:not(.side) .modal{animation-duration:.22s!important}
+#drw.show .nav button,
+#drw.show:not(.side) .nav button{
+  animation:none!important;
+}
+/* Siapkan panel pada compositor hanya selama sedang tampil */
+#drw.show .modal{
+  backface-visibility:hidden;
+  will-change:transform;
+}
+#drw:not(.show) .modal{will-change:auto}
+/* Hormati pengaturan pengurangan gerakan dari perangkat */
+@media(prefers-reduced-motion:reduce){
+  button,.btn,#drw.show .modal{transition:none!important;animation:none!important}
+}
+</style>
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">Selamat Datang</h2><p class="mu" style="text-align:center;margin:0 0 16px">di Sistem Absensi. Silakan masukkan username dan kata sandi Anda.</p>
 <label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
@@ -721,16 +753,23 @@ select.click-fx,.select.click-fx{animation:btnClick .38s ease-out}
 <input type="file" id="fotoFile" accept="image/*" class="hid" onchange="fotoDipilih(this)">
 <script>
 const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j4AB79X1wVZVLgdfcO0sAQ_EMFBq3KN';
-/* ---------- animasi proses pada setiap tombol ---------- */
+/* ---------- spinner hanya untuk tindakan pengelolaan data ---------- */
 (function(){let n=0;const asli=window.fetch.bind(window);
- window.fetch=function(){n++;return asli.apply(null,arguments).finally(()=>{n--})};
- document.addEventListener('click',e=>{const b=e.target&&e.target.closest?e.target.closest('button,a.btn'):null;
-  if(!b||b.disabled||b.classList.contains('busy')||b.classList.contains('nobusy'))return;
-  const t0=Date.now();
-  setTimeout(()=>{if(!b.isConnected||b.disabled||b.classList.contains('download-busy'))return;
-   b.classList.add('busy');
-   const cek=()=>{if(!b.isConnected)return;if(n>0||Date.now()-t0<700)setTimeout(cek,120);else b.classList.remove('busy')};
-   setTimeout(cek,120);setTimeout(()=>b.classList.remove('busy'),20000)},0)},true)})();
+ window.fetch=function(){n++;return asli.apply(null,arguments).finally(()=>{n=Math.max(0,n-1)})};
+ const aksiData=/^(simpan|tambah|ubah|edit|hapus|keluarkan|impor|import|kirim|setujui|tolak|konfirmasi|terbitkan|buat|perbarui|update)(\b|\s)/i;
+ document.addEventListener('click',e=>{const b=e.target&&e.target.closest?e.target.closest('button.btn'):null;
+  if(!b||b.disabled||b.classList.contains('busy')||b.classList.contains('download-busy'))return;
+  const label=String(b.textContent||'').trim().replace(/^[^\p{L}\p{N}]*/u,'');
+  if(!aksiData.test(label))return;
+  const t0=Date.now();let tampil=false,selesai=false;
+  const cek=()=>{if(selesai||!b.isConnected)return;
+   if(Date.now()-t0<700){setTimeout(cek,100);return}
+   if(n>0){if(!tampil&&!b.disabled){b.classList.add('busy');tampil=true}setTimeout(cek,120)}
+   else{if(tampil)b.classList.remove('busy');selesai=true}
+  };
+  setTimeout(cek,0);
+  setTimeout(()=>{selesai=true;if(tampil&&b.isConnected)b.classList.remove('busy')},20000);
+ },true)})();
 /* ---------- pustaka besar dimuat saat dibutuhkan (bukan saat aplikasi dibuka) ----------
    Excel (xlsx, exceljs), PDF (jspdf + autotable), dan scan QR (html5-qrcode) hanya diunduh saat tombolnya dipakai. */
 const LIB_URL={xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',exceljs:'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',pdf:'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',autotable:'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',scan:'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'};
@@ -889,6 +928,7 @@ const MENUS=[['dashboard','Dashboard','⌂','KGD'],['absensi','Absensi','✍️'
 const MENU_GRUP=[['Utama',['dashboard','profil']],['Kegiatan Harian',['absensi','scan','piket','hafalan','tabungan']],['Data Sekolah',['siswa','alumni','kartu','guru','kelasjam']],['Kelola Raport',['kelola','penilaian','raport']],['Laporan &amp; Komunikasi',['rekap','laporanortu','pesan']],['Pengaturan',['tahunajaran','libur','pengaturan']]];
 const LBL={kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',pengelola:'Pengelola/Pengasuh',operator:'Operator',guru:'Guru',developer:'Developer'},KEYR={'Kepala Sekolah':'kepala_sekolah','Wakil Kepala Sekolah':'wakil_kepala','Pengelola/Pengasuh':'pengelola','Operator':'operator','Guru':'guru','Developer':'developer'},RC={'Kepala Sekolah':'K','Wakil Kepala Sekolah':'K','Pengelola/Pengasuh':'K','Operator':'K','Guru':'G','Developer':'D'};
 const adalahKepala=()=>role==='Kepala Sekolah'||role==='Wakil Kepala Sekolah'||role==='Pengelola/Pengasuh'||role==='Operator';
+const bolehKelolaTtdGuru=()=>!MB()&&['Kepala Sekolah','Wakil Kepala Sekolah','Pengelola/Pengasuh','Operator','Developer'].includes(role);
 let S={siswa:[],kelas:[],guru:[],libur:[],mingguan:[],set:{},absen:{},pesan:[],kirim:{}},me=null,meNama='',role='',view='dashboard',attDate=TODAY,attKelas='',draft=null,bulan=TODAY.slice(0,7),rk='',kk='',q='',lo='',lb=TODAY.slice(0,7),chk=null,okL={},liburPrompted={},cam='belakang',scanner=null,busy=false,lastKode='',lastAt=0;
 async function dbq(p){const r=await p;if(r.error)throw r.error;return r.data}
 let ldn=0;function ld(on,m){ldn=Math.max(0,ldn+(on?1:-1));if(on)$('#ldt').textContent=m||'Memuat...';$('#ld').style.display=ldn?'flex':'none'}
@@ -968,8 +1008,10 @@ const kopt3=s=>'<option value="">- Pilih kelas -</option><option value="*" '+(s=
 const kopt2=s=>'<option value="">- Pilih kelas -</option>'+kopt(s,0);
 const kopt2s=s=>'<option value="">- Pilih kelas -</option><option value="*" '+(s==='*'?'selected':'')+'>Semua kelas</option>'+kopt(s,0);
 function enhanceCustomSelects(root=document){
- root.querySelectorAll('select.select:not([data-csel-ready])').forEach(sel=>{
-  sel.dataset.cselReady='1';
+ if(!window.__cselScrollHandler){let raf=0;const repos=()=>{raf=0;document.querySelectorAll('.csel.open').forEach(w=>{if(typeof w._cselReposisi==='function')w._cselReposisi()})};const jadwal=()=>{if(!raf)raf=requestAnimationFrame(repos)};window.addEventListener('scroll',jadwal,{capture:true,passive:true});window.addEventListener('resize',jadwal,{passive:true});window.__cselScrollHandler=true}
+ const daftar=[];if(root.matches&&root.matches('select'))daftar.push(root);root.querySelectorAll('select:not([data-csel-ready])').forEach(sel=>daftar.push(sel));
+  daftar.filter(sel=>!sel.dataset.cselReady).forEach(sel=>{
+  sel.classList.add('select');sel.dataset.cselReady='1';
   const wrap=document.createElement('div');wrap.className='csel';
   const btn=document.createElement('button');btn.type='button';btn.className='csel-btn';btn.setAttribute('aria-disabled',sel.disabled?'true':'false');
   const txt=document.createElement('span'),arr=document.createElement('span');arr.className='csel-arrow';arr.textContent='▼';btn.append(txt,arr);
@@ -981,7 +1023,7 @@ function enhanceCustomSelects(root=document){
   const rebuild=()=>{
    txt.textContent=sel.options[sel.selectedIndex]?.textContent||'Pilih kelas';
    list.innerHTML='';
-   [...sel.options].forEach((o,i)=>{const b=document.createElement('button');b.type='button';b.className='csel-opt'+(o.selected?' sel':'');b.dataset.search=o.textContent.toLowerCase();b.textContent=o.textContent;b.onclick=()=>{sel.selectedIndex=i;sel.dispatchEvent(new Event('change',{bubbles:true}));wrap.classList.remove('open','up');pop.classList.remove('csel-fixed');pop.style.left=pop.style.width=pop.style.top=pop.style.bottom=pop.style.right='';search.value='';filter();};list.appendChild(b)});
+   [...sel.options].forEach((o,i)=>{const b=document.createElement('button');b.type='button';b.disabled=!!o.disabled;b.className='csel-opt'+(o.selected?' sel':'');b.dataset.search=o.textContent.toLowerCase();b.textContent=o.textContent;b.onclick=()=>{sel.selectedIndex=i;sel.dispatchEvent(new Event('change',{bubbles:true}));wrap.classList.remove('open','up');pop.classList.remove('csel-fixed');pop.style.left=pop.style.width=pop.style.top=pop.style.bottom=pop.style.right='';search.value='';filter();};list.appendChild(b)});
   };
   const filter=()=>{const q=search.value.toLowerCase().trim();let n=0;list.querySelectorAll('.csel-opt').forEach(b=>{const ok=!q||b.dataset.search.includes(q);b.style.display=ok?'block':'none';if(ok)n++});let em=list.querySelector('.csel-empty');if(!n){if(!em){em=document.createElement('div');em.className='csel-empty';em.textContent='Tidak ditemukan';list.appendChild(em)}}else if(em)em.remove()};
   const posisikanPop=()=>{
@@ -1002,6 +1044,7 @@ function enhanceCustomSelects(root=document){
     pop.style.bottom=Math.max(8,window.innerHeight-r.top+7)+'px';
    }
   };
+  wrap._cselReposisi=posisikanPop;
   const tutupPop=()=>{
    wrap.classList.remove('open','up');
    pop.classList.remove('csel-fixed');
@@ -1020,10 +1063,9 @@ function enhanceCustomSelects(root=document){
    else{wrap.classList.add('open');requestAnimationFrame(posisikanPop);}
    if(wrap.classList.contains('open'))setTimeout(()=>search.focus(),0);
   };
-  window.addEventListener('resize',posisikanPop);
-  window.addEventListener('scroll',posisikanPop,true);
   search.oninput=filter;
   sel.addEventListener('change',rebuild);
+  const optObs=new MutationObserver(()=>{rebuild();btn.setAttribute('aria-disabled',sel.disabled?'true':'false')});optObs.observe(sel,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['disabled','selected']});
   rebuild();
  });
 }
@@ -1031,7 +1073,7 @@ function cpick(id,label,value,items,onpick,placeholder){const val=String(value||
 function toggleCPick(id){document.querySelectorAll('.cpick.open').forEach(x=>{if(x.id!==id)x.classList.remove('open')});const e=$('#'+id);if(!e)return;e.classList.toggle('open');if(e.classList.contains('open')){const q=e.querySelector('.cpick-search');if(q)setTimeout(()=>q.focus(),0)}}
 function filterCPick(id,q){const e=$('#'+id);if(!e)return;const z=String(q||'').toLowerCase().trim();let n=0;e.querySelectorAll('.cpick-opt').forEach(b=>{const ok=!z||String(b.dataset.search||'').includes(z);b.style.display=ok?'block':'none';if(ok)n++});let em=e.querySelector('.cpick-empty-filter');if(!n){if(!em){em=document.createElement('div');em.className='cpick-empty cpick-empty-filter';em.textContent='Tidak ditemukan';e.querySelector('.cpick-pop').appendChild(em)}}else if(em)em.remove()}
 document.addEventListener('click',e=>{if(!e.target.closest('.cpick'))document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));if(!e.target.closest('.csel'))document.querySelectorAll('.csel.open').forEach(x=>{x.classList.remove('open','up');const p=x.querySelector('.csel-pop');if(p){p.classList.remove('csel-fixed');p.style.left=p.style.width=p.style.top=p.style.bottom=p.style.right=''}})});
-(function(){const pasang=()=>{const m=document.getElementById('mbd');if(!m||m._cselObs)return;m._cselObs=1;let q=0;new MutationObserver(()=>{if(q)return;q=1;queueMicrotask(()=>{q=0;enhanceCustomSelects(m)})}).observe(m,{childList:true,subtree:true})};pasang();document.addEventListener('DOMContentLoaded',pasang)})();
+(function(){const pasang=()=>['v','mbd'].forEach(id=>{const root=document.getElementById(id);if(!root||root._cselAutoObs)return;root._cselAutoObs=new MutationObserver(records=>{const added=[];records.forEach(r=>r.addedNodes.forEach(n=>{if(n.nodeType!==1)return;if((n.matches&&n.matches('select'))||(n.querySelector&&n.querySelector('select')))added.push(n)}));if(added.length)queueMicrotask(()=>added.forEach(n=>enhanceCustomSelects(n)))});root._cselAutoObs.observe(root,{childList:true,subtree:true})});pasang();document.addEventListener('DOMContentLoaded',pasang)})();
 const normWA=n=>{let d=String(n||'').replace(/\D/g,'');if(d[0]==='0')d='62'+d.slice(1);else if(d[0]==='8')d='62'+d;return d};
 /* pencarian nomor WhatsApp: cocok untuk 08..., 628..., atau sebagian nomor (min. 3 angka) */
 const cocokWA=(wa,z)=>{const d=String(z||'').replace(/\D/g,'');if(d.length<3)return false;const w=normWA(wa);if(!w)return false;return w.includes(d)||w.includes(normWA(d))};
@@ -1070,6 +1112,7 @@ const muatGuruData=async()=>{const k=await dbq(db.from('keanggotaan').select('ro
 async function muatNomor(){const r=await dbq(db.rpc('nomor_wa_guru',{p_sekolah:SEK}));const m={};(r||[]).forEach(x=>{m[x.profil_id]=x.no_wa||''});return m}
 const muatProfil=async()=>{const [g,n]=await Promise.all([muatGuruData(),muatNomor()]);S.guru=g;S.nomor=n};
 let RHS=null,izinKelola=null,izinExp=0;
+let TTD_GURU={},TTD_GURU_SEK=null,TTD_GURU_LOADING=false,TTD_GURU_DEV_LOADING=false,TTD_GURU_DEV_DONE=false,TTD_PROFIL=null,TTD_PROFIL_USER=null;
 async function apiPengaturan(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/pengaturan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,...hBT()},body:JSON.stringify({sekolah_id:CFG_SID||SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/pengaturan tidak ditemukan (404). Pastikan file api/pengaturan.js sudah di-deploy');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
 async function muatRahasia(){try{RHS=await apiPengaturan({aksi:'baca'})}catch(e){RHS={error:e.message||String(e)}}sinkronNomorKepala()}
 /* nomor Kepala Sekolah di Pengaturan = nomor di Profil Saya Kepala Sekolah */
@@ -1460,15 +1503,15 @@ async function mulai(){const {data:{session}}=await db.auth.getSession();if(!ses
   const pilih=MEMB.length===1?MEMB[0]:MEMB.find(m=>m.sekolah_id===ingat);
   if(pilih)await masukSekolah(pilih);else tampilPilihSekolah()}
  catch(e){await gagalMuat(e)}}
-async function masukDeveloper(){try{cmKosong();SEK=null;role='Developer';meNama=PROFIL.nama;
+async function masukDeveloper(){try{cmKosong();SEK=null;TTD_GURU={};TTD_GURU_SEK=null;TTD_GURU_DEV_DONE=false;TTD_PROFIL=null;TTD_PROFIL_USER=null;role='Developer';meNama=PROFIL.nama;
   S.absen={};S.pesan=[];S.siswa=[];S.kelas=[];S.guru=[];S.libur=[];S.nasional=[];S.nasMap=new Map();S.mingguan=[];S.set={};RHS=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
   try{sessionStorage.removeItem('sekolah_aktif');sessionStorage.removeItem('bukaView')}catch(e){}
   terapNama();$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');view='dashboard';pasangBanner();await go('dashboard')}
  catch(e){await gagalMuat(e)}}
-async function masukSekolah(m){try{cmKosong();SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
+async function masukSekolah(m){try{cmKosong();SEK=m.sekolah_id;TTD_GURU={};TTD_GURU_SEK=null;TTD_PROFIL=null;TTD_PROFIL_USER=null;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
   S.absen={};S.pesan=[];RHS=null;CFG_SID=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;mMulti=false;mSel.clear();attKelas='';scanKelas='';kk='';rk='';lo='';q='';gQ='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
   KONFIG_NANTI=false;await muatDasar();if(adalahKepala()||role==='Developer')muatRahasia().then(()=>{if(view==='dashboard'&&!$('#ap').classList.contains('hid'))renderV()});$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');
-  const bv=sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView');view=(bv&&allowed(bv))?bv:'dashboard';pasangBanner();await go(view);if(adalahKepala())setTimeout(sapaAwal,300)}
+  let bv=null;try{bv=sessionStorage.getItem('menu_terakhir')||sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView')}catch(e){}view=(bv&&allowed(bv))?bv:'dashboard';pasangBanner();await go(view);if(adalahKepala())setTimeout(sapaAwal,300)}
  catch(e){await gagalMuat(e)}}
 function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''));{const b=$('#mtp');if(b){b.textContent='Keluar';b.className='btn danger';b.onclick=()=>{closeM();keluar()}}}}
 async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
@@ -1585,7 +1628,7 @@ let drwT=null;
 function drw(o){const d=$('#drw');if(o){clearTimeout(drwT);d.classList.remove('closing');d.classList.add('show');return}
  if(!d.classList.contains('show')||d.classList.contains('closing'))return;
  d.classList.add('closing');clearTimeout(drwT);drwT=setTimeout(()=>d.classList.remove('show','closing'),310)}
-async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();if(!await jagaTanya('semua'))return;tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;if(id!=='pesan'){pHapusMode=false;pesTab='masuk';psel.clear()}if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
+async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();if(!await jagaTanya('semua'))return;tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;try{if(allowed(id))sessionStorage.setItem('menu_terakhir',id)}catch(e){}if(id!=='pesan'){pHapusMode=false;pesTab='masuk';psel.clear()}if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
  try{if(LOAD[id]){const ck=cmKunci(id);if(!(ck&&!paksa&&cmOk(ck[0],ck[1]))){const v0=cmVer;await LOAD[id](paksa);if(ck&&v0===cmVer)cmCatat(ck[0],v0)}}}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),bt=m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`;let h;
@@ -1596,7 +1639,7 @@ function renderAll(){
  $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
 let ks='depan';
 let kartuTok=0;
-const jedaGambar=()=>new Promise(r=>{let d=0;const f=()=>{if(!d){d=1;r()}};try{requestAnimationFrame(()=>setTimeout(f,0))}catch(e){}setTimeout(f,60)});
+const jedaGambar=()=>new Promise(r=>{let selesai=false;const f=()=>{if(selesai)return;selesai=true;r()};try{requestAnimationFrame(f)}catch(e){setTimeout(f,16)}setTimeout(f,80)});
 let kartuIO=null;
 /* gambar kartu dibuat hanya untuk yang terlihat atau hampir terlihat; foto diunduh paralel (maks 4) */
 async function muatGambarKartu(){
@@ -1606,13 +1649,15 @@ async function muatGambarKartu(){
  const siswaDari=im=>im.dataset.kartuId==='uji'?siswaUji():siswaById(Number(im.dataset.kartuId));
  const antre=[],pfAntre=[];let jalan=false,pf=0;
  const pfJalan=()=>{while(pf<4&&pfAntre.length){const s=pfAntre.shift();pf++;fotoSiap(s).catch(()=>{}).finally(()=>{pf--;pfJalan()})}};
+ const jarakLayar=im=>{if(!im||!im.isConnected)return Infinity;const r=im.getBoundingClientRect();if(r.bottom>=0&&r.top<=window.innerHeight)return 0;return Math.min(Math.abs(r.top),Math.abs(r.bottom-window.innerHeight))};
+ const ambilPrioritas=()=>{let ix=0,jarak=Infinity;for(let i=0;i<antre.length;i++){const d=jarakLayar(antre[i]);if(d<jarak){jarak=d;ix=i;if(d===0)break}}return antre.splice(ix,1)[0]};
  const isi=async im=>{const s=siswaDari(im);
   if(s){const sd=im.dataset.sisi||'depan';if(sd==='depan')await fotoSiap(s);if(tok!==kartuTok)return;im.src=kartuUrl(s,sd,true);im.alt='Kartu '+sd+' '+(s.pan||'');try{await im.decode()}catch(e){}}
   const w=im.closest('.kwrap');if(w)w.classList.add('siap')};
  const pompa=async()=>{if(jalan)return;jalan=true;
-  try{while(antre.length){if(tok!==kartuTok)return;stat(true,antre.length);await jedaGambar();if(tok!==kartuTok)return;const im=antre.shift();if(!im||!im.isConnected)continue;try{await isi(im)}catch(e){console.warn('Kartu gagal dibuat',e)}}}
+  try{while(antre.length){if(tok!==kartuTok)return;stat(true,antre.length);await jedaGambar();if(tok!==kartuTok)return;const im=ambilPrioritas();if(!im||!im.isConnected)continue;try{await isi(im)}catch(e){console.warn('Kartu gagal dibuat',e)}}}
   finally{jalan=false;if(tok===kartuTok&&!antre.length)stat(false)}};
- const masuk=im=>{const s=siswaDari(im);if(s&&(im.dataset.sisi||'depan')==='depan'&&s.foto_path&&!fotoMuat(s))pfAntre.push(s);antre.push(im);pfJalan();pompa()};
+ const masuk=im=>{if(antre.includes(im))return;const s=siswaDari(im);if(s&&(im.dataset.sisi||'depan')==='depan'&&s.foto_path&&!fotoMuat(s))pfAntre.push(s);antre.push(im);pfJalan();pompa()};
  if(!('IntersectionObserver' in window)){imgs.forEach(masuk);return}
  const io=new IntersectionObserver(es=>{for(const e of es){if(!e.isIntersecting)continue;io.unobserve(e.target);masuk(e.target)}},{rootMargin:'500px 0px'});
  kartuIO=io;imgs.forEach(im=>io.observe(im));
@@ -1723,7 +1768,7 @@ function notifTahunBaru(){if(!adalahKepala()||MB()||!KL.ring)return '';
  return `<div><b>🎓 Semua kelas sudah disahkan.</b><div class="mu">Tinggal menunggu tahun ajaran baru dimulai. Tekan Mulai untuk membuka menu Tahun Ajaran Baru.</div><div class="tb" style="margin-top:8px"><button class="btn sm success" onclick="lompatKe('tahunajaran','pnTahunAjaran','btnTahunBaru')">Mulai</button></div></div>`}
 function notifGabung(){const a=[bannerKonfigIsi(),notifProfil(),notifSahKelas(),notifTahunBaru(),notifFitur()].filter(Boolean);if(!a.length)return '';
  return `<div class="note" style="border-left:4px solid #d7a72f;margin:16px 0">${a.map((x,i)=>i?`<div style="border-top:1px solid #dfeadc;margin-top:12px;padding-top:12px">${x}</div>`:x).join('')}</div>`}
-V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
+V.profil=()=>{setTimeout(()=>ttdProfilMuat(),0);const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
  const wa=(S.nomor&&S.nomor[me])||'',sk=(typeof MEMB!=='undefined'&&MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||'';
  const row=(l,v)=>`<div class="mu">${l}</div><div style="word-break:break-word"><b>${v||'<span class="mu">-</span>'}</b></div>`;
  const data=[row('Nama lengkap',esc(p.nama||'')),row('Username',esc(p.username||'')),row('Peran',esc(role||'')),row('NIP',esc(p.nip||'')),
@@ -1741,7 +1786,7 @@ V.profil=()=>{const p=PROFIL||{},dev=role==='Developer',u=S.pfs||{},mb=MB();
    +(L.length?'<div class="tw"><table><tbody>'+L.map((x,i)=>`<tr><td class="no">${i+1}</td><td><b>${esc(x.friendly_name||'Passkey')}</b><div class="mu">Dibuat ${x.created_at?esc(waktuId(x.created_at)):'-'}${x.last_used_at?' · terakhir dipakai '+esc(waktuId(x.last_used_at)):''}</div></td><td style="white-space:nowrap"><button class="btn sm soft" onclick="renamePasskey('${x.id}')">Ubah nama</button> <button class="btn sm danger" onclick="hapusPasskey('${x.id}')">Hapus</button></td></tr>`).join('')+'</tbody></table></div>':'<div class="mu" style="margin:10px 0">Belum ada passkey di akun ini.</div>')
    +'<button class="btn success" style="width:100%;margin-top:10px" onclick="daftarPasskey()">+ Aktifkan passkey di perangkat ini</button>'
    +(L.length&&!pkAkunList().some(x=>x.u===p.username)?'<button class="btn soft" style="width:100%;margin-top:8px" onclick="pkIngatAkun()">🔗 Tambahkan akun ini ke pilihan login</button><div class="mu" style="margin-top:4px">Cukup sekali per browser agar akun muncul di daftar pilihan masuk sidik jari. Bila muncul beberapa akun, pilih akun Anda sendiri.</div>':'')}
- return `<div class="panel" id="pnProfil"><div class="ph">👤 Profil Saya</div><div class="pb"><div style="display:grid;grid-template-columns:110px 1fr;gap:10px 12px;align-items:start">${data}</div>${aksi}</div></div><div class="panel" id="pnPasskey"><div class="ph">🔐 Passkey (sidik jari / wajah)</div><div class="pb">${pk}</div></div>`};
+ return `<div class="panel" id="pnProfil"><div class="ph">👤 Profil Saya</div><div class="pb"><div style="display:grid;grid-template-columns:110px 1fr;gap:10px 12px;align-items:start">${data}</div>${aksi}</div></div><div class="panel" id="pnTtdProfil"><div class="ph">✍️ Tanda Tangan Saya</div><div class="pb" id="ttdProfilBox"><div class="mu">Memuat tanda tangan...</div></div></div><div class="panel" id="pnPasskey"><div class="ph">🔐 Passkey (sidik jari / wajah)</div><div class="pb">${pk}</div></div>`};
 
 /* ---------- panduan awal kepala sekolah ---------- */
 let KONFIG_NANTI=false;
@@ -1836,6 +1881,80 @@ function ubahSiswa(id){const s=siswaById(id);form('Ubah Siswa',[{k:'nama',l:'Nam
  $('#mbd').insertAdjacentHTML('afterbegin',fotoBlok(s));fotoSiap(s).then(()=>fotoBlokUlang(s))}
 function togSiswa(id){guard(async()=>{const s=siswaById(id);await dbq(db.from('siswa').update({aktif:!s.aktif}).eq('id',id));s.aktif=!s.aktif;toast(s.nama+(s.aktif?' diaktifkan':' dinonaktifkan'));renderV()})}
 /* ---------- guru ---------- */
+async function apiTtd(body){
+ const {data:{session}}=await db.auth.getSession();
+ if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');
+ const r=await fetch('/api/tanda-tangan',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,...hBT()},body:JSON.stringify({sekolah_id:SEK,...body})});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error(j.error||j.message||('Gagal ('+r.status+')'));
+ return j;
+}
+function ttdBoxGambar(data){return data?'<img src="'+data+'" alt="Pratinjau tanda tangan" style="display:block;max-width:100%;width:260px;height:105px;object-fit:contain;background:#fff;border:1px solid var(--bd);border-radius:10px;padding:8px">':'<div class="note">Belum ada tanda tangan yang diunggah.</div>'}
+async function ttdProfilMuat(force){
+ const box=$('#ttdProfilBox');if(!box)return;if(MB()){box.innerHTML='<div class="note">Mode bantuan: tanda tangan hanya dapat dikelola oleh pemilik akun.</div>';return}
+ if(!force&&TTD_PROFIL_USER===me&&TTD_PROFIL!==null){box.innerHTML=ttdProfilHtml(TTD_PROFIL);return}
+ box.innerHTML='<div class="mu">Memuat tanda tangan...</div>';
+ try{const j=await apiTtd({aksi:'lihat'});TTD_PROFIL=j.data||'';TTD_PROFIL_USER=me;TTD_GURU[me]=!!j.ada;box.innerHTML=ttdProfilHtml(TTD_PROFIL)}
+ catch(e){box.innerHTML='<div class="note" style="color:var(--rd)">'+esc(e.message||String(e))+'</div>'}
+}
+function ttdProfilHtml(data){
+ return ttdBoxGambar(data)+'<div class="mu" style="margin-top:8px">Unggah tanda tangan berupa PNG, JPG, atau WEBP. PNG dengan latar transparan atau putih paling disarankan. Maksimal 512 KB.</div><div class="tb" style="margin-top:10px"><button class="btn success sm" onclick="document.getElementById(\'ttdSayaFile\').click()">'+(data?'Ganti tanda tangan':'Unggah tanda tangan')+'</button>'+(data?'<button class="btn danger sm" onclick="ttdHapusSaya()">Hapus</button>':'')+'</div><input id="ttdSayaFile" class="hid" type="file" accept="image/png,image/jpeg,image/webp" onchange="ttdFileSaya(this)">';
+}
+function ttdBacaFile(file){
+ if(!file)return Promise.reject(new Error('Pilih file tanda tangan terlebih dahulu'));
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type))return Promise.reject(new Error('File harus berupa PNG, JPG, atau WEBP'));
+ if(file.size>524288)return Promise.reject(new Error('Ukuran file maksimal 512 KB'));
+ return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result||''));r.onerror=()=>no(new Error('File tidak bisa dibaca'));r.readAsDataURL(file)});
+}
+async function ttdFileSaya(inp){
+ const f=inp.files&&inp.files[0];inp.value='';if(!f)return;
+ guard(async()=>{const data=await ttdBacaFile(f);await apiTtd({aksi:'simpan',data});TTD_PROFIL=data;TTD_PROFIL_USER=me;TTD_GURU[me]=true;ttdProfilMuat(true);toast('Tanda tangan berhasil disimpan')});
+}
+async function ttdHapusSaya(){
+ if(!TTD_PROFIL)return;
+ if(!await konfirmasi('Hapus tanda tangan Anda? Tanda tangan tidak akan tampil pada raport sampai diunggah kembali.',{judul:'Hapus tanda tangan',ya:'Hapus',bahaya:1}))return;
+ guard(async()=>{await apiTtd({aksi:'hapus'});TTD_PROFIL='';TTD_PROFIL_USER=me;TTD_GURU[me]=false;ttdProfilMuat(true);toast('Tanda tangan berhasil dihapus')});
+}
+async function ttdGuruMuatDev(force){
+ if(role!=='Developer'||TTD_GURU_DEV_LOADING||(!force&&TTD_GURU_DEV_DONE))return;
+ TTD_GURU_DEV_LOADING=true;
+ try{const j=await apiTtd({aksi:'daftar_dev'});TTD_GURU={};(j.daftar||[]).forEach(x=>TTD_GURU[x.id]=!!x.ada);TTD_GURU_DEV_DONE=true;if(view==='developer'&&devTab==='guru')renderV()}
+ catch(e){console.warn('Status tanda tangan Developer gagal dimuat',e)}finally{TTD_GURU_DEV_LOADING=false}
+}
+async function ttdGuruMuat(force){
+ if(role==='Developer'&&!SEK)return ttdGuruMuatDev(force);
+ if(!SEK||TTD_GURU_LOADING||(!force&&TTD_GURU_SEK===SEK))return;
+ TTD_GURU_LOADING=true;
+ try{const j=await apiTtd({aksi:'daftar'});TTD_GURU={};(j.daftar||[]).forEach(x=>TTD_GURU[x.id]=!!x.ada);TTD_GURU_SEK=SEK;
+  if(view==='guru'){const b=$('#guruBody');if(b){const z=String(gQ||'').toLowerCase().trim(),shown=S.guru.filter(g=>!z||String(g.nama||'').toLowerCase().includes(z)||String(g.nip||'').toLowerCase().includes(z)||cocokWA((S.nomor||{})[g.id],z));const kl=adalahKepala(),dev=role==='Developer',kel=kl||dev,kunci=g=>(g.role==='kepala_sekolah'&&!dev);b.innerHTML=guruRows(shown,bolehHapusGuru(),kel,dev,kunci)||'<tr><td colspan="'+(gHapusMode&&bolehHapusGuru()?10:9)+'" class="mu">Guru tidak ditemukan.</td></tr>'}}
+ }catch(e){console.warn('Status tanda tangan guru gagal dimuat',e)}finally{TTD_GURU_LOADING=false}
+}
+async function ttdGuruBuka(id,nama,langsung){
+ if(!bolehKelolaTtdGuru())return toast('Anda tidak memiliki izin mengelola tanda tangan guru lain',false);
+ const buka=async()=>{const j=await apiTtd({aksi:'ambil',id}),data=j.data||'';
+  info('Tanda tangan · '+nama,'<div style="text-align:center">'+ttdBoxGambar(data)+'</div><div class="mu" style="margin:10px 0">Unggah gambar PNG, JPG, atau WEBP maksimal 512 KB.</div><div class="tb"><button class="btn success grow" onclick="document.getElementById(\'ttdGuruFile\').click()">'+(data?'Ganti tanda tangan':'Unggah tanda tangan')+'</button>'+(data?'<button class="btn danger sm" onclick="ttdGuruHapus(\''+id+'\',\''+esc(nama)+'\')">Hapus</button>':'')+'</div><input id="ttdGuruFile" class="hid" type="file" accept="image/png,image/jpeg,image/webp" onchange="ttdFileGuru(this,\''+id+'\',\''+esc(nama)+'\')">');
+  $('#md').classList.add('besar');
+ };
+ if(langsung)return buka();
+ guard(buka);
+}
+async function ttdFileGuru(inp,id,nama){
+ const f=inp.files&&inp.files[0];inp.value='';if(!f)return;
+ guard(async()=>{const data=await ttdBacaFile(f);await apiTtd({aksi:'simpan',id,data});TTD_GURU[id]=true;toast('Tanda tangan '+nama+' berhasil disimpan');await ttdGuruMuat(true);await ttdGuruBuka(id,nama,true)});
+}
+async function ttdGuruHapus(id,nama){
+ if(!await konfirmasi('Hapus tanda tangan '+nama+'?',{judul:'Hapus tanda tangan',ya:'Hapus',bahaya:1}))return;
+ guard(async()=>{await apiTtd({aksi:'hapus',id});TTD_GURU[id]=false;toast('Tanda tangan '+nama+' dihapus');closeM();await ttdGuruMuat(true)});
+}
+async function ttdPngAmbil(ids){
+ const unik=[...new Set((ids||[]).filter(Boolean).map(String))];if(!unik.length||!SEK)return {};
+ const out={};
+ for(let i=0;i<unik.length;i+=6){
+  const batch=unik.slice(i,i+6),j=await apiTtd({aksi:'ambil_banyak',ids:batch});
+  await Promise.all(batch.map(async id=>{const data=j.tanda_tangan&&j.tanda_tangan[id];if(data){const im=await Rapor.logoPng(data);if(im)out[id]=im.url}}));
+ }
+ return out;
+}
 let gsel=new Set();
 let gHapusMode=false;
 function bolehHapusGuru(){return adalahKepala()||role==='Developer'}
@@ -1862,8 +1981,9 @@ function guruRows(shown,bh,kel,dev,kunci){
  return shown.map((g,i)=>{
   const mine=g.id===me;
   const pilih=gHapusMode&&bh&&!mine&&!kunci(g)?`<td><input type="checkbox" class="ckg" data-id="${g.id}" ${gsel.has(g.id)?'checked':''} onchange="pilihGuru('${g.id}',this.checked)"></td>`:(gHapusMode&&bh?'<td></td>':'');
-  const wa=(S.nomor||{})[g.id];
-  return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${wa?nomorHtml(wa):(mine?'<span class="mu">Belum diisi</span>':'<span class="mu">-</span>')}</td><td>${esc(g.username)}</td><td>${kel&&!mine&&!kunci(g)?`<select class="select" onchange="setGuruRole('${g.id}',this.value)">${['kepala_sekolah','wakil_kepala','pengelola','operator','guru'].map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role]||g.role)}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td>${mine?`<button class="btn sm soft" onclick="go('profil')">👤 Buka Profil Saya</button>`:'<span class="mu">-</span>'}${kel&&!mine&&!kunci(g)?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`
+  const wa=(S.nomor||{})[g.id],adaTtd=!!TTD_GURU[g.id];
+  const kolTtd='<td><span class="badge '+(adaTtd?'Hadir':'Belum')+'">'+(adaTtd?'Tersedia':'Belum ada')+'</span>'+(bolehKelolaTtdGuru()&&!mine?'<button class="btn sm soft" onclick="ttdGuruBuka(\''+g.id+'\',\''+esc(g.nama)+'\')">'+(adaTtd?'Kelola':'Tambah')+'</button>':'')+'</td>';
+  return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(g.nama)}</b>${mine?' <span class="badge Hadir">Anda</span>':''}</td><td>${esc(g.nip||'')}</td><td>${wa?nomorHtml(wa):(mine?'<span class="mu">Belum diisi</span>':'<span class="mu">-</span>')}</td><td>${esc(g.username)}</td><td>${kel&&!mine&&!kunci(g)?`<select class="select" onchange="setGuruRole('${g.id}',this.value)">${['kepala_sekolah','wakil_kepala','pengelola','operator','guru'].map(r=>`<option value="${r}" ${r===g.role?'selected':''}>${LBL[r]}</option>`).join('')}</select>`:esc(LBL[g.role]||g.role)}</td><td>${g.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td>${kolTtd}<td>${mine?`<button class="btn sm soft" onclick="go('profil')">👤 Buka Profil Saya</button>`:'<span class="mu">-</span>'}${kel&&!mine&&!kunci(g)?`<button class="btn sm ${g.aktif?'danger':'success'}" onclick="togGuru('${g.id}')">${g.aktif?'Nonaktifkan':'Aktifkan'}</button>`:''}</td></tr>`
  }).join('');
 }
 function cariGuruInput(el){
@@ -1875,10 +1995,11 @@ function cariGuruInput(el){
   const kunci=g=>(g.role==='kepala_sekolah'&&!dev);
   const z=String(gQ||'').toLowerCase().trim();
   const shown=S.guru.filter(g=>!z||String(g.nama||'').toLowerCase().includes(z)||String(g.nip||'').toLowerCase().includes(z)||cocokWA((S.nomor||{})[g.id],z));
-  body.innerHTML=guruRows(shown,bh,kel,dev,kunci)||`<tr><td colspan="${gHapusMode&&bh?9:8}" class="mu">Guru tidak ditemukan.</td></tr>`;
+  body.innerHTML=guruRows(shown,bh,kel,dev,kunci)||`<tr><td colspan="${gHapusMode&&bh?10:9}" class="mu">Guru tidak ditemukan.</td></tr>`;
  }
 }
 V.guru=()=>{
+ setTimeout(()=>ttdGuruMuat(),0);
  const kl=adalahKepala(),dev=role==='Developer',kel=kl||dev;
  const bh=bolehHapusGuru();
  const kunci=g=>(g.role==='kepala_sekolah'&&!dev);
@@ -1892,9 +2013,9 @@ V.guru=()=>{
       : `<button class="btn danger sm" onclick="bukaHapusGuru()">🗑 Keluarkan Guru</button>`)
    : '';
  const head=gHapusMode&&bh
-   ? ['<input type="checkbox" '+(all?'checked':'')+' id="gCekAll" onchange="pilihSemuaGuru(this.checked)">','No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Aksi']
-   : ['No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Aksi'];
- const emptyCol=gHapusMode&&bh?9:8;
+   ? ['<input type="checkbox" '+(all?'checked':'')+' id="gCekAll" onchange="pilihSemuaGuru(this.checked)">','No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Tanda tangan','Aksi']
+   : ['No','Nama','NIP','WhatsApp','Username','Peran','Aktif','Tanda tangan','Aksi'];
+ const emptyCol=gHapusMode&&bh?10:9;
  return `<div class="panel"><div class="ph">👨‍🏫 Data Guru ${kel?`<span class="tb tbgrid" style="margin:0">${aksi}<button class="btn soft sm" onclick="templat('guru')">⬇ Template</button><button class="btn soft sm" onclick="pilihXlsx('guru')">⬆ Impor XLSX</button><button class="btn success sm add" onclick="addGuru()">+ Guru</button></span>`:''}</div><div class="pb"><div class="tb"><input id="guruCari" class="input grow search-smooth" placeholder="Cari nama, NIP, atau nomor WhatsApp guru..." value="${esc(gQ)}" oninput="cariGuruInput(this)"></div><div class="note">${kel?'Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, Operator, atau Developer dapat menambah guru, mengubah peran, dan mengaktifkan atau menonaktifkan guru di sekolah ini. Menambah atau mengimpor guru meminta kode yang dikirim ke WhatsApp Anda sebagai bukti kepemilikan. Mengganti Kepala Sekolah: pilih peran Kepala Sekolah pada guru yang dituju, maka Kepala Sekolah lama otomatis menjadi Guru. Tombol Keluarkan hanya mengeluarkan guru dari sekolah ini. Username, kata sandi, nomor WhatsApp, dan passkey diubah oleh pemilik akunnya sendiri lewat menu Profil Saya.':'Profil, kata sandi, nomor WhatsApp, dan passkey Anda diubah lewat menu Profil Saya. Nomor WhatsApp guru lain tidak ditampilkan.'}</div><div class="tw"><table><thead><tr>${head.map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody id="guruBody">${guruRows(shown,bh,kel,dev,kunci)||`<tr><td colspan="${emptyCol}" class="mu">Guru tidak ditemukan.</td></tr>`}</tbody></table></div></div></div>`;
 };
 async function apiGuru(body){const {data:{session}}=await db.auth.getSession();if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');const r=await fetch('/api/guru',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,...hBT()},body:JSON.stringify({sekolah_id:SEK,...body})});const j=await r.json().catch(()=>({}));if(!r.ok){if(r.status===404)throw new Error('API /api/guru tidak ditemukan (404). Pastikan file api/guru.js sudah di-deploy pada project yang sama dengan Index.');throw new Error(j.error||j.message||('Gagal ('+r.status+')'))}return j}
@@ -1968,11 +2089,11 @@ async function hapusGuru(id){if(!bolehHapusGuru())return toast('Hanya Kepala Sek
 let devHanyaNonaktif=false;
 let devPilih=new Set();
 async function muatDevGuru(){S.devGuru=await dbq(db.rpc('developer_guru'))}
-function panelDevGuru(){const d=S.devGuru;
+function panelDevGuru(){setTimeout(()=>ttdGuruMuatDev(),0);const d=S.devGuru;
  if(!d)return '<div class="panel"><div class="ph">👥 Guru di semua sekolah</div><div class="pb"><div class="note">⏳ Memuat data guru...</div></div></div>';
  const baris=d.filter(g=>g.role!=='developer').filter(g=>!devHanyaNonaktif||!(g.keanggotaan||[]).some(k=>k.aktif));
  const idsTA=idTidakAktifDev().map(g=>g.id),nTidakAktif=idsTA.length;devPilih=new Set([...devPilih].filter(id=>idsTA.includes(id)));
- return `<div class="panel"><div class="ph"><span>👥 Guru di semua sekolah</span><label class="mu" style="display:flex;align-items:center;gap:8px;width:100%;margin:0;font-weight:400;font-size:13px;line-height:1.3;cursor:pointer"><input type="checkbox" style="margin:0;flex:0 0 auto;width:20px;height:20px;accent-color:#1fa95b" ${devHanyaNonaktif?'checked':''} onchange="devHanyaNonaktif=this.checked;renderV()"><span>Hanya yang tidak aktif di sekolah mana pun</span></label></div><div class="pb"><div class="note">Daftar guru beserta sekolah tempat mereka terdaftar. Akun yang tidak aktif di sekolah mana pun dapat dihapus permanen.</div>${nTidakAktif?`<div class="tb"><button class="btn soft sm" onclick="devPilihSemua(true)">☑ Pilih semua tidak aktif (${nTidakAktif})</button><button class="btn soft sm" onclick="devPilihSemua(false)">Kosongkan pilihan</button><button id="btnHapusPilih" class="btn danger sm" ${devPilih.size?'':'disabled'} onclick="hapusTerpilih()">🗑 Hapus terpilih (${devPilih.size})</button></div>`:''}${baris.length?tab([nTidakAktif?'<input type="checkbox" id="devCekAll" style="width:20px;height:20px;accent-color:#1fa95b" title="Pilih semua tidak aktif" '+(devPilih.size&&devPilih.size===nTidakAktif?'checked':'')+' onchange="devPilihSemua(this.checked)">':'','No','Nama','NIP','Username','WhatsApp','Sekolah','Aksi'],baris.map((g,i)=>{const ks=g.keanggotaan||[];const aktifDi=ks.filter(k=>k.aktif).length;return `<tr><td>${(!aktifDi&&g.id!==me)?`<input type="checkbox" style="width:20px;height:20px;accent-color:#1fa95b" ${devPilih.has(g.id)?'checked':''} onchange="devTogPilih('${g.id}',this.checked)">`:''}</td><td>${i+1}</td><td><b>${esc(g.nama)}</b></td><td>${esc(g.nip||'-')}</td><td>${esc(g.username)}</td><td><span style="white-space:nowrap">${nomorHtml(g.no_wa)||'-'}<button type="button" onclick="devUbahNomor('${g.id}')" title="Ubah nomor WhatsApp" aria-label="Ubah nomor WhatsApp" style="background:none;border:0;box-shadow:none;padding:2px 4px 2px 8px;margin:0;cursor:pointer;font-size:15px;line-height:1;vertical-align:middle">✏️</button></span></td><td>${ks.length?ks.map(k=>`<div>${esc(k.sekolah)} <span class="badge ${k.aktif?'Hadir':'Belum'}">${k.aktif?'Aktif':'Nonaktif'}</span> <span class="mu">${esc(LBL[k.role]||k.role)}</span>${k.aktif&&g.aktif&&k.status_sekolah==='aktif'?` <button class="btn sm soft" onclick="masukSebagai('${g.id}',${k.sekolah_id})">🔑 Masuk</button>`:''}</div>`).join(''):'<span class="mu">Tidak terdaftar di sekolah mana pun</span>'}</td><td>${aktifDi?'<span class="mu">Masih aktif</span>':`<button class="btn sm danger" onclick="hapusAkunPermanen('${g.id}')">🗑 Hapus permanen</button>`}</td></tr>`}).join('')):'<div class="mu" style="padding:10px 0">Tidak ada guru yang cocok.</div>'}</div></div>`}
+ return `<div class="panel"><div class="ph"><span>👥 Guru di semua sekolah</span><label class="mu" style="display:flex;align-items:center;gap:8px;width:100%;margin:0;font-weight:400;font-size:13px;line-height:1.3;cursor:pointer"><input type="checkbox" style="margin:0;flex:0 0 auto;width:20px;height:20px;accent-color:#1fa95b" ${devHanyaNonaktif?'checked':''} onchange="devHanyaNonaktif=this.checked;renderV()"><span>Hanya yang tidak aktif di sekolah mana pun</span></label></div><div class="pb"><div class="note">Daftar guru beserta sekolah tempat mereka terdaftar. Akun yang tidak aktif di sekolah mana pun dapat dihapus permanen.</div>${nTidakAktif?`<div class="tb"><button class="btn soft sm" onclick="devPilihSemua(true)">☑ Pilih semua tidak aktif (${nTidakAktif})</button><button class="btn soft sm" onclick="devPilihSemua(false)">Kosongkan pilihan</button><button id="btnHapusPilih" class="btn danger sm" ${devPilih.size?'':'disabled'} onclick="hapusTerpilih()">🗑 Hapus terpilih (${devPilih.size})</button></div>`:''}${baris.length?tab([nTidakAktif?'<input type="checkbox" id="devCekAll" style="width:20px;height:20px;accent-color:#1fa95b" title="Pilih semua tidak aktif" '+(devPilih.size&&devPilih.size===nTidakAktif?'checked':'')+' onchange="devPilihSemua(this.checked)">':'','No','Nama','NIP','Username','WhatsApp' ,'Sekolah','Tanda tangan','Aksi'],baris.map((g,i)=>{const ks=g.keanggotaan||[];const aktifDi=ks.filter(k=>k.aktif).length;return `<tr><td>${(!aktifDi&&g.id!==me)?`<input type="checkbox" style="width:20px;height:20px;accent-color:#1fa95b" ${devPilih.has(g.id)?'checked':''} onchange="devTogPilih('${g.id}',this.checked)">`:''}</td><td>${i+1}</td><td><b>${esc(g.nama)}</b></td><td>${esc(g.nip||'-')}</td><td>${esc(g.username)}</td><td><span style="white-space:nowrap">${nomorHtml(g.no_wa)||'-'}<button type="button" onclick="devUbahNomor('${g.id}')" title="Ubah nomor WhatsApp" aria-label="Ubah nomor WhatsApp" style="background:none;border:0;box-shadow:none;padding:2px 4px 2px 8px;margin:0;cursor:pointer;font-size:15px;line-height:1;vertical-align:middle">✏️</button></span></td><td>${ks.length?ks.map(k=>`<div>${esc(k.sekolah)} <span class="badge ${k.aktif?'Hadir':'Belum'}">${k.aktif?'Aktif':'Nonaktif'}</span> <span class="mu">${esc(LBL[k.role]||k.role)}</span>${k.aktif&&g.aktif&&k.status_sekolah==='aktif'?` <button class="btn sm soft" onclick="masukSebagai('${g.id}',${k.sekolah_id})">🔑 Masuk</button>`:''}</div>`).join(''):'<span class="mu">Tidak terdaftar di sekolah mana pun</span>'}</td><td><span class="badge ${TTD_GURU[g.id]?'Hadir':'Belum'}">${TTD_GURU[g.id]?'Tersedia':'Belum ada'}</span><button class="btn sm soft" onclick="ttdGuruBuka('${g.id}','${esc(g.nama)}')">${TTD_GURU[g.id]?'Kelola':'Tambah'}</button></td><td>${aktifDi?'<span class="mu">Masih aktif</span>':`<button class="btn sm danger" onclick="hapusAkunPermanen('${g.id}')">🗑 Hapus permanen</button>`}</td></tr>`}).join('')):'<div class="mu" style="padding:10px 0">Tidak ada guru yang cocok.</div>'}</div></div>`}
 function idTidakAktifDev(){return (S.devGuru||[]).filter(g=>g.role!=='developer'&&g.id!==me&&!(g.keanggotaan||[]).some(k=>k.aktif))}
 function devUpdPilih(){const n=devPilih.size,tot=idTidakAktifDev().length,b=document.getElementById('btnHapusPilih'),a=document.getElementById('devCekAll');
  if(b){b.disabled=!n;b.textContent='🗑 Hapus terpilih ('+n+')'}
@@ -2392,10 +2513,15 @@ function kartuUjiBlok(){const s=siswaUji();return `<div class="cards${ks==='kedu
 async function salinLinkUji(){const ok=await salinLink(Kartu.isiQR(KODE_UJI));ok?toast('Kode kartu uji disalin'):toast('Tidak bisa menyalin, coba lagi',false)}
 async function unduhUjiScan(el){if(!el||el.dataset.b==='1')return;el.dataset.b='1';const t=el.textContent;el.textContent='Menyiapkan kartu uji...';try{await jedaUnduh();simpanPng(kartuUrl(siswaUji(),'belakang'),'kartu-uji-belakang.png');toast('Kartu uji (belakang) diunduh')}catch(e){toast('Gagal mengunduh kartu uji: '+(e.message||e),false)}finally{el.dataset.b='0';el.textContent=t}}
 async function usbUjiOtomatis(){if(usbPh!=='uji'||!usbOn)return;const u=Kartu.isiQR(KODE_UJI);await salinLink(u);const i=$('#usbIn');if(i)i.value=u;toast('Kode kartu uji disalin dan diisi otomatis');setTimeout(()=>{if(usbPh!=='uji'||!usbOn)return;const e=$('#usbIn');if(e)e.value='';usbOtoNext=true;usbKirim(u)},500)}
-function kartuUrl(s,sisi,pv){sisi=sisi||'depan';const key=[pv?'pv':'fu',sisi,s.id,s.kode_scan,s.nama,s.nisn,s.kelas,s.wa,s.tempat,s.tgl,s.jk,s.alamat,s.masuk,S.set.tahun_ajaran,ns(),(S.set.logo||'').length,sisi==='depan'&&fotoMuat(s)?s.foto_path:'-'].join('|');if(pv&&KC.has(key)){const v0=KC.get(key);KC.delete(key);KC.set(key,v0);return v0}
- const u=(sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)(s,{pratinjau:!!pv,nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.isiQR(s.kode_scan),logo:logoOk(S.set.logo)?S.set.logo:null,foto:sisi==='depan'?(s.uji?fotoUji():fotoMuat(s)):null});
- /* hanya pratinjau (ringan) yang disimpan; cache dibatasi 60 kartu, yang paling lama dibuang. Versi penuh untuk unduhan tidak disimpan */
- if(pv){KC.set(key,u);while(KC.size>120)KC.delete(KC.keys().next().value)}return u}
+let KCB=0;const KC_BATAS=18*1024*1024,KC_JUMLAH=80;
+function kartuCacheBersih(){KC.clear();KCB=0}
+function kartuHash(v){v=String(v||'');let h=2166136261;for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
+function kartuCacheAmbil(k){const v=KC.get(k);if(!v)return null;KC.delete(k);KC.set(k,v);return v.url}
+function kartuCacheSimpan(k,url){const bytes=url.length*2;if(bytes>KC_BATAS)return;const lama=KC.get(k);if(lama){KCB-=lama.bytes;KC.delete(k)}while(KC.size&&(KC.size>=KC_JUMLAH||KCB+bytes>KC_BATAS)){const k0=KC.keys().next().value,v0=KC.get(k0);KC.delete(k0);KCB-=v0.bytes}KC.set(k,{url,bytes});KCB+=bytes}
+function kartuUrl(s,sisi,pv){sisi=sisi||'depan';const logo=logoOk(S.set.logo)?S.set.logo:'',key=[pv?'pv':'fu',sisi,s.id,s.kode_scan,s.nama,s.pan,s.nisn,s.kelas,s.wa,s.tempat,s.tgl,s.jk,s.alamat,s.masuk,s.aktif,S.set.tahun_ajaran,ns(),TODAY,kartuHash(logo),sisi==='depan'&&fotoMuat(s)?s.foto_path:'-'].join('|');if(pv){const lama=kartuCacheAmbil(key);if(lama)return lama}
+ const u=(sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)(s,{pratinjau:!!pv,nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.isiQR(s.kode_scan),logo:logo||null,foto:sisi==='depan'?(s.uji?fotoUji():fotoMuat(s)):null});
+ /* Cache khusus pratinjau: LRU berdasarkan pemakaian, maksimal 80 kartu dan sekitar 18 MB agar aman untuk memori ponsel. Versi penuh unduhan tetap dibuat terpisah. */
+ if(pv)kartuCacheSimpan(key,u);return u}
 const kimg=(s,sd)=>`<div class="kwrap"><div class="kspin"><div class="kspn"></div>Memuat kartu...</div><img class="kimg" data-kartu-id="${s.id}" data-sisi="${sd}" alt=""></div>`;
 const kartuCocok=(s,z)=>!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z)||cocokWA(s.wa,z);
 /* semua kartu kelas dirender sekali; pencarian hanya menyembunyikan/menampilkan kartu (tanpa membangun ulang, jadi tidak berkedip) */
@@ -2637,8 +2763,8 @@ function isiSheetRiwayat(wb,M,bulan,rk,namaSheet){
 }
 const kotaTtd=()=>String((S.set&&S.set.kota)||'').trim();
 function fmtNip(v){const a=String(v||'').replace(/\D/g,'');return a.length===18?a.slice(0,8)+' '+a.slice(8,14)+' '+a.slice(14,15)+' '+a.slice(15):String(v||'').trim()}
-function ttdKepsek(b){const g=S.guru.find(x=>x.role==='kepala_sekolah'&&x.aktif)||S.guru.find(x=>x.role==='kepala_sekolah')||{};return{kota:kotaTtd(),tgl:fmt(hariIni()),nama:g.nama||'',nip:fmtNip(g.nip)}}
-function ttdWali(kls){if(!kls)return null;const k=S.kelas.find(x=>x.nama===kls);if(!k||!k.wali)return null;const g=S.guru.find(x=>x.id===k.wali);if(!g)return null;return{kelas:k.nama,nama:g.nama,nip:fmtNip(g.nip)}}
+function ttdKepsek(b){const g=S.guru.find(x=>x.role==='kepala_sekolah'&&x.aktif)||S.guru.find(x=>x.role==='kepala_sekolah')||{};return{id:g.id||null,kota:kotaTtd(),tgl:fmt(hariIni()),nama:g.nama||'',nip:fmtNip(g.nip)}}
+function ttdWali(kls){if(!kls)return null;const k=S.kelas.find(x=>x.nama===kls);if(!k||!k.wali)return null;const g=S.guru.find(x=>x.id===k.wali);if(!g)return null;return{id:g.id,kelas:k.nama,nama:g.nama,nip:fmtNip(g.nip)}}
 function pdfTtd(d,cx,y,tb,tn,peran,nama,nip){d.setFontSize(9);d.setTextColor(0,0,0);
  d.setFont('helvetica','bold');const w1=tb?d.getTextWidth(tb):0;d.setFont('helvetica','normal');const w2=d.getTextWidth(tn),x0=cx-(w1+w2)/2;
  if(tb){d.setFont('helvetica','bold');d.text(tb,x0,y)}
@@ -2949,6 +3075,7 @@ V.tahunajaran=()=>`${taInit()}${panelTahunAjaranHtml()}`;
 V.pengaturan=()=>`${taInit()}${panelTahunAjaranHtml()}
 <div class="panel" id="pnNama"><div class="ph">🏫 Nama Sekolah</div><div class="pb"><div class="note">Nama ini tampil di menu samping, dashboard, kartu pelajar, riwayat/rekap absensi (PDF dan XLSX), serta pesan laporan orang tua. Setelah disimpan, halaman dimuat ulang otomatis.</div><div class="tb"><input id="nsInp" class="input grow" maxlength="80" value="${esc(ns())}" placeholder="Nama sekolah" onkeydown="if(event.key==='Enter')simpanNamaSekolah($('#nsBtn'))"><button id="nsBtn" class="btn success" onclick="simpanNamaSekolah(this)">💾 Simpan</button></div></div></div>
 <div class="panel" id="pnLogo"><div class="ph">🖼️ Logo Sekolah</div><div class="pb"><div class="note">Logo tampil di menu samping, dashboard, dan kartu pelajar. Gunakan gambar persegi atau bulat (PNG transparan paling bagus). Ukuran file maksimum <b>2 MB</b> (PNG, JPG, atau WebP). Gambar otomatis diperkecil saat disimpan.</div><div class="tb" style="align-items:center;gap:14px"><div class="lgprev">${logoHtml()}</div><div style="display:flex;flex-direction:column;gap:8px"><input id="lgFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="pilihLogo(this)"><button class="btn success" onclick="$('#lgFile').click()">⬆ ${logoOk(S.set.logo)?'Ganti logo':'Unggah logo'}</button>${logoOk(S.set.logo)?'<button class="btn danger" onclick="hapusLogo()">🗑 Hapus logo</button>':''}</div></div></div></div>
+<div class="panel" id="pnStempel"><div class="ph">🔴 Stempel Sekolah</div><div class="pb"><div class="note">Stempel digunakan pada area tanda tangan raport, di atas nama penandatangan. Gunakan gambar dengan latar transparan (PNG disarankan). Ukuran file maksimum <b>2 MB</b>.</div><div class="tb" style="align-items:center;gap:14px"><div class="lgprev">${stempelHtml()}</div><div style="display:flex;flex-direction:column;gap:8px"><input id="stFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="pilihStempel(this)"><button class="btn success" onclick="$('#stFile').click()">⬆ ${stempelOk(S.set.stempel)?'Ganti stempel':'Unggah stempel'}</button>${stempelOk(S.set.stempel)?'<button class="btn danger" onclick="hapusStempel()">🗑 Hapus stempel</button>':''}</div></div></div></div>
 <div class="panel" id="pnFotoOrtu"><div class="ph">📷 Foto Siswa</div><div class="pb"><div class="note">Bila diaktifkan, orang tua dapat mengunggah atau mengganti foto anak sendiri lewat Halaman Siswa (tombol Upload/Ubah foto). Foto yang tidak sesuai dapat dihapus kapan saja lewat Data Siswa, Ubah Siswa, Hapus foto. Bila dimatikan, hanya sekolah yang dapat mengubah foto.</div>
 <div class="tb cbrow"><label class="cbl"><input id="cbFotoOrtu" type="checkbox" ${S.set.izin_foto_ortu!==false?'checked':''} onchange="setIzinFoto(this.checked)"> Izinkan orang tua mengubah foto anak</label></div></div></div>
 <div class="panel" id="pnAlamat"><div class="ph">📍 Alamat Sekolah</div><div class="pb"><div class="note">Kota dipakai pada tanda tangan Kepala Sekolah di rekap (contoh: Jember, Minggu 4 Oktober 2026).</div><div class="fg"><div class="fd"><label class="l">Alamat sekolah</label><input id="alInp" class="input" maxlength="150" value="${esc(S.set.alamat||'')}" placeholder="Jl. Contoh, RT/RW 00/01, Desa Contoh"></div><div class="fd"><label class="l">Kota / kabupaten (untuk tanda tangan rekap)</label><input id="ktInp" class="input" maxlength="60" value="${esc(S.set.kota||'')}" placeholder="contoh Jember"></div></div><button class="btn success" style="margin-top:14px" onclick="simpanAlamat(this)">💾 Simpan alamat</button></div></div>
@@ -3048,7 +3175,7 @@ function logoKecil(file){return new Promise((ok,gagal)=>{const u=URL.createObjec
   gagal(new Error('Logo terlalu besar setelah diperkecil (maksimal sekitar 110 KB). Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}}
  im.src=u})}
 async function simpanLogo(v){const r=await dbq(db.from('pengaturan').update({logo:v}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan atau Anda tidak berhak mengubahnya');
- S.set.logo=v;try{KC.clear()}catch(e){}try{await Kartu.siapkanLogo(v)}catch(e){}terapLogo();renderV()}
+ S.set.logo=v;try{kartuCacheBersih()}catch(e){}try{await Kartu.siapkanLogo(v)}catch(e){}terapLogo();renderV()}
 async function pilihLogo(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
  if(f.size>2*1024*1024)return toast('Ukuran file maksimum 2 MB. File Anda '+(f.size/1048576).toFixed(1)+' MB',false);
  let v;try{ld(1,'Memproses gambar...');v=await logoKecil(f)}catch(e){return toast((e&&e.message)||String(e),false)}finally{ld(0)}
@@ -3057,6 +3184,13 @@ async function pilihLogo(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f
 async function hapusLogo(){if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
  if(!await konfirmasi('Hapus logo sekolah?\n\nLogo di menu samping, dashboard, dan kartu pelajar akan kembali ke tampilan bawaan.',{bahaya:true,judul:'Hapus logo',ya:'Hapus'}))return;
  guard(async()=>{await simpanLogo(null);toast('Logo sekolah dihapus')})}
+
+const stempelOk=v=>typeof v==='string'&&v.length<=150000&&/^data:image\/(png|webp|jpeg);base64,/.test(v);
+const stempelHtml=()=>stempelOk(S.set&&S.set.stempel)?'<img alt="Stempel sekolah" src="'+esc(S.set.stempel)+'">':'🔴';
+async function simpanStempel(v){const r=await dbq(db.from('pengaturan').update({stempel:v}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan atau Anda tidak berhak mengubahnya');S.set.stempel=v;renderV()}
+function stempelKecil(file){return new Promise((ok,gagal)=>{const u=URL.createObjectURL(file),im=new Image();im.onerror=()=>{URL.revokeObjectURL(u);gagal(new Error('File bukan gambar yang valid'))};im.onload=()=>{URL.revokeObjectURL(u);try{let hasil='';for(const sz of [512,448,384,320,256,200]){const r=Math.min(1,sz/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r)),cv=skalaLogo(im,w,h);for(const f of ['image/png','image/webp']){const d=cv.toDataURL(f,.94);if(d.startsWith('data:'+f)&&d.length<=148000){hasil=d;break}}if(hasil)break}if(hasil)ok(hasil);else gagal(new Error('Stempel terlalu besar setelah diperkecil. Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}};im.src=u})}
+async function pilihStempel(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);if(f.size>2*1024*1024)return toast('Ukuran file maksimum 2 MB',false);let v;try{ld(1,'Memproses stempel...');v=await stempelKecil(f)}catch(e){return toast(e.message||String(e),false)}finally{ld(0)}if(!await konfirmasi('Gunakan gambar ini sebagai stempel sekolah pada raport?',{ikon:'🔴',judul:'Simpan stempel?',ya:'Simpan',gambar:v}))return;guard(async()=>{await simpanStempel(v);toast('Stempel sekolah disimpan')})}
+async function hapusStempel(){if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);if(!await konfirmasi('Hapus stempel sekolah dari raport?',{bahaya:true,judul:'Hapus stempel',ya:'Hapus'}))return;guard(async()=>{await simpanStempel(null);toast('Stempel sekolah dihapus')})}
 function simpanAlamat(btn){const al=$('#alInp').value.trim(),kt=$('#ktInp').value.trim();if(btn)btn.disabled=true;
  return guard(async()=>{try{const r=await dbq(db.from('pengaturan').update({alamat:al||null,kota:kt||null}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan');S.set.alamat=al;S.set.kota=kt;toast('Alamat sekolah disimpan');renderV();return true}finally{if(btn)btn.disabled=false}})}
 async function simpanNamaSekolah(btn){const v=String($('#nsInp').value||'').replace(/\s+/g,' ').trim();
@@ -3898,12 +4032,12 @@ async function alRapor(id){const a=(AL.data||[]).find(x=>x.id===id);if(!a)return
    }catch(e){console.warn('Indikator raport alumni belum termuat',e)}}
   if(!window._alRap.length){info('Raport '+a.nama,'<div class="note">Tidak ada raport terbit yang tersimpan untuk alumni ini.</div>');return}
   info('Raport '+a.nama,'<div class="mu" style="margin-bottom:8px">Raport tersimpan selama data alumni ada, lalu terhapus bersama data alumni.</div>'+window._alRap.map((r,i)=>`<div class="tb" style="align-items:center"><div style="flex:1"><b>${r.jenis} Semester ${r.semester}</b><div class="mu">TA ${esc(r.tahun_ajaran)} · Kelas ${esc(r.kelas_nama||'-')}</div></div><button class="btn sm soft" onclick="alRaporLihat(${i})">👁 Lihat</button><button class="btn sm soft" onclick="alRaporPdf([${i}],this)">📄 PDF</button></div>`).join('')+`<div class="tb"><button class="btn success" onclick="alRaporPdf([${window._alRap.map((_,i)=>i).join(',')}],this)">📄 Unduh semua (${window._alRap.length})</button></div>`)})}
-async function alRaporD(a,r,logo){
- if(r.fmt==='perkembangan')return pkSusun(r,logo,{alumni:true,nama:a.nama,nisn:a.nisn||'',tempat:a.tempat_lahir||'',tgl:a.tgl_lahir||''});
- return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:a.nama,nisn:a.nisn||'',wali:null,kepsek:null})}
+async function alRaporD(a,r,logo,stempel){
+ if(r.fmt==='perkembangan')return pkSusun(r,logo,{alumni:true,nama:a.nama,nisn:a.nisn||'',tempat:a.tempat_lahir||'',tgl:a.tgl_lahir||'',stempel});
+ return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:a.nama,nisn:a.nisn||'',wali:null,kepsek:null})}
 /* pratinjau satu raport alumni (satu siswa, satu raport) */
 function alRaporLihat(i){const a=window._alA,r=(window._alRap||[])[i];if(!a||!r)return;
- guard(async()=>{await muatLib('pdf');const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),D=await alRaporD(a,r,logo);
+ guard(async()=>{await muatLib('pdf');const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null),D=await alRaporD(a,r,logo,stempel);
   info('Raport '+a.nama,`<div class="rpv"><div class="note"><b>${esc(a.nama)}</b>${a.nisn?' · NISN '+esc(a.nisn):''}<br>Kelas ${esc(r.kelas_nama||'-')} · TA ${esc(r.tahun_ajaran)} · Semester ${esc(r.semester)} · ${esc(r.jenis)}</div>
   <div class="tb" style="flex-wrap:wrap;align-items:center"><button type="button" class="btn soft sm" onclick="rpZoom(-80)">➖ Perkecil</button><button type="button" class="btn soft sm" onclick="rpZoom(80)">➕ Perbesar</button><span class="mu">Geser untuk melihat bagian lain</span></div>
   <div id="rpPrev" class="rpprev"><div class="note">⏳ Menyiapkan raport...</div></div>
@@ -3916,8 +4050,10 @@ function alRaporPdf(idx,btn){const a=window._alA,rs=idx.map(i=>window._alRap[i])
 
 /* ---- PDF raport: DESAIN ada di /rapor.js (dipakai bersama portal). Di sini hanya menyiapkan data ---- */
 async function pnPdfBuat(rs,infoFn,nf,btn){await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membuat PDF...'))return;
- try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null);
-  const Ds=rs.map(r=>{if(r.fmt==='perkembangan')return pkSusun(r,logo,infoFn(r));const i=infoFn(r)||{};if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
+ try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null),infos=rs.map(r=>infoFn(r)||{}),ids=[];
+  rs.forEach((r,i)=>{const w=infos[i].wali||ttdWali(r.kelas_nama),k=infos[i].kepsek||ttdKepsek(),pg=r.fmt==='perkembangan'?pkPengelola([w&&w.id,k&&k.id]):null;if(w&&w.id)ids.push(w.id);if(k&&k.id)ids.push(k.id);if(pg&&pg.id)ids.push(pg.id)});
+  const sig=await ttdPngAmbil(ids);
+  const Ds=rs.map((r,ix)=>{const i=infos[ix];if(r.fmt==='perkembangan')return pkSusun(r,logo,{...i,ttd:sig,stempel});i.wali=i.wali||ttdWali(r.kelas_nama);i.kepsek=i.kepsek||ttdKepsek();if(i.wali&&i.wali.id)i.wali.ttd=sig[i.wali.id]||null;if(i.kepsek&&i.kepsek.id)i.kepsek.ttd=sig[i.kepsek.id]||null;if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
   await Rapor.pdf(Ds,nf);toast('PDF raport sedang diproses, mohon ditunggu')}
  catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 async function pnPdf(ids,btn){const rs=pnRap.filter(r=>ids.includes(r.id));if(!rs.length)return toast('Belum ada raport tersimpan untuk diunduh',false);
@@ -4446,9 +4582,9 @@ let devSekFiltr='';
 function devGuru(){const sk=S.devSek||[];if(!S.devGuru)return panelDevGuru();
  const opt='<option value="">Semua sekolah</option>'+sk.map(x=>`<option value="${x.id}" ${String(x.id)===devSekFiltr?'selected':''}>${esc(x.nama)}${x.status!=='aktif'?' (nonaktif)':''}</option>`).join('');
  return `<div class="panel"><div class="pb" style="padding-top:14px"><label class="l">Tampilkan guru dari</label><select class="select" onchange="devSekFiltr=this.value;renderV()">${opt}</select></div></div>`+(devSekFiltr?devGuruSekolah(Number(devSekFiltr)):panelDevGuru())}
-function devGuruSekolah(sid){const sk=(S.devSek||[]).find(x=>x.id===sid)||{nama:'',status:''};
+function devGuruSekolah(sid){setTimeout(()=>ttdGuruMuatDev(),0);const sk=(S.devSek||[]).find(x=>x.id===sid)||{nama:'',status:''};
  const m=(S.devGuru||[]).filter(g=>g.role!=='developer').map(g=>({g,k:(g.keanggotaan||[]).find(k=>k.sekolah_id===sid)})).filter(x=>x.k);
- return `<div class="panel"><div class="ph">👥 Guru - ${esc(sk.nama)} <button class="btn success sm add" onclick="devTambahGuru(${sid})">+ Guru</button></div><div class="pb">${m.length?tab(['No','Nama','NIP','Username','WhatsApp','Peran','Status','Aksi'],m.map(({g,k},i)=>`<tr><td>${i+1}</td><td><b>${esc(g.nama)}</b></td><td>${esc(g.nip||'-')}</td><td>${esc(g.username)}</td><td><span style="white-space:nowrap">${nomorHtml(g.no_wa)||'-'}<button type="button" onclick="devUbahNomor('${g.id}')" title="Ubah nomor WhatsApp" aria-label="Ubah nomor WhatsApp" style="background:none;border:0;box-shadow:none;padding:2px 4px 2px 8px;margin:0;cursor:pointer;font-size:15px;line-height:1;vertical-align:middle">✏️</button></span></td><td><select class="select" onchange="devUbahRole('${g.id}',${sid},this.value)">${['kepala_sekolah','wakil_kepala','pengelola','operator','guru'].map(r=>`<option value="${r}" ${r===k.role?'selected':''}>${LBL[r]}</option>`).join('')}</select></td><td>${k.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td><div class="tb" style="margin:0;flex-wrap:wrap">${k.aktif&&g.aktif&&sk.status==='aktif'?`<button class="btn sm soft" onclick="masukSebagai('${g.id}',${sid})">🔑 Masuk</button>`:''}<button class="btn sm ${k.aktif?'danger':'success'}" onclick="devAktif('${g.id}',${sid},${!k.aktif})">${k.aktif?'Nonaktifkan':'Aktifkan'}</button><button class="btn sm danger" onclick="devKeluarkan('${g.id}',${sid})">Keluarkan</button></div></td></tr>`).join('')):'<div class="mu">Belum ada guru di sekolah ini.</div>'}</div></div>`}
+ return `<div class="panel"><div class="ph">👥 Guru - ${esc(sk.nama)} <button class="btn success sm add" onclick="devTambahGuru(${sid})">+ Guru</button></div><div class="pb">${m.length?tab(['No','Nama','NIP','Username','WhatsApp','Peran','Status','Tanda tangan','Aksi'],m.map(({g,k},i)=>`<tr><td>${i+1}</td><td><b>${esc(g.nama)}</b></td><td>${esc(g.nip||'-')}</td><td>${esc(g.username)}</td><td><span style="white-space:nowrap">${nomorHtml(g.no_wa)||'-'}<button type="button" onclick="devUbahNomor('${g.id}')" title="Ubah nomor WhatsApp" aria-label="Ubah nomor WhatsApp" style="background:none;border:0;box-shadow:none;padding:2px 4px 2px 8px;margin:0;cursor:pointer;font-size:15px;line-height:1;vertical-align:middle">✏️</button></span></td><td><select class="select" onchange="devUbahRole('${g.id}',${sid},this.value)">${['kepala_sekolah','wakil_kepala','pengelola','operator','guru'].map(r=>`<option value="${r}" ${r===k.role?'selected':''}>${LBL[r]}</option>`).join('')}</select></td><td>${k.aktif?'<span class="badge Hadir">Aktif</span>':'<span class="badge Belum">Nonaktif</span>'}</td><td><span class="badge ${TTD_GURU[g.id]?'Hadir':'Belum'}">${TTD_GURU[g.id]?'Tersedia':'Belum ada'}</span><button class="btn sm soft" onclick="ttdGuruBuka('${g.id}','${esc(g.nama)}')">${TTD_GURU[g.id]?'Kelola':'Tambah'}</button></td><td><div class="tb" style="margin:0;flex-wrap:wrap">${k.aktif&&g.aktif&&sk.status==='aktif'?`<button class="btn sm soft" onclick="masukSebagai('${g.id}',${sid})">🔑 Masuk</button>`:''}<button class="btn sm ${k.aktif?'danger':'success'}" onclick="devAktif('${g.id}',${sid},${!k.aktif})">${k.aktif?'Nonaktifkan':'Aktifkan'}</button><button class="btn sm danger" onclick="devKeluarkan('${g.id}',${sid})">Keluarkan</button></div></td></tr>`).join('')):'<div class="mu">Belum ada guru di sekolah ini.</div>'}</div></div>`}
 function devUbahRole(pid,sid,r){if(r==='kepala_sekolah'){konfirmasi('Jadikan guru ini Kepala Sekolah? Kepala Sekolah saat ini otomatis menjadi Guru.',{judul:'Ganti Kepala Sekolah',ya:'Ya, ganti',ikon:'👑'}).then(ok=>{if(!ok){renderV();return}devUbahRole2(pid,sid,r)});return}devUbahRole2(pid,sid,r)}
 /* Developer mengubah nomor WhatsApp guru langsung (tanpa OTP, tanpa Masuk sebagai); pemberitahuan hanya ke nomor baru */
 function devUbahNomor(pid){const g=(S.devGuru||[]).find(x=>x.id===pid);if(!g)return;const jml=(g.keanggotaan||[]).length;
@@ -4768,13 +4904,18 @@ async function rpAmbil(id){let r=RP.full.get(id);if(r)return r;
  const a=await dbq(db.from('rapor').select('*').eq('id',id));r=(a||[])[0];if(!r)throw new Error('Raport tidak ditemukan, mungkin sudah dihapus.');RP.full.set(id,r);return r}
 /* siapkan data gambar raport; desainnya SAMA dengan PDF (rapor.js), jadi yang dilihat = yang diunduh */
 async function rpDataD(r){
- const s=siswaById(r.siswa_id)||{},logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null);
+ const s=siswaById(r.siswa_id)||{},logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
  if(r.fmt==='perkembangan'){
   if(typeof PKR==='undefined'||typeof pkSusun!=='function')throw new Error('Modul raport perkembangan belum termuat, muat ulang halaman.');
   if(!PKR.loaded)await pkMuat();
   if(r.salinan_hash&&!PKR.sal.has(r.salinan_hash)){const a=await dbq(db.from('rapor_salinan').select('hash,isi').eq('hash',r.salinan_hash));(a||[]).forEach(x=>PKR.sal.set(x.hash,x.isi))}
-  return pkSusun(r,logo)}
- return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:s.nama,nisn:s.nisn,wali:ttdWali(r.kelas_nama),kepsek:ttdKepsek()})}
+  const wali=ttdWali(r.kelas_nama)||{},kepsek=ttdKepsek(),pg=pkPengelola([wali.id,kepsek.id]),sig=await ttdPngAmbil([wali.id,kepsek.id,pg&&pg.id]);
+  return pkSusun(r,logo,{ttd:sig,stempel})
+ }
+ const wali=ttdWali(r.kelas_nama)||{},kepsek=ttdKepsek(),sig=await ttdPngAmbil([wali.id,kepsek.id]);
+ if(wali.id)wali.ttd=sig[wali.id]||null;if(kepsek.id)kepsek.ttd=sig[kepsek.id]||null;
+ return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:s.nama,nisn:s.nisn,wali,kepsek})
+}
 function rpLihatHTML(r,s,b){
  const stt=r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>';
  return `<div class="rpv"><div class="note"><b>${esc(s.nama)}</b>${s.nisn?' · NISN '+esc(s.nisn):''}<br>Kelas ${esc(r.kelas_nama||'-')} · TA ${esc(r.tahun_ajaran)} · Semester ${esc(r.semester)} · ${esc(r.jenis)} ${stt}</div>

@@ -628,10 +628,10 @@ R.hafalan=d=>{const h=d.hafalan;if(!h||!h.aktif)return pesanFitur('📖','Hafala
 /* ---------- Rapor: tampilan dan PDF memakai /rapor.js (satu desain untuk guru dan orang tua) ---------- */
 const RP={i:0,w:720,d:null,D:null};
 const rpTunggu=(f,n)=>{n=n||0;if(typeof Rapor!=='undefined')f();else if(n<60)setTimeout(()=>rpTunggu(f,n+1),150);else{const e=$('#rpS');if(e)e.innerHTML='<div class="mu" style="padding:14px">Tampilan rapor gagal dimuat. Muat ulang halaman ini.</div>'}};
-async function rpGambar(){const d=RP.d,r=d.rapor[RP.i],lg=await Rapor.logoPng(d.sekolah.logo).catch(()=>null);
+async function rpGambar(){const d=RP.d,r=d.rapor[RP.i],lg=await Rapor.logoPng(d.sekolah.logo).catch(()=>null),stempel=await Rapor.logoPng(d.sekolah.stempel).catch(()=>null);
  const per=r.fmt==='perkembangan',e=$('#rpS');
  if(per&&!r.master){RP.D=null;if(e)e.innerHTML='<div class="mu" style="padding:14px">Rapor ini belum bisa ditampilkan. Hubungi sekolah.</div>';return}
- RP.D=Rapor.susun(r,Object.assign({logo:lg,sekolah:d.sekolah.nama,alamat:d.sekolah.alamat,nama:d.siswa.nama,nisn:d.siswa.nisn,kelas:d.siswa.kelas},per?{panggilan:d.siswa.pan,tempatLahir:d.siswa.tempat,tglLahir:d.siswa.tgl,kota:d.sekolah.kota,kelompok:r.kelompok_nama,kelompokLabel:r.kelompok_label,master:r.master}:{}));
+ RP.D=Rapor.susun(r,Object.assign({logo:lg,stempel,sekolah:d.sekolah.nama,alamat:d.sekolah.alamat,nama:d.siswa.nama,nisn:d.siswa.nisn,kelas:d.siswa.kelas},per?{panggilan:d.siswa.pan,tempatLahir:d.siswa.tempat,tglLahir:d.siswa.tgl,kota:d.sekolah.kota,kelompok:r.kelompok_nama,kelompokLabel:r.kelompok_label,master:r.master}:{}));
  if(e&&!RP.zoomed&&e.clientWidth>0)RP.w=Math.max(300,e.clientWidth-20);
  if(e)Rapor.pratinjau(e,[RP.D],RP.w)}
 const rpZoom=dl=>{RP.zoomed=true;RP.w=Math.max(360,Math.min(1400,RP.w+dl));const e=$('#rpS');if(e)Rapor.lebar(e,RP.w)};
