@@ -144,14 +144,14 @@ module.exports = async (req, res) => {
         throw e;
       }
       if (target.ttd_path && pathAman(target.ttd_path, targetId)) await storage('DELETE', target.ttd_path).catch(() => {});
-      await L.catatLog({ pelaku: user.id, sekolah_id: punyaSid ? sid : null, aksi: 'tanda_tangan_simpan', rincian: 'Tanda tangan ' + (target.nama || targetId) + (targetId === user.id ? ' diperbarui sendiri' : ' diperbarui pengelola') });
+      await Promise.resolve(L.catatLog({ pelaku: user.id, sekolah_id: punyaSid ? sid : null, aksi: 'tanda_tangan_simpan', rincian: 'Tanda tangan ' + (target.nama || targetId) + (targetId === user.id ? ' diperbarui sendiri' : ' diperbarui pengelola') })).catch(() => {});
       return res.status(200).json({ ok: true });
     }
 
     if (aksi === 'hapus') {
       await L.panggil('/rest/v1/profil?id=eq.' + targetId, 'PATCH', { ttd_path: null }, { Prefer: 'return=minimal' });
       if (target.ttd_path && pathAman(target.ttd_path, targetId)) await storage('DELETE', target.ttd_path).catch(() => {});
-      await L.catatLog({ pelaku: user.id, sekolah_id: punyaSid ? sid : null, aksi: 'tanda_tangan_hapus', rincian: 'Tanda tangan ' + (target.nama || targetId) + ' dihapus' });
+      await Promise.resolve(L.catatLog({ pelaku: user.id, sekolah_id: punyaSid ? sid : null, aksi: 'tanda_tangan_hapus', rincian: 'Tanda tangan ' + (target.nama || targetId) + ' dihapus' })).catch(() => {});
       return res.status(200).json({ ok: true });
     }
     return res.status(400).json({ error: 'Aksi tidak valid' });
