@@ -268,20 +268,20 @@ async function kirimStafLibur(token, sekolahId, nomorKepala, teks, lg) {
 // sudah berstatus Libur pada tanggal tersebut.
 async function dataKelasLibur(sekolahId, tanggal) {
   const [kelas, siswa, nasional, khusus, pengaturan] = await Promise.all([
-    supabase(\`kelas?sekolah_id=eq.\${sekolahId}&aktif=eq.true&select=id,nama&limit=5000\`),
-    supabase(\`siswa?sekolah_id=eq.\${sekolahId}&aktif=eq.true&select=id,kelas_id&limit=5000\`),
-    supabase(\`libur_nasional?tanggal=eq.\${encodeURIComponent(tanggal)}&select=keterangan&limit=1\`),
-    supabase(\`libur_tanggal?sekolah_id=eq.\${sekolahId}&mulai=lte.\${encodeURIComponent(tanggal)}&sampai=gte.\${encodeURIComponent(tanggal)}&select=kelas_id,keterangan,masuk_kembali\`),
-    supabase(\`pengaturan?sekolah_id=eq.\${sekolahId}&select=notif_libur_mingguan,nama_sekolah&limit=1\`)
+    supabase(`kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,nama&limit=5000`),
+    supabase(`siswa?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,kelas_id&limit=5000`),
+    supabase(`libur_nasional?tanggal=eq.${encodeURIComponent(tanggal)}&select=keterangan&limit=1`),
+    supabase(`libur_tanggal?sekolah_id=eq.${sekolahId}&mulai=lte.${encodeURIComponent(tanggal)}&sampai=gte.${encodeURIComponent(tanggal)}&select=kelas_id,keterangan,masuk_kembali`),
+    supabase(`pengaturan?sekolah_id=eq.${sekolahId}&select=notif_libur_mingguan,nama_sekolah&limit=1`)
   ]);
   const semuaSiswa = siswa || [];
   if (!kelas?.length || !semuaSiswa.length) return { kelas: [], namaSekolah: pengaturan?.[0]?.nama_sekolah || '' };
   const ids = semuaSiswa.map(x => Number(x.id)).filter(Number.isInteger);
-  const hadirLibur = await supabase(\`absensi?siswa_id=in.(\${ids.map(encodeURIComponent).join(',')})&tanggal=eq.\${encodeURIComponent(tanggal)}&status=eq.libur&select=siswa_id&limit=10000\`);
+  const hadirLibur = await supabase(`absensi?siswa_id=in.(${ids.map(encodeURIComponent).join(',')})&tanggal=eq.${encodeURIComponent(tanggal)}&status=eq.libur&select=siswa_id&limit=10000`);
   const setLibur = new Set((hadirLibur || []).map(x => String(x.siswa_id)));
   const hari = new Date(tanggal + 'T00:00:00Z').getUTCDay();
   const mingguan = pengaturan?.[0]?.notif_libur_mingguan
-    ? await supabase(\`libur_mingguan?sekolah_id=eq.\${sekolahId}&hari=eq.\${hari}&select=hari&limit=1\`)
+    ? await supabase(`libur_mingguan?sekolah_id=eq.${sekolahId}&hari=eq.${hari}&select=hari&limit=1`)
     : [];
   const hasil = [];
   for (const k of kelas) {
@@ -333,12 +333,12 @@ async function kirimGrupLibur(tokenUtama, sekolahId, tanggal, lg) {
   const data = await dataKelasLibur(sekolahId, tanggal);
   if (!data.kelas.length) return { ok: 0, gagal: [] };
   const kelasIds = data.kelas.map(x => x.id);
-  const relasi = await supabase(\`kelas_grup_wa?sekolah_id=eq.\${sekolahId}&kelas_id=in.(\${kelasIds.join(',')})&select=kelas_id,grup_wa_id\`);
+  const relasi = await supabase(`kelas_grup_wa?sekolah_id=eq.${sekolahId}&kelas_id=in.(${kelasIds.join(',')})&select=kelas_id,grup_wa_id`);
   if (!relasi?.length) return { ok: 0, gagal: [] };
   const grupIds = [...new Set(relasi.map(x => Number(x.grup_wa_id)).filter(Number.isInteger))];
   const [grupRows, tokenRows] = await Promise.all([
-    supabase(\`grup_wa?sekolah_id=eq.\${sekolahId}&id=in.(\${grupIds.join(',')})&select=id,grup_id,label,token_id\`),
-    supabase(\`fonnte_token?sekolah_id=eq.\${sekolahId}&select=id,token\`)
+    supabase(`grup_wa?sekolah_id=eq.${sekolahId}&id=in.(${grupIds.join(',')})&select=id,grup_id,label,token_id`),
+    supabase(`fonnte_token?sekolah_id=eq.${sekolahId}&select=id,token`)
   ]);
   const kelasById = new Map(data.kelas.map(x => [String(x.id), x]));
   const grupById = new Map((grupRows || []).map(x => [String(x.id), x]));
