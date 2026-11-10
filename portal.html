@@ -629,9 +629,13 @@ R.hafalan=d=>{const h=d.hafalan;if(!h||!h.aktif)return pesanFitur('📖','Hafala
 const RP={i:0,w:720,d:null,D:null};
 const rpTunggu=(f,n)=>{n=n||0;if(typeof Rapor!=='undefined')f();else if(n<60)setTimeout(()=>rpTunggu(f,n+1),150);else{const e=$('#rpS');if(e)e.innerHTML='<div class="mu" style="padding:14px">Tampilan rapor gagal dimuat. Muat ulang halaman ini.</div>'}};
 async function rpGambar(){const d=RP.d,r=d.rapor[RP.i],lg=await Rapor.logoPng(d.sekolah.logo).catch(()=>null),stempel=await Rapor.logoPng(d.sekolah.stempel).catch(()=>null);
- const per=r.fmt==='perkembangan',e=$('#rpS');
+ const per=r.fmt==='perkembangan',e=$('#rpS'),p=r.penandatangan||{};
+ const [tw,tk,tp]=await Promise.all([Rapor.logoPng(p.wali&&p.wali.ttd).catch(()=>null),Rapor.logoPng(p.kepsek&&p.kepsek.ttd).catch(()=>null),Rapor.logoPng(p.pengelola&&p.pengelola.ttd).catch(()=>null)]);
+ const wali=Object.assign({},p.wali||{}, {ttd:tw&&tw.url||null});
+ const kepsek=Object.assign({},p.kepsek||{}, {ttd:tk&&tk.url||null});
+ const pengelola=p.pengelola?Object.assign({},p.pengelola,{ttd:tp&&tp.url||null}):null;
  if(per&&!r.master){RP.D=null;if(e)e.innerHTML='<div class="mu" style="padding:14px">Rapor ini belum bisa ditampilkan. Hubungi sekolah.</div>';return}
- RP.D=Rapor.susun(r,Object.assign({logo:lg,stempel,sekolah:d.sekolah.nama,alamat:d.sekolah.alamat,nama:d.siswa.nama,nisn:d.siswa.nisn,kelas:d.siswa.kelas},per?{panggilan:d.siswa.pan,tempatLahir:d.siswa.tempat,tglLahir:d.siswa.tgl,kota:d.sekolah.kota,kelompok:r.kelompok_nama,kelompokLabel:r.kelompok_label,master:r.master}:{}));
+ RP.D=Rapor.susun(r,Object.assign({logo:lg,stempel,sekolah:d.sekolah.nama,alamat:d.sekolah.alamat,nama:d.siswa.nama,nisn:d.siswa.nisn,kelas:d.siswa.kelas,wali,kepsek,pengelola},per?{panggilan:d.siswa.pan,tempatLahir:d.siswa.tempat,tglLahir:d.siswa.tgl,kota:d.sekolah.kota,kelompok:r.kelompok_nama,kelompokLabel:r.kelompok_label,master:r.master}:{}));
  if(e&&!RP.zoomed&&e.clientWidth>0)RP.w=Math.max(300,e.clientWidth-20);
  if(e)Rapor.pratinjau(e,[RP.D],RP.w)}
 const rpZoom=dl=>{RP.zoomed=true;RP.w=Math.max(360,Math.min(1400,RP.w+dl));const e=$('#rpS');if(e)Rapor.lebar(e,RP.w)};

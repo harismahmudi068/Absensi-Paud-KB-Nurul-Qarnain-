@@ -426,7 +426,7 @@ async function petaRapor(rows, sid) {
   }
   return rows.map((r) => {
     const o = {
-      id: r.id, tahun_ajaran: r.tahun_ajaran, semester: r.semester, jenis: r.jenis, kelas_nama: r.kelas_nama || '',
+      id: r.id, status: 'terbit', tahun_ajaran: r.tahun_ajaran, semester: r.semester, jenis: r.jenis, kelas_nama: r.kelas_nama || '',
       nilai: Array.isArray(r.nilai) ? r.nilai : [], sakit: r.sakit || 0, izin: r.izin || 0, alpa: r.alpa || 0,
       catatan: r.catatan || '', keputusan: r.keputusan || '', kelas_tujuan: r.kelas_tujuan || '',
       wali_nama: r.wali_nama || '', wali_nip: r.wali_nip || '', kepsek_nama: r.kepsek_nama || '', kepsek_nip: r.kepsek_nip || ''
@@ -442,6 +442,71 @@ async function petaRapor(rows, sid) {
     }
     return o;
   });
+}
+
+
+/* Data penandatangan raport portal: mengikuti aturan yang dipakai index.html.
+   File tanda tangan dibaca server dari bucket privat setelah QR siswa dan sekolah tervalidasi. */
+const RE_UUID_TTD = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const RE_PATH_TTD = /^[0-9a-f-]{36}\/[0-9]+-[a-f0-9]{8}\.(png|jpg|webp)$/i;
+const nipPortal = v => { const n = String(v || '').replace(/\D/g, ''); return n.length === 18 ? n.slice(0,8)+' '+n.slice(8,14)+' '+n.slice(14,15)+' '+n.slice(15) : String(v || '').trim(); };
+async function ttdFilePortal(p) {
+  const id = String(p && p.id || ''), path = String(p && p.ttd_path || '');
+  if (!RE_UUID_TTD.test(id) || !path.startsWith(id + '/') || !RE_PATH_TTD.test(path) || !L.SB || !L.KEY) return '';
+  try {
+    const url = L.SB.replace(/\/+$/, '') + '/storage/v1/object/ttd-guru/' + path.split('/').map(encodeURIComponent).join('/');
+    const r = await fetch(url, { headers: { apikey: L.KEY, Authorization: 'Bearer ' + L.KEY } });
+    if (!r.ok) return '';
+    const type = String(r.headers.get('content-type') || '').split(';')[0].toLowerCase();
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(type)) return '';
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length || buf.length > 524288) return '';
+    return 'data:' + type + ';base64,' + buf.toString('base64');
+  } catch (e) { return ''; }
+}
+async function raporTandaTangan(rows, sid) {
+  rows = rows || [];
+  if (!rows.length) return rows;
+  try {
+    const [kelas, keanggotaan] = await Promise.all([
+      L.panggil('/rest/v1/kelas?sekolah_id=eq.' + sid + '&select=nama,wali_profil_id', 'GET'),
+      L.panggil('/rest/v1/keanggotaan?sekolah_id=eq.' + sid + '&select=profil_id,role,aktif,profil(id,nama,nip,ttd_path,aktif)', 'GET')
+    ]);
+    const anggota = (keanggotaan || []).map(x => {
+      const p = Array.isArray(x.profil) ? x.profil[0] : x.profil;
+      return p ? Object.assign({}, p, { role: x.role, anggota_aktif: x.aktif }) : null;
+    }).filter(Boolean);
+    const byId = new Map(anggota.map(x => [String(x.id), x]));
+    const kelasWali = new Map((kelas || []).map(x => [String(x.nama || '').trim(), String(x.wali_profil_id || '')]));
+    const pilihRole = (role, kecuali, aktifSaja) => {
+      const a = anggota.filter(x => x.role === role && !kecuali.has(String(x.id)));
+      return a.find(x => x.anggota_aktif !== false && x.aktif !== false) || (!aktifSaja ? a[0] : null) || null;
+    };
+    const data = rows.map(r => {
+      const waliId = kelasWali.get(String(r.kelas_nama || '').trim()) || '';
+      const wali = byId.get(waliId) || null;
+      const kepsek = pilihRole('kepala_sekolah', new Set(), false);
+      const kecuali = new Set([wali && String(wali.id), kepsek && String(kepsek.id)].filter(Boolean));
+      // Sama dengan pkPengelola(): hanya Pengelola aktif dan bukan penandatangan lain.
+      const pengelola = r.fmt === 'perkembangan' ? pilihRole('pengelola', kecuali, true) : null;
+      return { r, wali, kepsek, pengelola };
+    });
+    const profilById = new Map();
+    data.forEach(x => [x.wali, x.kepsek, x.pengelola].filter(Boolean).forEach(p => profilById.set(String(p.id), p)));
+    const gambar = new Map();
+    await Promise.all([...profilById.values()].map(async p => gambar.set(String(p.id), await ttdFilePortal(p))));
+    return data.map(x => {
+      const profil = p => p ? { id: p.id, nama: p.nama || '', nip: nipPortal(p.nip), ttd: gambar.get(String(p.id)) || null } : null;
+      const wali = profil(x.wali);
+      if (wali) wali.kelas = x.r.kelas_nama || '';
+      return Object.assign({}, x.r, {
+        penandatangan: { wali: wali || {}, kepsek: profil(x.kepsek) || {}, pengelola: profil(x.pengelola) },
+      });
+    });
+  } catch (e) {
+    console.error('portal rapor tanda tangan:', e && e.message);
+    return rows;
+  }
 }
 
 module.exports = async (req, res) => {
@@ -763,7 +828,7 @@ module.exports = async (req, res) => {
     } else if (v === 'hafalan') {
       out.hafalan = muatHafalanData(true);
     } else if (v === 'rapor') {
-      out.rapor = await petaRapor(raporData, sid);
+      out.rapor = await raporTandaTangan(await petaRapor(raporData, sid), sid);
     } else if (v === 'libur') {
       Object.assign(out, liburRingkas(liburData));
     }
