@@ -254,6 +254,7 @@ function pmRender() {
 }
 
 let PM_PREVIEW_W = 0;
+let PM_PREVIEW_LOGO_PROMISE = null;
 function pmPreviewBuka() {
   PKME.buka.add('preview');
   PM_PREVIEW_W = Math.max(300, Math.min(1100, (window.innerWidth || 390) - 32));
@@ -284,8 +285,14 @@ async function pmPreviewRender() {
   let w = $('#pmPreviewCanvas');
   if (!w || !PKME.M) return;
   try {
-    const sekolah = S.kd && S.kd.sekolah ? S.kd.sekolah : {};
-    const lg = await Rapor.logoPng(sekolah.logo || '').catch(() => null);
+    /* Editor master tidak selalu memiliki S.kd (data itu hanya dimuat pada portal siswa).
+       Ambil logo langsung dari pengaturan sekolah aktif, lalu gunakan cache selama popup terbuka. */
+    if (!PM_PREVIEW_LOGO_PROMISE) {
+      PM_PREVIEW_LOGO_PROMISE = dbq(db.from('pengaturan').select('logo').eq('sekolah_id', SEK).limit(1))
+        .then(rows => Rapor.logoPng(rows && rows[0] ? rows[0].logo || '' : ''))
+        .catch(() => null);
+    }
+    const lg = await PM_PREVIEW_LOGO_PROMISE;
     w = $('#pmPreviewCanvas');
     if (!w || !PKME.M) return;
     const M = pmNorm(pmKlon(PKME.M)), n = {};
