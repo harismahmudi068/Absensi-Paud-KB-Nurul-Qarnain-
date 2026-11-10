@@ -17,7 +17,16 @@ const PKME = { kid: 0, M: null, versi: 0, dirty: false, boleh: null, ro: true, b
     + '.pmk textarea,.pki textarea,.pkb textarea{resize:vertical}'
     + '.pmk .pki{padding:12px 0}.pmx .mu{margin:10px 0 4px}.pmx label.l,.pkb label.l{display:block;margin:12px 0 4px;font-weight:800;font-size:12px}'
     + '.pmh{margin:10px 0 8px}.pkb .tb{margin-top:12px}.pmk>.pmh+.input{margin-top:0}'
-    + '.pmpil{border:1px dashed var(--bd);border-radius:12px;padding:10px;margin:10px 0}.pmpr{display:flex;gap:8px;align-items:flex-start;padding:6px 0}.pmpr input{margin-top:3px}';
+    + '.pmpil{border:1px dashed var(--bd);border-radius:12px;padding:10px;margin:10px 0}.pmpr{display:flex;gap:8px;align-items:flex-start;padding:6px 0}.pmpr input{margin-top:3px}'
+    + '.pm-preview-popup{display:none;position:fixed;inset:0;z-index:100000;background:var(--bg);color:var(--tx);flex-direction:column;width:100vw;height:100dvh;overflow:hidden}'
+    + '.pm-preview-popup.show{display:flex}.pm-preview-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--card);border-bottom:1px solid var(--bd);flex-shrink:0}'
+    + '.pm-preview-actions{display:flex;align-items:center;gap:6px}.pm-preview-actions button{border:1px solid var(--bd);border-radius:9px;background:var(--card);color:var(--tx);font-weight:800;padding:8px 11px;min-height:38px}'
+    + '.pm-preview-actions .pm-preview-save{background:var(--gr);color:#fff;border-color:var(--gr)}.pm-preview-actions .pm-preview-back{background:var(--nv,#24364b);color:#fff}'
+    + '.pm-preview-info{padding:7px 12px;font-size:12px;color:var(--mu);background:var(--card);flex-shrink:0}'
+    + '.pm-preview-canvas{flex:1;min-height:0;overflow:auto;padding:12px 10px 30px;display:flex;flex-direction:column;align-items:center;gap:12px;overscroll-behavior:contain}'
+    + '.pm-preview-canvas .rpc{display:block;max-width:none;flex-shrink:0;background:#fff;box-shadow:0 2px 12px #0002}'
+    + 'body.pm-preview-open{overflow:hidden}';
+
   document.head.appendChild(st);
 })();
 
@@ -238,20 +247,36 @@ function pmRender() {
   if (!ro && (PKME.sinkron || []).length) h += `<div class="note" style="border-color:#d99a27;background:#fff8df">⚠ Perubahan kode KD belum terterapkan di: <b>${esc([...new Set(PKME.sinkron.map(g => g.nama))].join(', '))}</b>.<br>${esc(PKME.sinkron[0].pesan || '')}<div class="tb" style="margin-top:8px"><button class="btn soft sm" onclick="pmKdSebarUlang()">🔄 Ulangi</button></div></div>`;
   if (!ro) h += `<div class="pmd" id="pmDirty" style="${PKME.dirty ? '' : 'display:none'}">● Ada perubahan yang belum disimpan</div><div class="fd" style="margin-bottom:14px"><input class="input" style="margin-bottom:0" maxlength="120" placeholder="Ringkasan perubahan (opsional)" value="${esc(PKME.ring)}" onchange="PKME.ring=this.value"></div><div class="tb" style="flex-wrap:wrap;gap:10px;margin-bottom:16px"><button class="btn success grow" onclick="pmSimpan()">💾 Simpan master</button><button class="btn soft grow" onclick="pmPreviewBuka()">👁 Pratinjau raport</button><button class="btn soft grow" onclick="pmBuang()">↩️ Buang perubahan</button></div>`;
   h += pmDet('aspek', 'Aspek, kategori, dan indikator', pmHtmlAspek(M, ro)) + pmDet('kd', 'Kompetensi Dasar (KD)', kd + '<div class="mu">KD dipilih per indikator dan tampil pada kolom KD raport. KD bersifat bersama satu sekolah: mengubah kode KD di sini (lalu Simpan master) otomatis mengubah KD yang sama di semua kelompok lain.</div>') + pmDet('nomor', 'Penomoran', nomor)
-    + pmDet('set', 'Teks otomatis (kalimat capaian dan catatan)', pmHtmlSet(M, ro)) + pmDet('tempel', 'Impor dan template XLSX', tempel) + pmDet('riw', 'Riwayat perubahan', pmHtmlRiwayat(M)) + pmDet('preview', 'Pratinjau raport · simulasi tata letak', '<div class="mu">Pratinjau memakai contoh siswa dan contoh level penilaian. Perubahan master yang belum disimpan ikut ditampilkan; tidak mengubah data siswa atau raport tersimpan.</div><div class="tb" style="flex-wrap:wrap;margin:10px 0"><button class="btn success sm" onclick="pmPreviewRender()">↻ Perbarui pratinjau</button><button class="btn soft sm" onclick="pmPreviewZoom(-80)">− Perkecil</button><button class="btn soft sm" onclick="pmPreviewZoom(80)">＋ Perbesar</button></div><div id="pmPreviewCanvas" style="overflow:auto;max-height:70vh;padding:10px;background:var(--bg);border:1px solid var(--bd);border-radius:10px"></div>');
+    + pmDet('set', 'Teks otomatis (kalimat capaian dan catatan)', pmHtmlSet(M, ro)) + pmDet('tempel', 'Impor dan template XLSX', tempel) + pmDet('riw', 'Riwayat perubahan', pmHtmlRiwayat(M));
   $('#mt').textContent = 'Indikator · ' + (k.nama || ''); const ms = $('#ms'); if (ms) { if (!ro) { ms.style.display = ''; ms.textContent = '💾 Simpan'; ms.className = 'btn success'; ms.disabled = false; ms.onclick = () => pmSimpan(); } else ms.style.display = 'none'; } $('#mbd').innerHTML = h; if (PKME.buka.has('preview')) pmPreviewRender(); $('#mbd').querySelectorAll('select[disabled]').forEach(x => { x.dataset.cselReady = '1'; }); if (typeof enhanceCustomSelects === 'function') enhanceCustomSelects($('#mbd')); $('#md').classList.add('besar'); $('#md').classList.add('show');
   if (!ro) jagaKhusus({ ket: 'Master indikator', kotor: () => PKME.dirty, simpan: () => pmSimpan(), abaikan: () => { PKME.dirty = false; } }); else jagaModal(0, 0, false);
   $('#mbd').scrollTop = sc[0]; $('#md').scrollTop = sc[1];
 }
 
-let PM_PREVIEW_W = 620;
+let PM_PREVIEW_W = 0;
 function pmPreviewBuka() {
   PKME.buka.add('preview');
-  pmRender();
+  PM_PREVIEW_W = Math.max(300, Math.min(1100, (window.innerWidth || 390) - 32));
+  let el = $('#pmPreviewPopup');
+  if (!el) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="pmPreviewPopup" class="pm-preview-popup" role="dialog" aria-modal="true" aria-label="Pratinjau raport"><div class="pm-preview-head"><b>Pratinjau Raport</b><div class="pm-preview-actions"><button type="button" onclick="pmPreviewZoom(-80)" aria-label="Perkecil">−</button><button type="button" onclick="pmPreviewZoom(80)" aria-label="Perbesar">＋</button>' + (PKME.ro ? '' : '<button type="button" class="pm-preview-save" onclick="pmSimpan()">💾 Simpan</button>') + '<button type="button" class="pm-preview-back" onclick="pmPreviewTutup()">Kembali</button></div></div><div class="pm-preview-info">Contoh siswa dan contoh level penilaian. Perubahan master yang belum disimpan ikut ditampilkan.</div><div id="pmPreviewCanvas" class="pm-preview-canvas"></div></div>');
+    el = $('#pmPreviewPopup');
+  } else {
+    const save = el.querySelector('.pm-preview-save');
+    if (save) save.style.display = PKME.ro ? 'none' : '';
+  }
+  el.classList.add('show');
+  document.body.classList.add('pm-preview-open');
   pmPreviewRender();
 }
+function pmPreviewTutup() {
+  const el = $('#pmPreviewPopup');
+  if (el) el.remove();
+  document.body.classList.remove('pm-preview-open');
+  PKME.buka.delete('preview');
+}
 function pmPreviewZoom(delta) {
-  PM_PREVIEW_W = Math.max(300, Math.min(1100, PM_PREVIEW_W + delta));
+  PM_PREVIEW_W = Math.max(300, Math.min(1600, PM_PREVIEW_W + delta));
   const w = $('#pmPreviewCanvas');
   if (w) Rapor.lebar(w, PM_PREVIEW_W);
 }
