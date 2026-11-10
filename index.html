@@ -1000,6 +1000,7 @@ const kopt3=s=>'<option value="">- Pilih kelas -</option><option value="*" '+(s=
 const kopt2=s=>'<option value="">- Pilih kelas -</option>'+kopt(s,0);
 const kopt2s=s=>'<option value="">- Pilih kelas -</option><option value="*" '+(s==='*'?'selected':'')+'>Semua kelas</option>'+kopt(s,0);
 function enhanceCustomSelects(root=document){
+ if(!window.__cselScrollHandler){let raf=0;const repos=()=>{raf=0;document.querySelectorAll('.csel.open').forEach(w=>{if(typeof w._cselReposisi==='function')w._cselReposisi()})};const jadwal=()=>{if(!raf)raf=requestAnimationFrame(repos)};window.addEventListener('scroll',jadwal,{capture:true,passive:true});window.addEventListener('resize',jadwal,{passive:true});window.__cselScrollHandler=true}
  root.querySelectorAll('select.select:not([data-csel-ready])').forEach(sel=>{
   sel.dataset.cselReady='1';
   const wrap=document.createElement('div');wrap.className='csel';
@@ -1034,6 +1035,7 @@ function enhanceCustomSelects(root=document){
     pop.style.bottom=Math.max(8,window.innerHeight-r.top+7)+'px';
    }
   };
+  wrap._cselReposisi=posisikanPop;
   const tutupPop=()=>{
    wrap.classList.remove('open','up');
    pop.classList.remove('csel-fixed');
@@ -1052,8 +1054,6 @@ function enhanceCustomSelects(root=document){
    else{wrap.classList.add('open');requestAnimationFrame(posisikanPop);}
    if(wrap.classList.contains('open'))setTimeout(()=>search.focus(),0);
   };
-  window.addEventListener('resize',posisikanPop);
-  window.addEventListener('scroll',posisikanPop,true);
   search.oninput=filter;
   sel.addEventListener('change',rebuild);
   rebuild();
