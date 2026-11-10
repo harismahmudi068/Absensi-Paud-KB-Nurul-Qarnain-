@@ -76,11 +76,17 @@ module.exports = async (req, res) => {
 
     const targetId = String(b.id || user.id);
     if (!RE_UUID.test(targetId)) return res.status(400).json({ error: 'ID guru tidak valid' });
-    const aksiSendiriDev = isDev && targetId === user.id && (aksi === 'simpan' || aksi === 'hapus');
-    if (!punyaSid && !aksiSendiriDev) return res.status(400).json({ error: 'Sekolah tidak valid' });
+    const aksiDeveloperNoSchool = isDev && !punyaSid && ['ambil','simpan','hapus'].includes(aksi);
+    if (!punyaSid && !aksiDeveloperNoSchool) return res.status(400).json({ error: 'Sekolah tidak valid' });
     const anggotaSaya = isDev || !punyaSid ? null : await anggota(user.id, sid);
     if (!isDev && !anggotaSaya) return res.status(403).json({ error: 'Anda tidak memiliki akses aktif ke sekolah ini' });
     const bolehKelolaLain = isDev || !!(anggotaSaya && ROLE_KELOLA.includes(anggotaSaya.role));
+
+    if (aksi === 'daftar_dev') {
+      if (!isDev) return res.status(403).json({ error: 'Hanya Developer yang boleh' });
+      const rows = await L.panggil('/rest/v1/profil?role=neq.developer&select=id,ttd_path&order=nama.asc', 'GET');
+      return res.status(200).json({ ok: true, daftar: (rows || []).map(x => ({ id: x.id, ada: !!x.ttd_path })) });
+    }
 
     if (aksi === 'daftar') {
       const rows = await L.panggil('/rest/v1/keanggotaan?sekolah_id=eq.' + sid +
