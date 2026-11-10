@@ -201,6 +201,9 @@ module.exports = async (req, res) => {
       return (x && x[0] && x[0].nama) || 'Sekolah';
     };
 
+    const ambilKelas = async () =>
+      (await panggil(`/rest/v1/kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,nama&order=urutan.asc.nullslast,nama.asc`, 'GET')) || [];
+
     const ambilPemetaan = async () => {
       const map = (await panggil(`/rest/v1/kelas_grup_wa?sekolah_id=eq.${sekolahId}&select=id,kelas_id,grup_wa_id&order=id.asc`, 'GET')) || [];
       if (!map.length) return [];
@@ -274,7 +277,7 @@ module.exports = async (req, res) => {
     // BACA
     // ---------------------------------------------------------
     if (b.aksi === 'baca') {
-      const [r, tk, gp, penerimaTes, pemetaan, notifLibur, jamNotifLibur] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes(), ambilPemetaan(), ambilNotifLibur(), ambilJamNotifLibur()]);
+      const [r, tk, gp, penerimaTes, kelas, pemetaan, notifLibur, jamNotifLibur] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes(), ambilKelas(), ambilPemetaan(), ambilNotifLibur(), ambilJamNotifLibur()]);
       const tampil = !!b.tampilkan && isDev;
       if (tampil) await catat(user.id, sekolahId, 'lihat_rahasia', 'kunci AI dan token Fonnte');
       return res.status(200).json({
@@ -288,6 +291,7 @@ module.exports = async (req, res) => {
           nilai: tampil ? t.token : undefined
         })),
         grup: gp.map((g) => ({ id: g.id, grup_id: g.grup_id, label: g.label || '', token_id: g.token_id })),
+        kelas,
         pemetaan,
         notif_libur_grup: notifLibur,
         jam_notif_libur_grup: jamNotifLibur,
