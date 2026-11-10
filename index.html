@@ -4041,7 +4041,7 @@ function alRaporPdf(idx,btn){const a=window._alA,rs=idx.map(i=>window._alRap[i])
 /* ---- PDF raport: DESAIN ada di /rapor.js (dipakai bersama portal). Di sini hanya menyiapkan data ---- */
 async function pnPdfBuat(rs,infoFn,nf,btn){await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membuat PDF...'))return;
  try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),infos=rs.map(r=>infoFn(r)||{}),ids=[];
-  rs.forEach((r,i)=>{const w=infos[i].wali||ttdWali(r.kelas_nama),k=infos[i].kepsek||ttdKepsek(),pg=r.fmt==='perkembangan'?pkPengelola():null;if(w&&w.id)ids.push(w.id);if(k&&k.id)ids.push(k.id);if(pg&&pg.id)ids.push(pg.id)});
+  rs.forEach((r,i)=>{const w=infos[i].wali||ttdWali(r.kelas_nama),k=infos[i].kepsek||ttdKepsek(),pg=r.fmt==='perkembangan'?pkPengelola([w&&w.id,k&&k.id]):null;if(w&&w.id)ids.push(w.id);if(k&&k.id)ids.push(k.id);if(pg&&pg.id)ids.push(pg.id)});
   const sig=await ttdPngAmbil(ids);
   const Ds=rs.map((r,ix)=>{const i=infos[ix];if(r.fmt==='perkembangan')return pkSusun(r,logo,{...i,ttd:sig});i.wali=i.wali||ttdWali(r.kelas_nama);i.kepsek=i.kepsek||ttdKepsek();if(i.wali&&i.wali.id)i.wali.ttd=sig[i.wali.id]||null;if(i.kepsek&&i.kepsek.id)i.kepsek.ttd=sig[i.kepsek.id]||null;if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
   await Rapor.pdf(Ds,nf);toast('PDF raport sedang diproses, mohon ditunggu')}
@@ -4899,7 +4899,7 @@ async function rpDataD(r){
   if(typeof PKR==='undefined'||typeof pkSusun!=='function')throw new Error('Modul raport perkembangan belum termuat, muat ulang halaman.');
   if(!PKR.loaded)await pkMuat();
   if(r.salinan_hash&&!PKR.sal.has(r.salinan_hash)){const a=await dbq(db.from('rapor_salinan').select('hash,isi').eq('hash',r.salinan_hash));(a||[]).forEach(x=>PKR.sal.set(x.hash,x.isi))}
-  const wali=ttdWali(r.kelas_nama)||{},kepsek=ttdKepsek(),pg=pkPengelola(),sig=await ttdPngAmbil([wali.id,kepsek.id,pg&&pg.id]);
+  const wali=ttdWali(r.kelas_nama)||{},kepsek=ttdKepsek(),pg=pkPengelola([wali.id,kepsek.id]),sig=await ttdPngAmbil([wali.id,kepsek.id,pg&&pg.id]);
   return pkSusun(r,logo,{ttd:sig})
  }
  const wali=ttdWali(r.kelas_nama)||{},kepsek=ttdKepsek(),sig=await ttdPngAmbil([wali.id,kepsek.id]);
