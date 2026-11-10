@@ -3306,8 +3306,8 @@ async function pdfTtdRekap(d,kls,y){
 }
 async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
  const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
- const img=(url)=>{if(!url||!/^data:image\/(png|jpeg);base64,/.test(url))return null;const ext=url.startsWith('data:image/jpeg')?'jpeg':'png';return wb.addImage({base64:url.split(',')[1],extension:ext})};
- const stamp=img(st&&st.url),head=img(tg.id&&sig[tg.id]),wali=img(w&&w.id&&sig[w.id]);
+ const img=async(url)=>{if(!url)return null;try{let data=String(url),m=data.match(/^data:image\/(png|jpeg);base64,/i);if(!m){const im=new Image();im.crossOrigin='anonymous';im.src=data;await new Promise((ok,no)=>{im.onload=ok;im.onerror=no});const cv=document.createElement('canvas');cv.width=im.naturalWidth;cv.height=im.naturalHeight;cv.getContext('2d').drawImage(im,0,0);data=cv.toDataURL('image/png');m=data.match(/^data:image\/(png|jpeg);base64,/i)}if(!m)return null;return wb.addImage({base64:data.slice(data.indexOf(',')+1),extension:m[1].toLowerCase()==='jpeg'?'jpeg':'png'})}catch(e){console.warn('Gambar tanda tangan/stempel XLSX gagal diproses:',e);return null}};
+ const [stamp,head,wali]=await Promise.all([img(st&&st.url),img(tg.id&&sig[tg.id]),img(w&&w.id&&sig[w.id])]);
  if(!wali&&!stamp&&!head)return;
  // Ambil dua area gabungan tanda tangan dari tabel yang sudah dibuat; teks dan posisi kolom tidak diubah.
  const merges=Object.values(ws._merges||{}).filter(m=>m&&Number.isFinite(m.top)&&Number.isFinite(m.left)&&Number.isFinite(m.bottom)&&Number.isFinite(m.right));
