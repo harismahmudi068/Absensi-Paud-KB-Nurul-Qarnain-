@@ -3312,7 +3312,8 @@ async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
  // Ambil dua area gabungan tanda tangan dari tabel yang sudah dibuat; teks dan posisi kolom tidak diubah.
  const merges=Object.values(ws._merges||{}).filter(m=>m&&Number.isFinite(m.top)&&Number.isFinite(m.left)&&Number.isFinite(m.bottom)&&Number.isFinite(m.right));
  const byRow=new Map();merges.forEach(m=>{if(m.top===m.bottom){if(!byRow.has(m.top))byRow.set(m.top,[]);byRow.get(m.top).push(m)}});
- const pair=[...byRow.entries()].filter(([,v])=>v.length>=2).sort((a,b)=>b[0]-a[0])[0];
+ const pairs=[...byRow.entries()].filter(([,v])=>v.length>=2).sort((a,b)=>b[0]-a[0]);
+ const pair=pairs.find(([r,v])=>v.some(m=>String(ws.getCell(r,m.left).value||'').includes(tg.nama||'__NO_MATCH__'))||v.some(m=>w&&String(ws.getCell(r,m.left).value||'').includes(w.nama||'__NO_MATCH__'))) || pairs[0];
  if(!pair)return;
  const nameRow=pair[0],areas=pair[1].sort((a,b)=>a.left-b.left),waliArea=areas[0],kepArea=areas[areas.length-1];
  const widths=ws.columns.map(c=>Math.max(1,(Number(c.width)||8.43)*7+5));
