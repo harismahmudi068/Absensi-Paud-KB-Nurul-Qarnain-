@@ -444,6 +444,70 @@ async function petaRapor(rows, sid) {
   });
 }
 
+
+/* Tanda tangan raport: dibaca server dari bucket privat, hanya untuk raport anak
+   yang sudah lolos validasi kode QR dan sekolah pada permintaan portal ini. */
+const RE_UUID_TTD = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const RE_PATH_TTD = /^[0-9a-f-]{36}\/[0-9]+-[a-f0-9]{8}\.(png|jpg|webp)$/i;
+async function ttdFilePortal(p) {
+  const id = String(p && p.id || ''), path = String(p && p.ttd_path || '');
+  if (!RE_UUID_TTD.test(id) || !path.startsWith(id + '/') || !RE_PATH_TTD.test(path) || !L.SB || !L.KEY) return '';
+  try {
+    const url = L.SB.replace(/\/+$/, '') + '/storage/v1/object/ttd-guru/' + path.split('/').map(encodeURIComponent).join('/');
+    const r = await fetch(url, { headers: { apikey: L.KEY, Authorization: 'Bearer ' + L.KEY } });
+    if (!r.ok) return '';
+    const type = String(r.headers.get('content-type') || '').split(';')[0].toLowerCase();
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(type)) return '';
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (!buf.length || buf.length > 524288) return '';
+    return 'data:' + type + ';base64,' + buf.toString('base64');
+  } catch (e) { return ''; }
+}
+async function raporTandaTangan(rows, sid) {
+  rows = rows || [];
+  if (!rows.length) return rows;
+  try {
+    const [kelas, keanggotaan] = await Promise.all([
+      L.panggil('/rest/v1/kelas?sekolah_id=eq.' + sid + '&select=nama,wali_profil_id', 'GET'),
+      L.panggil('/rest/v1/keanggotaan?sekolah_id=eq.' + sid + '&select=profil_id,role,aktif,profil(id,nama,nip,ttd_path,aktif)', 'GET')
+    ]);
+    const anggota = (keanggotaan || []).map(x => {
+      const p = Array.isArray(x.profil) ? x.profil[0] : x.profil;
+      return p ? Object.assign({}, p, { role: x.role, anggota_aktif: x.aktif }) : null;
+    }).filter(Boolean);
+    const byId = new Map(anggota.map(x => [String(x.id), x]));
+    const kelasWali = new Map((kelas || []).map(x => [String(x.nama || '').trim(), String(x.wali_profil_id || '')]));
+    const pilihRole = (role, kecuali) => {
+      const a = anggota.filter(x => x.role === role && !kecuali.has(String(x.id)));
+      return a.find(x => x.anggota_aktif !== false && x.aktif !== false) || (role === 'kepala_sekolah' ? a[0] : null) || null;
+    };
+    const perRapor = rows.map(r => {
+      const waliId = kelasWali.get(String(r.kelas_nama || '').trim()) || '';
+      const wali = byId.get(waliId) || null;
+      // Wali kelas hanya dipasangkan bila namanya masih sama dengan nama yang dibekukan di raport.
+      const waliCocok = wali && String(wali.nama || '').trim().toLocaleLowerCase('id') === String(r.wali_nama || '').trim().toLocaleLowerCase('id');
+      const kepsek = pilihRole('kepala_sekolah', new Set());
+      const kecuali = new Set([wali && String(wali.id), kepsek && String(kepsek.id)].filter(Boolean));
+      const pengelola = r.fmt === 'perkembangan' && r.pengelola_nama ? pilihRole('pengelola', kecuali) : null;
+      return { r, wali: waliCocok ? wali : null, kepsek, pengelola };
+    });
+    const profilById = new Map();
+    perRapor.forEach(x => [x.wali, x.kepsek, x.pengelola].filter(Boolean).forEach(p => profilById.set(String(p.id), p)));
+    const dataById = new Map();
+    await Promise.all([...profilById.values()].map(async p => dataById.set(String(p.id), await ttdFilePortal(p))));
+    return perRapor.map(x => Object.assign({}, x.r, {
+      tanda_tangan: {
+        wali: x.wali ? dataById.get(String(x.wali.id)) || '' : '',
+        kepsek: x.kepsek ? dataById.get(String(x.kepsek.id)) || '' : '',
+        pengelola: x.pengelola ? dataById.get(String(x.pengelola.id)) || '' : ''
+      }
+    }));
+  } catch (e) {
+    console.error('portal rapor tanda tangan:', e && e.message);
+    return rows;
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -763,7 +827,7 @@ module.exports = async (req, res) => {
     } else if (v === 'hafalan') {
       out.hafalan = muatHafalanData(true);
     } else if (v === 'rapor') {
-      out.rapor = await petaRapor(raporData, sid);
+      out.rapor = await raporTandaTangan(await petaRapor(raporData, sid), sid);
     } else if (v === 'libur') {
       Object.assign(out, liburRingkas(liburData));
     }
