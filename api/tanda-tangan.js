@@ -94,7 +94,7 @@ module.exports = async (req, res) => {
 
     if (aksi === 'daftar') {
       const rows = await L.panggil('/rest/v1/keanggotaan?sekolah_id=eq.' + sid +
-        '&select=profil_id,role,aktif,profil(id,nama,ttd_path)&order=id.asc', 'GET');
+        '&select=profil_id,role,aktif,profil(id,nama,ttd_path)', 'GET');
       const daftar = (rows || []).filter(x => x.profil).map(x => ({
         id: x.profil_id, ada: !!x.profil.ttd_path, role: x.role
       }));
