@@ -463,9 +463,9 @@ const Rapor = (() => {
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
-    if(D.stempel&&D.stempel.url){
-      /* Satu penandatangan Mengetahui: stempel berada di kiri, bukan di atas tanda tangan. */
-      const stx=nP===2?CX[nP-1]-24:(nP===4?(CX[2]+CX[3])/2-12:CX[nP-1]-12);
+    if(D.stempel&&D.stempel.url&&nP>1){
+      /* Satu penandatangan Mengetahui: stempel berada di kiri. Jika ada dua pejabat Mengetahui, stempel di ruang tengah keduanya. */
+      const stx=nP===4?(CX[2]+CX[3])/2-12:CX[nP-1]-24;
       doc.addImage(D.stempel.url,'PNG',stx,yl+3,16,13);
     }
     kaki();
