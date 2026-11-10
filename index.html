@@ -1930,7 +1930,7 @@ async function ttdGuruMuat(force){
 async function ttdGuruBuka(id,nama,langsung){
  if(!bolehKelolaTtdGuru())return toast('Anda tidak memiliki izin mengelola tanda tangan guru lain',false);
  const buka=async()=>{const j=await apiTtd({aksi:'ambil',id}),data=j.data||'';
-  info('Tanda tangan · '+nama,'<div style="text-align:center">'+ttdBoxGambar(data)+'</div><div class="mu" style="margin:10px 0">Unggah gambar PNG, JPG, atau WEBP maksimal 512 KB.</div><div class="tb"><button class="btn success grow" onclick="document.getElementById(\\'ttdGuruFile\\').click()">'+(data?'Ganti tanda tangan':'Unggah tanda tangan')+'</button>'+(data?'<button class="btn danger sm" onclick="ttdGuruHapus(\\''+id+'\\',\\''+esc(nama)+'\\')">Hapus</button>':'')+'</div><input id="ttdGuruFile" class="hid" type="file" accept="image/png,image/jpeg,image/webp" onchange="ttdFileGuru(this,\\''+id+'\\',\\''+esc(nama)+'\\')">');
+  info('Tanda tangan · '+nama,'<div style="text-align:center">'+ttdBoxGambar(data)+'</div><div class="mu" style="margin:10px 0">Unggah gambar PNG, JPG, atau WEBP maksimal 512 KB.</div><div class="tb"><button class="btn success grow" onclick="document.getElementById(\'ttdGuruFile\').click()">'+(data?'Ganti tanda tangan':'Unggah tanda tangan')+'</button>'+(data?'<button class="btn danger sm" onclick="ttdGuruHapus(\''+id+'\',\''+esc(nama)+'\')">Hapus</button>':'')+'</div><input id="ttdGuruFile" class="hid" type="file" accept="image/png,image/jpeg,image/webp" onchange="ttdFileGuru(this,\''+id+'\',\''+esc(nama)+'\')">');
   $('#md').classList.add('besar');
  };
  if(langsung)return buka();
