@@ -701,6 +701,38 @@ select.click-fx,.select.click-fx{animation:btnClick .38s ease-out}
 .rkw{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:3px;font-size:12px;opacity:.85}
 .rkw span{white-space:nowrap}
 </style>
+<style id="optimasi-animasi-ringan">
+/* Animasi ringan: utamakan perubahan warna dan bayangan, hindari hitung ulang layout */
+button,.btn{
+  transition:background-color .14s ease,color .14s ease,border-color .14s ease,box-shadow .14s ease,filter .14s ease!important;
+}
+button:active:not(:disabled){
+  transform:none!important;
+  filter:brightness(1.04);
+}
+/* Efek klik dibuat singkat dan tidak memakai efek gelombang yang mahal */
+button.click-fx,button.click-fx::after{
+  animation:none!important;
+}
+button.click-fx::after{display:none!important}
+/* Panel menu tetap bergerak halus, tetapi tombol tidak dianimasikan satu per satu */
+#drw.show .modal{animation-duration:.22s!important}
+#drw.show:not(.side) .modal{animation-duration:.22s!important}
+#drw.show .nav button,
+#drw.show:not(.side) .nav button{
+  animation:none!important;
+}
+/* Siapkan panel pada compositor hanya selama sedang tampil */
+#drw.show .modal{
+  backface-visibility:hidden;
+  will-change:transform;
+}
+#drw:not(.show) .modal{will-change:auto}
+/* Hormati pengaturan pengurangan gerakan dari perangkat */
+@media(prefers-reduced-motion:reduce){
+  button,.btn,#drw.show .modal{transition:none!important;animation:none!important}
+}
+</style>
 </head><body>
 <div id="lg" class="login hid"><div class="lbox"><div class="logo">🏫</div><h2 id="lnm" style="text-align:center;margin:0 0 4px">Selamat Datang</h2><p class="mu" style="text-align:center;margin:0 0 16px">di Sistem Absensi. Silakan masukkan username dan kata sandi Anda.</p>
 <label class="mu">Username</label><input id="lu" class="input" autocomplete="username" autocapitalize="none"><label class="mu">Kata sandi</label><input id="lp" type="password" class="input" autocomplete="current-password" onkeydown="if(event.key==='Enter')masuk()">
