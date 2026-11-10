@@ -2795,13 +2795,40 @@ function pdfRiwayat(d,M,b,k){
  return y}
 let taA='',taB='',taK='';
 const taInit=()=>{if(!taA||!taB){const y=parseInt(String(S.set.tahun_ajaran||'').slice(0,4))||+TODAY.slice(0,4);taA=y+'-07';taB=TODAY.slice(0,7);if(taA>taB)taA=taB}return ''};
-async function unduhTA(t,btn){await muatLib(['exceljs','pdf']);if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat rekap XLSX...':'Membuat rekap PDF...'))return;try{await jedaUnduh();
- if(!taA||!taB)throw new Error('Pilih bulan mulai dan bulan akhir');if(taA>taB)throw new Error('Bulan mulai tidak boleh setelah bulan akhir');
- const ms=[];let y=+taA.slice(0,4),m=+taA.slice(5,7);for(;;){const b=y+'-'+String(m).padStart(2,'0');ms.push(b);if(b>=taB)break;if(++m>12){m=1;y++}if(ms.length>24)throw new Error('Rentang maksimal 24 bulan')}
- const kelas=!taK||taK==='*'?S.kelas.map(k=>k.nama):[taK],L=[];for(const b of ms){await muatBulan(b);for(const k of kelas){const M=matriks(b,k);if(M.ds.length&&M.rows.length)L.push([b,k,M])}}
- if(!L.length)throw new Error('Belum ada data pada rentang bulan ini'+(taK&&taK!=='*'?' untuk kelas '+taK:''));const nm='rekap-tahun-ajaran-'+(taK&&taK!=='*'?'kelas-'+taK.replace(/[^\\w]+/g,'-')+'-':'')+taA+'-sd-'+taB;
- if(t==='xlsx'){await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');const wb=new ExcelJS.Workbook();wb.creator=ns();const used=new Set();for(const [b,k,M] of L){const ws=isiSheetRiwayat(wb,M,b,k,namaSheetSiswa(k+' '+b,used));await xlsxTtdRekap(wb,ws,k,5+M.rows.length+4,1,Math.max(2,ws.columnCount-2),Math.max(4,ws.columnCount))}await tulisXlsx(wb,nm+'.xlsx')}
- else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});for(let i=0;i<L.length;i++){if(i)d.addPage();const [b,k,M]=L[i],y=pdfRiwayat(d,M,b,k);await pdfTtdRekap(d,k,y)}d.save(nm+'.pdf')}
+async function unduhTA(t,btn,arsipSemua=false){await muatLib(['exceljs','pdf']);if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat rekap XLSX...':'Membuat rekap PDF...'))return;try{await jedaUnduh();
+ let kelas,L=[],nm;
+ if(arsipSemua){
+  const [awal,akhir]=await Promise.all([
+   dbq(db.from('absensi').select('tanggal').order('tanggal',{ascending:true}).limit(1)),
+   dbq(db.from('absensi').select('tanggal').order('tanggal',{ascending:false}).limit(1))
+  ]);
+  if(!awal||!awal.length||!akhir||!akhir.length)throw new Error('Belum ada riwayat absensi tersimpan');
+  await muatRange(awal[0].tanggal,akhir[0].tanggal);
+  const ms=[...new Set(Object.keys(S.absen).filter(d=>d>=awal[0].tanggal&&d<=akhir[0].tanggal&&Object.keys(S.absen[d]||{}).length).map(d=>d.slice(0,7)))].sort();
+  kelas=S.kelas.map(k=>k.nama);
+  const siswaPerKelas=new Map(kelas.map(k=>[k,new Set(act().filter(s=>s.kelas===k).map(s=>String(s.id)))]));
+  for(const k of kelas){
+   const ids=siswaPerKelas.get(k);
+   if(!ids||!ids.size)continue;
+   for(const bln of ms){
+    const ada=Object.keys(S.absen).some(d=>d.startsWith(bln+'-')&&Object.keys(S.absen[d]||{}).some(id=>ids.has(String(id))));
+    if(!ada)continue;
+    const M=matriks(bln,k);
+    if(M.ds.length&&M.rows.length)L.push([bln,k,M]);
+   }
+  }
+  if(!L.length)throw new Error('Tidak ditemukan riwayat absensi untuk siswa aktif di kelas yang tersedia');
+  nm='riwayat-absensi-seluruh-data';
+ }else{
+  if(!taA||!taB)throw new Error('Pilih bulan mulai dan bulan akhir');if(taA>taB)throw new Error('Bulan mulai tidak boleh setelah bulan akhir');
+  const ms=[];let y=+taA.slice(0,4),m=+taA.slice(5,7);for(;;){const bln=y+'-'+String(m).padStart(2,'0');ms.push(bln);if(bln>=taB)break;if(++m>12){m=1;y++}if(ms.length>24)throw new Error('Rentang maksimal 24 bulan')}
+  kelas=!taK||taK==='*'?S.kelas.map(k=>k.nama):[taK];
+  for(const bln of ms){await muatBulan(bln);for(const k of kelas){const M=matriks(bln,k);if(M.ds.length&&M.rows.length)L.push([bln,k,M])}}
+  if(!L.length)throw new Error('Belum ada data pada rentang bulan ini'+(taK&&taK!=='*'?' untuk kelas '+taK:''));
+  nm='rekap-tahun-ajaran-'+(taK&&taK!=='*'?'kelas-'+taK.replace(/[^\\w]+/g,'-')+'-':'')+taA+'-sd-'+taB;
+ }
+ if(t==='xlsx'){await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');const wb=new ExcelJS.Workbook();wb.creator=ns();const used=new Set();for(const [bln,k,M] of L){const ws=isiSheetRiwayat(wb,M,bln,k,namaSheetSiswa(k+' '+bln,used));await xlsxTtdRekap(wb,ws,k,5+M.rows.length+4,1,Math.max(2,ws.columnCount-2),Math.max(4,ws.columnCount))}await tulisXlsx(wb,nm+'.xlsx')}
+ else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});for(let i=0;i<L.length;i++){if(i)d.addPage();const [bln,k,M]=L[i],y=pdfRiwayat(d,M,bln,k);await pdfTtdRekap(d,k,y)}d.save(nm+'.pdf')}
  toast('Rekap '+L.length+' bagian kelas/bulan sedang diproses ('+(t==='xlsx'?'XLSX':'PDF')+'), mohon ditunggu');return true}catch(e){toast('Gagal mengunduh: '+(e.message||e),false);return false}finally{setUnduhBusy(btn,false)}}
 async function unduh(t,btn){await muatLib(['exceljs','pdf']);if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat file XLSX...':'Membuat file PDF...'))return;try{await jedaUnduh();if(!rk)throw new Error('Pilih kelas atau Semua kelas terlebih dahulu');await muatBulan(bulan);
  const kelas=rk==='*'?S.kelas.map(k=>k.nama):[rk],L=[];for(const k of kelas){const M=matriks(bulan,k);if(M.ds.length&&M.rows.length)L.push([k,M])}
@@ -3252,14 +3279,9 @@ async function tbUnduhXlsx(btn){
  }catch(e){toast('Gagal membuat XLSX tabungan: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}
 }
 async function taUnduhAbsensi(jenis,btn){
- taInit();
- const kelasSebelumnya=taK;
- taK='*';
- try{
-  const berhasil=await unduhTA(jenis,btn);
-  if(berhasil){TB.absDownloaded=true;tbCek()}
-  return berhasil;
- }finally{taK=kelasSebelumnya}
+ const berhasil=await unduhTA(jenis,btn,true);
+ if(berhasil){TB.absDownloaded=true;tbCek()}
+ return berhasil;
 }
 async function pdfTtdRekap(d,kls,y){
  const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
