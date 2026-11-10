@@ -3223,7 +3223,7 @@ function tbTabelHtml(){const G=tbGrup();
  return h}
 function tbPilih(m){TB.mode=m;TB.pdf=false;TB.tabDownloaded=false;const e=$('#tbTabel');if(e)e.innerHTML=tbTabelHtml();tbCek()}
 function tbCek(){const lb=($('#tbLabel')||{}).value||'',ok=($('#tbOk')||{}).value||'',s=[];
- if(TB.rows.length){s.push([!!TB.mode,'Pilih perlakuan saldo tabungan']);s.push([TB.tabDownloaded,'Unduh rekap tabungan per kelas (PDF atau XLSX)'])}else if(TB.tabCount>0)s.push([TB.tabDownloaded,'Unduh riwayat tabungan lengkap (PDF atau XLSX)'])if(TB.absCount>0)s.push([TB.absDownloaded,'Unduh seluruh riwayat absensi semua kelas (PDF atau XLSX)'])
+ if(TB.rows.length){s.push([!!TB.mode,'Pilih perlakuan saldo tabungan']);s.push([TB.tabDownloaded,'Unduh rekap tabungan per kelas (PDF atau XLSX)'])}else if(TB.tabCount>0)s.push([TB.tabDownloaded,'Unduh riwayat tabungan lengkap (PDF atau XLSX)']);if(TB.absCount>0)s.push([TB.absDownloaded,'Unduh seluruh riwayat absensi semua kelas (PDF atau XLSX)'])
  s.push([lb.trim().length>0,'Isi tahun ajaran baru']);s.push([ok.trim()==='MULAI','Ketik MULAI']);
  const e=$('#tbSyarat');if(e)e.innerHTML=s.map(x=>`<div style="color:${x[0]?'#159447':'var(--mu)'};font-weight:${x[0]?800:600}">${x[0]?'✓':'○'} ${x[1]}</div>`).join('');
  const b=$('#ms');if(b)b.disabled=!s.every(x=>x[0])}
