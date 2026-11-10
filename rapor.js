@@ -113,7 +113,8 @@ const Rapor = (() => {
     if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
     if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
     /* pengelola: rapor terbit memakai nama yang dibekukan saat terbit; kosong = tidak ada tempat tanda tangan */
-    const pg = r.status === 'terbit' ? (r.pengelola_nama ? { nama: r.pengelola_nama, nip: nip(r.pengelola_nip) } : null) : (o.pengelola && o.pengelola.nama ? o.pengelola : null);
+    const pgAktif = o.pengelola && o.pengelola.nama ? o.pengelola : null;
+    const pg = !pgAktif ? null : (r.status === 'terbit' ? (r.pengelola_nama ? { nama: r.pengelola_nama, nip: nip(r.pengelola_nip) } : pgAktif) : pgAktif);
     if (pg && o.pengelola && o.pengelola.ttd) pg.ttd = o.pengelola.ttd;
     /* kolom bulan: data.bl (kunci 'YYYY-MM', maksimal 12) bila valid; data lama tanpa bl = 6 bulan bawaan semester */
     const blOk = Array.isArray(d.bl) && d.bl.length > 0 && d.bl.length <= 12 && d.bl.every(k => /^\d{4}-(0[1-9]|1[0-2])$/.test(k));
