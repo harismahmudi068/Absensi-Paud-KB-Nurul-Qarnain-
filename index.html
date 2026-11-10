@@ -2144,7 +2144,7 @@ function saveAtt(){return guard(async()=>{const before=A(attDate),ups=[],del=[],
  if(ups.length)await dbq(db.from('absensi').upsert(ups,{onConflict:'siswa_id,tanggal'}));
  if(del.length)await dbq(db.from('absensi').delete().eq('tanggal',attDate).in('siswa_id',del));
  await muatRange(attDate,attDate);draft=null;toast(ups.length||del.length?'Absensi tersimpan':'Tidak ada perubahan');renderV();return true})}
-function markLibur(){if(!attKelas)return toast(PK,false);guard(async()=>{const siswa=kelasTerpilih(attKelas),now=new Date().toISOString();if(!siswa.length)return toast('Tidak ada siswa pada kelas yang dipilih',false);const rows=siswa.map(s=>({siswa_id:s.id,tanggal:attDate,status:'libur',cara:'manual',catatan:null,jam_datang:null,diubah:now,diubah_oleh:me}));await dbq(db.from('absensi').upsert(rows,{onConflict:'siswa_id,tanggal'}));if(S.absen[attDate])siswa.forEach(s=>delete S.absen[attDate][s.id]);S.absen[attDate]=S.absen[attDate]||{};siswa.forEach(s=>{S.absen[attDate][s.id]={st:'Libur',cara:'manual',cat:'',jam:'',iso:null}});draft=null;Object.keys(okL).filter(x=>x.startsWith(attDate+'|')).forEach(x=>delete okL[x]);Object.keys(liburPrompted).filter(x=>x.startsWith(attDate+'|')).forEach(x=>delete liburPrompted[x]);let infoKirim='';if(attDate>=TODAY){try{const ids=[...new Set(siswa.map(s=>Number(s.kelas_id)).filter(Number.isInteger))].sort((a,b)=>a-b);const hasil=await apiLiburGrup({aksi:'antrikan_manual',tanggal:attDate,kelas_ids:ids,batch_key:'manual_'+attDate+'_'+ids.join('-')});infoKirim=hasil.dilewati?' · notifikasi dilewati':hasil.grup?(hasil.dibuat?' · '+hasil.dibuat+' dari '+hasil.grup+' grup masuk antrean':' · notifikasi untuk '+hasil.grup+' grup sudah pernah masuk antrean')+(hasil.statusKirimAktif===false?' (mode uji, belum dikirim)':''):' · belum ada grup WA yang terhubung';}catch(e){infoKirim=' · notifikasi belum masuk antrean: '+(e.message||e)}}toast(siswa.length+' siswa ditandai Libur'+infoKirim);await go('dashboard')})}
+function markLibur(){if(!attKelas)return toast(PK,false);guard(async()=>{const siswa=kelasTerpilih(attKelas),now=new Date().toISOString();if(!siswa.length)return toast('Tidak ada siswa pada kelas yang dipilih',false);const rows=siswa.map(s=>({siswa_id:s.id,tanggal:attDate,status:'libur',cara:'manual',catatan:null,jam_datang:null,diubah:now,diubah_oleh:me}));await dbq(db.from('absensi').upsert(rows,{onConflict:'siswa_id,tanggal'}));if(S.absen[attDate])siswa.forEach(s=>delete S.absen[attDate][s.id]);S.absen[attDate]=S.absen[attDate]||{};siswa.forEach(s=>{S.absen[attDate][s.id]={st:'Libur',cara:'manual',cat:'',jam:'',iso:null}});draft=null;Object.keys(okL).filter(x=>x.startsWith(attDate+'|')).forEach(x=>delete okL[x]);Object.keys(liburPrompted).filter(x=>x.startsWith(attDate+'|')).forEach(x=>delete liburPrompted[x]);let infoKirim='';if(attDate===TODAY){try{const ids=[...new Set(siswa.map(s=>Number(s.kelas_id)).filter(Number.isInteger))].sort((a,b)=>a-b);const hasil=await kirimLiburGrupHariIni(ids,attDate);infoKirim=hasil.grup?' · '+hasil.terjadwal+' grup terjadwal'+(hasil.gagal?' ('+hasil.gagal+' gagal)':''):' · belum ada grup WA yang terhubung';}catch(e){infoKirim=' · notifikasi grup gagal dijadwalkan: '+(e.message||e)}}else if(attDate>TODAY){infoKirim=' · notifikasi grup hanya dikirim untuk libur hari ini'}toast(siswa.length+' siswa ditandai Libur'+infoKirim);await go('dashboard')})}
 /* ---------- absensi multi hari (batch) ---------- */
 const MH_MAKS=31,MH_CHUNK=500,MH_DEL=200,MH_ST=['Hadir','Terlambat','Izin','Sakit','Alpa','Libur','Kosongkan'];
 let mMulti=false,mA=TODAY,mB=TODAY,mStatus='Hadir',mCat='',mLewat=true,mTimpa=false;const mSel=new Set();
@@ -2868,6 +2868,60 @@ async function kirimBertahap(items,meta){const hasil=[];let mulai=0;
   try{const j=await apiKirimBatch(bag,mulai,meta);const hs=Array.isArray(j.hasil)?j.hasil:[];for(let k=0;k<bag.length;k++)hasil.push(hs[k]||{ok:false,error:'Tidak ada respons'});if(j.berikutnya)mulai=j.berikutnya}
   catch(e){bag.forEach(()=>hasil.push({ok:false,error:(e&&e.message)||String(e)}))}}
  return hasil}
+
+async function apiKirimBatalkanLiburGrup(tanggal) {
+ const {data:{session}}=await db.auth.getSession();
+ if(!session)throw new Error('Sesi login sudah berakhir, silakan masuk kembali');
+ const r=await fetch('/api/kirim',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+session.access_token,...hBT()},body:JSON.stringify({sekolah_id:SEK,aksi:'batalkan_libur_grup',tanggal})});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error(j.error||'Gagal membatalkan pesan grup ('+r.status+')');
+ return j;
+}
+
+async function kirimLiburGrupHariIni(kelasIds,tanggal) {
+ const cfg=RHS&&Array.isArray(RHS.pemetaan)?RHS:await apiPengaturan({aksi:'baca'});
+ const relasi=(cfg.pemetaan||[]).filter(x=>kelasIds.includes(Number(x.kelas_id)));
+ if(!relasi.length)return {grup:0,terjadwal:0,gagal:0};
+ const grupRows=cfg.grup||[];
+ const namaSekolah=S.set&&S.set.nama_sekolah?S.set.nama_sekolah:'Sekolah';
+ const namaKelas=new Map((S.kelas||[]).map(k=>[Number(k.id),k.nama]));
+ const perGrup=new Map();
+ for(const r of relasi){
+  const g=grupRows.find(x=>Number(x.id)===Number(r.grup_wa_id));
+  const nama=namaKelas.get(Number(r.kelas_id));
+  if(!g||!g.grup_id||!nama)continue;
+  if(!perGrup.has(Number(g.id)))perGrup.set(Number(g.id),{grup:g,kelas:[]});
+  const row=perGrup.get(Number(g.id));
+  if(!row.kelas.includes(nama))row.kelas.push(nama);
+ }
+ const tanggalTeks=new Date(tanggal+'T00:00:00+07:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Jakarta'});
+ const teksGrup=kelas=>[
+  '🌸 *INFORMASI LIBUR SEKOLAH*',
+  '',
+  'Assalamu’alaikum warahmatullahi wabarakatuh.',
+  '',
+  'Yth. Bapak/Ibu Wali Murid,',
+  '',
+  'Kami informasikan bahwa kegiatan belajar mengajar pada:',
+  '',
+  '📅 Hari/Tanggal: *'+tanggalTeks+'*',
+  '',
+  '🏫 Kelas yang diliburkan: *'+kelas.sort((a,b)=>a.localeCompare(b,'id')).join(', ')+'*',
+  '',
+  'Kegiatan belajar mengajar pada kelas tersebut diliburkan untuk hari ini. Kegiatan belajar kembali dilaksanakan sesuai jadwal sekolah.',
+  '',
+  'Terima kasih atas perhatian dan kerja sama Bapak/Ibu. 😊',
+  '',
+  'Wassalamu’alaikum warahmatullahi wabarakatuh.',
+  '',
+  '🏫 *'+namaSekolah+'*'
+ ].join('\n');
+ const items=[...perGrup.values()].map(x=>({nomor:x.grup.grup_id,teks:teksGrup(x.kelas),label:'Grup '+(x.grup.label||x.grup.grup_id)}));
+ if(!items.length)return {grup:0,terjadwal:0,gagal:0};
+ const meta={...rkMeta('libur'),tujuan:'grup',batch:'manual-libur-'+SEK+'-'+tanggal+'-'+kelasIds.join('-')};
+ const hasil=await kirimBertahap(items,meta);
+ return {grup:items.length,terjadwal:hasil.filter(x=>x&&x.ok).length,gagal:hasil.filter(x=>!x||!x.ok).length};
+}
 
 /* ===== Riwayat Kirim (tabel kirim_log; diisi server, status diperbarui webhook Fonnte) ===== */
 const RK_JENIS={balasan:'Balasan pesan wali',laporan:'Laporan kehadiran',link:'Link halaman anak',tabungan:'Laporan tabungan',raport:'Tautan raport',libur:'Notifikasi libur',alpa:'Notifikasi alpa',lainnya:'Lainnya'};
