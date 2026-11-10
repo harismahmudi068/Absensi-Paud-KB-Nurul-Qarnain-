@@ -753,16 +753,23 @@ button.click-fx::after{display:none!important}
 <input type="file" id="fotoFile" accept="image/*" class="hid" onchange="fotoDipilih(this)">
 <script>
 const URL_SB='https://qhlswhoxlxgcvftrzhap.supabase.co',KEY_SB='sb_publishable_j4AB79X1wVZVLgdfcO0sAQ_EMFBq3KN';
-/* ---------- animasi proses pada setiap tombol ---------- */
+/* ---------- spinner hanya untuk tindakan pengelolaan data ---------- */
 (function(){let n=0;const asli=window.fetch.bind(window);
- window.fetch=function(){n++;return asli.apply(null,arguments).finally(()=>{n--})};
- document.addEventListener('click',e=>{const b=e.target&&e.target.closest?e.target.closest('button,a.btn'):null;
-  if(!b||b.disabled||b.classList.contains('busy')||b.classList.contains('nobusy'))return;
-  const t0=Date.now();
-  setTimeout(()=>{if(!b.isConnected||b.disabled||b.classList.contains('download-busy'))return;
-   b.classList.add('busy');
-   const cek=()=>{if(!b.isConnected)return;if(n>0||Date.now()-t0<700)setTimeout(cek,120);else b.classList.remove('busy')};
-   setTimeout(cek,120);setTimeout(()=>b.classList.remove('busy'),20000)},0)},true)})();
+ window.fetch=function(){n++;return asli.apply(null,arguments).finally(()=>{n=Math.max(0,n-1)})};
+ const aksiData=/^(simpan|tambah|ubah|edit|hapus|keluarkan|impor|import|kirim|setujui|tolak|konfirmasi|terbitkan|buat|perbarui|update)(\\b|\\s)/i;
+ document.addEventListener('click',e=>{const b=e.target&&e.target.closest?e.target.closest('button.btn'):null;
+  if(!b||b.disabled||b.classList.contains('busy')||b.classList.contains('download-busy'))return;
+  const label=String(b.textContent||'').trim().replace(/^[^\\p{L}\\p{N}]*/u,'');
+  if(!aksiData.test(label))return;
+  const t0=Date.now();let tampil=false,selesai=false;
+  const cek=()=>{if(selesai||!b.isConnected)return;
+   if(Date.now()-t0<700){setTimeout(cek,100);return}
+   if(n>0){if(!tampil&&!b.disabled){b.classList.add('busy');tampil=true}setTimeout(cek,120)}
+   else{if(tampil)b.classList.remove('busy');selesai=true}
+  };
+  setTimeout(cek,0);
+  setTimeout(()=>{selesai=true;if(tampil&&b.isConnected)b.classList.remove('busy')},20000);
+ },true)})();
 /* ---------- pustaka besar dimuat saat dibutuhkan (bukan saat aplikasi dibuka) ----------
    Excel (xlsx, exceljs), PDF (jspdf + autotable), dan scan QR (html5-qrcode) hanya diunduh saat tombolnya dipakai. */
 const LIB_URL={xlsx:'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',exceljs:'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js',pdf:'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',autotable:'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',scan:'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js'};
