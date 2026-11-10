@@ -2728,7 +2728,7 @@ const HRS=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],XC={H:['FFD9F7E8','FF14965
 async function tulisXlsx(wb,nama){const buf=await wb.xlsx.writeBuffer(),a=document.createElement('a');a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=nama;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
 async function xlsxRiwayat(M,nm){await muatLib('exceljs');
  await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
- const wb=new ExcelJS.Workbook();isiSheetRiwayat(wb,M,bulan,rk,'Riwayat');
+ const wb=new ExcelJS.Workbook(),ws=isiSheetRiwayat(wb,M,bulan,rk,'Riwayat');await xlsxTtdRekap(wb,ws,rk,5+M.rows.length+3,1,Math.max(2,ws.columnCount-2),Math.max(3,ws.columnCount-1));
  await tulisXlsx(wb,nm+'.xlsx')}
 function isiSheetRiwayat(wb,M,bulan,rk,namaSheet){
  const n=M.ds.length,tot=4+n+7,F='Arial',
@@ -2791,7 +2791,7 @@ function pdfRiwayat(d,M,b,k){
  let y=d.lastAutoTable.finalY;d.setFont('helvetica','italic');d.setFontSize(6.5);d.setTextColor(...rgbX('FF6D7D73'));
  const lg=d.splitTextToSize('Keterangan: H = Hadir, T = Terlambat, I = Izin, S = Sakit, A = Alpa, L = Libur, - = belum tercatat. Persentase menghitung hari libur sebagai hadir. Tanggal berwarna oranye = Sabtu/Minggu.',tw);d.text(lg,sx,y+4);
  y=y+4+lg.length*3+6;if(y+40>PH-mg){d.addPage();y=mg+4}
- const tg=ttdKepsek(b),wl=ttdWali(k),bx=sx+tw-32;pdfTtd(d,bx,y,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);if(wl)pdfTtd(d,sx+32,y,'Mengetahui,',' Wali kelas',wl.kelas,wl.nama,wl.nip)}
+ return y}
 let taA='',taB='',taK='';
 const taInit=()=>{if(!taA||!taB){const y=parseInt(String(S.set.tahun_ajaran||'').slice(0,4))||+TODAY.slice(0,4);taA=y+'-07';taB=TODAY.slice(0,7);if(taA>taB)taA=taB}return ''};
 async function unduhTA(t,btn){await muatLib(['exceljs','pdf']);if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat rekap XLSX...':'Membuat rekap PDF...'))return;try{await jedaUnduh();
@@ -2799,12 +2799,12 @@ async function unduhTA(t,btn){await muatLib(['exceljs','pdf']);if(!setUnduhBusy(
  const ms=[];let y=+taA.slice(0,4),m=+taA.slice(5,7);for(;;){const b=y+'-'+String(m).padStart(2,'0');ms.push(b);if(b>=taB)break;if(++m>12){m=1;y++}if(ms.length>24)throw new Error('Rentang maksimal 24 bulan')}
  const L=[];for(const b of ms){await muatBulan(b);const M=matriks(b,taK);if(M.ds.length&&M.rows.length)L.push([b,M])}
  if(!L.length)throw new Error('Belum ada data pada rentang bulan ini'+(taK?' untuk kelas '+taK:''));const nm='rekap-tahun-ajaran-'+(taK?'kelas-'+taK.replace(/[^\w]+/g,'-')+'-':'')+taA+'-sd-'+taB;
- if(t==='xlsx'){await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');const wb=new ExcelJS.Workbook();wb.creator=ns();L.forEach(x=>isiSheetRiwayat(wb,x[1],x[0],taK,fmtB(x[0])));await tulisXlsx(wb,nm+'.xlsx')}
- else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});L.forEach((x,i)=>{if(i)d.addPage();pdfRiwayat(d,x[1],x[0],taK)});d.save(nm+'.pdf')}
+ if(t==='xlsx'){await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');const wb=new ExcelJS.Workbook();wb.creator=ns();for(const x of L){const ws=isiSheetRiwayat(wb,x[1],x[0],taK,fmtB(x[0]));await xlsxTtdRekap(wb,ws,taK,5+x[1].rows.length+3,1,Math.max(2,ws.columnCount-2),Math.max(3,ws.columnCount-1))}await tulisXlsx(wb,nm+'.xlsx')}
+ else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});for(let i=0;i<L.length;i++){if(i)d.addPage();const y=pdfRiwayat(d,L[i][1],L[i][0],taK);await pdfTtdRekap(d,taK,y)}d.save(nm+'.pdf')}
  toast('Rekap '+L.length+' bulan sedang diproses ('+(t==='xlsx'?'XLSX':'PDF')+'), mohon ditunggu')}catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 async function unduh(t,btn){await muatLib('pdf');if(!setUnduhBusy(btn,true,t==='xlsx'?'Membuat file XLSX...':'Membuat file PDF...'))return;try{await jedaUnduh();if(!rk)throw new Error('Pilih kelas atau Semua kelas terlebih dahulu');await muatBulan(bulan);const M=matriks(bulan,rk);if(!M.ds.length||!M.rows.length)throw new Error('Belum ada data pada bulan ini');const nm='riwayat-absensi-'+(rk==='*'?'semua-kelas':'kelas-'+String(rk).replace(/[^\w]+/g,'-'))+'-'+bulan;
  if(t==='xlsx'){await xlsxRiwayat(M,nm)}
- else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});pdfRiwayat(d,M,bulan,rk);d.save(nm+'.pdf')}
+ else{const d=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});const y=pdfRiwayat(d,M,bulan,rk);await pdfTtdRekap(d,rk,y);d.save(nm+'.pdf')}
  toast('File '+(t==='xlsx'?'XLSX':'PDF')+' sedang diproses, mohon ditunggu')}catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 /* ---------- laporan orang tua ---------- */
 const catat=p=>p<50?'Mari kita motivasi ananda bersama-sama agar bisa lebih rutin hadir, supaya tidak tertinggal momen seru belajar dan bermain di sekolah.':p<70?'Mari kita semangati ananda agar bulan depan bisa lebih rajin lagi datang ke sekolah dan menikmati aktivitas bersama teman-teman.':p<=90?'Ayo kita terus pacu semangat ananda agar semakin konsisten dan tidak mudah absen dari kegiatan sekolah.':'Yuk pertahankan semangat dan kedisiplinan yang luar biasa ini agar ananda terus ceria dan optimal dalam mengikuti setiap kegiatan.';
@@ -4408,7 +4408,7 @@ async function tabBerkas(t,nm,judul,sub,head,rows,kls,btn,num){await muatLib(['e
    const r0=5+rows.length+2,a2=Math.max(2,Math.floor(n/3)),b1=Math.max(a2+1,n-a2+1),B={name:F,size:10,bold:true},N={name:F,size:10};[2,3,4].forEach(i=>{ws.getRow(r0+i).height=18});
    mg(r0,b1,n,tg.kota?{richText:[{text:tg.kota+',',font:B},{text:' '+tg.tgl,font:N}]}:tg.tgl);mg(r0+1,b1,n,'( Kepala Sekolah )');mg(r0+5,b1,n,tg.nama||'................................',{bold:true,underline:true});if(tg.nip)mg(r0+6,b1,n,'Nip. '+tg.nip);
    if(wl){mg(r0,1,a2,{richText:[{text:'Mengetahui,',font:B},{text:' Wali kelas',font:N}]});mg(r0+1,1,a2,'( '+wl.kelas+' )');mg(r0+5,1,a2,wl.nama,{bold:true,underline:true});if(wl.nip)mg(r0+6,1,a2,'Nip. '+wl.nip)}
-   await tulisXlsx(wb,nm+'.xlsx')}
+   await xlsxTtdRekap(wb,ws,kls,r0+1,1,b1-1,b1);await tulisXlsx(wb,nm+'.xlsx')}
   toast('Berkas '+(t==='xlsx'?'XLSX':'PDF')+' sedang diproses, mohon ditunggu')}catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
 const tabJenis=x=>x.sumber==='pembatalan'?'Pembatalan':x.sumber==='saldo_awal'?'Saldo awal':x.jenis==='setor'?'Setor':'Tarik';
