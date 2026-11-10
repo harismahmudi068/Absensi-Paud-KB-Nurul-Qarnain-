@@ -309,9 +309,12 @@ const Rapor = (() => {
     const school=PT.map((q,i)=>({q,x:sx[i]})).filter(x=>!x.q.ot),scx=school.length>1?(school[0].x+school[school.length-1].x)/2:(school[0]&&school[0].x);
     if(school.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...TX);doc.text('Mengetahui:',scx,sy-6,{align:'center'});}
     if(D.stempel&&D.stempel.url&&school.length){
-      /* Satu penandatangan: stempel diletakkan di sisi kiri agar tidak menutupi area tanda tangan. */
-      const stx=school.length===1?school[0].x-24:scx-12;
-      doc.addImage(D.stempel.url,'PNG',stx,sy+4,school.length===1?16:24,school.length===1?13:20);
+      /* Stempel diperbesar dan rasio gambar dipertahankan; satu penandatangan tetap di sisi kiri. */
+      const single=school.length===1, boxW=single?24:30, boxH=single?20:25;
+      const stx=single?school[0].x-31:scx-boxW/2;
+      const im=imgC[D.stempel.url], iw=im&&(im.naturalWidth||im.width)||boxW, ih=im&&(im.naturalHeight||im.height)||boxH;
+      const sc=Math.min(boxW/iw,boxH/ih), sw=iw*sc, sh=ih*sc;
+      doc.addImage(D.stempel.url,'PNG',stx+(boxW-sw)/2,sy+4+(boxH-sh)/2,sw,sh);
     }
   }
 
@@ -464,9 +467,13 @@ const Rapor = (() => {
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
     if(D.stempel&&D.stempel.url&&nP>1){
-      /* Satu penandatangan Mengetahui: stempel berada di kiri. Jika ada dua pejabat Mengetahui, stempel di ruang tengah keduanya. */
-      const stx=nP===4?(CX[2]+CX[3])/2-12:CX[nP-1]-24;
-      doc.addImage(D.stempel.url,'PNG',stx,yl+3,16,13);
+      /* Stempel diperbesar tanpa mengubah rasio; satu pejabat Mengetahui tetap mendapat posisi di kiri. */
+      const single=nP!==4, boxW=single?24:28, boxH=single?20:23;
+      const center=nP===4?(CX[2]+CX[3])/2:CX[nP-1];
+      const stx=single?center-31:center-boxW/2;
+      const im=imgC[D.stempel.url], iw=im&&(im.naturalWidth||im.width)||boxW, ih=im&&(im.naturalHeight||im.height)||boxH;
+      const sc=Math.min(boxW/iw,boxH/ih), sw=iw*sc, sh=ih*sc;
+      doc.addImage(D.stempel.url,'PNG',stx+(boxW-sw)/2,yl+3+(boxH-sh)/2,sw,sh);
     }
     kaki();
   }
