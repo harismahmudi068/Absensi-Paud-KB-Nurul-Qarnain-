@@ -3221,7 +3221,7 @@ function tbTabelHtml(){const G=tbGrup();
   const rows=list.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.nama)}</td><td>${esc(x.status)}</td><td style="text-align:right">${rp(x.saldo)}</td><td>${tbPerlakuan(x)}</td></tr>`).join('')+`<tr><td colspan="3"><b>Jumlah kelas ${esc(k)}</b></td><td style="text-align:right"><b>${rp(tot)}</b></td><td></td></tr>`;
   h+=`<div class="tbkh">Kelas ${esc(k)} <span class="mu">· Wali kelas: ${esc(w?w.nama:'-')} · ${list.length} siswa</span></div>`+tab(['No','Nama','Status','Saldo','Perlakuan'],rows)});
  return h}
-function tbPilih(m){TB.mode=m;TB.pdf=false;const e=$('#tbTabel');if(e)e.innerHTML=tbTabelHtml();tbCek()}
+function tbPilih(m){TB.mode=m;TB.pdf=false;TB.tabDownloaded=false;const e=$('#tbTabel');if(e)e.innerHTML=tbTabelHtml();tbCek()}
 function tbCek(){const lb=($('#tbLabel')||{}).value||'',ok=($('#tbOk')||{}).value||'',s=[];
  if(TB.rows.length){s.push([!!TB.mode,'Pilih perlakuan saldo tabungan']);s.push([TB.tabDownloaded,'Unduh rekap tabungan per kelas (PDF atau XLSX)'])}if(TB.absCount>0)s.push([TB.absDownloaded,'Unduh seluruh riwayat absensi semua kelas (PDF atau XLSX)'])
  s.push([lb.trim().length>0,'Isi tahun ajaran baru']);s.push([ok.trim()==='MULAI','Ketik MULAI']);
@@ -3244,7 +3244,7 @@ async function tbUnduhXlsx(btn){
  if(!TB.mode)return toast('Pilih dulu perlakuan saldo (bawa atau tutup buku)',false);
  await muatLib('exceljs');if(!setUnduhBusy(btn,true,'Membuat XLSX tabungan...'))return;
  try{await jedaUnduh();const wb=new ExcelJS.Workbook();wb.creator=ns();wb.created=new Date();const used=new Set(),G=tbGrup();
-  for(const [k,list] of G){const ws=sheetTabungan(wb,namaSheetSiswa(k,used),list,k);await xlsxTtdRekap(wb,ws,k,ws.rowCount+3,1,3,4)}
+  for(const [k,list] of G){const ws=sheetTabungan(wb,namaSheetSiswa(k,used),list,k);await xlsxTtdRekap(wb,ws,k,ws.rowCount-5,1,3,4)}
   await tulisXlsx(wb,'rekap-tabungan-akhir-tahun-'+ns().replace(/[^\w]+/g,'-')+'-'+TODAY+'.xlsx');
   TB.tabDownloaded=true;tbCek();toast('XLSX rekap tabungan berhasil disiapkan')
  }catch(e){toast('Gagal membuat XLSX tabungan: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}
@@ -3262,7 +3262,7 @@ async function taUnduhAbsensi(jenis,btn){
    data.push(...(page||[]));if(!page||page.length<1000)break;
   }
   if(!data.length)throw new Error('Tidak ada riwayat absensi untuk diunduh');
-  const grup=new Map();
+  const grup=new Map();(kelasAll||[]).forEach(k=>grup.set(k.nama,[]));
   data.forEach(x=>{const s=siswa.get(x.siswa_id)||{},k=km.get(s.kelas_id)||s.kelas||'Tanpa kelas';if(!grup.has(k))grup.set(k,[]);grup.get(k).push([x.tanggal,s.nama||'-',s.nisn||'-',k,x.status||'-',x.jam_datang?jamJkt(x.jam_datang):'',x.cara||'',x.catatan||''])});
   const order=k=>{const i=S.kelas.findIndex(c=>c.nama===k);return i<0?999:i};
   const G=[...grup.entries()].sort((a,b)=>order(a[0])-order(b[0])||a[0].localeCompare(b[0],'id'));
@@ -3275,7 +3275,7 @@ async function taUnduhAbsensi(jenis,btn){
     ws.addRow(['Kelas '+k+' | Seluruh riwayat tersimpan | Dicetak '+fmt(TODAY)]);ws.mergeCells(2,1,2,8);
     ws.addRow(['Tanggal','Nama Siswa','NISN','Kelas','Status','Jam Datang','Cara','Catatan']);ws.getRow(3).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF176B3A'}};c.alignment={horizontal:'center',vertical:'middle'}});
     rows.forEach(r=>ws.addRow(r));ws.views=[{state:'frozen',ySplit:3}];ws.autoFilter={from:'A3',to:'H'+Math.max(3,rows.length+3)};
-    const row=ws.rowCount+3;await xlsxTtdRekap(wb,ws,k,row,1,5,6);
+    const row=ws.rowCount+3;await xlsxTtdRekap(wb,ws,k,row,1,5,6);ws.getCell(row+5,1).value='Wali Kelas: '+(ttdWali(k)?.nama||'-');ws.getCell(row+5,6).value='Kepala Sekolah: '+(ttdKepsek().nama||'-');if(ttdKepsek().nip)ws.getCell(row+6,6).value='NIP. '+ttdKepsek().nip;
    }
    await tulisXlsx(wb,nf+'.xlsx');
   }else{
@@ -3285,7 +3285,7 @@ async function taUnduhAbsensi(jenis,btn){
     d.setFont('helvetica','bold');d.setFontSize(13);d.text('RIWAYAT ABSENSI - '+ns().toUpperCase(),148.5,12,{align:'center'});
     d.setFont('helvetica','normal');d.setFontSize(8.5);d.text('Kelas '+k+' | Seluruh riwayat tersimpan | Dicetak '+fmt(TODAY),148.5,18,{align:'center'});
     d.autoTable({startY:23,head:[['Tanggal','Nama Siswa','NISN','Kelas','Status','Jam Datang','Cara','Catatan']],body:rows,theme:'grid',styles:{fontSize:7.5,cellPadding:1.5},headStyles:{fillColor:[23,107,58],halign:'center'},columnStyles:{0:{cellWidth:20},1:{cellWidth:42},2:{cellWidth:24},3:{cellWidth:27},4:{cellWidth:22},5:{cellWidth:20},6:{cellWidth:24},7:{cellWidth:90}}});
-    const y=Math.min(175,d.lastAutoTable.finalY+8);await pdfTtdRekap(d,k,y);
+    let y=d.lastAutoTable.finalY+8;if(y>170){d.addPage();y=20}await pdfTtdRekap(d,k,y);
    }
    d.save(nf+'.pdf');
   }
@@ -3305,9 +3305,9 @@ async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
  const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
  const img=(url)=>{if(!url||!/^data:image\/(png|jpeg);base64,/.test(url))return null;const ext=url.startsWith('data:image/jpeg')?'jpeg':'png';return wb.addImage({base64:url.split(',')[1],extension:ext})};
  const stamp=img(st&&st.url),head=img(tg.id&&sig[tg.id]),wali=img(w&&w.id&&sig[w.id]);
- if(wali)ws.addImage(wali,{tl:{col:Math.max(0,waliCol-1),row:row+1},ext:{width:64,height:28}});
- if(stamp)ws.addImage(stamp,{tl:{col:Math.max(0,kepStampCol-1),row:row+1},ext:{width:28,height:28}});
- if(head)ws.addImage(head,{tl:{col:Math.max(0,kepSigCol-1),row:row+1},ext:{width:58,height:24}});
+ if(wali!==null)ws.addImage(wali,{tl:{col:Math.max(0,waliCol-1),row:row+1},ext:{width:64,height:28}});
+ if(stamp!==null)ws.addImage(stamp,{tl:{col:Math.max(0,kepStampCol-1),row:row+1},ext:{width:28,height:28}});
+ if(head!==null)ws.addImage(head,{tl:{col:Math.max(0,kepSigCol-1),row:row+1},ext:{width:58,height:24}});
 }
 async function tbMulai(){const lb=($('#tbLabel')||{}).value.trim(),ok=($('#tbOk')||{}).value.trim();
  if(!lb||ok!=='MULAI')return toast('Isi tahun ajaran dan ketik MULAI',false);
@@ -4439,14 +4439,14 @@ function sheetTabungan(wb,nama,rows,kls){
 function unduhTabungan(jenis){guard(async()=>{await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat. Muat ulang halaman');
  const wb=new ExcelJS.Workbook();wb.creator=ns();wb.created=new Date();const nf=ns().replace(/[^\w]+/g,'-');
  if(jenis==='rekap'){const d=(S.tab||[]).filter(r=>Number(r.saldo)!==0||r.aktif);
-  sheetTabungan(wb,'Semua kelas',d,'');S.kelas.forEach(k=>{const x=d.filter(r=>r.kelas_nama===k.nama);if(x.length)sheetTabungan(wb,k.nama,x,k.nama)});
+  const wsAll=sheetTabungan(wb,'Semua kelas',d,'');await xlsxTtdRekap(wb,wsAll,'',wsAll.rowCount-5,1,3,4);for(const k of S.kelas){const x=d.filter(r=>r.kelas_nama===k.nama);if(x.length){const ws=sheetTabungan(wb,k.nama,x,k.nama);await xlsxTtdRekap(wb,ws,k.nama,ws.rowCount-5,1,3,4)}}
   await tulisXlsx(wb,'Rekap-Tabungan-'+nf+'-'+TODAY+'.xlsx');toast('Rekap tabungan sedang diproses, mohon ditunggu');return}
  const semua=[];for(let a=0;a<50000;a+=1000){const p=await dbq(db.from('tabungan_transaksi').select('*').order('id',{ascending:true}).range(a,a+999));semua.push(...p);if(p.length<1000)break}
  const ws=wb.addWorksheet('Riwayat'),H=['Tanggal','Nama','NISN','Kelas','Jenis','Jumlah (Rp)','Catatan','Dicatat oleh','Waktu catat'];
  ws.columns=[{width:12},{width:30},{width:16},{width:14},{width:14},{width:16},{width:40},{width:22},{width:18}];
  H.forEach((h,i)=>{const c=ws.getCell(1,i+1);c.value=h;c.font={bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE9E3F7'}}});
  semua.forEach((x,i)=>{const r=i+2,v=[x.tanggal,x.nama_siswa,x.nisn||'',x.kelas_nama||'',tabJenis(x),(x.jenis==='setor'?1:-1)*Number(x.jumlah),x.catatan||'',x.nama_pencatat||'',new Date(x.dibuat).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})];v.forEach((val,j)=>{const c=ws.getCell(r,j+1);c.value=val;if(j===5)c.numFmt='#,##0;[Red]-#,##0';if(j===2)c.numFmt='@'})});
- ws.views=[{state:'frozen',ySplit:1}];
+ ws.views=[{state:'frozen',ySplit:1}];await xlsxTtdRekap(wb,ws,'',ws.rowCount+2,1,6,7);
  await tulisXlsx(wb,'Riwayat-Tabungan-'+nf+'-'+TODAY+'.xlsx');toast('Riwayat tabungan sedang diproses ('+semua.length+' baris), mohon ditunggu')})}
 function addKelas(){form('Tambah Kelas',[{k:'nama',l:'Nama kelas'},{k:'jam',l:'Batas jam masuk',t:'time',v:'07:30'}],async v=>{if(!v.nama||S.kelas.some(k=>k.nama===v.nama))throw new Error('Nama kelas kosong atau sudah ada');await dbq(db.from('kelas').insert({nama:v.nama,jam_masuk:v.jam||'07:30'}));await muatDasar();renderV()})}
 function ubahKelas(id){const k=S.kelas.find(x=>x.id===id);form('Ubah nama kelas',[{k:'nama',l:'Nama kelas',v:k.nama}],async v=>{if(!v.nama)throw new Error('Nama kelas wajib diisi');if(S.kelas.some(x=>x.id!==id&&x.nama.toLowerCase()===v.nama.toLowerCase()))throw new Error('Nama kelas sudah dipakai');await dbq(db.from('kelas').update({nama:v.nama}).eq('id',id));await muatDasar();toast('Nama kelas diubah');renderV()})}
