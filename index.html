@@ -3312,10 +3312,10 @@ async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
  // Ambil dua area gabungan tanda tangan dari tabel yang sudah dibuat; teks dan posisi kolom tidak diubah.
  const merges=Object.values(ws._merges||{}).filter(m=>m&&Number.isFinite(m.top)&&Number.isFinite(m.left)&&Number.isFinite(m.bottom)&&Number.isFinite(m.right));
  const byRow=new Map();merges.forEach(m=>{if(m.top===m.bottom){if(!byRow.has(m.top))byRow.set(m.top,[]);byRow.get(m.top).push(m)}});
- const pairs=[...byRow.entries()].filter(([,v])=>v.length>=2).sort((a,b)=>b[0]-a[0]);
- const pair=pairs.find(([r,v])=>v.some(m=>String(ws.getCell(r,m.left).value||'').includes(tg.nama||'__NO_MATCH__'))||v.some(m=>w&&String(ws.getCell(r,m.left).value||'').includes(w.nama||'__NO_MATCH__'))) || pairs[0];
+ const pairs=[...byRow.entries()].filter(([,v])=>v.length>=1).sort((a,b)=>b[0]-a[0]);
+ const pair=pairs.find(([r,v])=>v.some(m=>tg.nama&&String(ws.getCell(r,m.left).value||'').includes(tg.nama))||v.some(m=>w&&w.nama&&String(ws.getCell(r,m.left).value||'').includes(w.nama)));
  if(!pair)return;
- const nameRow=pair[0],areas=pair[1].sort((a,b)=>a.left-b.left),waliArea=areas[0],kepArea=areas[areas.length-1];
+ const nameRow=pair[0],areas=pair[1].sort((a,b)=>a.left-b.left),waliArea=areas.length>1?areas[0]:null,kepArea=areas[areas.length-1];
  const widths=ws.columns.map(c=>Math.max(1,(Number(c.width)||8.43)*7+5));
  const xAt=c=>widths.slice(0,Math.max(0,c-1)).reduce((a,v)=>a+v,0);
  const yAt=r=>{let v=0;for(let i=1;i<r;i++)v+=(ws.getRow(i).height||15)*96/72;return v};
@@ -3323,8 +3323,8 @@ async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
  const sigW=Math.round(32/25.4*96),sigH=Math.round(13/25.4*96),stampW=Math.round(28/25.4*96),stampH=stampW;
  const top=nameRow-3,bottom=nameRow-1,y=yAt(top),h=yAt(bottom+1)-y;
  const anchor=(box,width,height,ratio)=>{const x=box.x+box.width*ratio-width/2,yy=y+(h-height)/2;let col=1;while(col<widths.length&&x>=xAt(col+1))col++;let rr=1;while(rr<ws.rowCount+1&&yy>=yAt(rr+1))rr++;return{tl:{col:col-1+(x-xAt(col))/widths[col-1],row:rr-1+(yy-yAt(rr))/((ws.getRow(rr).height||15)*96/72)}}};
- const wbLeft=rangeBox(waliArea),kp=rangeBox(kepArea);
- if(wali)ws.addImage(wali,{...anchor(wbLeft,sigW,sigH,.5),ext:{width:sigW,height:sigH}});
+ const kp=rangeBox(kepArea);
+ if(wali&&waliArea)ws.addImage(wali,{...anchor(rangeBox(waliArea),sigW,sigH,.5),ext:{width:sigW,height:sigH}});
  // Stempel berada di bagian kiri area kepala sekolah, tanda tangan di bagian kanan.
  if(stamp)ws.addImage(stamp,{...anchor(kp,stampW,stampH,.38),ext:{width:stampW,height:stampH}});
  if(head)ws.addImage(head,{...anchor(kp,sigW,sigH,.78),ext:{width:sigW,height:sigH}});
