@@ -426,7 +426,7 @@ async function petaRapor(rows, sid) {
   }
   return rows.map((r) => {
     const o = {
-      id: r.id, tahun_ajaran: r.tahun_ajaran, semester: r.semester, jenis: r.jenis, kelas_nama: r.kelas_nama || '',
+      id: r.id, status: 'terbit', tahun_ajaran: r.tahun_ajaran, semester: r.semester, jenis: r.jenis, kelas_nama: r.kelas_nama || '',
       nilai: Array.isArray(r.nilai) ? r.nilai : [], sakit: r.sakit || 0, izin: r.izin || 0, alpa: r.alpa || 0,
       catatan: r.catatan || '', keputusan: r.keputusan || '', kelas_tujuan: r.kelas_tujuan || '',
       wali_nama: r.wali_nama || '', wali_nip: r.wali_nip || '', kepsek_nama: r.kepsek_nama || '', kepsek_nip: r.kepsek_nip || ''
