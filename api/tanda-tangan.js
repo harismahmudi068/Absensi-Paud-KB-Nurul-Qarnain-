@@ -61,7 +61,7 @@ module.exports = async (req, res) => {
     if (!['lihat','daftar','ambil','ambil_banyak','simpan','hapus'].includes(aksi))
       return res.status(400).json({ error: 'Aksi tanda tangan tidak dikenal' });
 
-    if (aksi === 'lihat' || (aksi === 'simpan' || aksi === 'hapus') && (!b.id || b.id === user.id)) {
+    if (aksi === 'lihat') {
       if (punyaSid && !isDev) {
         const own = await anggota(user.id, sid);
         if (!own) return res.status(403).json({ error: 'Keanggotaan sekolah tidak aktif' });
@@ -70,8 +70,11 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, ada: !!(own && own.ttd_path), data: own && own.ttd_path && pathAman(own.ttd_path, user.id) ? await fileData(own.ttd_path) : null });
     }
 
-    if (!punyaSid) return res.status(400).json({ error: 'Sekolah tidak valid' });
-    const anggotaSaya = isDev ? null : await anggota(user.id, sid);
+    const targetId = String(b.id || user.id);
+    if (!RE_UUID.test(targetId)) return res.status(400).json({ error: 'ID guru tidak valid' });
+    const aksiSendiriDev = isDev && targetId === user.id && (aksi === 'simpan' || aksi === 'hapus');
+    if (!punyaSid && !aksiSendiriDev) return res.status(400).json({ error: 'Sekolah tidak valid' });
+    const anggotaSaya = isDev || !punyaSid ? null : await anggota(user.id, sid);
     if (!isDev && !anggotaSaya) return res.status(403).json({ error: 'Anda tidak memiliki akses aktif ke sekolah ini' });
     const bolehKelolaLain = isDev || !!(anggotaSaya && ROLE_KELOLA.includes(anggotaSaya.role));
 
@@ -102,12 +105,10 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, tanda_tangan: out });
     }
 
-    const targetId = String(b.id || user.id);
-    if (!RE_UUID.test(targetId)) return res.status(400).json({ error: 'ID guru tidak valid' });
     if (targetId !== user.id && !bolehKelolaLain)
       return res.status(403).json({ error: 'Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, Operator, atau Developer yang boleh mengelola tanda tangan guru lain' });
-    const targetAnggota = await anggota(targetId, sid);
-    if (!targetAnggota) return res.status(404).json({ error: 'Guru tidak ditemukan atau tidak aktif di sekolah ini' });
+    const targetAnggota = punyaSid ? await anggota(targetId, sid) : null;
+    if (punyaSid && !targetAnggota) return res.status(404).json({ error: 'Guru tidak ditemukan atau tidak aktif di sekolah ini' });
     const target = await profil(targetId);
     if (!target) return res.status(404).json({ error: 'Profil guru tidak ditemukan' });
 
@@ -128,14 +129,14 @@ module.exports = async (req, res) => {
         throw e;
       }
       if (target.ttd_path && pathAman(target.ttd_path, targetId)) await storage('DELETE', target.ttd_path).catch(() => {});
-      await L.catatLog({ pelaku: user.id, sekolah_id: sid, aksi: 'tanda_tangan_simpan', rincian: 'Tanda tangan ' + (target.nama || targetId) + (targetId === user.id ? ' diperbarui sendiri' : ' diperbarui pengelola') });
+      await L.catatLog({ pelaku: user.id, sekolah_id: punyaSid ? sid : null, aksi: 'tanda_tangan_simpan', rincian: 'Tanda tangan ' + (target.nama || targetId) + (targetId === user.id ? ' diperbarui sendiri' : ' diperbarui pengelola') });
       return res.status(200).json({ ok: true });
     }
 
     if (aksi === 'hapus') {
       await L.panggil('/rest/v1/profil?id=eq.' + targetId, 'PATCH', { ttd_path: null }, { Prefer: 'return=minimal' });
       if (target.ttd_path && pathAman(target.ttd_path, targetId)) await storage('DELETE', target.ttd_path).catch(() => {});
-      await L.catatLog({ pelaku: user.id, sekolah_id: sid, aksi: 'tanda_tangan_hapus', rincian: 'Tanda tangan ' + (target.nama || targetId) + ' dihapus' });
+      await L.catatLog({ pelaku: user.id, sekolah_id: punyaSid ? sid : null, aksi: 'tanda_tangan_hapus', rincian: 'Tanda tangan ' + (target.nama || targetId) + ' dihapus' });
       return res.status(200).json({ ok: true });
     }
     return res.status(400).json({ error: 'Aksi tidak valid' });
