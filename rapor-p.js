@@ -309,7 +309,7 @@ function pkSusun(r, logo, info) {
   if (wali.id) wali.ttd = sig[wali.id] || null;
   if (kepsek.id) kepsek.ttd = sig[kepsek.id] || null;
   if (pengelola && pengelola.id) pengelola.ttd = sig[pengelola.id] || null;
-  return Rapor.susun(r, { logo, sekolah: ns(), alamat: (S.set && S.set.alamat) || '', kota: kotaTtd(), nama: s.nama, panggilan: s.pan, nisn: s.nisn, kelas: r.kelas_nama, tempatLahir: s.tempat, tglLahir: s.tgl,
+  return Rapor.susun(r, { logo, stempel: info && info.stempel || null, sekolah: ns(), alamat: (S.set && S.set.alamat) || '', kota: kotaTtd(), nama: s.nama, panggilan: s.pan, nisn: s.nisn, kelas: r.kelas_nama, tempatLahir: s.tempat, tglLahir: s.tgl,
     kelompok: kg.nama || '', kelompokLabel: pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok Usia', master: pkMasterS(s, r), wali, kepsek, pengelola, ...pkKepO(r) });
 }
 
