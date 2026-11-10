@@ -203,17 +203,25 @@ module.exports = async (req, res) => {
 
     // Penerima uji tes hanya boleh anggota aktif sekolah dengan peran pengelola.
     const ambilPenerimaTes = async () => {
-      const [anggota, nomor] = await Promise.all([
-        panggil(`/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role,profil(id,nama,aktif)&order=role.asc`, 'GET'),
-        panggil('/rest/v1/rpc/nomor_wa_guru', 'POST', { p_sekolah: sekolahId })
-      ]);
+      const anggota = await panggil(
+        `/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role,profil(id,nama,aktif)&order=role.asc`,
+        'GET'
+      );
       const boleh = ['kepala_sekolah', 'wakil_kepala', 'operator', 'pengelola'];
       const daftar = (anggota || []).filter((m) =>
-        boleh.includes(m.role) && m.profil && m.profil.aktif !== false
+        boleh.includes(m.role) && m.profil && m.profil.aktif !== false && m.profil_id
+      );
+      if (!daftar.length) return [];
+      // Nomor WhatsApp tersimpan langsung pada tabel profil (kolom no_wa).
+      // Ambil berdasarkan profil_id, bukan RPC nomor guru yang tidak menjadi sumber data profil.
+      const ids = [...new Set(daftar.map((m) => String(m.profil_id)))];
+      const profil = await panggil(
+        `/rest/v1/profil?id=in.(${ids.join(',')})&select=id,no_wa`,
+        'GET'
       );
       return daftar.map((m) => {
-        const n = (nomor || []).find((x) => String(x.profil_id) === String(m.profil_id));
-        const wa = normWA(n && n.no_wa);
+        const p = (profil || []).find((x) => String(x.id) === String(m.profil_id));
+        const wa = normWA(p && p.no_wa);
         return {
           id: m.profil_id,
           nama: m.profil.nama || 'Pengguna sekolah',
@@ -228,9 +236,11 @@ module.exports = async (req, res) => {
       const tujuan = daftar.find((x) => String(x.id) === String(penerimaId || ''));
       if (!tujuan) throw new Error('Pilih penerima tes dari anggota aktif sekolah');
       if (!tujuan.nomor) throw new Error('Nomor WhatsApp ' + tujuan.nama + ' belum terdaftar di Profil');
-      const nomor = await panggil('/rest/v1/rpc/nomor_wa_guru', 'POST', { p_sekolah: sekolahId });
-      const data = (nomor || []).find((x) => String(x.profil_id) === String(tujuan.id));
-      const wa = normWA(data && data.no_wa);
+      const profil = await panggil(
+        `/rest/v1/profil?id=eq.${encodeURIComponent(tujuan.id)}&select=id,no_wa`,
+        'GET'
+      );
+      const wa = normWA(profil && profil[0] && profil[0].no_wa);
       if (!RE_WA.test(wa)) throw new Error('Nomor WhatsApp penerima tes tidak valid');
       return { nomor: wa, nama: tujuan.nama };
     };
