@@ -673,8 +673,20 @@ module.exports = async (req, res) => {
     let tambahan = { ok: 0, gagal: [] };
     try {
       if (tabel === 'notifikasi_libur') {
-        const staf = await kirimStafLibur(token, sekolahId, nomorTujuan, teks, lg);
-        const grup = body.uji === true ? { ok: 0, gagal: [] } : await kirimGrupLibur(token, sekolahId, tanggal || String(notif.tanggal || ''), lg);
+        let staf = { ok: 0, gagal: [] };
+        let grup = { ok: 0, gagal: [] };
+        try {
+          staf = await kirimStafLibur(token, sekolahId, nomorTujuan, teks, lg);
+        } catch (e) {
+          staf.gagal.push('Notifikasi staf: ' + String(e.message || e));
+        }
+        if (body.uji !== true) {
+          try {
+            grup = await kirimGrupLibur(token, sekolahId, tanggal || String(notif.tanggal || ''), lg);
+          } catch (e) {
+            grup.gagal.push('Notifikasi grup: ' + String(e.message || e));
+          }
+        }
         tambahan = { ok: staf.ok + grup.ok, gagal: [...staf.gagal, ...grup.gagal] };
       } else {
         tambahan = await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa, lg);
