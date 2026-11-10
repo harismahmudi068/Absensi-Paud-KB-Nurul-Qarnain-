@@ -3185,7 +3185,7 @@ async function hapusLogo(){if(MB&&MB())return toast('Tidak tersedia di mode bant
  if(!await konfirmasi('Hapus logo sekolah?\n\nLogo di menu samping, dashboard, dan kartu pelajar akan kembali ke tampilan bawaan.',{bahaya:true,judul:'Hapus logo',ya:'Hapus'}))return;
  guard(async()=>{await simpanLogo(null);toast('Logo sekolah dihapus')})}
 
-const stempelOk=v=>typeof v==='string'&&v.length<=150000&&/^data:image\\/(png|webp|jpeg);base64,/.test(v);
+const stempelOk=v=>typeof v==='string'&&v.length<=150000&&/^data:image\/(png|webp|jpeg);base64,/.test(v);
 const stempelHtml=()=>stempelOk(S.set&&S.set.stempel)?'<img alt="Stempel sekolah" src="'+esc(S.set.stempel)+'">':'🔴';
 async function simpanStempel(v){const r=await dbq(db.from('pengaturan').update({stempel:v}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan atau Anda tidak berhak mengubahnya');S.set.stempel=v;renderV()}
 function stempelKecil(file){return new Promise((ok,gagal)=>{const u=URL.createObjectURL(file),im=new Image();im.onerror=()=>{URL.revokeObjectURL(u);gagal(new Error('File bukan gambar yang valid'))};im.onload=()=>{URL.revokeObjectURL(u);try{let hasil='';for(const sz of [512,448,384,320,256,200]){const r=Math.min(1,sz/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r)),cv=skalaLogo(im,w,h);for(const f of ['image/png','image/webp']){const d=cv.toDataURL(f,.94);if(d.startsWith('data:'+f)&&d.length<=148000){hasil=d;break}}if(hasil)break}if(hasil)ok(hasil);else gagal(new Error('Stempel terlalu besar setelah diperkecil. Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}};im.src=u})}
