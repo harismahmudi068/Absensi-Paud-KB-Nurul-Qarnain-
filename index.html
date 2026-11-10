@@ -2849,11 +2849,11 @@ async function apiKirimBatalkanLiburGrup(tanggal) {
 }
 
 async function kirimLiburGrupHariIni(kelasIds,tanggal) {
- const relasi=await dbq(db.from('kelas_grup_wa').select('kelas_id,grup_wa_id').eq('sekolah_id',SEK).in('kelas_id',kelasIds));
+ const cfg=RHS&&Array.isArray(RHS.pemetaan)?RHS:await apiPengaturan({aksi:'baca'});
+ const relasi=(cfg.pemetaan||[]).filter(x=>kelasIds.includes(Number(x.kelas_id)));
  if(!relasi.length)return {grup:0,terjadwal:0,gagal:0};
- const grupIds=[...new Set(relasi.map(x=>Number(x.grup_wa_id)).filter(Number.isInteger))];
- const grupRows=await dbq(db.from('grup_wa').select('id,grup_id,label').eq('sekolah_id',SEK).in('id',grupIds));
- const sekolah=await dbq(db.from('sekolah').select('nama').eq('id',SEK).maybeSingle());
+ const grupRows=cfg.grup||[];
+ const sekolah=S.set&&S.set.nama_sekolah?S.set.nama_sekolah:'Sekolah';
  const namaKelas=new Map((S.kelas||[]).map(k=>[Number(k.id),k.nama]));
  const perGrup=new Map();
  for(const r of relasi){
