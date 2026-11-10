@@ -3258,7 +3258,6 @@ async function tbUnduhXlsx(btn){
   if(berhasil){TB.absDownloaded=true;tbCek()}
   return berhasil;
  }finally{taK=kelasSebelumnya}
-}etUnduhBusy(btn,false)}
 }
 async function pdfTtdRekap(d,kls,y){
  const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
