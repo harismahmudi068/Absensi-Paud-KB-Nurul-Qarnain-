@@ -1628,7 +1628,7 @@ function renderAll(){
  $('#dt').textContent=fmt(TODAY);$('#who').textContent=meNama+' - '+role+(MEMB.length>1?' · '+((MEMB.find(m=>m.sekolah_id===SEK)||{}).nama||''):'');renderV()}
 let ks='depan';
 let kartuTok=0;
-const jedaGambar=()=>new Promise(r=>{let d=0;const f=()=>{if(!d){d=1;r()}};try{requestAnimationFrame(()=>setTimeout(f,0))}catch(e){}setTimeout(f,60)});
+const jedaGambar=()=>new Promise(r=>{let selesai=false;const f=()=>{if(selesai)return;selesai=true;r()};try{requestAnimationFrame(f)}catch(e){setTimeout(f,16)}setTimeout(f,80)});
 let kartuIO=null;
 /* gambar kartu dibuat hanya untuk yang terlihat atau hampir terlihat; foto diunduh paralel (maks 4) */
 async function muatGambarKartu(){
@@ -1638,13 +1638,15 @@ async function muatGambarKartu(){
  const siswaDari=im=>im.dataset.kartuId==='uji'?siswaUji():siswaById(Number(im.dataset.kartuId));
  const antre=[],pfAntre=[];let jalan=false,pf=0;
  const pfJalan=()=>{while(pf<4&&pfAntre.length){const s=pfAntre.shift();pf++;fotoSiap(s).catch(()=>{}).finally(()=>{pf--;pfJalan()})}};
+ const jarakLayar=im=>{if(!im||!im.isConnected)return Infinity;const r=im.getBoundingClientRect();if(r.bottom>=0&&r.top<=window.innerHeight)return 0;return Math.min(Math.abs(r.top),Math.abs(r.bottom-window.innerHeight))};
+ const ambilPrioritas=()=>{let ix=0,jarak=Infinity;for(let i=0;i<antre.length;i++){const d=jarakLayar(antre[i]);if(d<jarak){jarak=d;ix=i;if(d===0)break}}return antre.splice(ix,1)[0]};
  const isi=async im=>{const s=siswaDari(im);
   if(s){const sd=im.dataset.sisi||'depan';if(sd==='depan')await fotoSiap(s);if(tok!==kartuTok)return;im.src=kartuUrl(s,sd,true);im.alt='Kartu '+sd+' '+(s.pan||'');try{await im.decode()}catch(e){}}
   const w=im.closest('.kwrap');if(w)w.classList.add('siap')};
  const pompa=async()=>{if(jalan)return;jalan=true;
-  try{while(antre.length){if(tok!==kartuTok)return;stat(true,antre.length);await jedaGambar();if(tok!==kartuTok)return;const im=antre.shift();if(!im||!im.isConnected)continue;try{await isi(im)}catch(e){console.warn('Kartu gagal dibuat',e)}}}
+  try{while(antre.length){if(tok!==kartuTok)return;stat(true,antre.length);await jedaGambar();if(tok!==kartuTok)return;const im=ambilPrioritas();if(!im||!im.isConnected)continue;try{await isi(im)}catch(e){console.warn('Kartu gagal dibuat',e)}}}
   finally{jalan=false;if(tok===kartuTok&&!antre.length)stat(false)}};
- const masuk=im=>{const s=siswaDari(im);if(s&&(im.dataset.sisi||'depan')==='depan'&&s.foto_path&&!fotoMuat(s))pfAntre.push(s);antre.push(im);pfJalan();pompa()};
+ const masuk=im=>{if(antre.includes(im))return;const s=siswaDari(im);if(s&&(im.dataset.sisi||'depan')==='depan'&&s.foto_path&&!fotoMuat(s))pfAntre.push(s);antre.push(im);pfJalan();pompa()};
  if(!('IntersectionObserver' in window)){imgs.forEach(masuk);return}
  const io=new IntersectionObserver(es=>{for(const e of es){if(!e.isIntersecting)continue;io.unobserve(e.target);masuk(e.target)}},{rootMargin:'500px 0px'});
  kartuIO=io;imgs.forEach(im=>io.observe(im));
@@ -2424,10 +2426,15 @@ function kartuUjiBlok(){const s=siswaUji();return `<div class="cards${ks==='kedu
 async function salinLinkUji(){const ok=await salinLink(Kartu.isiQR(KODE_UJI));ok?toast('Kode kartu uji disalin'):toast('Tidak bisa menyalin, coba lagi',false)}
 async function unduhUjiScan(el){if(!el||el.dataset.b==='1')return;el.dataset.b='1';const t=el.textContent;el.textContent='Menyiapkan kartu uji...';try{await jedaUnduh();simpanPng(kartuUrl(siswaUji(),'belakang'),'kartu-uji-belakang.png');toast('Kartu uji (belakang) diunduh')}catch(e){toast('Gagal mengunduh kartu uji: '+(e.message||e),false)}finally{el.dataset.b='0';el.textContent=t}}
 async function usbUjiOtomatis(){if(usbPh!=='uji'||!usbOn)return;const u=Kartu.isiQR(KODE_UJI);await salinLink(u);const i=$('#usbIn');if(i)i.value=u;toast('Kode kartu uji disalin dan diisi otomatis');setTimeout(()=>{if(usbPh!=='uji'||!usbOn)return;const e=$('#usbIn');if(e)e.value='';usbOtoNext=true;usbKirim(u)},500)}
-function kartuUrl(s,sisi,pv){sisi=sisi||'depan';const key=[pv?'pv':'fu',sisi,s.id,s.kode_scan,s.nama,s.nisn,s.kelas,s.wa,s.tempat,s.tgl,s.jk,s.alamat,s.masuk,S.set.tahun_ajaran,ns(),(S.set.logo||'').length,sisi==='depan'&&fotoMuat(s)?s.foto_path:'-'].join('|');if(pv&&KC.has(key)){const v0=KC.get(key);KC.delete(key);KC.set(key,v0);return v0}
- const u=(sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)(s,{pratinjau:!!pv,nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.isiQR(s.kode_scan),logo:logoOk(S.set.logo)?S.set.logo:null,foto:sisi==='depan'?(s.uji?fotoUji():fotoMuat(s)):null});
- /* hanya pratinjau (ringan) yang disimpan; cache dibatasi 60 kartu, yang paling lama dibuang. Versi penuh untuk unduhan tidak disimpan */
- if(pv){KC.set(key,u);while(KC.size>120)KC.delete(KC.keys().next().value)}return u}
+let KCB=0;const KC_BATAS=18*1024*1024,KC_JUMLAH=80;
+function kartuCacheBersih(){kartuCacheBersih();KCB=0}
+function kartuHash(v){v=String(v||'');let h=2166136261;for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
+function kartuCacheAmbil(k){const v=KC.get(k);if(!v)return null;KC.delete(k);KC.set(k,v);return v.url}
+function kartuCacheSimpan(k,url){const bytes=url.length*2;if(bytes>KC_BATAS)return;const lama=KC.get(k);if(lama){KCB-=lama.bytes;KC.delete(k)}while(KC.size&&(KC.size>=KC_JUMLAH||KCB+bytes>KC_BATAS)){const k0=KC.keys().next().value,v0=KC.get(k0);KC.delete(k0);KCB-=v0.bytes}KC.set(k,{url,bytes});KCB+=bytes}
+function kartuUrl(s,sisi,pv){sisi=sisi||'depan';const logo=logoOk(S.set.logo)?S.set.logo:'',key=[pv?'pv':'fu',sisi,s.id,s.kode_scan,s.nama,s.pan,s.nisn,s.kelas,s.wa,s.tempat,s.tgl,s.jk,s.alamat,s.masuk,s.aktif,S.set.tahun_ajaran,ns(),TODAY,kartuHash(logo),sisi==='depan'&&fotoMuat(s)?s.foto_path:'-'].join('|');if(pv){const lama=kartuCacheAmbil(key);if(lama)return lama}
+ const u=(sisi==='belakang'?Kartu.buatBelakang:Kartu.buatKartu)(s,{pratinjau:!!pv,nama:ns(),tahun:S.set.tahun_ajaran,hari:TODAY,qr:Kartu.isiQR(s.kode_scan),logo:logo||null,foto:sisi==='depan'?(s.uji?fotoUji():fotoMuat(s)):null});
+ /* Cache khusus pratinjau: LRU berdasarkan pemakaian, maksimal 80 kartu dan sekitar 18 MB agar aman untuk memori ponsel. Versi penuh unduhan tetap dibuat terpisah. */
+ if(pv)kartuCacheSimpan(key,u);return u}
 const kimg=(s,sd)=>`<div class="kwrap"><div class="kspin"><div class="kspn"></div>Memuat kartu...</div><img class="kimg" data-kartu-id="${s.id}" data-sisi="${sd}" alt=""></div>`;
 const kartuCocok=(s,z)=>!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z)||cocokWA(s.wa,z);
 /* semua kartu kelas dirender sekali; pencarian hanya menyembunyikan/menampilkan kartu (tanpa membangun ulang, jadi tidak berkedip) */
@@ -3080,7 +3087,7 @@ function logoKecil(file){return new Promise((ok,gagal)=>{const u=URL.createObjec
   gagal(new Error('Logo terlalu besar setelah diperkecil (maksimal sekitar 110 KB). Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}}
  im.src=u})}
 async function simpanLogo(v){const r=await dbq(db.from('pengaturan').update({logo:v}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan atau Anda tidak berhak mengubahnya');
- S.set.logo=v;try{KC.clear()}catch(e){}try{await Kartu.siapkanLogo(v)}catch(e){}terapLogo();renderV()}
+ S.set.logo=v;try{kartuCacheBersih()}catch(e){}try{await Kartu.siapkanLogo(v)}catch(e){}terapLogo();renderV()}
 async function pilihLogo(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
  if(f.size>2*1024*1024)return toast('Ukuran file maksimum 2 MB. File Anda '+(f.size/1048576).toFixed(1)+' MB',false);
  let v;try{ld(1,'Memproses gambar...');v=await logoKecil(f)}catch(e){return toast((e&&e.message)||String(e),false)}finally{ld(0)}
