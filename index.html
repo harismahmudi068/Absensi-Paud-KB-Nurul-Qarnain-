@@ -3295,7 +3295,7 @@ async function taUnduhAbsensi(jenis,btn){
  }catch(e){toast('Gagal mengunduh riwayat absensi: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}
 }
 async function pdfTtdRekap(d,kls,y){
- const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
+ const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
  if(w)pdfTtd(d,46,y,'Mengetahui,',' Wali kelas',w.kelas,w.nama,w.nip);
  pdfTtd(d,164,y,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);
  const add=(data,x,yy,ww,hh)=>{if(!data)return;try{d.addImage(data,'PNG',x,yy,ww,hh)}catch(e){}};
@@ -3304,7 +3304,7 @@ async function pdfTtdRekap(d,kls,y){
  if(w&&w.id&&sig[w.id])add(sig[w.id],34,y+7,24,10);
 }
 async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
- const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
+ const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
  const img=(url)=>{if(!url||!/^data:image\/(png|jpeg);base64,/.test(url))return null;const ext=url.startsWith('data:image/jpeg')?'jpeg':'png';return wb.addImage({base64:url.split(',')[1],extension:ext})};
  const stamp=img(st&&st.url),head=img(tg.id&&sig[tg.id]),wali=img(w&&w.id&&sig[w.id]);
  if(wali!==null)ws.addImage(wali,{tl:{col:Math.max(0,waliCol-1),row:row+1},ext:{width:64,height:28}});
