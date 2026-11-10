@@ -190,7 +190,12 @@ const Rapor = (() => {
     const ty = Math.max(14, pusatLogo - (tinggi - 2.7) / 2);
     doc.setFont('times', 'bold'); doc.setFontSize(10.5); doc.setTextColor(...NV);
     spasi(tajuk, 105, ty, 1.1);
-    if (D.logo) { const m = LM, sc = Math.min(m / D.logo.w, m / D.logo.h), w = D.logo.w * sc, h = D.logo.h * sc; doc.addImage(D.logo.url, 'PNG', L + 2 + (m - w) / 2, LY + (m - h) / 2, w, h); }
+    if (D.logo && D.logo.url && D.logo.w > 0 && D.logo.h > 0) {
+      /* Fit ke kotak persegi tanpa memaksa lebar/tinggi sama: logo bulat tetap bulat. */
+      const m = LM, rasio = D.logo.w / D.logo.h;
+      const w = rasio >= 1 ? m : m * rasio, h = rasio >= 1 ? m / rasio : m;
+      doc.addImage(D.logo.url, 'PNG', L + 2 + (m - w) / 2, LY + (m - h) / 2, w, h);
+    }
     const y0 = ty + JARAK;
     doc.setFont('times', 'bold'); doc.setFontSize(15); doc.setTextColor(...NV);
     nl.forEach((t, i) => doc.text(t, 105, y0 + i * 6.5, { align: 'center' }));
@@ -303,7 +308,11 @@ const Rapor = (() => {
     });
     const school=PT.map((q,i)=>({q,x:sx[i]})).filter(x=>!x.q.ot),scx=school.length>1?(school[0].x+school[school.length-1].x)/2:(school[0]&&school[0].x);
     if(school.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...TX);doc.text('Mengetahui:',scx,sy-6,{align:'center'});}
-    if(D.stempel&&D.stempel.url&&school.length)doc.addImage(D.stempel.url,'PNG',scx-12,sy+3,24,20);
+    if(D.stempel&&D.stempel.url&&school.length){
+      /* Satu penandatangan: stempel diletakkan di sisi kiri agar tidak menutupi area tanda tangan. */
+      const stx=school.length===1?school[0].x-24:scx-12;
+      doc.addImage(D.stempel.url,'PNG',stx,sy+4,school.length===1?16:24,school.length===1?13:20);
+    }
   }
 
   /* ---------------- DESAIN RAPORT PERKEMBANGAN (aspek > kategori > indikator) ---------------- */
@@ -454,7 +463,11 @@ const Rapor = (() => {
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
-    if(D.stempel&&D.stempel.url){const cx=nP===4?(CX[2]+CX[3])/2:CX[nP-1];doc.addImage(D.stempel.url,'PNG',cx-12,yl+3,24,13);}
+    if(D.stempel&&D.stempel.url){
+      /* Satu penandatangan Mengetahui: stempel berada di kiri, bukan di atas tanda tangan. */
+      const stx=nP===2?CX[nP-1]-24:(nP===4?(CX[2]+CX[3])/2-12:CX[nP-1]-12);
+      doc.addImage(D.stempel.url,'PNG',stx,yl+3,16,13);
+    }
     kaki();
   }
   const gambar = (doc, D) => D && D.fmt === 'perkembangan' ? gambarP(doc, D) : gambarN(doc, D);
