@@ -3231,17 +3231,17 @@ function tbCek(){const lb=($('#tbLabel')||{}).value||'',ok=($('#tbOk')||{}).valu
  const b=$('#ms');if(b)b.disabled=!s.every(x=>x[0])}
 async function tbUnduhPdf(btn){await muatLib('pdf');if(!TB.mode)return toast('Pilih dulu perlakuan saldo (bawa atau tutup buku)',false);
  if(!setUnduhBusy(btn,true,'Membuat PDF...'))return;
- try{await jedaUnduh();const G=tbGrup(),tg=ttdKepsek(),d=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
-  G.forEach(([k,list],gi)=>{if(gi)d.addPage();const wl=ttdWali(k),tot=list.reduce((a,x)=>a+Number(x.saldo),0);
+ try{await jedaUnduh();const G=tbGrup(),d=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+  for(let gi=0;gi<G.length;gi++){const [k,list]=G[gi];if(gi)d.addPage();const wl=ttdWali(k),tot=list.reduce((a,x)=>a+Number(x.saldo),0);
    d.setFont('helvetica','bold');d.setFontSize(13);d.setTextColor(0,0,0);d.text('REKAP TABUNGAN AKHIR TAHUN AJARAN - '+ns().toUpperCase(),105,14,{align:'center'});
    d.setFont('helvetica','normal');d.setFontSize(8.5);d.text(d.splitTextToSize('Tahun ajaran '+(TB.rg.tahun_ajaran||'-')+'  |  Kelas '+k+'  |  Wali kelas: '+(wl?wl.nama:'-')+'  |  Saldo siswa naik/tinggal kelas: '+(TB.mode==='bawa'?'dibawa ke tahun ajaran baru':'dihapus (tutup buku)'),180),105,20,{align:'center'});
    const body=list.map((x,i)=>[i+1,x.nama,x.nisn||'-',x.status,Number(x.saldo).toLocaleString('id-ID'),tbPerlakuan(x)]).concat([['','JUMLAH','','',tot.toLocaleString('id-ID'),'']]);
    d.autoTable({startY:28,head:[['No','Nama','NISN','Status','Saldo (Rp)','Perlakuan']],body,columnStyles:{4:{halign:'right'}},theme:'grid',styles:{fontSize:8,cellPadding:1.6},headStyles:{fillColor:[118,80,184],halign:'center'}});
    let y=d.lastAutoTable.finalY+10;if(y+42>285){d.addPage();y=20}
-   await pdfTtdRekap(d,k,y)});
-  d.save('rekap-tabungan-akhir-tahun-'+ns().replace(/[^\w]+/g,'-')+'-'+TODAY+'.pdf');TB.pdf=true;TB.tabDownloaded=true;tbCek();toast('PDF rekap tabungan per kelas sedang diproses, mohon ditunggu')}
+   await pdfTtdRekap(d,k,y);
+  }
+  d.save('rekap-tabungan-akhir-tahun-'+ns().replace(/[^\\w]+/g,'-')+'-'+TODAY+'.pdf');TB.pdf=true;TB.tabDownloaded=true;tbCek();toast('PDF rekap tabungan per kelas sedang diproses, mohon ditunggu')}
  catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
-
 async function tbUnduhXlsx(btn){
  if(!TB.mode)return toast('Pilih dulu perlakuan saldo (bawa atau tutup buku)',false);
  await muatLib('exceljs');if(!setUnduhBusy(btn,true,'Membuat XLSX tabungan...'))return;
