@@ -201,11 +201,45 @@ module.exports = async (req, res) => {
       return (x && x[0] && x[0].nama) || 'Sekolah';
     };
 
+    // Penerima uji tes hanya boleh anggota aktif sekolah dengan peran pengelola.
+    const ambilPenerimaTes = async () => {
+      const [anggota, nomor] = await Promise.all([
+        panggil(`/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role,profil(id,nama,aktif)&order=role.asc`, 'GET'),
+        panggil('/rest/v1/rpc/nomor_wa_guru', 'POST', { p_sekolah: sekolahId })
+      ]);
+      const boleh = ['kepala_sekolah', 'wakil_kepala', 'operator', 'pengelola'];
+      const daftar = (anggota || []).filter((m) =>
+        boleh.includes(m.role) && m.profil && m.profil.aktif !== false
+      );
+      return daftar.map((m) => {
+        const n = (nomor || []).find((x) => String(x.profil_id) === String(m.profil_id));
+        const wa = normWA(n && n.no_wa);
+        return {
+          id: m.profil_id,
+          nama: m.profil.nama || 'Pengguna sekolah',
+          role: m.role,
+          nomor: RE_WA.test(wa) ? '••••' + wa.slice(-4) : ''
+        };
+      });
+    };
+
+    const nomorTujuanTes = async (penerimaId) => {
+      const daftar = await ambilPenerimaTes();
+      const tujuan = daftar.find((x) => String(x.id) === String(penerimaId || ''));
+      if (!tujuan) throw new Error('Pilih penerima tes dari anggota aktif sekolah');
+      if (!tujuan.nomor) throw new Error('Nomor WhatsApp ' + tujuan.nama + ' belum terdaftar di Profil');
+      const nomor = await panggil('/rest/v1/rpc/nomor_wa_guru', 'POST', { p_sekolah: sekolahId });
+      const data = (nomor || []).find((x) => String(x.profil_id) === String(tujuan.id));
+      const wa = normWA(data && data.no_wa);
+      if (!RE_WA.test(wa)) throw new Error('Nomor WhatsApp penerima tes tidak valid');
+      return { nomor: wa, nama: tujuan.nama };
+    };
+
     // ---------------------------------------------------------
     // BACA
     // ---------------------------------------------------------
     if (b.aksi === 'baca') {
-      const [r, tk, gp] = await Promise.all([ambil(), ambilToken(), ambilGrup()]);
+      const [r, tk, gp, penerimaTes] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes()]);
       const tampil = !!b.tampilkan && isDev;
       if (tampil) await catat(user.id, sekolahId, 'lihat_rahasia', 'kunci AI dan token Fonnte');
       return res.status(200).json({
@@ -219,7 +253,8 @@ module.exports = async (req, res) => {
           nilai: tampil ? t.token : undefined
         })),
         grup: gp.map((g) => ({ id: g.id, grup_id: g.grup_id, label: g.label || '', token_id: g.token_id })),
-        nomor_kepala: r.nomor_kepala || ''
+        nomor_kepala: r.nomor_kepala || '',
+        penerima_tes: penerimaTes
       });
     }
 
@@ -350,18 +385,15 @@ module.exports = async (req, res) => {
       const id = Number(b.id);
       const t = (await ambilToken()).find((x) => x.id === id);
       if (!t) throw new Error('Token tidak ditemukan');
-      const r = await ambil();
-      const tujuan = String(r.nomor_kepala || '');
-      if (!RE_WA.test(tujuan))
-        throw new Error('Isi nomor Kepala Sekolah lalu simpan dulu sebelum tes');
+      const penerima = await nomorTujuanTes(b.penerima_id);
       const h = await kirimFonnte(
         t.token,
-        tujuan,
-        `✅ *TES TOKEN FONNTE*\nSekolah: ${await namaSekolah()}\nToken: ${t.label}\n\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
+        penerima.nomor,
+        `✅ *TES TOKEN FONNTE*\nSekolah: ${await namaSekolah()}\nToken: ${t.label}\nPenerima: ${penerima.nama}\n\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
       );
-      await catat(user.id, sekolahId, 'tes_fonnte', `${t.label}: ${h.ok ? 'berhasil' : h.alasan}`);
+      await catat(user.id, sekolahId, 'tes_fonnte', `${t.label} ke ${penerima.nama}: ${h.ok ? 'berhasil' : h.alasan}`);
       if (!h.ok) throw new Error('Tes gagal: ' + h.alasan);
-      return res.status(200).json({ ok: true, pesan: 'Pesan tes terkirim ke nomor Kepala Sekolah' });
+      return res.status(200).json({ ok: true, pesan: 'Pesan tes terkirim ke ' + penerima.nama });
     }
 
     if (b.aksi === 'tes_ai') {
@@ -369,19 +401,19 @@ module.exports = async (req, res) => {
       if (!r.kunci_ai) throw new Error('Kunci API AI belum diisi');
       const balasan = await tesGemini(r.kunci_ai);
       let tambahan = '';
-      const tujuan = String(r.nomor_kepala || '');
       const tk = await ambilToken();
-      if (tk.length && RE_WA.test(tujuan)) {
+      if (tk.length) {
+        const penerima = await nomorTujuanTes(b.penerima_id);
         const h = await kirimFonnte(
           tk[0].token,
-          tujuan,
-          `✅ *TES API AI*\nSekolah: ${await namaSekolah()}\nBalasan AI: ${balasan}\n\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
+          penerima.nomor,
+          `✅ *TES API AI*\nSekolah: ${await namaSekolah()}\nPenerima: ${penerima.nama}\nBalasan AI: ${balasan}\n\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
         );
         tambahan = h.ok
-          ? ' Pesan tes dikirim ke nomor Kepala Sekolah.'
+          ? ' Pesan tes dikirim ke ' + penerima.nama + '.'
           : ' Pesan WhatsApp gagal dikirim: ' + h.alasan;
       } else {
-        tambahan = ' (Pesan WhatsApp tidak dikirim: belum ada token atau nomor Kepala Sekolah.)';
+        tambahan = ' (Pesan WhatsApp tidak dikirim: belum ada token Fonnte.)';
       }
       await catat(user.id, sekolahId, 'tes_ai', 'berhasil');
       return res.status(200).json({ ok: true, pesan: 'API AI berfungsi. Balasan: ' + balasan + '.' + tambahan });
