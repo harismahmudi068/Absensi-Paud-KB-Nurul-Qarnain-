@@ -220,13 +220,6 @@ module.exports = async (req, res) => {
         grup_id: (grup || []).find(g => g.id === x.grup_wa_id)?.grup_id || ''
       }));
     };
-    const ambilNotifLibur = async () =>
-      (await panggil(`/rest/v1/notifikasi_libur_grup?sekolah_id=eq.${sekolahId}&select=id,tanggal,jenis,kelas_nama,target,status,percobaan,error,dibuat,terkirim&order=dibuat.desc&limit=25`, 'GET')) || [];
-    const ambilJamNotifLibur = async () => {
-      const rows = await panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sekolahId}&select=notif_libur_grup_jam`, 'GET');
-      return String((rows && rows[0] && rows[0].notif_libur_grup_jam) || '05:00').slice(0,5);
-    };
-
     // Penerima uji tes hanya boleh anggota aktif sekolah dengan peran pengelola.
     const ambilPenerimaTes = async () => {
       const anggota = await panggil(
@@ -275,7 +268,7 @@ module.exports = async (req, res) => {
     // BACA
     // ---------------------------------------------------------
     if (b.aksi === 'baca') {
-      const [r, tk, gp, penerimaTes, kelas, pemetaan, notifLibur, jamNotifLibur] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes(), ambilKelas(), ambilPemetaan(), ambilNotifLibur(), ambilJamNotifLibur()]);
+      const [r, tk, gp, penerimaTes, kelas, pemetaan] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes(), ambilKelas(), ambilPemetaan()]);
       const tampil = !!b.tampilkan && isDev;
       if (tampil) await catat(user.id, sekolahId, 'lihat_rahasia', 'kunci AI dan token Fonnte');
       return res.status(200).json({
@@ -291,8 +284,6 @@ module.exports = async (req, res) => {
         grup: gp.map((g) => ({ id: g.id, grup_id: g.grup_id, label: g.label || '', token_id: g.token_id })),
         kelas,
         pemetaan,
-        notif_libur_grup: notifLibur,
-        jam_notif_libur_grup: jamNotifLibur,
         nomor_kepala: r.nomor_kepala || '',
         penerima_tes: penerimaTes
       });
@@ -446,17 +437,6 @@ module.exports = async (req, res) => {
       await catat(user.id, sekolahId, 'pemetaan_kelas_grup_hapus', String(id));
       return res.status(200).json({ ok: true });
     }
-    if (b.aksi === 'set_jam_notif_libur_grup') {
-      if (!isDev) throw new Error('Hanya Developer yang boleh mengubah jam notifikasi libur grup');
-      const jam = String(b.jam || '');
-      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(jam)) throw new Error('Format jam harus HH:MM');
-      await panggil('/rest/v1/pengaturan?on_conflict=sekolah_id', 'POST',
-        { sekolah_id: sekolahId, notif_libur_grup_jam: jam + ':00' },
-        { Prefer: 'resolution=merge-duplicates,return=minimal' });
-      await catat(user.id, sekolahId, 'ubah_jam_notifikasi_libur_grup', jam);
-      return res.status(200).json({ ok: true });
-    }
-
     // ---------------------------------------------------------
     // TES TOKEN FONNTE dan API AI (pesan tes ke nomor Kepala Sekolah)
     // ---------------------------------------------------------
