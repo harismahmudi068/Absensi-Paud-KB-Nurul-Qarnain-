@@ -195,6 +195,8 @@ const Rapor = (() => {
   }
 
   /* ---------------- DESAIN RAPORT NILAI ANGKA (format lama) ---------------- */
+  function ttdTampil(doc,url,cx,y,mw,mh){const im=imgC[url];if(!im)return;const iw=im.naturalWidth||im.width||1,ih=im.naturalHeight||im.height||1,sc=Math.min(mw/iw,mh/ih),w=iw*sc,h=ih*sc;doc.addImage(url,'PNG',cx-w/2,y+(mh-h)/2,w,h)}
+
   function gambarN(doc, D) {
     const A = alat(doc), { L, R, W, BAWAH } = A, { bingkai, judul, muat, titik, spasi } = A;
     const halBaru = () => { doc.addPage(); bingkai(); return 18; };
@@ -287,7 +289,7 @@ const Rapor = (() => {
     PT.forEach((q, i) => {
       const x = sx[i];
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(q.l, x, sy, { align: 'center' });
-      if (q.ttd) doc.addImage(q.ttd, 'PNG', x - 11, sy + 7, 22, 13);
+      if (q.ttd) ttdTampil(doc, q.ttd, x, sy + 7, 22, 13);
       const ny = sy + 26; doc.text('( ' + (q.n || '............................') + ' )', x, ny, { align: 'center' });
       if (!q.ot) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (q.p || '...............'), x, ny + 4.5, { align: 'center' }); }
     });
@@ -437,7 +439,7 @@ const Rapor = (() => {
     if (nP > 1) doc.text('Mengetahui:', nP === 4 ? (CX[2] + CX[3]) / 2 : CX[nP - 1], yl - 6, { align: 'center' });
     P.forEach((p, i) => {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(p[0], CX[i], yl, { align: 'center' });
-      if (p[4]) doc.addImage(p[4], 'PNG', CX[i] - 11, yl + 3, 22, 11);
+      if (p[4]) ttdTampil(doc, p[4], CX[i], yl + 3, 22, 11);
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
