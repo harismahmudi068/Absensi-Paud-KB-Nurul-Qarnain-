@@ -88,7 +88,7 @@ module.exports = async (req, res) => {
 
     if (aksi === 'daftar_dev') {
       if (!isDev) return res.status(403).json({ error: 'Hanya Developer yang boleh' });
-      const rows = await L.panggil('/rest/v1/profil?role=neq.developer&select=id,ttd_path&order=nama.asc', 'GET');
+      const rows = await L.panggil('/rest/v1/profil?select=id,ttd_path', 'GET');
       return res.status(200).json({ ok: true, daftar: (rows || []).map(x => ({ id: x.id, ada: !!x.ttd_path })) });
     }
 
