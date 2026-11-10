@@ -6,11 +6,11 @@ const BUCKET = 'ttd-guru';
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ROLE_KELOLA = ['kepala_sekolah', 'wakil_kepala', 'pengelola', 'operator'];
 const MIME_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
-const pathAman = (p, id) => typeof p === 'string' && p.startsWith(id + '/') && /^[0-9a-f-]{36}\\/[0-9]+-[a-f0-9]{8}\\.(png|jpg|webp)$/i.test(p);
+const pathAman = (p, id) => typeof p === 'string' && p.startsWith(id + '/') && /^[0-9a-f-]{36}\/[0-9]+-[a-f0-9]{8}\.(png|jpg|webp)$/i.test(p);
 const encPath = p => String(p || '').split('/').map(encodeURIComponent).join('/');
 
 async function storage(method, path, body, mime) {
-  const r = await fetch(L.SB.replace(/\\/+$/, '') + '/storage/v1/object/' + BUCKET + '/' + encPath(path), {
+  const r = await fetch(L.SB.replace(/\/+$/, '') + '/storage/v1/object/' + BUCKET + '/' + encPath(path), {
     method,
     headers: {
       apikey: L.KEY,
@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') return res.status(200).send('API tanda tangan aktif');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Metode tidak diizinkan' });
   try {
-    const token = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     if (!token) return res.status(401).json({ error: 'Belum login' });
     const user = await L.panggil('/auth/v1/user', 'GET', null, { Authorization: 'Bearer ' + token });
     const p = await profil(user.id);
@@ -118,7 +118,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, ada: !!target.ttd_path, data: target.ttd_path && pathAman(target.ttd_path, targetId) ? await fileData(target.ttd_path) : null });
 
     if (aksi === 'simpan') {
-      const m = /^data:(image\\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(b.data || ''));
+      const m = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(b.data || ''));
       if (!m) return res.status(400).json({ error: 'File harus berupa PNG, JPG, atau WEBP' });
       const buf = Buffer.from(m[2], 'base64');
       if (!buf.length || buf.length > 524288) return res.status(400).json({ error: 'Ukuran file maksimal 512 KB' });
