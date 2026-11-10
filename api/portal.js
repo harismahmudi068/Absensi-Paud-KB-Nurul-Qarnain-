@@ -445,10 +445,11 @@ async function petaRapor(rows, sid) {
 }
 
 
-/* Tanda tangan raport: dibaca server dari bucket privat, hanya untuk raport anak
-   yang sudah lolos validasi kode QR dan sekolah pada permintaan portal ini. */
+/* Data penandatangan raport portal: mengikuti aturan yang dipakai index.html.
+   File tanda tangan dibaca server dari bucket privat setelah QR siswa dan sekolah tervalidasi. */
 const RE_UUID_TTD = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const RE_PATH_TTD = /^[0-9a-f-]{36}\/[0-9]+-[a-f0-9]{8}\.(png|jpg|webp)$/i;
+const nipPortal = v => { const n = String(v || '').replace(/\D/g, ''); return n.length === 18 ? n.slice(0,8)+' '+n.slice(8,14)+' '+n.slice(14,15)+' '+n.slice(15) : String(v || '').trim(); };
 async function ttdFilePortal(p) {
   const id = String(p && p.id || ''), path = String(p && p.ttd_path || '');
   if (!RE_UUID_TTD.test(id) || !path.startsWith(id + '/') || !RE_PATH_TTD.test(path) || !L.SB || !L.KEY) return '';
@@ -477,31 +478,31 @@ async function raporTandaTangan(rows, sid) {
     }).filter(Boolean);
     const byId = new Map(anggota.map(x => [String(x.id), x]));
     const kelasWali = new Map((kelas || []).map(x => [String(x.nama || '').trim(), String(x.wali_profil_id || '')]));
-    const pilihRole = (role, kecuali) => {
+    const pilihRole = (role, kecuali, aktifSaja) => {
       const a = anggota.filter(x => x.role === role && !kecuali.has(String(x.id)));
-      return a.find(x => x.anggota_aktif !== false && x.aktif !== false) || (role === 'kepala_sekolah' ? a[0] : null) || null;
+      return a.find(x => x.anggota_aktif !== false && (!aktifSaja || x.aktif !== false)) || (!aktifSaja ? a[0] : null) || null;
     };
-    const perRapor = rows.map(r => {
+    const data = rows.map(r => {
       const waliId = kelasWali.get(String(r.kelas_nama || '').trim()) || '';
       const wali = byId.get(waliId) || null;
-      // Wali kelas hanya dipasangkan bila namanya masih sama dengan nama yang dibekukan di raport.
-      const waliCocok = wali && String(wali.nama || '').trim().toLocaleLowerCase('id') === String(r.wali_nama || '').trim().toLocaleLowerCase('id');
-      const kepsek = pilihRole('kepala_sekolah', new Set());
+      const kepsek = pilihRole('kepala_sekolah', new Set(), false);
       const kecuali = new Set([wali && String(wali.id), kepsek && String(kepsek.id)].filter(Boolean));
-      const pengelola = r.fmt === 'perkembangan' && r.pengelola_nama ? pilihRole('pengelola', kecuali) : null;
-      return { r, wali: waliCocok ? wali : null, kepsek, pengelola };
+      // Sama dengan pkPengelola(): hanya Pengelola aktif dan bukan penandatangan lain.
+      const pengelola = r.fmt === 'perkembangan' ? pilihRole('pengelola', kecuali, true) : null;
+      return { r, wali, kepsek, pengelola };
     });
     const profilById = new Map();
-    perRapor.forEach(x => [x.wali, x.kepsek, x.pengelola].filter(Boolean).forEach(p => profilById.set(String(p.id), p)));
-    const dataById = new Map();
-    await Promise.all([...profilById.values()].map(async p => dataById.set(String(p.id), await ttdFilePortal(p))));
-    return perRapor.map(x => Object.assign({}, x.r, {
-      tanda_tangan: {
-        wali: x.wali ? dataById.get(String(x.wali.id)) || '' : '',
-        kepsek: x.kepsek ? dataById.get(String(x.kepsek.id)) || '' : '',
-        pengelola: x.pengelola ? dataById.get(String(x.pengelola.id)) || '' : ''
-      }
-    }));
+    data.forEach(x => [x.wali, x.kepsek, x.pengelola].filter(Boolean).forEach(p => profilById.set(String(p.id), p)));
+    const gambar = new Map();
+    await Promise.all([...profilById.values()].map(async p => gambar.set(String(p.id), await ttdFilePortal(p))));
+    return data.map(x => {
+      const profil = p => p ? { id: p.id, nama: p.nama || '', nip: nipPortal(p.nip), ttd: gambar.get(String(p.id)) || null } : null;
+      const wali = profil(x.wali);
+      if (wali) wali.kelas = x.r.kelas_nama || '';
+      return Object.assign({}, x.r, {
+        penandatangan: { wali: wali || {}, kepsek: profil(x.kepsek) || {}, pengelola: profil(x.pengelola) },
+      });
+    });
   } catch (e) {
     console.error('portal rapor tanda tangan:', e && e.message);
     return rows;
