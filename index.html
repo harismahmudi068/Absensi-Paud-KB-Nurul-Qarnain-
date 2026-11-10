@@ -2888,7 +2888,7 @@ async function kirimLiburGrupHariIni(kelasIds,tanggal) {
  ].join('\n');
  const items=[...perGrup.values()].map(x=>({nomor:x.grup.grup_id,teks:teksGrup(x.kelas),label:'Grup '+(x.grup.label||x.grup.grup_id)}));
  if(!items.length)return {grup:0,terjadwal:0,gagal:0};
- const meta={...rkMeta('libur'),batch:'manual-libur-'+SEK+'-'+tanggal+'-'+kelasIds.join('-')};
+ const meta={...rkMeta('libur'),tujuan:'grup',batch:'manual-libur-'+SEK+'-'+tanggal+'-'+kelasIds.join('-')};
  const hasil=await kirimBertahap(items,meta);
  return {grup:items.length,terjadwal:hasil.filter(x=>x&&x.ok).length,gagal:hasil.filter(x=>!x||!x.ok).length};
 }
