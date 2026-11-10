@@ -28,8 +28,9 @@ const randomGap = () => 30000 + Math.floor(Math.random() * 30001);
 const HARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function tanggalID(date) {
-  const d = new Date(date + 'T00:00:00+07:00');
-  return HARI[d.getUTCDay()] + ', ' + String(d.getUTCDate()).padStart(2,'0') + ' ' + BULAN[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  const [tahun, bulan, hari] = String(date).split('-').map(Number);
+  const d = new Date(Date.UTC(tahun, bulan - 1, hari));
+  return HARI[d.getUTCDay()] + ', ' + String(hari).padStart(2,'0') + ' ' + BULAN[bulan - 1] + ' ' + tahun;
 }
 function pesanLibur({ sekolah, tanggal, kelas, jenis, alasan, masuk }) {
   const daftar = [...new Set(kelas || [])].filter(Boolean).join(', ') || 'Seluruh kelas';
