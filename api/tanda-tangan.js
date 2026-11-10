@@ -76,7 +76,7 @@ module.exports = async (req, res) => {
 
     const targetId = String(b.id || user.id);
     if (!RE_UUID.test(targetId)) return res.status(400).json({ error: 'ID guru tidak valid' });
-    const aksiDeveloperNoSchool = isDev && !punyaSid && ['ambil','simpan','hapus'].includes(aksi);
+    const aksiDeveloperNoSchool = isDev && !punyaSid && ['daftar_dev','ambil','simpan','hapus'].includes(aksi);
     if (!punyaSid && !aksiDeveloperNoSchool) return res.status(400).json({ error: 'Sekolah tidak valid' });
     const anggotaSaya = isDev || !punyaSid ? null : await anggota(user.id, sid);
     if (!isDev && !anggotaSaya) return res.status(403).json({ error: 'Anda tidak memiliki akses aktif ke sekolah ini' });
