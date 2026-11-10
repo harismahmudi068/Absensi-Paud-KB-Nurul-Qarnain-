@@ -110,8 +110,11 @@ const Rapor = (() => {
     }) })) }));
     const w = r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : (o.wali || {});
     const kp = r.kepsek_nama ? { nama: r.kepsek_nama, nip: nip(r.kepsek_nip) } : (o.kepsek || {});
+    if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
+    if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
     /* pengelola: rapor terbit memakai nama yang dibekukan saat terbit; kosong = tidak ada tempat tanda tangan */
     const pg = r.status === 'terbit' ? (r.pengelola_nama ? { nama: r.pengelola_nama, nip: nip(r.pengelola_nip) } : null) : (o.pengelola && o.pengelola.nama ? o.pengelola : null);
+    if (pg && o.pengelola && o.pengelola.ttd) pg.ttd = o.pengelola.ttd;
     /* kolom bulan: data.bl (kunci 'YYYY-MM', maksimal 12) bila valid; data lama tanpa bl = 6 bulan bawaan semester */
     const blOk = Array.isArray(d.bl) && d.bl.length > 0 && d.bl.length <= 12 && d.bl.every(k => /^\d{4}-(0[1-9]|1[0-2])$/.test(k));
     const bulan = blOk ? d.bl.map(k => d.bl.length > 6 ? BLN[+k.slice(5) - 1].slice(0, 3) : BLN[+k.slice(5) - 1]) : (r.semester === 1 ? BLN.slice(6) : BLN.slice(0, 6)), tb = d.tb || [];
@@ -141,6 +144,8 @@ const Rapor = (() => {
     o = o || {};
     const w = r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : (o.wali || {});
     const kp = r.kepsek_nama ? { nama: r.kepsek_nama, nip: nip(r.kepsek_nip) } : (o.kepsek || {});
+    if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
+    if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
     return {
       logo: o.logo || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
       nama: o.nama || '', nisn: o.nisn || '', kelas: r.kelas_nama || o.kelas || '',
@@ -276,12 +281,13 @@ const Rapor = (() => {
     /* --- Tanda tangan --- */
     let sy = Math.max(y + 4, 238); if (sy + 32 > 288) sy = halBaru() + 6;
     const wl0 = D.wali || {}, kp0 = D.kepsek || {}, PT = [{ l: 'Orang Tua / Wali', ot: 1 }];
-    if (wl0.nama) PT.push({ l: 'Wali Kelas', n: wl0.nama, p: wl0.nip });
-    if (kp0.nama) PT.push({ l: 'Kepala Sekolah', n: kp0.nama, p: kp0.nip });
+    if (wl0.nama) PT.push({ l: 'Wali Kelas', n: wl0.nama, p: wl0.nip, ttd: wl0.ttd });
+    if (kp0.nama) PT.push({ l: 'Kepala Sekolah', n: kp0.nama, p: kp0.nip, ttd: kp0.ttd });
     const sx = PT.length === 3 ? [L + 30, 105, R - 30] : PT.length === 2 ? [L + 45, R - 45] : [105];
     PT.forEach((q, i) => {
       const x = sx[i];
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(q.l, x, sy, { align: 'center' });
+      if (q.ttd) doc.addImage(q.ttd, 'PNG', x - 11, sy + 7, 22, 13);
       const ny = sy + 26; doc.text('( ' + (q.n || '............................') + ' )', x, ny, { align: 'center' });
       if (!q.ot) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (q.p || '...............'), x, ny + 4.5, { align: 'center' }); }
     });
@@ -422,15 +428,16 @@ const Rapor = (() => {
     if (y + 45 > 285) y = halBaru() + 2;
     if (D.tgl) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text('Diterbitkan: ' + (D.kota ? D.kota + ', ' : '') + D.tgl + '.', R, y + 4, { align: 'right' }); }
     const pg = D.pengelola && D.pengelola.nama ? D.pengelola : null, wl = D.wali || {}, kp = D.kepsek || {};
-    const P = [['Orang Tua / Wali', '', '', true]];
-    if (wl.nama) P.push(['Wali Kelas', wl.nama, wl.nip]);
-    if (pg) P.push(['Pengelola/Pengasuh', pg.nama, pg.nip]);
-    if (kp.nama) P.push(['Kepala Sekolah', kp.nama, kp.nip]);
+    const P = [['Orang Tua / Wali', '', '', true, null]];
+    if (wl.nama) P.push(['Wali Kelas', wl.nama, wl.nip, false, wl.ttd]);
+    if (pg) P.push(['Pengelola/Pengasuh', pg.nama, pg.nip, false, pg.ttd]);
+    if (kp.nama) P.push(['Kepala Sekolah', kp.nama, kp.nip, false, kp.ttd]);
     const nP = P.length, CX = nP === 4 ? [0, 1, 2, 3].map(i => L + 22.75 + i * 45.5) : nP === 3 ? [L + 30, 105, R - 30] : nP === 2 ? [L + 45, R - 45] : [105], yl = y + 18;
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX);
     if (nP > 1) doc.text('Mengetahui:', nP === 4 ? (CX[2] + CX[3]) / 2 : CX[nP - 1], yl - 6, { align: 'center' });
     P.forEach((p, i) => {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text(p[0], CX[i], yl, { align: 'center' });
+      if (p[4]) doc.addImage(p[4], 'PNG', CX[i] - 11, yl + 3, 22, 11);
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
