@@ -22,7 +22,9 @@ const JEDA_MAX = 30;            // detik
 const MAKS_BATCH = 10;          // pesan per permintaan
 const MAKS_MULAI = 2 * 3600;    // "mulai" dari index dianggap wajar bila paling jauh 2 jam ke depan
 const RE_NOMOR = /^628\d{8,12}$/;
+const RE_GRUP = /^\d{10,30}@g\.us$/i;
 const jedaAcak = () => JEDA_MIN + Math.floor(Math.random() * (JEDA_MAX - JEDA_MIN + 1));
+const jedaGrupAcak = () => 30 + Math.floor(Math.random() * 31);
 
 const JENIS_OK = ['laporan', 'link', 'tabungan', 'raport', 'libur', 'alpa', 'lainnya'];
 const potong = (x, n) => String(x == null ? '' : x).trim().slice(0, n);
@@ -99,6 +101,47 @@ module.exports = async (req, res) => {
     const FONNTE = t0.token || (sekolahId === SEKOLAH_PERTAMA ? ENV_FONNTE : '');
     if (!FONNTE) return res.status(500).json({ error: 'Token Fonnte sekolah belum diisi di Pengaturan > Koneksi' });
 
+    // ---------- PEMBATALAN PESAN GRUP LIBUR OTOMATIS ----------
+    if (b.aksi === 'batalkan_libur_grup') {
+      const tanggal = String(b.tanggal || '');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(tanggal)) return res.status(400).json({ error: 'Tanggal tidak valid' });
+      const notif = (await sb(`/rest/v1/notifikasi_libur?sekolah_id=eq.${sekolahId}&tanggal=eq.${tanggal}&select=id&limit=1`))[0];
+      if (!notif) return res.status(200).json({ ok: true, dibatalkan: 0, dilewati: true });
+      const batchId = `libur-auto-${sekolahId}-${tanggal}-${notif.id}`;
+      const logs = await sb(`/rest/v1/kirim_log?sekolah_id=eq.${sekolahId}&jenis=eq.libur&batch_id=eq.${encodeURIComponent(batchId)}&status=eq.terjadwal&select=id,nomor,fonnte_id`);
+      const grupLogs = (logs || []).filter(x => RE_GRUP.test(String(x.nomor || '')) && x.fonnte_id);
+      if (!grupLogs.length) return res.status(200).json({ ok: true, dibatalkan: 0, gagal: 0 });
+      const grupIds = [...new Set(grupLogs.map(x => String(x.nomor)))];
+      const grupRows = await sb(`/rest/v1/grup_wa?sekolah_id=eq.${sekolahId}&grup_id=in.(${grupIds.map(encodeURIComponent).join(',')})&select=grup_id,token_id`);
+      const tokenRows = await sb(`/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=id,token`);
+      const tokenById = new Map((tokenRows || []).map(x => [String(x.id), x.token]));
+      const tokenByGroup = new Map((grupRows || []).map(x => [String(x.grup_id), x.token_id ? tokenById.get(String(x.token_id)) : FONNTE]));
+      let dibatalkan = 0, gagal = 0;
+      for (const log of grupLogs) {
+        const tokenGrup = tokenByGroup.get(String(log.nomor)) || FONNTE;
+        try {
+          const r = await fetch('https://api.fonnte.com/delete-message', {
+            method: 'POST', headers: { Authorization: tokenGrup, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ id: String(log.fonnte_id) })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || j.status === false) throw new Error(j.reason || j.message || 'Fonnte menolak pembatalan');
+          await fetch(SB + `/rest/v1/kirim_log?id=eq.${log.id}`, {
+            method: 'PATCH', headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({ status: 'dibatalkan', error: null })
+          });
+          dibatalkan++;
+        } catch (e) {
+          gagal++;
+          await fetch(SB + `/rest/v1/kirim_log?id=eq.${log.id}`, {
+            method: 'PATCH', headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+            body: JSON.stringify({ error: potong(e.message || e, 300) })
+          }).catch(() => {});
+        }
+      }
+      return res.status(200).json({ ok: true, dibatalkan, gagal });
+    }
+
     // ---------- BANYAK PESAN: dijadwalkan bertahap ----------
     if (Array.isArray(b.pesan)) {
       const daftar = b.pesan;
@@ -114,22 +157,37 @@ module.exports = async (req, res) => {
       const meta = {
         jenis: JENIS_OK.includes(b.jenis) ? b.jenis : 'lainnya',
         judul: potong(b.judul, 120),
-        batch: potong(b.batch, 60) || crypto.randomUUID()
+        batch: potong(b.batch, 100) || crypto.randomUUID()
       };
+      // ID grup hanya diizinkan untuk notifikasi libur dan harus terdaftar pada sekolah ini.
+      const targetGrup = [...new Set(daftar.map(x => String((x && x.nomor) || '').trim()).filter(x => RE_GRUP.test(x)))];
+      const grupByTarget = new Map();
+      const tokenById = new Map();
+      if (targetGrup.length) {
+        if (meta.jenis !== 'libur') return res.status(400).json({ error: 'Tujuan grup hanya diizinkan untuk notifikasi libur' });
+        const grupRows = await sb(\`/rest/v1/grup_wa?sekolah_id=eq.\${sekolahId}&grup_id=in.(\${targetGrup.map(encodeURIComponent).join(',')})&select=grup_id,label,token_id\`);
+        const tokenRows = await sb(\`/rest/v1/fonnte_token?sekolah_id=eq.\${sekolahId}&select=id,token\`);
+        (tokenRows || []).forEach(x => tokenById.set(String(x.id), x.token));
+        (grupRows || []).forEach(x => grupByTarget.set(String(x.grup_id), x));
+      }
       const antre = [];
       daftar.forEach((x, i) => {
-        const nomor = String((x && x.nomor) || '').replace(/\D/g, '');
+        const nomor = String((x && x.nomor) || '').trim();
         const teks = String((x && x.teks) || '');
-        if (!RE_NOMOR.test(nomor)) { hasil[i] = { ok: false, error: 'Nomor tidak valid' }; return; }
+        const grup = RE_GRUP.test(nomor);
+        if (!RE_NOMOR.test(nomor) && !(grup && meta.jenis === 'libur' && grupByTarget.has(nomor))) { hasil[i] = { ok: false, error: grup ? 'Grup WhatsApp tidak terdaftar pada sekolah ini' : 'Nomor tidak valid' }; return; }
         if (!teks) { hasil[i] = { ok: false, error: 'Pesan kosong' }; return; }
-        waktu += jedaAcak();
+        const cfgGrup = grup ? grupByTarget.get(nomor) : null;
+        const tokenPesan = cfgGrup ? (cfgGrup.token_id ? tokenById.get(String(cfgGrup.token_id)) : FONNTE) : FONNTE;
+        if (!tokenPesan) { hasil[i] = { ok: false, error: 'Token Fonnte grup tidak ditemukan' }; return; }
+        waktu += grup ? jedaGrupAcak() : jedaAcak();
         jam[i] = waktu;
-        antre.push({ i, nomor, teks, waktu });
+        antre.push({ i, nomor, teks, waktu, token: tokenPesan, grup });
       });
       // Hanya mendaftarkan jadwal ke Fonnte (cepat); 5 permintaan sekaligus.
       for (let k = 0; k < antre.length; k += 5) {
         const bag = antre.slice(k, k + 5);
-        const hs = await Promise.allSettled(bag.map((x) => kirimFonnte(FONNTE, x.nomor, x.teks, x.waktu)));
+        const hs = await Promise.allSettled(bag.map((x) => kirimFonnte(x.token || FONNTE, x.nomor, x.teks, x.waktu)));
         hs.forEach((h, j) => {
           if (h.status === 'fulfilled') {
             hasil[bag[j].i] = { ok: true };
@@ -147,7 +205,7 @@ module.exports = async (req, res) => {
         jenis: meta.jenis,
         judul: meta.judul,
         label: potong(x && x.label, 120),
-        nomor: String((x && x.nomor) || '').replace(/\D/g, '').slice(0, 20) || '-',
+        nomor: (RE_GRUP.test(String((x && x.nomor) || '').trim()) ? String(x.nomor).trim() : String((x && x.nomor) || '').replace(/\D/g, '').slice(0, 20)) || '-',
         fonnte_id: ids[i],
         siswa_ids: daftarId(x && x.siswa_ids),
         status: hasil[i].ok ? 'terjadwal' : 'gagal',
