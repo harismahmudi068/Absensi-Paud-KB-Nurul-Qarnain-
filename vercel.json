@@ -5,8 +5,8 @@
   ],
   "crons": [
     {
-      "path": "/api/libur-sync",
-      "schedule": "15 17 * * *"
+      "path": "/api/libur-grup",
+      "schedule": "* * * * *"
     }
   ],
   "functions": {
