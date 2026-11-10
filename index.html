@@ -1946,8 +1946,11 @@ async function ttdGuruHapus(id,nama){
 }
 async function ttdPngAmbil(ids){
  const unik=[...new Set((ids||[]).filter(Boolean).map(String))];if(!unik.length||!SEK)return {};
- const j=await apiTtd({aksi:'ambil_banyak',ids:unik}),out={};
- await Promise.all(unik.map(async id=>{const data=j.tanda_tangan&&j.tanda_tangan[id];if(data){const im=await Rapor.logoPng(data);if(im)out[id]=im.url}}));
+ const out={};
+ for(let i=0;i<unik.length;i+=6){
+  const batch=unik.slice(i,i+6),j=await apiTtd({aksi:'ambil_banyak',ids:batch});
+  await Promise.all(batch.map(async id=>{const data=j.tanda_tangan&&j.tanda_tangan[id];if(data){const im=await Rapor.logoPng(data);if(im)out[id]=im.url}}));
+ }
  return out;
 }
 let gsel=new Set();
