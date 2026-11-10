@@ -452,7 +452,7 @@ const Rapor = (() => {
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
-    if (D.stempel && D.stempel.url) { const school=P.map((p,i)=>({p,x:CX[i]})).filter(x=>!x.p[3]); if(school.length){const cx=school.length>1?(school[0].x+school[school.length-1].x)/2:school[0].x;doc.addImage(D.stempel.url,'PNG',cx-12,yl+1,24,20);} }
+    if (D.stempel && D.stempel.url) { const school=P.map((p,i)=>({p,x:CX[i]})).filter(x=>!x.p[3]); if(school.length){const cx=school.length>1?(school[0].x+school[school.length-1].x)/2:school[0].x;doc.addImage(D.stempel.url,'PNG',cx-12,yl+3,24,13);} }
     kaki();
   }
   const gambar = (doc, D) => D && D.fmt === 'perkembangan' ? gambarP(doc, D) : gambarN(doc, D);
