@@ -161,6 +161,9 @@ module.exports = async (req, res) => {
       };
       // ID grup hanya diizinkan untuk notifikasi libur dan harus terdaftar pada sekolah ini.
       const targetGrup = [...new Set(daftar.map(x => String((x && x.nomor) || '').trim()).filter(x => RE_GRUP.test(x)))];
+      if (b.tujuan === 'grup' && (meta.jenis !== 'libur' || !daftar.every(x => RE_GRUP.test(String((x && x.nomor) || '').trim())))) {
+        return res.status(400).json({ error: 'Jalur khusus grup hanya menerima ID grup WhatsApp untuk notifikasi libur' });
+      }
       const grupByTarget = new Map();
       const tokenById = new Map();
       if (targetGrup.length) {
