@@ -3925,7 +3925,8 @@ function pnKepHTML(){if(pnAll)return pnKepSemua();const pil=pnPilK(1);if(!pnK)re
    if(terbit){nt++;ulang.push(r.id);st='<span class="badge hadir">Terbit</span>'+(beda?'<div class="mu" style="color:var(--rd)">⚠ Keputusan berbeda dengan yang tercetak di raport. Terbitkan ulang agar raport mengikuti keputusan terbaru.</div>':'');if(b)aksi=`<div class="pnka"><button class="btn pnk ${beda?'success':'soft'}" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button></div>`}
    else if(!r)st='<span class="mu">Belum diisi</span>';
    else if(!lk)st='<span class="badge terlambat">Draf</span><div class="mu">Indikator belum lengkap ('+h.isi+'/'+h.tot+')</div>';
-   else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan'+(k?'':' (tanpa keputusan)')+'</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
+   else if(!k)st='<span class="badge terlambat">Draf</span><div class="mu">Belum siap: keputusan akhir tahun belum diisi</div>';
+   else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
    return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}${r?`<div class="pnka"><button class="btn pnk soft" onclick="pnKepLihat(${s.id})">👁 Lihat</button></div>`:''}</td></tr>`}
   const r=map.get(s.id),k=pnKepKep.get(s.id),terbit=!!r&&r.status==='terbit',lk=pnLengkap(r);if(k)nk++;
   const kt=k?'<b>'+esc(KEPT[k.jenis]||k.jenis)+'</b>'+(k.jenis==='naik'&&k.kelas_tujuan_nama?' → '+esc(k.kelas_tujuan_nama):'')+'<div class="mu">'+esc(KEPS[k.status]||k.status)+'</div>':'<span class="mu">Belum diputuskan</span>';
@@ -3934,9 +3935,10 @@ function pnKepHTML(){if(pnAll)return pnKepSemua();const pil=pnPilK(1);if(!pnK)re
    st='<span class="badge hadir">Terbit</span>'+(beda?'<div class="mu" style="color:var(--rd)">⚠ Berbeda dengan keputusan terbaru. Terbitkan ulang agar raport mengikuti keputusan terbaru.</div>':'')}
   else if(!r)st='<span class="mu">Nilai belum diisi</span>';
   else if(!lk)st='<span class="badge terlambat">Draf</span><div class="mu">Nilai belum lengkap</div>';
-  else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan'+(k?'':' (tanpa keputusan)')+'</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
+  else if(!k)st='<span class="badge terlambat">Draf</span><div class="mu">Belum siap: keputusan akhir tahun belum diisi</div>';
+   else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan</div>';siap.push(r.id);if(b)aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}
   return `<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}${r?`<div class="pnka"><button class="btn pnk soft" onclick="pnKepLihat(${s.id})">👁 Lihat</button></div>`:''}</td></tr>`}).join('');
- let h=pil+`<div class="note">Raport <b>UAS Semester 2</b> kelas <b>${esc(kl.nama)}</b> memuat keputusan naik, tinggal, atau lulus bila sudah ada. Keputusan tidak wajib dan tidak menghalangi terbit; bisa diisi di bagian bawah lembar nilai atau di menu <b>Kelola Siswa</b> (sumber datanya sama). Diputuskan: <b>${nk}</b> dari ${sis.length} siswa. Raport terbit: <b>${nt}</b>.</div>`;
+ let h=pil+`<div class="note">Raport <b>UAS Semester 2</b> kelas <b>${esc(kl.nama)}</b> wajib memiliki keputusan naik, tinggal, atau lulus sebelum diterbitkan. Isi di bagian bawah lembar nilai atau melalui menu <b>Kelola Siswa</b>. Diputuskan: <b>${nk}</b> dari ${sis.length} siswa. Raport terbit: <b>${nt}</b>.</div>`;
  if(!pnKepOk)h+='<div class="note" style="color:var(--rd)">Data keputusan tidak dapat dibaca. Hubungi Kepala Sekolah atau muat ulang halaman.</div>';
  h+=`<div class="pntb">${b&&siap.length?`<button class="btn pnk success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan yang siap (${siap.length})</button>`:''}${b&&ulang.length?`<button class="btn pnk soft" onclick="pnTerbitUlang([${ulang.join(',')}])">🔄 Terbitkan ulang semua (${ulang.length})</button>`:''}<button class="btn pnk soft" onclick="go('kelola')">🎓 Buka Kelola Siswa</button></div>`;
  return h+tab(['No','Nama','Keputusan akhir','Raport UAS Sem. 2','Aksi'],rows)}
@@ -3954,15 +3956,17 @@ function pnKepSemua(){const pil=pnPilK(1);
    if(terbit){nt++;if(b)ulang.push(r.id);st='<span class="badge hadir">Terbit</span>'+(beda?'<div class="mu" style="color:var(--rd)">⚠ Keputusan berbeda dengan yang tercetak di raport. Terbitkan ulang agar raport mengikuti keputusan terbaru.</div>':'');if(b)aksi=`<div class="pnka"><button class="btn pnk ${beda?'success':'soft'}" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button></div>`}
    else if(!r)st='<span class="mu">Belum diisi</span>';
    else if(!lk)st='<span class="badge terlambat">Draf</span><div class="mu">Indikator belum lengkap ('+hh.isi+'/'+hh.tot+')</div>';
-   else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan'+(k?'':' (tanpa keputusan)')+'</div>';if(b){siap.push(r.id);aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}}
+   else if(!k)st='<span class="badge terlambat">Draf</span><div class="mu">Belum siap: keputusan akhir tahun belum diisi</div>';
+   else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan</div>';if(b){siap.push(r.id);aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}}
   }else{const lk=pnLengkap(r);
    if(terbit){nt++;if(b){ulang.push(r.id);aksi=`<div class="pnka"><button class="btn pnk ${beda?'success':'soft'}" onclick="pnTerbitUlang([${r.id}])">🔄 Terbitkan ulang</button></div>`}st='<span class="badge hadir">Terbit</span>'+(beda?'<div class="mu" style="color:var(--rd)">⚠ Berbeda dengan keputusan terbaru. Terbitkan ulang agar raport mengikuti keputusan terbaru.</div>':'')}
    else if(!r)st='<span class="mu">Nilai belum diisi</span>';
    else if(!lk)st='<span class="badge terlambat">Draf</span><div class="mu">Nilai belum lengkap</div>';
-   else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan'+(k?'':' (tanpa keputusan)')+'</div>';if(b){siap.push(r.id);aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}}}
+   else if(!k)st='<span class="badge terlambat">Draf</span><div class="mu">Belum siap: keputusan akhir tahun belum diisi</div>';
+   else{st='<span class="badge terlambat">Draf</span><div class="mu">Siap diterbitkan</div>';if(b){siap.push(r.id);aksi=`<div class="pnka"><button class="btn pnk success" onclick="pnTerbit([${r.id}])">🚀 Terbitkan</button></div>`}}}
   return h+`<tr><td>${i+1}</td><td><b>${esc(s.nama)}</b></td><td>${kt}</td><td>${st}</td><td>${aksi}${r?`<div class="pnka"><button class="btn pnk soft" onclick="pnKepLihat(${s.id})">👁 Lihat</button></div>`:''}</td></tr>`}).join('');
  pnCtx(0);
- let h=pil+`<div class="note">Raport <b>UAS Semester 2</b> <b>semua kelas</b> memuat keputusan naik, tinggal, atau lulus bila sudah ada. Keputusan tidak wajib dan tidak menghalangi terbit; bisa diisi di bagian bawah lembar nilai atau di menu <b>Kelola Siswa</b> (sumber datanya sama). Diputuskan: <b>${nk}</b> dari ${sis.length} siswa. Raport terbit: <b>${nt}</b>.</div>`;
+ let h=pil+`<div class="note">Raport <b>UAS Semester 2</b> <b>semua kelas</b> wajib memiliki keputusan naik, tinggal, atau lulus sebelum diterbitkan. Isi di bagian bawah lembar nilai atau melalui menu <b>Kelola Siswa</b>. Diputuskan: <b>${nk}</b> dari ${sis.length} siswa. Raport terbit: <b>${nt}</b>.</div>`;
  if(!pnKepOk)h+='<div class="note" style="color:var(--rd)">Data keputusan tidak dapat dibaca. Hubungi Kepala Sekolah atau muat ulang halaman.</div>';
  h+=`<div class="pntb">${siap.length?`<button class="btn pnk success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan yang siap (${siap.length})</button>`:''}${ulang.length?`<button class="btn pnk soft" onclick="pnTerbitUlang([${ulang.join(',')}])">🔄 Terbitkan ulang semua (${ulang.length})</button>`:''}<button class="btn pnk soft" onclick="go('kelola')">🎓 Buka Kelola Siswa</button></div>`;
  return h+tab(['No','Nama','Keputusan akhir','Raport UAS Sem. 2','Aksi'],rows)}
