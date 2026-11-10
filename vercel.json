@@ -3,12 +3,6 @@
     "sin1"
   
   ],
-  "crons": [
-    {
-      "path": "/api/libur-grup",
-      "schedule": "* * * * *"
-    }
-  ],
   "functions": {
     "api/guru.js": {
       "maxDuration": 60
