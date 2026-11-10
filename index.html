@@ -3235,7 +3235,7 @@ async function tbUnduhPdf(btn){await muatLib('pdf');if(!TB.mode)return toast('Pi
    const body=list.map((x,i)=>[i+1,x.nama,x.nisn||'-',x.status,Number(x.saldo).toLocaleString('id-ID'),tbPerlakuan(x)]).concat([['','JUMLAH','','',tot.toLocaleString('id-ID'),'']]);
    d.autoTable({startY:28,head:[['No','Nama','NISN','Status','Saldo (Rp)','Perlakuan']],body,columnStyles:{4:{halign:'right'}},theme:'grid',styles:{fontSize:8,cellPadding:1.6},headStyles:{fillColor:[118,80,184],halign:'center'}});
    let y=d.lastAutoTable.finalY+10;if(y+42>285){d.addPage();y=20}
-   pdfTtd(d,164,y,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);if(wl)pdfTtd(d,46,y,'Mengetahui,',' Wali kelas',wl.kelas,wl.nama,wl.nip)});
+   await pdfTtdRekap(d,k,y)});
   d.save('rekap-tabungan-akhir-tahun-'+ns().replace(/[^\w]+/g,'-')+'-'+TODAY+'.pdf');TB.pdf=true;TB.tabDownloaded=true;tbCek();toast('PDF rekap tabungan per kelas sedang diproses, mohon ditunggu')}
  catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
@@ -3304,7 +3304,7 @@ async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
  const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
  const img=(url)=>{if(!url||!/^data:image\/(png|jpeg);base64,/.test(url))return null;const ext=url.startsWith('data:image/jpeg')?'jpeg':'png';return wb.addImage({base64:url.split(',')[1],extension:ext})};
  const stamp=img(st&&st.url),head=img(tg.id&&sig[tg.id]),wali=img(w&&w.id&&sig[w.id]);
- if(wali)ws.addImage(wb.getImage(wali),{tl:{col:Math.max(0,waliCol-1),row:row+1},ext:{width:64,height:28}});
+ if(wali)ws.addImage(wali,{tl:{col:Math.max(0,waliCol-1),row:row+1},ext:{width:64,height:28}});
  if(stamp)ws.addImage(stamp,{tl:{col:Math.max(0,kepStampCol-1),row:row+1},ext:{width:28,height:28}});
  if(head)ws.addImage(head,{tl:{col:Math.max(0,kepSigCol-1),row:row+1},ext:{width:58,height:24}});
 }
@@ -3323,7 +3323,7 @@ async function tahunBaru(){
   info('Tahun ajaran baru belum bisa dimulai',`<div class="note" style="border:2px solid #d99a27;background:#fff8df"><b>Keputusan akhir tahun belum siap:</b><ul style="margin:6px 0 0 18px">${li}</ul></div>${mm?tab(['Siswa','Kelas','Masalah'],mm):''}<div class="tb"><button class="btn success" onclick="closeM();go('kelola')">Buka Kelola Siswa</button></div>`);return}
  if(!Array.isArray(rg.daftar_saldo)){info('Database perlu diperbarui','<div class="note" style="border:2px solid #d99a27;background:#fff8df">Fungsi database tahun ajaran baru belum diperbarui ke versi terbaru. Jalankan berkas SQL pembaruan di Supabase terlebih dahulu, lalu coba lagi.</div>');return}
  TB={rg,mode:null,pdf:false,tabDownloaded:false,absDownloaded:false,absCount:0,rows:rg.daftar_saldo};
- const dh=rg.daftar_hapus||[],nm=dh.slice(0,40).map(x=>esc(x.nama)+' ('+esc(x.sebab)+')').join(', ')+(dh.length>40?', dan '+(dh.length-40)+' lainnya':'');const absCountRes=await dbq(db.from('absensi').select('id',{count:'exact',head:true}).eq('sekolah_id',SEK));TB.absCount=Number(absCountRes&&absCountRes.count)||0;TB.absDownloaded=TB.absCount===0;
+ const dh=rg.daftar_hapus||[],nm=dh.slice(0,40).map(x=>esc(x.nama)+' ('+esc(x.sebab)+')').join(', ')+(dh.length>40?', dan '+(dh.length-40)+' lainnya':'');const absCountRes=await dbq(db.from('absensi').select('id').eq('sekolah_id',SEK).limit(1));TB.absCount=Array.isArray(absCountRes)&&absCountRes.length?1:0;TB.absDownloaded=TB.absCount===0;
  const ops=`<label class="tbop"><input type="radio" name="tbm" onchange="tbPilih('bawa')"><span><b>Bawa saldo</b> siswa yang naik kelas dan tinggal kelas ke tahun ajaran baru. Riwayat transaksi dihapus, tiap siswa hanya punya satu baris saldo awal sebesar saldo akhirnya.</span></label><label class="tbop"><input type="radio" name="tbm" onchange="tbPilih('tutup')"><span><b>Tutup buku:</b> seluruh tabungan semua siswa di sekolah ini (saldo dan riwayat) dihapus. Saldo dianggap sudah dikembalikan ke wali.</span></label>`;
  const tabSec=TB.rows.length?`<div class="tbbox"><b>💰 Tabungan siswa yang masih bersaldo</b><div class="mu" style="margin:4px 0 8px">Saldo dan riwayat siswa lulus dan nonaktif selalu dihapus. Pilih perlakuan untuk siswa yang lanjut, lalu unduh rekap PDF atau XLSX. Setelah Mulai, riwayat tidak bisa dikembalikan.</div>${ops}<div id="tbTabel">${tbTabelHtml()}</div><div class="tb" style="margin:10px 0 0"><button type="button" class="btn success sm dl" onclick="tbUnduhPdf(this)">⬇ Rekap tabungan per kelas (PDF)</button><button type="button" class="btn sm dl pdf" onclick="tbUnduhXlsx(this)">⬇ Rekap tabungan per kelas (XLSX)</button></div></div>`:`<div class="note">Tidak ada saldo tabungan siswa. Sisa riwayat tabungan (bila ada) tetap dibersihkan saat tahun ajaran baru dimulai.</div>`;
  $('#mt').textContent='Mulai tahun ajaran baru';
@@ -4397,7 +4397,7 @@ async function tabBerkas(t,nm,judul,sub,head,rows,kls,btn,num){await muatLib(['e
    d.setFont('helvetica','bold');d.setFontSize(13);d.text(judul+' - '+ns().toUpperCase(),105,14,{align:'center'});d.setFont('helvetica','normal');d.setFontSize(8.5);d.text(d.splitTextToSize(sub,180),105,20,{align:'center'});
    d.autoTable({startY:28,head:[head],body:rows.map(r=>r.map((v,i)=>nu.includes(i)&&v!==''?Number(v).toLocaleString('id-ID'):String(v))),columnStyles:cs,theme:'grid',styles:{fontSize:8,cellPadding:1.6},headStyles:{fillColor:[118,80,184],halign:'center'}});
    let y=d.lastAutoTable.finalY+10;if(y+42>285){d.addPage();y=20}
-   pdfTtd(d,164,y,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);if(wl)pdfTtd(d,46,y,'Mengetahui,',' Wali kelas',wl.kelas,wl.nama,wl.nip);d.save(nm+'.pdf')}
+   await pdfTtdRekap(d,k,y);d.save(nm+'.pdf')}
   else{await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
    const F='Arial',wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Tabungan'),mid={vertical:'middle',horizontal:'center'},fl=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
    const mg=(r,a,b,v,o)=>{if(a<b)ws.mergeCells(r,a,r,b);const c=ws.getCell(r,a);c.value=v;c.font=Object.assign({name:F,size:10},o||{});c.alignment=mid;return c};
@@ -4434,7 +4434,7 @@ function sheetTabungan(wb,nama,rows,kls){
  const blok=(c1,c2,rr,val,o)=>{ws.mergeCells(rr,c1,rr,c2);const x=ws.getCell(rr,c1);x.value=val;x.font=Object.assign({name:F,size:10},o||{});x.alignment=mid};
  blok(4,5,r0,(tg.kota?tg.kota+', ':'')+tg.tgl);blok(4,5,r0+1,'( Kepala Sekolah )');blok(4,5,r0+5,tg.nama||'................................',{bold:true,underline:true});if(tg.nip)blok(4,5,r0+6,'Nip. '+tg.nip);
  if(wl){blok(1,3,r0,'Mengetahui, Wali kelas');blok(1,3,r0+1,'( '+wl.kelas+' )');blok(1,3,r0+5,wl.nama,{bold:true,underline:true});if(wl.nip)blok(1,3,r0+6,'Nip. '+wl.nip)}
- ws.views=[{state:'frozen',ySplit:4}]}
+ ws.views=[{state:'frozen',ySplit:4}];return ws}
 function unduhTabungan(jenis){guard(async()=>{await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat. Muat ulang halaman');
  const wb=new ExcelJS.Workbook();wb.creator=ns();wb.created=new Date();const nf=ns().replace(/[^\w]+/g,'-');
  if(jenis==='rekap'){const d=(S.tab||[]).filter(r=>Number(r.saldo)!==0||r.aktif);
