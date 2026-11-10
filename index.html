@@ -2901,19 +2901,19 @@ function rkWaktu(t){try{return new Date(t).toLocaleString('id-ID',{day:'numeric'
 function rkIkon(n,biru){const p1='<path d="M1.5 6L4.8 9.3L11.5 2"/>',p2='<path d="M5.5 6L8.8 9.3L15.5 2"/>';return'<svg class="rkck'+(biru?' rkbiru':'')+'" width="17" height="11" viewBox="0 0 18 11" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(n===2?p1+p2:p1)+'</svg>'}
 function rkJam(t){if(!t)return'–';try{const d=new Date(t),z='Asia/Jakarta',tg=x=>x.toLocaleDateString('en-CA',{timeZone:z}),jm=d.toLocaleTimeString('en-GB',{timeZone:z,hourCycle:'h23',hour:'2-digit',minute:'2-digit',second:'2-digit'});return(tg(d)===tg(new Date())?'':d.toLocaleDateString('id-ID',{timeZone:z,day:'numeric',month:'short'})+' ')+jm}catch(e){return'–'}}
 /* Tahap pesan: terjadwal -> diproses -> terkirim (sent, centang 1) -> sampai (delivered, centang 2) -> terbaca (read, centang 2 biru); gagal */
-function rkTahap(r){if(r.status==='gagal')return'gagal';
+function rkTahap(r){if(r.status==='dibatalkan')return'dibatalkan';if(r.status==='gagal')return'gagal';
  const sf=String(r.state_fonnte==null?'':r.state_fonnte).toLowerCase(),tf=String(r.status_fonnte||'').toLowerCase();
  if(r.waktu_terbaca||sf==='read'||sf==='4'||tf==='read')return'terbaca';
  if(r.waktu_sampai||sf==='delivered'||sf==='3'||tf==='delivered')return'sampai';
  if(r.status==='terkirim'||r.waktu_terkirim)return'terkirim';
  const sel=Date.now()-new Date(r.jadwal_pada||r.dibuat).getTime();if(sel<0)return'terjadwal';if(sel>15*60000)return'nokabar';return'proses'}
-function rkLabel(t){return{gagal:['❌','Gagal'],terbaca:[rkIkon(2,1),'Terbaca'],sampai:[rkIkon(2),'Sampai'],terkirim:[rkIkon(1),'Terkirim'],proses:['🔄','Diproses'],terjadwal:['⏳','Terjadwal'],nokabar:['❔','Belum ada kabar']}[t]}
+function rkLabel(t){return{dibatalkan:['🚫','Dibatalkan'],gagal:['❌','Gagal'],terbaca:[rkIkon(2,1),'Terbaca'],sampai:[rkIkon(2),'Sampai'],terkirim:[rkIkon(1),'Terkirim'],proses:['🔄','Diproses'],terjadwal:['⏳','Terjadwal'],nokabar:['❔','Belum ada kabar']}[t]}
 function rkChips(list){const c={};list.forEach(r=>{const t=rkTahap(r);c[t]=(c[t]||0)+1});
- return['terjadwal','proses','nokabar','terkirim','sampai','terbaca','gagal'].filter(t=>c[t]).map(t=>{const l=rkLabel(t);return'<span>'+l[0]+' '+l[1]+' '+c[t]+'</span>'}).join('')}
+ return['terjadwal','proses','nokabar','terkirim','sampai','terbaca','gagal','dibatalkan'].filter(t=>c[t]).map(t=>{const l=rkLabel(t);return'<span>'+l[0]+' '+l[1]+' '+c[t]+'</span>'}).join('')}
 function rkBaris(r,dev){const t=rkTahap(r),lb=rkLabel(t),rank={terkirim:1,sampai:2,terbaca:3}[t]||0;
  const nm=dev?esc(r.label||'-'):esc(r.label||r.nomor);
  let ex='';if(r.error)ex=esc(r.error);else if(dev&&r.status_fonnte)ex='Fonnte: '+esc(r.status_fonnte)+((r.state_fonnte!==null&&r.state_fonnte!=='')?' / state '+esc(r.state_fonnte):'');
- let w='';if(t!=='gagal'){w+='<span>⏳ '+rkJam(r.jadwal_pada||r.dibuat)+'</span>';
+ let w='';if(t!=='gagal'&&t!=='dibatalkan'){w+='<span>⏳ '+rkJam(r.jadwal_pada||r.dibuat)+'</span>';
   if(rank>=1)w+='<span>'+rkIkon(1)+' '+rkJam(r.waktu_terkirim)+'</span>';
   if(rank>=2)w+='<span>'+rkIkon(2)+' '+rkJam(r.waktu_sampai)+'</span>';
   if(rank>=3)w+='<span>'+rkIkon(2,1)+' '+rkJam(r.waktu_terbaca)+'</span>'}
@@ -3096,7 +3096,7 @@ V.pesan=()=>{
  const rows=S.pesan.map(p=>`<tr>${pHapusMode?`<td><input type="checkbox" class="ckp" ${psel.has(p.id)?'checked':''} onchange="pilihPesan(${p.id},this.checked)"></td>`:''}<td>${esc(p.waktu)}</td><td>${esc(p.dari)}</td><td>${esc(p.isi)}</td><td>${esc(p.hasil)}</td><td>${pesBalasSel(p)}</td><td><div style="display:flex;flex-direction:column;gap:6px">${p.cek?`<button class="btn sm orange" onclick="doneMsg(${p.id})">Tandai selesai</button>`:'<span class="mu">Selesai</span>'}${p.dibalas?`<button class="btn sm soft" onclick="tandaiBalas(${p.id},false)">Batal dibalas</button>`:`<button class="btn sm success" onclick="tandaiBalas(${p.id},true)">Tandai dibalas</button>`}</div></td></tr>`).join('');
  return `<div class="panel"><div class="ph">💬 Pesan WhatsApp Masuk ${aksi}</div><div class="pb">${tbar}<div class="note">${pHapusMode?'Mode hapus aktif. Centang pesan yang ingin dihapus, atau centang kotak di judul kolom untuk memilih semua. Tekan Batal untuk keluar tanpa menghapus.':'Semua pesan dari orang tua tercatat di sini (100 terbaru). Tekan tombol Hapus bila ingin memilih pesan untuk dihapus.'}</div>${tab(head,rows)}</div></div>`};
 let pesRkRows=[],pesRkF='';
-const PES_ST=[['','Semua status'],['terjadwal','Terjadwal'],['proses','Diproses'],['nokabar','Belum ada kabar'],['terkirim','Terkirim'],['sampai','Sampai'],['terbaca','Terbaca'],['gagal','Gagal']];
+const PES_ST=[['','Semua status'],['terjadwal','Terjadwal'],['dibatalkan','Dibatalkan'],['proses','Diproses'],['nokabar','Belum ada kabar'],['terkirim','Terkirim'],['sampai','Sampai'],['terbaca','Terbaca'],['gagal','Gagal']];
 function pesRkTampil(){const el=$('#rkIsi');if(!el)return;const f=pesRkF?pesRkRows.filter(r=>rkTahap(r)===pesRkF):pesRkRows;
  el.innerHTML=(pesRkF?'<div class="mu" style="margin-bottom:8px">Menampilkan '+f.length+' dari '+pesRkRows.length+' pesan</div>':'')+(pesRkF&&!f.length?'<div class="note">Tidak ada pesan dengan status ini.</div>':rkHtml(f))}
 async function pesRkMuat(){try{const rows=await dbq(db.from('kirim_log').select('batch_id,jenis,judul,label,nomor,status,status_fonnte,state_fonnte,error,jadwal_pada,dibuat,waktu_terkirim,waktu_sampai,waktu_terbaca').eq('sekolah_id',SEK).order('dibuat',{ascending:false}).limit(400));pesRkRows=rows||[];pesRkTampil()}catch(e){const el=$('#rkIsi');if(el)el.innerHTML='<div class="note">Riwayat belum bisa dibaca: '+esc(e.message||String(e))+'</div>'}}
