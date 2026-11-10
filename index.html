@@ -4259,7 +4259,7 @@ async function hfUnduh(jenis,btn){await muatLib(['exceljs','pdf']);if(!setUnduhB
    sis.forEach((s,n)=>{const st=hfStat(s.id,tgt);w1.addRow([n+1,s.nama,st.l,st.u,st.t-st.l-st.u,st.t])});
    const w2=wb.addWorksheet('Rincian');w2.columns=[{width:32},...tgt.map(()=>({width:18}))];hd(w2,['Nama',...tgt.map(i=>(hfJ(i.jenis_id).nama||'')+': '+i.judul)]);
    sis.forEach(s=>{const st=hfStat(s.id,tgt);w2.addRow([s.nama,...tgt.map(i=>{const x=st.m.get(i.id);return x?(x.hasil==='lancar'?'Lancar ':'Mengulang ')+x.tanggal:''})])})}
-   await tulisXlsx(wb,'Rekap-Hafalan-'+nf+'-'+TODAY+'.xlsx');toast('Rekap hafalan sedang diproses, mohon ditunggu');return}
+   for(const ws of wb.worksheets){const k=sem?(ws.name==='Rekap'?'':ws.name.replace(/^Rincian /,'')):kl.nama,row=ws.rowCount+2;await xlsxTtdRekap(wb,ws,k,row,1,4,5);if(k)ws.getCell(row+5,1).value='Wali Kelas: '+(ttdWali(k)?.nama||'-');ws.getCell(row+5,5).value='Kepala Sekolah: '+(ttdKepsek().nama||'-');if(ttdKepsek().nip)ws.getCell(row+6,5).value='NIP. '+ttdKepsek().nip}await tulisXlsx(wb,'Rekap-Hafalan-'+nf+'-'+TODAY+'.xlsx');toast('Rekap hafalan sedang diproses, mohon ditunggu');return}
   const d=new window.jspdf.jsPDF({unit:'mm',format:'a4'}),tg=ttdKepsek(),wl=sem?null:ttdWali(kl.nama);
   d.setFont('helvetica','bold');d.setFontSize(13);d.setTextColor(0,0,0);d.text('REKAP HAFALAN - '+ns().toUpperCase(),105,14,{align:'center'});
   d.setFont('helvetica','normal');d.setFontSize(9);d.text((sem?'Semua kelas':'Kelas '+kl.nama)+'  |  Tahun ajaran '+((S.set&&S.set.tahun_ajaran)||'-')+(sem?'':'  |  Wali kelas: '+(wl?wl.nama:'-'))+'  |  '+fmt(TODAY),105,20,{align:'center'});
@@ -4272,7 +4272,7 @@ async function hfUnduh(jenis,btn){await muatLib(['exceljs','pdf']);if(!setUnduhB
   d.autoTable({startY:y+3,head:[['No','Jenis','Hafalan','Target']],body:tgt.map((i,n)=>[n+1,hfJ(i.jenis_id).nama||'-',i.judul,i.target||'']),theme:'grid',styles:{fontSize:8.5,cellPadding:1.6},headStyles:hs,columnStyles:{0:{halign:'center',cellWidth:10}}});
   y=d.lastAutoTable.finalY+10}
   if(y+42>285){d.addPage();y=20}
-  pdfTtd(d,164,y,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);if(wl)pdfTtd(d,46,y,'Mengetahui,',' Wali kelas',wl.kelas,wl.nama,wl.nip);
+  await pdfTtdRekap(d,sem?'':kl.nama,y);
   d.save('rekap-hafalan-'+nf+'-'+TODAY+'.pdf');toast('Rekap hafalan sedang diproses, mohon ditunggu')}
  catch(e){toast('Gagal mengunduh: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 /* --- Hafalan: template dan impor Excel (batch) --- */
