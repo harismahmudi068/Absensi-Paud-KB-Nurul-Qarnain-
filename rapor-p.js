@@ -294,7 +294,7 @@ function pkSimpan(lanjut) {
 }
 
 /* ---------------- PDF ---------------- */
-function pkPengelola() { const g = (S.guru || []).find(x => x.role === 'pengelola' && x.aktif); return g ? { id: g.id, nama: g.nama, nip: fmtNip(g.nip) } : null; }
+function pkPengelola(excludeIds) { const ex = new Set((excludeIds || []).filter(Boolean).map(String)); const g = (S.guru || []).find(x => x.role === 'pengelola' && x.aktif && !ex.has(String(x.id))); return g ? { id: g.id, nama: g.nama, nip: fmtNip(g.nip) } : null; }
 /* keputusan untuk pratinjau draf (raport terbit memakai yang tersimpan di barisnya) */
 function pkKepO(r) {
   if (!(pnUas2() && r.jenis === 'UAS' && +r.semester === 2)) return {};
@@ -304,7 +304,7 @@ function pkSusun(r, logo, info) {
   let s = S.siswa.find(x => x.id === r.siswa_id) || {};
   if (info && info.alumni) s = { nama: info.nama, nisn: info.nisn, tempat: info.tempat, tgl: info.tgl };
   const kg = PKR.kel.find(k => k.id === r.kelompok_id) || pkKel(s) || {};
-  const wali = ttdWali(r.kelas_nama) || {}, kepsek = ttdKepsek(), pengelola = pkPengelola();
+  const wali = ttdWali(r.kelas_nama) || {}, kepsek = ttdKepsek(), pengelola = pkPengelola([wali.id, kepsek.id]);
   const sig = info && info.ttd || {};
   if (wali.id) wali.ttd = sig[wali.id] || null;
   if (kepsek.id) kepsek.ttd = sig[kepsek.id] || null;
@@ -345,7 +345,6 @@ function pkKurang(rows, baru) {
 async function pkTerbitInti(rows, ttd, baru) {
   rows = rows.filter(r => r.fmt === 'perkembangan'); if (!rows.length) return;
   const kur = pkKurang(rows, baru); if (kur.length) throw new Error('Indikator belum lengkap: ' + kur.join(', '));
-  const pg = pkPengelola(), per = { pengelola_nama: pg ? pg.nama : null, pengelola_nip: pg ? (pg.nip || null) : null };
   const cache = new Map(), grup = new Map();
   for (const r of rows) {
     let h = null;
@@ -355,10 +354,12 @@ async function pkTerbitInti(rows, ttd, baru) {
       if (!cache.has(r.kelompok_id)) cache.set(r.kelompok_id, await pkSalinanBuat(r.kelompok_id));
       h = cache.get(r.kelompok_id);
     }
-    const kp = pnUas2() ? pnKepKep.get(r.siswa_id) : null, kj = kp ? kp.jenis : '', kt = kj === 'naik' ? (kp.kelas_tujuan_nama || '') : '', key = h + '|' + kj + '|' + kt;
-    if (!grup.has(key)) grup.set(key, { h, kj, kt, ids: [] }); grup.get(key).ids.push(r.id);
+    const wali = ttdWali(r.kelas_nama) || {}, kepala = ttdKepsek(), pg = pkPengelola([wali.id, kepala.id]);
+    const per = { pengelola_nama: pg ? pg.nama : null, pengelola_nip: pg ? (pg.nip || null) : null };
+    const kp = pnUas2() ? pnKepKep.get(r.siswa_id) : null, kj = kp ? kp.jenis : '', kt = kj === 'naik' ? (kp.kelas_tujuan_nama || '') : '', key = h + '|' + kj + '|' + kt + '|' + (pg ? pg.id : '');
+    if (!grup.has(key)) grup.set(key, { h, kj, kt, per, ids: [] }); grup.get(key).ids.push(r.id);
   }
-  for (const g of grup.values()) await pnTry(() => dbq(db.from('rapor').update(Object.assign({ status: 'terbit', salinan_hash: g.h }, ttd, per, pnUas2() ? { keputusan: g.kj || null, kelas_tujuan: g.kt || null } : {})).in('id', g.ids)));
+  for (const g of grup.values()) await pnTry(() => dbq(db.from('rapor').update(Object.assign({ status: 'terbit', salinan_hash: g.h }, ttd, g.per, pnUas2() ? { keputusan: g.kj || null, kelas_tujuan: g.kt || null } : {})).in('id', g.ids)));
 }
 
 /* ---------------- Tab Kelompok ---------------- */
