@@ -4034,7 +4034,7 @@ async function alRapor(id){const a=(AL.data||[]).find(x=>x.id===id);if(!a)return
   info('Raport '+a.nama,'<div class="mu" style="margin-bottom:8px">Raport tersimpan selama data alumni ada, lalu terhapus bersama data alumni.</div>'+window._alRap.map((r,i)=>`<div class="tb" style="align-items:center"><div style="flex:1"><b>${r.jenis} Semester ${r.semester}</b><div class="mu">TA ${esc(r.tahun_ajaran)} · Kelas ${esc(r.kelas_nama||'-')}</div></div><button class="btn sm soft" onclick="alRaporLihat(${i})">👁 Lihat</button><button class="btn sm soft" onclick="alRaporPdf([${i}],this)">📄 PDF</button></div>`).join('')+`<div class="tb"><button class="btn success" onclick="alRaporPdf([${window._alRap.map((_,i)=>i).join(',')}],this)">📄 Unduh semua (${window._alRap.length})</button></div>`)})}
 async function alRaporD(a,r,logo,stempel){
  if(r.fmt==='perkembangan')return pkSusun(r,logo,{alumni:true,nama:a.nama,nisn:a.nisn||'',tempat:a.tempat_lahir||'',tgl:a.tgl_lahir||'',stempel});
- return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:a.nama,nisn:a.nisn||'',wali:null,kepsek:null})}
+ return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',kota:kotaTtd(),nama:a.nama,nisn:a.nisn||'',wali:null,kepsek:null})}
 /* pratinjau satu raport alumni (satu siswa, satu raport) */
 function alRaporLihat(i){const a=window._alA,r=(window._alRap||[])[i];if(!a||!r)return;
  guard(async()=>{await muatLib('pdf');const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null),D=await alRaporD(a,r,logo,stempel);
@@ -4053,7 +4053,7 @@ async function pnPdfBuat(rs,infoFn,nf,btn){await muatLib('pdf');if(!setUnduhBusy
  try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null),infos=rs.map(r=>infoFn(r)||{}),ids=[];
   rs.forEach((r,i)=>{const w=infos[i].wali||ttdWali(r.kelas_nama),k=infos[i].kepsek||ttdKepsek(),pg=r.fmt==='perkembangan'?pkPengelola([w&&w.id,k&&k.id]):null;if(w&&w.id)ids.push(w.id);if(k&&k.id)ids.push(k.id);if(pg&&pg.id)ids.push(pg.id)});
   const sig=await ttdPngAmbil(ids);
-  const Ds=rs.map((r,ix)=>{const i=infos[ix];if(r.fmt==='perkembangan')return pkSusun(r,logo,{...i,ttd:sig,stempel});i.wali=i.wali||ttdWali(r.kelas_nama);i.kepsek=i.kepsek||ttdKepsek();if(i.wali&&i.wali.id)i.wali.ttd=sig[i.wali.id]||null;if(i.kepsek&&i.kepsek.id)i.kepsek.ttd=sig[i.kepsek.id]||null;if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
+  const Ds=rs.map((r,ix)=>{const i=infos[ix];if(r.fmt==='perkembangan')return pkSusun(r,logo,{...i,ttd:sig,stempel});i.wali=i.wali||ttdWali(r.kelas_nama);i.kepsek=i.kepsek||ttdKepsek();if(i.wali&&i.wali.id)i.wali.ttd=sig[i.wali.id]||null;if(i.kepsek&&i.kepsek.id)i.kepsek.ttd=sig[i.kepsek.id]||null;if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',kota:kotaTtd(),nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
   await Rapor.pdf(Ds,nf);toast('PDF raport sedang diproses, mohon ditunggu')}
  catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 async function pnPdf(ids,btn){const rs=pnRap.filter(r=>ids.includes(r.id));if(!rs.length)return toast('Belum ada raport tersimpan untuk diunduh',false);
@@ -4914,7 +4914,7 @@ async function rpDataD(r){
  }
  const wali=ttdWali(r.kelas_nama)||{},kepsek=ttdKepsek(),sig=await ttdPngAmbil([wali.id,kepsek.id]);
  if(wali.id)wali.ttd=sig[wali.id]||null;if(kepsek.id)kepsek.ttd=sig[kepsek.id]||null;
- return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:s.nama,nisn:s.nisn,wali,kepsek})
+ return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',kota:kotaTtd(),nama:s.nama,nisn:s.nisn,wali,kepsek})
 }
 function rpLihatHTML(r,s,b){
  const stt=r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>';
