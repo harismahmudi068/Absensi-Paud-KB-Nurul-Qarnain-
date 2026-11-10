@@ -3249,7 +3249,9 @@ async function tbUnduhXlsx(btn){
   for(const [k,list] of G){const ws=sheetTabungan(wb,namaSheetSiswa(k,used),list,k);await xlsxTtdRekap(wb,ws,k,ws.rowCount-5,1,3,4)}
   await tulisXlsx(wb,'rekap-tabungan-akhir-tahun-'+ns().replace(/[^\w]+/g,'-')+'-'+TODAY+'.xlsx');
   TB.tabDownloaded=true;tbCek();toast('XLSX rekap tabungan berhasil disiapkan')
- }catch(e){toast('Gagal membuat XLSX tabungan: '+(e.message||e),false)}finally{seasync function taUnduhAbsensi(jenis,btn){
+ }catch(e){toast('Gagal membuat XLSX tabungan: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}
+}
+async function taUnduhAbsensi(jenis,btn){
  taInit();
  const kelasSebelumnya=taK;
  taK='*';
