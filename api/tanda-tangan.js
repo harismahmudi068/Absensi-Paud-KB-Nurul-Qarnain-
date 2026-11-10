@@ -53,7 +53,11 @@ module.exports = async (req, res) => {
   try {
     const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     if (!token) return res.status(401).json({ error: 'Belum login' });
-    const user = await L.panggil('/auth/v1/user', 'GET', null, { Authorization: 'Bearer ' + token });
+    const authRes = await fetch(L.SB.replace(/\/+$/, '') + '/auth/v1/user', {
+      headers: { apikey: L.KEY, Authorization: 'Bearer ' + token }
+    });
+    const user = await authRes.json().catch(() => ({}));
+    if (!authRes.ok || !user.id) return res.status(401).json({ error: 'Sesi login tidak valid atau sudah berakhir' });
     const p = await profil(user.id);
     if (!p || !p.aktif) return res.status(403).json({ error: 'Akun tidak aktif atau profil tidak ditemukan' });
     const isDev = (await L.panggil('/rest/v1/profil?id=eq.' + user.id + '&select=role,aktif', 'GET'))[0]?.role === 'developer';
