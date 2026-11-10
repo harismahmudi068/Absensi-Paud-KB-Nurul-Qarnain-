@@ -101,6 +101,7 @@ module.exports = async (req, res) => {
       const ids = [...new Set((Array.isArray(b.ids) ? b.ids : []).map(String))];
       if (ids.length > 40 || ids.some(id => !RE_UUID.test(id)))
         return res.status(400).json({ error: 'Daftar guru tidak valid' });
+      if (!ids.length) return res.status(200).json({ ok: true, tanda_tangan: {} });
       const rows = await L.panggil('/rest/v1/keanggotaan?sekolah_id=eq.' + sid +
         '&profil_id=in.(' + ids.join(',') + ')&select=profil_id', 'GET');
       const valid = new Set((rows || []).map(x => x.profil_id));
