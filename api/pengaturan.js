@@ -455,7 +455,7 @@ module.exports = async (req, res) => {
     if (b.aksi === 'set_jam_notif_libur_grup') {
       if (!isDev) throw new Error('Hanya Developer yang boleh mengubah jam notifikasi libur grup');
       const jam = String(b.jam || '');
-      if (!/^([01]\\d|2[0-3]):[0-5]\\d$/.test(jam)) throw new Error('Format jam harus HH:MM');
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(jam)) throw new Error('Format jam harus HH:MM');
       await panggil('/rest/v1/pengaturan?on_conflict=sekolah_id', 'POST',
         { sekolah_id: sekolahId, notif_libur_grup_jam: jam + ':00' },
         { Prefer: 'resolution=merge-duplicates,return=minimal' });
