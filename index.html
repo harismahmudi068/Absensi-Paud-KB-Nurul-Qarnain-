@@ -1889,7 +1889,7 @@ async function apiTtd(body){
 }
 function ttdBoxGambar(data){return data?'<img src="'+data+'" alt="Pratinjau tanda tangan" style="display:block;max-width:100%;width:260px;height:105px;object-fit:contain;background:#fff;border:1px solid var(--bd);border-radius:10px;padding:8px">':'<div class="note">Belum ada tanda tangan yang diunggah.</div>'}
 async function ttdProfilMuat(force){
- const box=$('#ttdProfilBox');if(!box||MB())return;
+ const box=$('#ttdProfilBox');if(!box)return;if(MB()){box.innerHTML='<div class="note">Mode bantuan: tanda tangan hanya dapat dikelola oleh pemilik akun.</div>';return}
  if(!force&&TTD_PROFIL_USER===me&&TTD_PROFIL!==null){box.innerHTML=ttdProfilHtml(TTD_PROFIL);return}
  box.innerHTML='<div class="mu">Memuat tanda tangan...</div>';
  try{const j=await apiTtd({aksi:'lihat'});TTD_PROFIL=j.data||'';TTD_PROFIL_USER=me;box.innerHTML=ttdProfilHtml(TTD_PROFIL)}
