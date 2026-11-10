@@ -3306,17 +3306,27 @@ async function pdfTtdRekap(d,kls,y){
 }
 async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
  const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
- const img=(url)=>{if(!url||!/^data:image\/(png|jpeg);base64,/.test(url))return null;const ext=url.startsWith('data:image/jpeg')?'jpeg':'png';return wb.addImage({base64:url.split(',')[1],extension:ext})};
+ const img=(url)=>{if(!url||!/^data:image\\/(png|jpeg);base64,/.test(url))return null;const ext=url.startsWith('data:image/jpeg')?'jpeg':'png';return wb.addImage({base64:url.split(',')[1],extension:ext})};
  const stamp=img(st&&st.url),head=img(tg.id&&sig[tg.id]),wali=img(w&&w.id&&sig[w.id]);
- const pageW=ws.pageSetup&&ws.pageSetup.orientation==='landscape'?297:210;
- const widths=ws.columns.map(c=>Math.max(1,(Number(c.width)||8.43)*7+5)),total=widths.reduce((a,b)=>a+b,0);
- const anchor=(mm,yMm)=>{let px=Math.max(0,Math.min(total-1,mm/pageW*total)),col=0;while(col<widths.length-1&&px>=widths[col]){px-=widths[col];col++}
-  const rowPx=(yMm/25.4)*96,rowPt=rowPx/(18*96/72);
-  return{tl:{col:col+px/widths[col],row:row+rowPt}}};
- const kanan=pageW-46;
- if(wali!==null)ws.addImage(wali,{...anchor(30,10),ext:{width:Math.round(32/25.4*96),height:Math.round(13/25.4*96)}});
- if(stamp!==null)ws.addImage(stamp,{...anchor(kanan-49,8),ext:{width:Math.round(28/25.4*96),height:Math.round(28/25.4*96)}});
- if(head!==null)ws.addImage(head,{...anchor(kanan-16,10),ext:{width:Math.round(32/25.4*96),height:Math.round(13/25.4*96)}});
+ if(!wali&&!stamp&&!head)return;
+ // Ambil dua area gabungan tanda tangan dari tabel yang sudah dibuat; teks dan posisi kolom tidak diubah.
+ const merges=Object.values(ws._merges||{}).filter(m=>m&&Number.isFinite(m.top)&&Number.isFinite(m.left)&&Number.isFinite(m.bottom)&&Number.isFinite(m.right));
+ const byRow=new Map();merges.forEach(m=>{if(m.top===m.bottom){if(!byRow.has(m.top))byRow.set(m.top,[]);byRow.get(m.top).push(m)}});
+ const pair=[...byRow.entries()].filter(([,v])=>v.length>=2).sort((a,b)=>b[0]-a[0])[0];
+ if(!pair)return;
+ const nameRow=pair[0],areas=pair[1].sort((a,b)=>a.left-b.left),waliArea=areas[0],kepArea=areas[areas.length-1];
+ const widths=ws.columns.map(c=>Math.max(1,(Number(c.width)||8.43)*7+5));
+ const xAt=c=>widths.slice(0,Math.max(0,c-1)).reduce((a,v)=>a+v,0);
+ const yAt=r=>{let v=0;for(let i=1;i<r;i++)v+=(ws.getRow(i).height||15)*96/72;return v};
+ const rangeBox=(m)=>({x:xAt(m.left),width:xAt(m.right+1)-xAt(m.left)});
+ const sigW=Math.round(32/25.4*96),sigH=Math.round(13/25.4*96),stampW=Math.round(28/25.4*96),stampH=stampW;
+ const top=nameRow-3,bottom=nameRow-1,y=yAt(top),h=yAt(bottom+1)-y;
+ const anchor=(box,width,height,ratio)=>{const x=box.x+box.width*ratio-width/2,yy=y+(h-height)/2;let col=1;while(col<widths.length&&x>=xAt(col+1))col++;let rr=1;while(rr<ws.rowCount+1&&yy>=yAt(rr+1))rr++;return{tl:{col:col-1+(x-xAt(col))/widths[col-1],row:rr-1+(yy-yAt(rr))/((ws.getRow(rr).height||15)*96/72)}}};
+ const wbLeft=rangeBox(waliArea),kp=rangeBox(kepArea);
+ if(wali)ws.addImage(wali,{...anchor(wbLeft,sigW,sigH,.5),ext:{width:sigW,height:sigH}});
+ // Stempel berada di bagian kiri area kepala sekolah, tanda tangan di bagian kanan.
+ if(stamp)ws.addImage(stamp,{...anchor(kp,stampW,stampH,.38),ext:{width:stampW,height:stampH}});
+ if(head)ws.addImage(head,{...anchor(kp,sigW,sigH,.78),ext:{width:sigW,height:sigH}});
 }
 async function tbUnduhRiwayat(jenis,btn){await muatLib(jenis==='pdf'?'pdf':'exceljs');if(!setUnduhBusy(btn,true,'Membuat riwayat tabungan...'))return;try{await jedaUnduh();const semua=[];for(let off=0;off<50000;off+=1000){const page=await dbq(db.from('tabungan_transaksi').select('*').eq('sekolah_id',SEK).order('id',{ascending:true}).range(off,off+999));semua.push(...(page||[]));if(!page||page.length<1000)break}if(!semua.length)throw new Error('Tidak ada riwayat tabungan untuk diunduh');const map=new Map();semua.forEach(x=>{const k=x.kelas_nama||'Tanpa kelas';if(!map.has(k))map.set(k,[]);map.get(k).push(x)});const G=[...map.entries()].sort((a,b)=>a[0].localeCompare(b[0],'id')),nf='riwayat-tabungan-seluruh-kelas-'+TODAY;if(jenis==='xlsx'){const wb=new ExcelJS.Workbook();wb.creator=ns();wb.created=new Date();const used=new Set();for(const [k,rows] of G){const ws=wb.addWorksheet(namaSheetSiswa(k,used));ws.columns=[{width:13},{width:30},{width:16},{width:22},{width:15},{width:17},{width:38},{width:24},{width:20}];ws.addRow(['RIWAYAT TABUNGAN - '+ns()]);ws.mergeCells(1,1,1,9);ws.getRow(1).font={bold:true,size:14};ws.addRow(['Kelas '+k+' | Seluruh riwayat tersimpan | Dicetak '+fmt(TODAY)]);ws.mergeCells(2,1,2,9);ws.addRow(['Tanggal','Nama','NISN','Kelas','Jenis','Jumlah (Rp)','Catatan','Dicatat oleh','Waktu catat']);ws.getRow(3).eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF6B46C1'}};c.alignment={horizontal:'center',vertical:'middle'}});rows.forEach(x=>ws.addRow([x.tanggal,x.nama_siswa,x.nisn||'',x.kelas_nama||'',tabJenis(x),(x.jenis==='setor'?1:-1)*Number(x.jumlah),x.catatan||'',x.nama_pencatat||'',new Date(x.dibuat).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'})]));const row=ws.rowCount+2;await xlsxTtdRekap(wb,ws,k,row,1,7,8);ws.getCell(row+5,1).value='Wali Kelas: '+(ttdWali(k)?.nama||'-');ws.getCell(row+5,8).value='Kepala Sekolah: '+(ttdKepsek().nama||'-');if(ttdKepsek().nip)ws.getCell(row+6,8).value='NIP. '+ttdKepsek().nip}await tulisXlsx(wb,nf+'.xlsx')}else{const d=new window.jspdf.jsPDF({unit:'mm',format:'a4'});for(let i=0;i<G.length;i++){if(i)d.addPage();const [k,rows]=G[i];d.setFont('helvetica','bold');d.setFontSize(13);d.text('RIWAYAT TABUNGAN - '+ns().toUpperCase(),105,14,{align:'center'});d.setFont('helvetica','normal');d.setFontSize(8.5);d.text('Kelas '+k+' | Seluruh riwayat tersimpan | Dicetak '+fmt(TODAY),105,20,{align:'center'});d.autoTable({startY:27,head:[['Tanggal','Nama','NISN','Jenis','Jumlah (Rp)','Catatan','Dicatat oleh']],body:rows.map(x=>[fmt(x.tanggal),x.nama_siswa,x.nisn||'-',tabJenis(x),(x.jenis==='setor'?'+':'-')+rp(x.jumlah),x.catatan||'',x.nama_pencatat||'-']),theme:'grid',styles:{fontSize:7.5,cellPadding:1.5},headStyles:{fillColor:[107,70,193],halign:'center'}});let y=d.lastAutoTable.finalY+10;if(y+42>285){d.addPage();y=20}await pdfTtdRekap(d,k,y)}d.save(nf+'.pdf')}TB.tabDownloaded=true;tbCek();toast('Riwayat tabungan berhasil disiapkan ('+semua.length+' transaksi)')}catch(e){toast('Gagal mengunduh riwayat tabungan: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 async function tbMulai(){const lb=($('#tbLabel')||{}).value.trim(),ok=($('#tbOk')||{}).value.trim();
