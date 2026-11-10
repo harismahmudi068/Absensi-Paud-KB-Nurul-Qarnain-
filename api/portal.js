@@ -480,7 +480,7 @@ async function raporTandaTangan(rows, sid) {
     const kelasWali = new Map((kelas || []).map(x => [String(x.nama || '').trim(), String(x.wali_profil_id || '')]));
     const pilihRole = (role, kecuali, aktifSaja) => {
       const a = anggota.filter(x => x.role === role && !kecuali.has(String(x.id)));
-      return a.find(x => x.anggota_aktif !== false && (!aktifSaja || x.aktif !== false)) || (!aktifSaja ? a[0] : null) || null;
+      return a.find(x => x.anggota_aktif !== false && x.aktif !== false) || (!aktifSaja ? a[0] : null) || null;
     };
     const data = rows.map(r => {
       const waliId = kelasWali.get(String(r.kelas_nama || '').trim()) || '';
