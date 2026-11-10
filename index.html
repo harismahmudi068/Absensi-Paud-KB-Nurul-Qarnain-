@@ -3295,7 +3295,7 @@ async function taUnduhAbsensi(jenis,btn){
  }catch(e){toast('Gagal mengunduh riwayat absensi: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}
 }
 async function pdfTtdRekap(d,kls,y){
- const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({}));
+ const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
  const pw=d.internal.pageSize.getWidth(),kanan=pw-46,yy=y+3;
  if(w)pdfTtd(d,46,yy,'Mengetahui,',' Wali kelas',w.kelas,w.nama,w.nip);
  pdfTtd(d,kanan,yy,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);
