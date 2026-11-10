@@ -3295,7 +3295,7 @@ async function taUnduhAbsensi(jenis,btn){
  }catch(e){toast('Gagal mengunduh riwayat absensi: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}
 }
 async function pdfTtdRekap(d,kls,y){
- const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
+ const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({}));
  const pw=d.internal.pageSize.getWidth(),kanan=pw-46,yy=y+3;
  if(w)pdfTtd(d,46,yy,'Mengetahui,',' Wali kelas',w.kelas,w.nama,w.nip);
  pdfTtd(d,kanan,yy,tg.kota?tg.kota+',':'',(tg.kota?' ':'')+tg.tgl,'Kepala Sekolah',tg.nama,tg.nip);
@@ -3307,7 +3307,7 @@ async function pdfTtdRekap(d,kls,y){
 async function xlsxTtdRekap(wb,ws,kls,row,waliCol,kepStampCol,kepSigCol){
  const w=ttdWali(kls),tg=ttdKepsek(),sig=await ttdPngAmbil([w&&w.id,tg.id]).catch(()=>({})),st=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
  const img=async(url)=>{if(!url)return null;try{let data=String(url),m=data.match(/^data:image\/(png|jpeg);base64,/i);if(!m){const im=new Image();im.crossOrigin='anonymous';im.src=data;await new Promise((ok,no)=>{im.onload=ok;im.onerror=no});const cv=document.createElement('canvas');cv.width=im.naturalWidth;cv.height=im.naturalHeight;cv.getContext('2d').drawImage(im,0,0);data=cv.toDataURL('image/png');m=data.match(/^data:image\/(png|jpeg);base64,/i)}if(!m)return null;return wb.addImage({base64:data,extension:m[1].toLowerCase()==='jpeg'?'jpeg':'png'})}catch(e){console.warn('Gambar tanda tangan/stempel XLSX gagal diproses:',e);return null}};
- const [stamp,head,wali]=await Promise.all([img(st&&st.url),img(tg.id&&sig[tg.id]),img(w&&w.id&&sig[w.id])]);
+ const [stamp,head,wali]=await Promise.all([img(S.set&&S.set.stempel),img(tg.id&&sig[tg.id]),img(w&&w.id&&sig[w.id])]);
  if(!wali&&!stamp&&!head)return;
  // Ambil dua area gabungan tanda tangan dari tabel yang sudah dibuat; teks dan posisi kolom tidak diubah.
  const merges=Object.values(ws._merges||{}).filter(m=>m&&Number.isFinite(m.top)&&Number.isFinite(m.left)&&Number.isFinite(m.bottom)&&Number.isFinite(m.right));
