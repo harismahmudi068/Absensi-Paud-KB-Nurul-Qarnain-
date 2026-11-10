@@ -310,8 +310,8 @@ const Rapor = (() => {
     if(school.length){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...TX);doc.text('Mengetahui:',scx,sy-6,{align:'center'});}
     if(D.stempel&&D.stempel.url&&school.length){
       /* Stempel diperbesar dan rasio gambar dipertahankan; satu penandatangan tetap di sisi kiri. */
-      const single=school.length===1, boxW=single?24:30, boxH=single?20:25;
-      const stx=single?school[0].x-31:scx-boxW/2;
+      const single=school.length===1, boxW=single?29:34, boxH=single?24:28;
+      const stx=single?school[0].x-36:scx-boxW/2;
       const im=imgC[D.stempel.url], iw=im&&(im.naturalWidth||im.width)||boxW, ih=im&&(im.naturalHeight||im.height)||boxH;
       const sc=Math.min(boxW/iw,boxH/ih), sw=iw*sc, sh=ih*sc;
       doc.addImage(D.stempel.url,'PNG',stx+(boxW-sw)/2,sy+4+(boxH-sh)/2,sw,sh);
@@ -468,9 +468,9 @@ const Rapor = (() => {
     });
     if(D.stempel&&D.stempel.url&&nP>1){
       /* Stempel diperbesar tanpa mengubah rasio; satu pejabat Mengetahui tetap mendapat posisi di kiri. */
-      const single=nP!==4, boxW=single?24:28, boxH=single?20:23;
+      const single=nP!==4, boxW=single?29:32, boxH=single?24:26;
       const center=nP===4?(CX[2]+CX[3])/2:CX[nP-1];
-      const stx=single?center-31:center-boxW/2;
+      const stx=single?center-36:center-boxW/2;
       const im=imgC[D.stempel.url], iw=im&&(im.naturalWidth||im.width)||boxW, ih=im&&(im.naturalHeight||im.height)||boxH;
       const sc=Math.min(boxW/iw,boxH/ih), sw=iw*sc, sh=ih*sc;
       doc.addImage(D.stempel.url,'PNG',stx+(boxW-sw)/2,yl+3+(boxH-sh)/2,sw,sh);
