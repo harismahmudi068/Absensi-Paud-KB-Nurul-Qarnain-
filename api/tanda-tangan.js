@@ -31,6 +31,10 @@ async function anggota(id, sid) {
     '&sekolah_id=eq.' + sid + '&aktif=eq.true&select=role,aktif', 'GET');
   return (a || [])[0] || null;
 }
+async function anggotaTarget(id, sid) {
+  const a = await L.panggil('/rest/v1/keanggotaan?profil_id=eq.' + encodeURIComponent(id) + '&sekolah_id=eq.' + sid + '&select=role,aktif', 'GET');
+  return (a || [])[0] || null;
+}
 async function profil(id) {
   const a = await L.panggil('/rest/v1/profil?id=eq.' + encodeURIComponent(id) + '&select=id,nama,ttd_path', 'GET');
   return (a || [])[0] || null;
@@ -80,7 +84,7 @@ module.exports = async (req, res) => {
 
     if (aksi === 'daftar') {
       const rows = await L.panggil('/rest/v1/keanggotaan?sekolah_id=eq.' + sid +
-        '&aktif=eq.true&select=profil_id,role,profil(id,nama,ttd_path)&order=id.asc', 'GET');
+        '&select=profil_id,role,aktif,profil(id,nama,ttd_path)&order=id.asc', 'GET');
       const daftar = (rows || []).filter(x => x.profil).map(x => ({
         id: x.profil_id, ada: !!x.profil.ttd_path, role: x.role
       }));
@@ -94,7 +98,7 @@ module.exports = async (req, res) => {
       if (!bolehKelolaLain && ids.some(id => id !== user.id))
         return res.status(403).json({ error: 'Tidak diizinkan mengambil tanda tangan guru lain' });
       const rows = await L.panggil('/rest/v1/keanggotaan?sekolah_id=eq.' + sid +
-        '&aktif=eq.true&profil_id=in.(' + ids.join(',') + ')&select=profil_id', 'GET');
+        '&profil_id=in.(' + ids.join(',') + ')&select=profil_id', 'GET');
       const valid = new Set((rows || []).map(x => x.profil_id));
       if (ids.some(id => !valid.has(id))) return res.status(403).json({ error: 'Guru tidak terdaftar aktif di sekolah ini' });
       const out = {};
@@ -107,7 +111,7 @@ module.exports = async (req, res) => {
 
     if (targetId !== user.id && !bolehKelolaLain)
       return res.status(403).json({ error: 'Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, Operator, atau Developer yang boleh mengelola tanda tangan guru lain' });
-    const targetAnggota = punyaSid ? await anggota(targetId, sid) : null;
+    const targetAnggota = punyaSid ? await anggotaTarget(targetId, sid) : null;
     if (punyaSid && !targetAnggota) return res.status(404).json({ error: 'Guru tidak ditemukan atau tidak aktif di sekolah ini' });
     const target = await profil(targetId);
     if (!target) return res.status(404).json({ error: 'Profil guru tidak ditemukan' });
