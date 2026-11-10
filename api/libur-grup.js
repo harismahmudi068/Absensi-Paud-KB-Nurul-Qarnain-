@@ -2,7 +2,7 @@
 // Token Fonnte hanya dibaca di server. Endpoint cron dipanggil setiap menit.
 const SB = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const CRON_SECRET = process.env.CRON_SECRET;
+const CRON_SECRET = process.env.ALPA_NOTIF_SECRET;
 
 function headers(extra) {
   const h = { apikey: KEY, 'Content-Type': 'application/json', ...extra };
@@ -201,8 +201,8 @@ module.exports = async (req, res) => {
   if (!SB || !KEY) return res.status(500).json({ error: 'Konfigurasi server belum lengkap' });
   try {
     if (req.method === 'GET') {
-      const auth = String(req.headers.authorization || '');
-      if (!CRON_SECRET || auth !== 'Bearer ' + CRON_SECRET)
+      const auth = String(req.headers['x-libur-secret'] || '');
+      if (!CRON_SECRET || auth !== CRON_SECRET)
         return res.status(401).json({ error: 'Cron tidak diizinkan' });
       const dibuat = await siapkanLiburHariIni();
       const hasil = await prosesSatu();
