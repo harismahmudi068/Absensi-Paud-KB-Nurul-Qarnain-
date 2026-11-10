@@ -33,6 +33,13 @@ const Rapor = (() => {
     return g;
   }
   const nip = s => { const a = String(s || '').replace(/\D/g, ''); return a.length === 18 ? a.slice(0, 8) + ' ' + a.slice(8, 14) + ' ' + a.slice(14, 15) + ' ' + a.slice(15) : String(s || '').trim(); };
+  /* wali kelas yang tampil di raport. Bila pemanggil mengirim o.wali (halaman guru: wali kelas yang SEKARANG menjabat di kelas raport itu,
+     kosong bila kelas tidak punya wali), itulah satu-satunya yang dipakai dan salinan nama di baris raport (wali_nama) diabaikan.
+     Salinan itu hanya dipakai bila o.wali tidak dikirim sama sekali (halaman portal orang tua). */
+  const waliTampil = (r, o) => {
+    if (o.wali !== undefined) return o.wali && o.wali.nama ? Object.assign({}, o.wali) : {};
+    return r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : {};
+  };
 
   /* ---------------- Raport perkembangan: aturan teks otomatis ---------------- */
   const BLN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -108,7 +115,7 @@ const Rapor = (() => {
       const i = x.i, lv = +N[i.id] || 0;
       return { no: x.no, kd: x.kd || '-', t: i.t || '', lv, cap: OV[i.id] != null && OV[i.id] !== '' ? String(OV[i.id]) : cap(i, lv, nama, S), cat: OC[i.id] != null && OC[i.id] !== '' ? String(OC[i.id]) : catI(i, lv, S) };
     }) })) }));
-    const w = r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : (o.wali || {});
+    const w = waliTampil(r, o);
     const kp = r.kepsek_nama ? { nama: r.kepsek_nama, nip: nip(r.kepsek_nip) } : (o.kepsek || {});
     if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
     if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
@@ -140,10 +147,10 @@ const Rapor = (() => {
   const susun = (r, o) => r && r.fmt === 'perkembangan' ? susunP(r, o) : susunN(r, o);
 
   /* r = baris tabel rapor. o = {logo, sekolah, alamat, nama, nisn, kelas, wali:{nama,nip}, kepsek:{nama,nip}}
-     (wali/kepsek dari o hanya dipakai bila raport belum menyimpan salinannya) */
+     (wali dari o menjadi satu-satunya wali yang tampil bila dikirim; kepsek dari o hanya dipakai bila raport belum menyimpan salinannya) */
   function susunN(r, o) {
     o = o || {};
-    const w = r.wali_nama ? { nama: r.wali_nama, nip: nip(r.wali_nip) } : (o.wali || {});
+    const w = waliTampil(r, o);
     const kp = r.kepsek_nama ? { nama: r.kepsek_nama, nip: nip(r.kepsek_nip) } : (o.kepsek || {});
     if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
     if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
