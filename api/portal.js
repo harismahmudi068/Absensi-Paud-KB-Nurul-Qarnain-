@@ -568,7 +568,7 @@ module.exports = async (req, res) => {
       : Promise.resolve('');
     const stempelP = v === 'rapor'
       ? L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=stempel&limit=1`, 'GET')
-          .then(r => { const x = r && r[0] && r[0].stempel; return (typeof x === 'string' && x.length <= 150000 && /^data:image\\/(png|webp|jpeg);base64,[A-Za-z0-9+\\/=]+$/.test(x)) ? x : ''; })
+          .then(r => { const x = r && r[0] && r[0].stempel; return (typeof x === 'string' && x.length <= 150000 && /^data:image\/(png|webp|jpeg);base64,[A-Za-z0-9+\\/=]+$/.test(x)) ? x : ''; })
           .catch(() => '')
       : Promise.resolve('');
     // Foto anak dan saklar izin: hanya untuk halaman kartu (siswa); gagal tidak mengganggu halaman.
