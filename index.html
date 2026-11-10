@@ -2760,6 +2760,7 @@ function isiSheetRiwayat(wb,M,bulan,rk,namaSheet){
  sgR(r0,tg.kota?{richText:[{text:tg.kota+',',font:{name:F,size:10,bold:true}},{text:' '+tg.tgl,font:{name:F,size:10}}]}:tg.tgl);
  sgR(r0+1,'( Kepala Sekolah )');sgR(r0+5,tg.nama||'................................',{bold:true,underline:true});if(tg.nip)sgR(r0+6,'Nip. '+tg.nip);
  if(wl){sgL(r0,{richText:[{text:'Mengetahui,',font:{name:F,size:10,bold:true}},{text:' Wali kelas',font:{name:F,size:10}}]});sgL(r0+1,'( '+wl.kelas+' )');sgL(r0+5,wl.nama,{bold:true,underline:true});if(wl.nip)sgL(r0+6,'Nip. '+wl.nip)}
+ return ws;
 }
 const kotaTtd=()=>String((S.set&&S.set.kota)||'').trim();
 function fmtNip(v){const a=String(v||'').replace(/\D/g,'');return a.length===18?a.slice(0,8)+' '+a.slice(8,14)+' '+a.slice(14,15)+' '+a.slice(15):String(v||'').trim()}
@@ -4397,7 +4398,7 @@ async function tabBerkas(t,nm,judul,sub,head,rows,kls,btn,num){await muatLib(['e
    d.setFont('helvetica','bold');d.setFontSize(13);d.text(judul+' - '+ns().toUpperCase(),105,14,{align:'center'});d.setFont('helvetica','normal');d.setFontSize(8.5);d.text(d.splitTextToSize(sub,180),105,20,{align:'center'});
    d.autoTable({startY:28,head:[head],body:rows.map(r=>r.map((v,i)=>nu.includes(i)&&v!==''?Number(v).toLocaleString('id-ID'):String(v))),columnStyles:cs,theme:'grid',styles:{fontSize:8,cellPadding:1.6},headStyles:{fillColor:[118,80,184],halign:'center'}});
    let y=d.lastAutoTable.finalY+10;if(y+42>285){d.addPage();y=20}
-   await pdfTtdRekap(d,k,y);d.save(nm+'.pdf')}
+   await pdfTtdRekap(d,kls,y);d.save(nm+'.pdf')}
   else{await muatLib('exceljs');if(typeof ExcelJS==='undefined')throw new Error('Pustaka Excel belum termuat, periksa koneksi internet');
    const F='Arial',wb=new ExcelJS.Workbook(),ws=wb.addWorksheet('Tabungan'),mid={vertical:'middle',horizontal:'center'},fl=a=>({type:'pattern',pattern:'solid',fgColor:{argb:a}});
    const mg=(r,a,b,v,o)=>{if(a<b)ws.mergeCells(r,a,r,b);const c=ws.getCell(r,a);c.value=v;c.font=Object.assign({name:F,size:10},o||{});c.alignment=mid;return c};
