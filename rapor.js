@@ -155,7 +155,8 @@ const Rapor = (() => {
     if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
     if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
     return {
-      logo: o.logo || null, stempel: o.stempel || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
+      logo: o.logo || null, stempel: o.stempel || null, sekolah: o.sekolah || '', alamat: o.alamat || '', kota: o.kota || '',
+      tgl: tglIndo(r.status === 'terbit' && r.diterbitkan_pada ? hariJkt(r.diterbitkan_pada) : hariJkt()),
       nama: o.nama || '', nisn: o.nisn || '', kelas: r.kelas_nama || o.kelas || '',
       semTxt: r.semester + ' (' + (r.semester === 1 ? 'Ganjil' : 'Genap') + ') - ' + r.jenis, ta: r.tahun_ajaran || '',
       wali: w, kepsek: kp,
@@ -295,6 +296,7 @@ const Rapor = (() => {
 
     /* --- Tanda tangan --- */
     let sy = Math.max(y + 4, 238); if (sy + 32 > 288) sy = halBaru() + 6;
+    if (D.tgl) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...TX); doc.text('Diterbitkan: ' + (D.kota ? D.kota + ', ' : '') + D.tgl + '.', R, sy - 10, { align: 'right' }); }
     const wl0 = D.wali || {}, kp0 = D.kepsek || {}, PT = [{ l: 'Orang Tua / Wali', ot: 1 }];
     if (wl0.nama) PT.push({ l: 'Wali Kelas', n: wl0.nama, p: wl0.nip, ttd: wl0.ttd });
     if (kp0.nama) PT.push({ l: 'Kepala Sekolah', n: kp0.nama, p: kp0.nip, ttd: kp0.ttd });
