@@ -294,7 +294,7 @@ function pkSimpan(lanjut) {
 }
 
 /* ---------------- PDF ---------------- */
-function pkPengelola() { const g = (S.guru || []).find(x => x.role === 'pengelola' && x.aktif); return g ? { nama: g.nama, nip: fmtNip(g.nip) } : null; }
+function pkPengelola() { const g = (S.guru || []).find(x => x.role === 'pengelola' && x.aktif); return g ? { id: g.id, nama: g.nama, nip: fmtNip(g.nip) } : null; }
 /* keputusan untuk pratinjau draf (raport terbit memakai yang tersimpan di barisnya) */
 function pkKepO(r) {
   if (!(pnUas2() && r.jenis === 'UAS' && +r.semester === 2)) return {};
@@ -304,8 +304,13 @@ function pkSusun(r, logo, info) {
   let s = S.siswa.find(x => x.id === r.siswa_id) || {};
   if (info && info.alumni) s = { nama: info.nama, nisn: info.nisn, tempat: info.tempat, tgl: info.tgl };
   const kg = PKR.kel.find(k => k.id === r.kelompok_id) || pkKel(s) || {};
+  const wali = ttdWali(r.kelas_nama) || {}, kepsek = ttdKepsek(), pengelola = pkPengelola();
+  const sig = info && info.ttd || {};
+  if (wali.id) wali.ttd = sig[wali.id] || null;
+  if (kepsek.id) kepsek.ttd = sig[kepsek.id] || null;
+  if (pengelola && pengelola.id) pengelola.ttd = sig[pengelola.id] || null;
   return Rapor.susun(r, { logo, sekolah: ns(), alamat: (S.set && S.set.alamat) || '', kota: kotaTtd(), nama: s.nama, panggilan: s.pan, nisn: s.nisn, kelas: r.kelas_nama, tempatLahir: s.tempat, tglLahir: s.tgl,
-    kelompok: kg.nama || '', kelompokLabel: pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok Usia', master: pkMasterS(s, r), wali: ttdWali(r.kelas_nama) || {}, kepsek: ttdKepsek(), pengelola: pkPengelola(), ...pkKepO(r) });
+    kelompok: kg.nama || '', kelompokLabel: pkMode() === 'kelas' ? 'Kelompok' : 'Kelompok Usia', master: pkMasterS(s, r), wali, kepsek, pengelola, ...pkKepO(r) });
 }
 
 /* ---------------- Tahap 4: terbit raport perkembangan ---------------- */
