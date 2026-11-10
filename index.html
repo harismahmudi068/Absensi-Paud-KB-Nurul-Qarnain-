@@ -1468,7 +1468,7 @@ async function masukDeveloper(){try{cmKosong();SEK=null;role='Developer';meNama=
 async function masukSekolah(m){try{cmKosong();SEK=m.sekolah_id;role=LBL[m.role];meNama=PROFIL.nama;try{sessionStorage.setItem('sekolah_aktif',SEK)}catch(e){}
   S.absen={};S.pesan=[];RHS=null;CFG_SID=null;izinKelola=null;izinExp=0;S.devGuru=null;draft=null;mMulti=false;mSel.clear();attKelas='';scanKelas='';kk='';rk='';lo='';q='';gQ='';gsel.clear();gHapusMode=false;ssel.clear();sHapusMode=false;
   KONFIG_NANTI=false;await muatDasar();if(adalahKepala()||role==='Developer')muatRahasia().then(()=>{if(view==='dashboard'&&!$('#ap').classList.contains('hid'))renderV()});$('#lg').classList.add('hid');$('#ap').classList.remove('hid');$('#bn').classList.remove('hid');
-  const bv=sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView');view=(bv&&allowed(bv))?bv:'dashboard';pasangBanner();await go(view);if(adalahKepala())setTimeout(sapaAwal,300)}
+  let bv=null;try{bv=sessionStorage.getItem('menu_terakhir')||sessionStorage.getItem('bukaView');sessionStorage.removeItem('bukaView')}catch(e){}view=(bv&&allowed(bv))?bv:'dashboard';pasangBanner();await go(view);if(adalahKepala())setTimeout(sapaAwal,300)}
  catch(e){await gagalMuat(e)}}
 function tampilPilihSekolah(){info('Pilih sekolah','<div class="note">Akun Anda terdaftar di lebih dari satu sekolah. Pilih sekolah yang ingin dibuka.</div>'+MEMB.map(m=>`<button class="btn success" style="width:100%;margin:6px 0;display:flex;justify-content:space-between;gap:10px" onclick="pilihSekolah(${m.sekolah_id})"><span>🏫 ${esc(m.nama)}</span><small>${esc(LBL[m.role])}</small></button>`).join(''));{const b=$('#mtp');if(b){b.textContent='Keluar';b.className='btn danger';b.onclick=()=>{closeM();keluar()}}}}
 async function pilihSekolah(id){const m=MEMB.find(x=>x.sekolah_id===id);if(!m)return;closeM();ld(1,'Membuka sekolah...');try{await masukSekolah(m)}finally{ld(0)}}
@@ -1585,7 +1585,7 @@ let drwT=null;
 function drw(o){const d=$('#drw');if(o){clearTimeout(drwT);d.classList.remove('closing');d.classList.add('show');return}
  if(!d.classList.contains('show')||d.classList.contains('closing'))return;
  d.classList.add('closing');clearTimeout(drwT);drwT=setTimeout(()=>d.classList.remove('show','closing'),310)}
-async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();if(!await jagaTanya('semua'))return;tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;if(id!=='pesan'){pHapusMode=false;pesTab='masuk';psel.clear()}if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
+async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();if(!await jagaTanya('semua'))return;tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;try{if(allowed(id))sessionStorage.setItem('menu_terakhir',id)}catch(e){}if(id!=='pesan'){pHapusMode=false;pesTab='masuk';psel.clear()}if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
  try{if(LOAD[id]){const ck=cmKunci(id);if(!(ck&&!paksa&&cmOk(ck[0],ck[1]))){const v0=cmVer;await LOAD[id](paksa);if(ck&&v0===cmVer)cmCatat(ck[0],v0)}}}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
  const ms=MENUS.filter(m=>allowed(m[0])),bt=m=>`<button class="${view===m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[2]}</span>${m[1]}</button>`;let h;
