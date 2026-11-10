@@ -36,7 +36,7 @@ async function anggotaTarget(id, sid) {
   return (a || [])[0] || null;
 }
 async function profil(id) {
-  const a = await L.panggil('/rest/v1/profil?id=eq.' + encodeURIComponent(id) + '&select=id,nama,ttd_path', 'GET');
+  const a = await L.panggil('/rest/v1/profil?id=eq.' + encodeURIComponent(id) + '&select=id,nama,ttd_path,aktif', 'GET');
   return (a || [])[0] || null;
 }
 async function fileData(path) {
@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
     if (!token) return res.status(401).json({ error: 'Belum login' });
     const user = await L.panggil('/auth/v1/user', 'GET', null, { Authorization: 'Bearer ' + token });
     const p = await profil(user.id);
-    if (!p) return res.status(403).json({ error: 'Profil akun tidak ditemukan' });
+    if (!p || !p.aktif) return res.status(403).json({ error: 'Akun tidak aktif atau profil tidak ditemukan' });
     const isDev = (await L.panggil('/rest/v1/profil?id=eq.' + user.id + '&select=role,aktif', 'GET'))[0]?.role === 'developer';
     const b = req.body || {};
     const aksi = String(b.aksi || '');
@@ -95,12 +95,10 @@ module.exports = async (req, res) => {
       const ids = [...new Set((Array.isArray(b.ids) ? b.ids : []).map(String))];
       if (ids.length > 40 || ids.some(id => !RE_UUID.test(id)))
         return res.status(400).json({ error: 'Daftar guru tidak valid' });
-      if (!bolehKelolaLain && ids.some(id => id !== user.id))
-        return res.status(403).json({ error: 'Tidak diizinkan mengambil tanda tangan guru lain' });
       const rows = await L.panggil('/rest/v1/keanggotaan?sekolah_id=eq.' + sid +
         '&profil_id=in.(' + ids.join(',') + ')&select=profil_id', 'GET');
       const valid = new Set((rows || []).map(x => x.profil_id));
-      if (ids.some(id => !valid.has(id))) return res.status(403).json({ error: 'Guru tidak terdaftar aktif di sekolah ini' });
+      if (ids.some(id => !valid.has(id))) return res.status(403).json({ error: 'Guru tidak terdaftar di sekolah ini' });
       const out = {};
       await Promise.all(ids.map(async id => {
         const q = await profil(id);
