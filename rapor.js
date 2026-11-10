@@ -131,7 +131,7 @@ const Rapor = (() => {
     const uas2 = r.jenis === 'UAS' && +r.semester === 2, kj = r.status === 'terbit' ? r.keputusan : (o.keputusan || r.keputusan), kt = r.status === 'terbit' ? r.kelas_tujuan : (o.kelasTujuan || r.kelas_tujuan);
     const kep = uas2 && ['naik', 'tinggal', 'lulus'].includes(kj) ? { j: kj, t: kj === 'naik' ? String(kt || '') : '' } : { j: '', t: '' };
     return {
-      fmt: 'perkembangan', logo: o.logo || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
+      fmt: 'perkembangan', logo: o.logo || null, stempel: o.stempel || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
       nama: o.nama || '', nisn: o.nisn || '', kelas: r.kelas_nama || o.kelas || '',
       ttl: [o.tempatLahir, tglIndo(o.tglLahir, true)].filter(Boolean).join(', '),
       kelompokLabel: o.kelompokLabel || 'Kelompok Usia', kelompok: o.kelompok || '',
@@ -155,7 +155,7 @@ const Rapor = (() => {
     if (o.wali && o.wali.ttd) w.ttd = o.wali.ttd;
     if (o.kepsek && o.kepsek.ttd) kp.ttd = o.kepsek.ttd;
     return {
-      logo: o.logo || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
+      logo: o.logo || null, stempel: o.stempel || null, sekolah: o.sekolah || '', alamat: o.alamat || '',
       nama: o.nama || '', nisn: o.nisn || '', kelas: r.kelas_nama || o.kelas || '',
       semTxt: r.semester + ' (' + (r.semester === 1 ? 'Ganjil' : 'Genap') + ') - ' + r.jenis, ta: r.tahun_ajaran || '',
       wali: w, kepsek: kp,
@@ -301,6 +301,7 @@ const Rapor = (() => {
       const ny = sy + 26; doc.text('( ' + (q.n || '............................') + ' )', x, ny, { align: 'center' });
       if (!q.ot) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (q.p || '...............'), x, ny + 4.5, { align: 'center' }); }
     });
+    if (D.stempel && D.stempel.url) { const school=PT.map((q,i)=>({q,x:sx[i]})).filter(x=>!x.q.ot); if(school.length){const cx=school.length>1?(school[0].x+school[school.length-1].x)/2:school[0].x;doc.addImage(D.stempel.url,'PNG',cx-12,sy+3,24,20);} }
   }
 
   /* ---------------- DESAIN RAPORT PERKEMBANGAN (aspek > kategori > indikator) ---------------- */
@@ -451,6 +452,7 @@ const Rapor = (() => {
       A.muat('( ' + (p[1] || '..........................') + ' )', 44, 9, 6.5); doc.text('( ' + (p[1] || '..........................') + ' )', CX[i], yl + 17, { align: 'center' });
       if (!p[3]) { doc.setFontSize(8); doc.setTextColor(...GR); doc.text('NIP. ' + (p[2] || '...............'), CX[i], yl + 21.5, { align: 'center' }); }
     });
+    if (D.stempel && D.stempel.url) { const school=P.map((p,i)=>({p,x:CX[i]})).filter(x=>!x.p[3]); if(school.length){const cx=school.length>1?(school[0].x+school[school.length-1].x)/2:school[0].x;doc.addImage(D.stempel.url,'PNG',cx-12,yl+1,24,20);} }
     kaki();
   }
   const gambar = (doc, D) => D && D.fmt === 'perkembangan' ? gambarP(doc, D) : gambarN(doc, D);
