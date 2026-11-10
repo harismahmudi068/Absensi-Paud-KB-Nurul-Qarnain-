@@ -3075,6 +3075,7 @@ V.tahunajaran=()=>`${taInit()}${panelTahunAjaranHtml()}`;
 V.pengaturan=()=>`${taInit()}${panelTahunAjaranHtml()}
 <div class="panel" id="pnNama"><div class="ph">🏫 Nama Sekolah</div><div class="pb"><div class="note">Nama ini tampil di menu samping, dashboard, kartu pelajar, riwayat/rekap absensi (PDF dan XLSX), serta pesan laporan orang tua. Setelah disimpan, halaman dimuat ulang otomatis.</div><div class="tb"><input id="nsInp" class="input grow" maxlength="80" value="${esc(ns())}" placeholder="Nama sekolah" onkeydown="if(event.key==='Enter')simpanNamaSekolah($('#nsBtn'))"><button id="nsBtn" class="btn success" onclick="simpanNamaSekolah(this)">💾 Simpan</button></div></div></div>
 <div class="panel" id="pnLogo"><div class="ph">🖼️ Logo Sekolah</div><div class="pb"><div class="note">Logo tampil di menu samping, dashboard, dan kartu pelajar. Gunakan gambar persegi atau bulat (PNG transparan paling bagus). Ukuran file maksimum <b>2 MB</b> (PNG, JPG, atau WebP). Gambar otomatis diperkecil saat disimpan.</div><div class="tb" style="align-items:center;gap:14px"><div class="lgprev">${logoHtml()}</div><div style="display:flex;flex-direction:column;gap:8px"><input id="lgFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="pilihLogo(this)"><button class="btn success" onclick="$('#lgFile').click()">⬆ ${logoOk(S.set.logo)?'Ganti logo':'Unggah logo'}</button>${logoOk(S.set.logo)?'<button class="btn danger" onclick="hapusLogo()">🗑 Hapus logo</button>':''}</div></div></div></div>
+<div class="panel" id="pnStempel"><div class="ph">🔴 Stempel Sekolah</div><div class="pb"><div class="note">Stempel digunakan pada area tanda tangan raport, di atas nama penandatangan. Gunakan gambar dengan latar transparan (PNG disarankan). Ukuran file maksimum <b>2 MB</b>.</div><div class="tb" style="align-items:center;gap:14px"><div class="lgprev">${stempelHtml()}</div><div style="display:flex;flex-direction:column;gap:8px"><input id="stFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="pilihStempel(this)"><button class="btn success" onclick="$('#stFile').click()">⬆ ${stempelOk(S.set.stempel)?'Ganti stempel':'Unggah stempel'}</button>${stempelOk(S.set.stempel)?'<button class="btn danger" onclick="hapusStempel()">🗑 Hapus stempel</button>':''}</div></div></div></div>
 <div class="panel" id="pnFotoOrtu"><div class="ph">📷 Foto Siswa</div><div class="pb"><div class="note">Bila diaktifkan, orang tua dapat mengunggah atau mengganti foto anak sendiri lewat Halaman Siswa (tombol Upload/Ubah foto). Foto yang tidak sesuai dapat dihapus kapan saja lewat Data Siswa, Ubah Siswa, Hapus foto. Bila dimatikan, hanya sekolah yang dapat mengubah foto.</div>
 <div class="tb cbrow"><label class="cbl"><input id="cbFotoOrtu" type="checkbox" ${S.set.izin_foto_ortu!==false?'checked':''} onchange="setIzinFoto(this.checked)"> Izinkan orang tua mengubah foto anak</label></div></div></div>
 <div class="panel" id="pnAlamat"><div class="ph">📍 Alamat Sekolah</div><div class="pb"><div class="note">Kota dipakai pada tanda tangan Kepala Sekolah di rekap (contoh: Jember, Minggu 4 Oktober 2026).</div><div class="fg"><div class="fd"><label class="l">Alamat sekolah</label><input id="alInp" class="input" maxlength="150" value="${esc(S.set.alamat||'')}" placeholder="Jl. Contoh, RT/RW 00/01, Desa Contoh"></div><div class="fd"><label class="l">Kota / kabupaten (untuk tanda tangan rekap)</label><input id="ktInp" class="input" maxlength="60" value="${esc(S.set.kota||'')}" placeholder="contoh Jember"></div></div><button class="btn success" style="margin-top:14px" onclick="simpanAlamat(this)">💾 Simpan alamat</button></div></div>
@@ -3183,6 +3184,13 @@ async function pilihLogo(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f
 async function hapusLogo(){if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);
  if(!await konfirmasi('Hapus logo sekolah?\n\nLogo di menu samping, dashboard, dan kartu pelajar akan kembali ke tampilan bawaan.',{bahaya:true,judul:'Hapus logo',ya:'Hapus'}))return;
  guard(async()=>{await simpanLogo(null);toast('Logo sekolah dihapus')})}
+
+const stempelOk=v=>typeof v==='string'&&v.length<=150000&&/^data:image\\/(png|webp|jpeg);base64,/.test(v);
+const stempelHtml=()=>stempelOk(S.set&&S.set.stempel)?'<img alt="Stempel sekolah" src="'+esc(S.set.stempel)+'">':'🔴';
+async function simpanStempel(v){const r=await dbq(db.from('pengaturan').update({stempel:v}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan atau Anda tidak berhak mengubahnya');S.set.stempel=v;renderV()}
+function stempelKecil(file){return new Promise((ok,gagal)=>{const u=URL.createObjectURL(file),im=new Image();im.onerror=()=>{URL.revokeObjectURL(u);gagal(new Error('File bukan gambar yang valid'))};im.onload=()=>{URL.revokeObjectURL(u);try{let hasil='';for(const sz of [512,448,384,320,256,200]){const r=Math.min(1,sz/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r)),cv=skalaLogo(im,w,h);for(const f of ['image/png','image/webp']){const d=cv.toDataURL(f,.94);if(d.startsWith('data:'+f)&&d.length<=148000){hasil=d;break}}if(hasil)break}if(hasil)ok(hasil);else gagal(new Error('Stempel terlalu besar setelah diperkecil. Gunakan gambar yang lebih sederhana'))}catch(e){gagal(e)}};im.src=u})}
+async function pilihStempel(inp){const f=inp.files&&inp.files[0];inp.value='';if(!f)return;if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);if(f.size>2*1024*1024)return toast('Ukuran file maksimum 2 MB',false);let v;try{ld(1,'Memproses stempel...');v=await stempelKecil(f)}catch(e){return toast(e.message||String(e),false)}finally{ld(0)}if(!await konfirmasi('Gunakan gambar ini sebagai stempel sekolah pada raport?',{ikon:'🔴',judul:'Simpan stempel?',ya:'Simpan',gambar:v}))return;guard(async()=>{await simpanStempel(v);toast('Stempel sekolah disimpan')})}
+async function hapusStempel(){if(MB&&MB())return toast('Tidak tersedia di mode bantuan',false);if(!await konfirmasi('Hapus stempel sekolah dari raport?',{bahaya:true,judul:'Hapus stempel',ya:'Hapus'}))return;guard(async()=>{await simpanStempel(null);toast('Stempel sekolah dihapus')})}
 function simpanAlamat(btn){const al=$('#alInp').value.trim(),kt=$('#ktInp').value.trim();if(btn)btn.disabled=true;
  return guard(async()=>{try{const r=await dbq(db.from('pengaturan').update({alamat:al||null,kota:kt||null}).select('id'));if(!r||!r.length)throw new Error('Pengaturan sekolah tidak ditemukan');S.set.alamat=al;S.set.kota=kt;toast('Alamat sekolah disimpan');renderV();return true}finally{if(btn)btn.disabled=false}})}
 async function simpanNamaSekolah(btn){const v=String($('#nsInp').value||'').replace(/\s+/g,' ').trim();
@@ -4024,12 +4032,12 @@ async function alRapor(id){const a=(AL.data||[]).find(x=>x.id===id);if(!a)return
    }catch(e){console.warn('Indikator raport alumni belum termuat',e)}}
   if(!window._alRap.length){info('Raport '+a.nama,'<div class="note">Tidak ada raport terbit yang tersimpan untuk alumni ini.</div>');return}
   info('Raport '+a.nama,'<div class="mu" style="margin-bottom:8px">Raport tersimpan selama data alumni ada, lalu terhapus bersama data alumni.</div>'+window._alRap.map((r,i)=>`<div class="tb" style="align-items:center"><div style="flex:1"><b>${r.jenis} Semester ${r.semester}</b><div class="mu">TA ${esc(r.tahun_ajaran)} · Kelas ${esc(r.kelas_nama||'-')}</div></div><button class="btn sm soft" onclick="alRaporLihat(${i})">👁 Lihat</button><button class="btn sm soft" onclick="alRaporPdf([${i}],this)">📄 PDF</button></div>`).join('')+`<div class="tb"><button class="btn success" onclick="alRaporPdf([${window._alRap.map((_,i)=>i).join(',')}],this)">📄 Unduh semua (${window._alRap.length})</button></div>`)})}
-async function alRaporD(a,r,logo){
- if(r.fmt==='perkembangan')return pkSusun(r,logo,{alumni:true,nama:a.nama,nisn:a.nisn||'',tempat:a.tempat_lahir||'',tgl:a.tgl_lahir||''});
- return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:a.nama,nisn:a.nisn||'',wali:null,kepsek:null})}
+async function alRaporD(a,r,logo,stempel){
+ if(r.fmt==='perkembangan')return pkSusun(r,logo,{alumni:true,nama:a.nama,nisn:a.nisn||'',tempat:a.tempat_lahir||'',tgl:a.tgl_lahir||'',stempel});
+ return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:a.nama,nisn:a.nisn||'',wali:null,kepsek:null})}
 /* pratinjau satu raport alumni (satu siswa, satu raport) */
 function alRaporLihat(i){const a=window._alA,r=(window._alRap||[])[i];if(!a||!r)return;
- guard(async()=>{await muatLib('pdf');const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),D=await alRaporD(a,r,logo);
+ guard(async()=>{await muatLib('pdf');const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null),D=await alRaporD(a,r,logo,stempel);
   info('Raport '+a.nama,`<div class="rpv"><div class="note"><b>${esc(a.nama)}</b>${a.nisn?' · NISN '+esc(a.nisn):''}<br>Kelas ${esc(r.kelas_nama||'-')} · TA ${esc(r.tahun_ajaran)} · Semester ${esc(r.semester)} · ${esc(r.jenis)}</div>
   <div class="tb" style="flex-wrap:wrap;align-items:center"><button type="button" class="btn soft sm" onclick="rpZoom(-80)">➖ Perkecil</button><button type="button" class="btn soft sm" onclick="rpZoom(80)">➕ Perbesar</button><span class="mu">Geser untuk melihat bagian lain</span></div>
   <div id="rpPrev" class="rpprev"><div class="note">⏳ Menyiapkan raport...</div></div>
@@ -4042,10 +4050,10 @@ function alRaporPdf(idx,btn){const a=window._alA,rs=idx.map(i=>window._alRap[i])
 
 /* ---- PDF raport: DESAIN ada di /rapor.js (dipakai bersama portal). Di sini hanya menyiapkan data ---- */
 async function pnPdfBuat(rs,infoFn,nf,btn){await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membuat PDF...'))return;
- try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),infos=rs.map(r=>infoFn(r)||{}),ids=[];
+ try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null),infos=rs.map(r=>infoFn(r)||{}),ids=[];
   rs.forEach((r,i)=>{const w=infos[i].wali||ttdWali(r.kelas_nama),k=infos[i].kepsek||ttdKepsek(),pg=r.fmt==='perkembangan'?pkPengelola([w&&w.id,k&&k.id]):null;if(w&&w.id)ids.push(w.id);if(k&&k.id)ids.push(k.id);if(pg&&pg.id)ids.push(pg.id)});
   const sig=await ttdPngAmbil(ids);
-  const Ds=rs.map((r,ix)=>{const i=infos[ix];if(r.fmt==='perkembangan')return pkSusun(r,logo,{...i,ttd:sig});i.wali=i.wali||ttdWali(r.kelas_nama);i.kepsek=i.kepsek||ttdKepsek();if(i.wali&&i.wali.id)i.wali.ttd=sig[i.wali.id]||null;if(i.kepsek&&i.kepsek.id)i.kepsek.ttd=sig[i.kepsek.id]||null;if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
+  const Ds=rs.map((r,ix)=>{const i=infos[ix];if(r.fmt==='perkembangan')return pkSusun(r,logo,{...i,ttd:sig,stempel});i.wali=i.wali||ttdWali(r.kelas_nama);i.kepsek=i.kepsek||ttdKepsek();if(i.wali&&i.wali.id)i.wali.ttd=sig[i.wali.id]||null;if(i.kepsek&&i.kepsek.id)i.kepsek.ttd=sig[i.kepsek.id]||null;if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
   await Rapor.pdf(Ds,nf);toast('PDF raport sedang diproses, mohon ditunggu')}
  catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 async function pnPdf(ids,btn){const rs=pnRap.filter(r=>ids.includes(r.id));if(!rs.length)return toast('Belum ada raport tersimpan untuk diunduh',false);
@@ -4896,17 +4904,17 @@ async function rpAmbil(id){let r=RP.full.get(id);if(r)return r;
  const a=await dbq(db.from('rapor').select('*').eq('id',id));r=(a||[])[0];if(!r)throw new Error('Raport tidak ditemukan, mungkin sudah dihapus.');RP.full.set(id,r);return r}
 /* siapkan data gambar raport; desainnya SAMA dengan PDF (rapor.js), jadi yang dilihat = yang diunduh */
 async function rpDataD(r){
- const s=siswaById(r.siswa_id)||{},logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null);
+ const s=siswaById(r.siswa_id)||{},logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null);
  if(r.fmt==='perkembangan'){
   if(typeof PKR==='undefined'||typeof pkSusun!=='function')throw new Error('Modul raport perkembangan belum termuat, muat ulang halaman.');
   if(!PKR.loaded)await pkMuat();
   if(r.salinan_hash&&!PKR.sal.has(r.salinan_hash)){const a=await dbq(db.from('rapor_salinan').select('hash,isi').eq('hash',r.salinan_hash));(a||[]).forEach(x=>PKR.sal.set(x.hash,x.isi))}
   const wali=ttdWali(r.kelas_nama)||{},kepsek=ttdKepsek(),pg=pkPengelola([wali.id,kepsek.id]),sig=await ttdPngAmbil([wali.id,kepsek.id,pg&&pg.id]);
-  return pkSusun(r,logo,{ttd:sig})
+  return pkSusun(r,logo,{ttd:sig,stempel})
  }
  const wali=ttdWali(r.kelas_nama)||{},kepsek=ttdKepsek(),sig=await ttdPngAmbil([wali.id,kepsek.id]);
  if(wali.id)wali.ttd=sig[wali.id]||null;if(kepsek.id)kepsek.ttd=sig[kepsek.id]||null;
- return Rapor.susun(r,{logo,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:s.nama,nisn:s.nisn,wali,kepsek})
+ return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',nama:s.nama,nisn:s.nisn,wali,kepsek})
 }
 function rpLihatHTML(r,s,b){
  const stt=r.status==='terbit'?'<span class="badge hadir">Terbit</span>':'<span class="badge terlambat">Draf</span>';
