@@ -1892,7 +1892,7 @@ async function ttdProfilMuat(force){
  const box=$('#ttdProfilBox');if(!box)return;if(MB()){box.innerHTML='<div class="note">Mode bantuan: tanda tangan hanya dapat dikelola oleh pemilik akun.</div>';return}
  if(!force&&TTD_PROFIL_USER===me&&TTD_PROFIL!==null){box.innerHTML=ttdProfilHtml(TTD_PROFIL);return}
  box.innerHTML='<div class="mu">Memuat tanda tangan...</div>';
- try{const j=await apiTtd({aksi:'lihat'});TTD_PROFIL=j.data||'';TTD_PROFIL_USER=me;box.innerHTML=ttdProfilHtml(TTD_PROFIL)}
+ try{const j=await apiTtd({aksi:'lihat'});TTD_PROFIL=j.data||'';TTD_PROFIL_USER=me;TTD_GURU[me]=!!j.ada;box.innerHTML=ttdProfilHtml(TTD_PROFIL)}
  catch(e){box.innerHTML='<div class="note" style="color:var(--rd)">'+esc(e.message||String(e))+'</div>'}
 }
 function ttdProfilHtml(data){
@@ -1906,12 +1906,12 @@ function ttdBacaFile(file){
 }
 async function ttdFileSaya(inp){
  const f=inp.files&&inp.files[0];inp.value='';if(!f)return;
- guard(async()=>{const data=await ttdBacaFile(f);await apiTtd({aksi:'simpan',data});TTD_PROFIL=data;TTD_PROFIL_USER=me;ttdProfilMuat(true);toast('Tanda tangan berhasil disimpan')});
+ guard(async()=>{const data=await ttdBacaFile(f);await apiTtd({aksi:'simpan',data});TTD_PROFIL=data;TTD_PROFIL_USER=me;TTD_GURU[me]=true;ttdProfilMuat(true);toast('Tanda tangan berhasil disimpan')});
 }
 async function ttdHapusSaya(){
  if(!TTD_PROFIL)return;
  if(!await konfirmasi('Hapus tanda tangan Anda? Tanda tangan tidak akan tampil pada raport sampai diunggah kembali.',{judul:'Hapus tanda tangan',ya:'Hapus',bahaya:1}))return;
- guard(async()=>{await apiTtd({aksi:'hapus'});TTD_PROFIL='';TTD_PROFIL_USER=me;ttdProfilMuat(true);toast('Tanda tangan berhasil dihapus')});
+ guard(async()=>{await apiTtd({aksi:'hapus'});TTD_PROFIL='';TTD_PROFIL_USER=me;TTD_GURU[me]=false;ttdProfilMuat(true);toast('Tanda tangan berhasil dihapus')});
 }
 async function ttdGuruMuatDev(force){
  if(role!=='Developer'||TTD_GURU_DEV_LOADING||(!force&&TTD_GURU_DEV_DONE))return;
