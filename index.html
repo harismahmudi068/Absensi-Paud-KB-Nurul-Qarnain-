@@ -2427,7 +2427,7 @@ async function salinLinkUji(){const ok=await salinLink(Kartu.isiQR(KODE_UJI));ok
 async function unduhUjiScan(el){if(!el||el.dataset.b==='1')return;el.dataset.b='1';const t=el.textContent;el.textContent='Menyiapkan kartu uji...';try{await jedaUnduh();simpanPng(kartuUrl(siswaUji(),'belakang'),'kartu-uji-belakang.png');toast('Kartu uji (belakang) diunduh')}catch(e){toast('Gagal mengunduh kartu uji: '+(e.message||e),false)}finally{el.dataset.b='0';el.textContent=t}}
 async function usbUjiOtomatis(){if(usbPh!=='uji'||!usbOn)return;const u=Kartu.isiQR(KODE_UJI);await salinLink(u);const i=$('#usbIn');if(i)i.value=u;toast('Kode kartu uji disalin dan diisi otomatis');setTimeout(()=>{if(usbPh!=='uji'||!usbOn)return;const e=$('#usbIn');if(e)e.value='';usbOtoNext=true;usbKirim(u)},500)}
 let KCB=0;const KC_BATAS=18*1024*1024,KC_JUMLAH=80;
-function kartuCacheBersih(){kartuCacheBersih();KCB=0}
+function kartuCacheBersih(){KC.clear();KCB=0}
 function kartuHash(v){v=String(v||'');let h=2166136261;for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
 function kartuCacheAmbil(k){const v=KC.get(k);if(!v)return null;KC.delete(k);KC.set(k,v);return v.url}
 function kartuCacheSimpan(k,url){const bytes=url.length*2;if(bytes>KC_BATAS)return;const lama=KC.get(k);if(lama){KCB-=lama.bytes;KC.delete(k)}while(KC.size&&(KC.size>=KC_JUMLAH||KCB+bytes>KC_BATAS)){const k0=KC.keys().next().value,v0=KC.get(k0);KC.delete(k0);KCB-=v0.bytes}KC.set(k,{url,bytes});KCB+=bytes}
