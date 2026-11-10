@@ -165,8 +165,8 @@ module.exports = async (req, res) => {
       const tokenById = new Map();
       if (targetGrup.length) {
         if (meta.jenis !== 'libur') return res.status(400).json({ error: 'Tujuan grup hanya diizinkan untuk notifikasi libur' });
-        const grupRows = await sb(\`/rest/v1/grup_wa?sekolah_id=eq.\${sekolahId}&grup_id=in.(\${targetGrup.map(encodeURIComponent).join(',')})&select=grup_id,label,token_id\`);
-        const tokenRows = await sb(\`/rest/v1/fonnte_token?sekolah_id=eq.\${sekolahId}&select=id,token\`);
+        const grupRows = await sb(`/rest/v1/grup_wa?sekolah_id=eq.${sekolahId}&grup_id=in.(${targetGrup.map(encodeURIComponent).join(',')})&select=grup_id,label,token_id`);
+        const tokenRows = await sb(`/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=id,token`);
         (tokenRows || []).forEach(x => tokenById.set(String(x.id), x.token));
         (grupRows || []).forEach(x => grupByTarget.set(String(x.grup_id), x));
       }
