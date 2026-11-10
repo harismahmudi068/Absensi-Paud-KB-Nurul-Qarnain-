@@ -1958,7 +1958,7 @@ async function ttdPngAmbil(ids){
 let gsel=new Set();
 let gHapusMode=false;
 function bolehHapusGuru(){return adalahKepala()||role==='Developer'}
-function bukaHapusGuru(){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Operator, atau Developer yang dapat menghapus akun guru',false);gHapusMode=true;gsel.clear();renderV()}
+function bukaHapusGuru(){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, Operator, atau Developer yang dapat menghapus akun guru',false);gHapusMode=true;gsel.clear();renderV()}
 function batalHapusGuru(){gHapusMode=false;gsel.clear();renderV()}
 function guruCekUI(){const r=cekBaris('#v .ckg');cekHdr('gCekAll',r.length,r.filter(x=>x.checked).length);cekBtn('gHapusBtn',gsel.size,'🗑 Keluarkan terpilih')}
 function pilihGuru(id,on){if(!bolehHapusGuru())return;on?gsel.add(id):gsel.delete(id);guruCekUI()}
@@ -2053,9 +2053,9 @@ function formGuruBaru(wa,izin){const opsi=['Guru','Operator','Pengelola/Pengasuh
   const jk=KEYR[v.role]==='kepala_sekolah';
   if(jk&&!await konfirmasi('Guru baru ini akan menjadi Kepala Sekolah dan Kepala Sekolah saat ini otomatis menjadi Guru. Lanjutkan?',{judul:'Ganti Kepala Sekolah',ya:'Lanjutkan',ikon:'👑'}))return;
   await apiGuru({aksi:'tambah',nama:v.nama,nip:v.nip,username:v.user,sandi:v.sandi,role:KEYR[v.role]||'guru',no_wa:wa,izin});
-  if(jk&&role==='Kepala Sekolah'){toast('Guru baru menjadi Kepala Sekolah. Peran Anda menjadi Guru');await mulai();return}
+  if(jk&&adalahKepala()){toast('Guru baru menjadi Kepala Sekolah. Peran Anda menjadi Guru');await mulai();return}
   await muatProfil();toast('Guru ditambahkan. Minta guru mengganti kata sandi awalnya');renderV()})}
-function addGuru(){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Operator, atau Developer yang dapat menambah guru',false);
+function addGuru(){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, Operator, atau Developer yang dapat menambah guru',false);
  mintaIzin(izin=>form('Tambah guru',[{k:'wa',l:'Nomor WhatsApp guru (contoh 08123456789)'}],async v=>{
   const wa=normWA(v.wa);if(!/^628\d{8,12}$/.test(wa))throw new Error('Nomor WhatsApp tidak valid');
   const c=await apiGuru({aksi:'cek_nomor',no_wa:wa});
@@ -2075,16 +2075,16 @@ function gantiNomor(op){if(MB())return toast('Tidak tersedia di mode bantuan',fa
     let okP=true;if(role==='Kepala Sekolah'){try{await apiPengaturan({aksi:'simpan',nomor_kepala:fmtWA(wa)});await muatRahasia()}catch(e){okP=false;console.warn(e)}}
     if(okP)toast(role==='Kepala Sekolah'?'Nomor WhatsApp diperbarui di Profil dan Pengaturan':'Nomor WhatsApp diperbarui');else toast('Nomor di Profil sudah diperbarui, tetapi di Pengaturan belum. Buka Pengaturan lalu simpan ulang.',false);renderV()});
    $('#ms').textContent='Verifikasi'};otpSimpan('ganti_nomor',{wa},bukaV,()=>gantiNomor(op));setTimeout(bukaV,150)});$('#ms').textContent='Kirim kode'}
-function setGuruRole(id,r){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Operator, atau Developer yang dapat mengubah peran guru',false);
+function setGuruRole(id,r){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, Operator, atau Developer yang dapat mengubah peran guru',false);
  const g=S.guru.find(x=>x.id===id)||{};
  const jalan=async()=>{try{await apiGuru({aksi:'ubah_role',id,role:r});
-   if(r==='kepala_sekolah'&&role==='Kepala Sekolah'){toast((g.nama||'Guru')+' sekarang Kepala Sekolah. Peran Anda menjadi Guru');await mulai();return}
+   if(r==='kepala_sekolah'&&adalahKepala()){toast((g.nama||'Guru')+' sekarang Kepala Sekolah. Peran Anda menjadi Guru');await mulai();return}
    await muatProfil();toast('Peran diubah menjadi '+LBL[r]);renderAll()}catch(e){await muatProfil();renderV();throw e}};
  if(r==='kepala_sekolah'){const lama=S.guru.find(x=>x.role==='kepala_sekolah'&&x.id!==id);
   konfirmasi('Jadikan '+(g.nama||'guru ini')+' Kepala Sekolah?'+(lama?'\n\nKepala Sekolah saat ini ('+lama.nama+') otomatis menjadi Guru.':''),{judul:'Ganti Kepala Sekolah',ya:'Ya, ganti',ikon:'👑'}).then(ok=>{if(!ok){renderV();return}guard(jalan)});return}
  guard(jalan)}
 function togGuru(id){if(!adalahKepala()&&role!=='Developer')return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, Operator, atau Developer yang dapat mengaktifkan/nonaktifkan guru',false);if(id===me)return toast('Tidak bisa menonaktifkan akun sendiri',false);const g=S.guru.find(x=>x.id===id),n=!g.aktif;guard(async()=>{await apiGuru({aksi:'aktif',id,aktif:n});await muatProfil();toast(g.nama+(n?' diaktifkan':' dinonaktifkan'));renderV()})}
-async function hapusGuru(id){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Operator, atau Developer yang dapat mengeluarkan guru',false);const g=S.guru.find(x=>x.id===id);if(!g||g.id===me)return toast('Akun guru tidak dapat dikeluarkan',false);if(!await konfirmasi('Keluarkan '+g.nama+' dari sekolah ini? Akun tetap ada bila guru juga mengajar di sekolah lain. Bila hanya sementara tidak mengajar, lebih baik Nonaktifkan.',{judul:'Keluarkan guru',ya:'Keluarkan',bahaya:1}))return;guard(async()=>{await apiGuru({aksi:'hapus',id});S.guru=S.guru.filter(g=>g.id!==id);toast('Guru dikeluarkan dari sekolah');renderV()})}
+async function hapusGuru(id){if(!bolehHapusGuru())return toast('Hanya Kepala Sekolah, Wakil Kepala Sekolah, Pengelola/Pengasuh, Operator, atau Developer yang dapat mengeluarkan guru',false);const g=S.guru.find(x=>x.id===id);if(!g||g.id===me)return toast('Akun guru tidak dapat dikeluarkan',false);if(!await konfirmasi('Keluarkan '+g.nama+' dari sekolah ini? Akun tetap ada bila guru juga mengajar di sekolah lain. Bila hanya sementara tidak mengajar, lebih baik Nonaktifkan.',{judul:'Keluarkan guru',ya:'Keluarkan',bahaya:1}))return;guard(async()=>{await apiGuru({aksi:'hapus',id});S.guru=S.guru.filter(g=>g.id!==id);toast('Guru dikeluarkan dari sekolah');renderV()})}
 /* ---------- panel Developer: guru di semua sekolah ---------- */
 let devHanyaNonaktif=false;
 let devPilih=new Set();
