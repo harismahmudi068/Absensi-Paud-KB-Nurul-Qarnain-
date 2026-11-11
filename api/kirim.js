@@ -105,7 +105,9 @@ module.exports = async (req, res) => {
     // ---------- LIBUR MANUAL: semua guru boleh, tanpa membuka Pengaturan ----------
     if (b.aksi === 'libur_manual') {
       const tanggal = String(b.tanggal || '');
-      const hariIni = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+      const bagianTanggal = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      const tanggalServer = Object.fromEntries(bagianTanggal.map(x => [x.type, x.value]));
+      const hariIni = tanggalServer.year + '-' + tanggalServer.month + '-' + tanggalServer.day;
       if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(tanggal) || tanggal !== hariIni) {
         return res.status(400).json({ error: 'Tombol Liburkan Siswa hanya mengirim notifikasi untuk hari ini' });
       }
