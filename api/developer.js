@@ -591,7 +591,7 @@ module.exports = async (req, res) => {
     // ---------------------------------------------------------
     if (b.aksi === 'pemantauan_storage') {
       if (!L.SB || !L.KEY) throw new Error('Konfigurasi Supabase belum lengkap');
-      const dasar = String(L.SB).replace(/\\/$/, '');
+      const dasar = String(L.SB).replace(/\/$/, '');
       const headers = { apikey: L.KEY, Authorization: 'Bearer ' + L.KEY, 'Content-Type': 'application/json' };
       async function storageReq(path, method, body) {
         const r = await fetch(dasar + path, {
