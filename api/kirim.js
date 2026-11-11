@@ -207,7 +207,8 @@ module.exports = async (req, res) => {
       const namaSekolah = (sekolahRows || [])[0]?.nama_sekolah || 'Sekolah';
       const formatTanggal = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
       const tanggalTeks = formatTanggal.format(new Date(tanggal + 'T00:00:00+07:00'));
-      const buatPesan = daftarKelas => [
+      const keterangan = String(b.keterangan || '').replace(/\r/g, '').trim().slice(0, 500);
+      const buatPesan = (daftarKelas, catatan = keterangan) => [
         '🌸 *INFORMASI LIBUR SEKOLAH*',
         '',
         'Assalamu’alaikum warahmatullahi wabarakatuh.',
@@ -219,8 +220,7 @@ module.exports = async (req, res) => {
         '📅 Hari/Tanggal: *' + tanggalTeks + '*',
         '',
         '🏫 Kelas yang diliburkan: *' + daftarKelas.join(', ') + '*',
-        '📝 Keterangan: *Libur hari ini melalui tombol Liburkan Siswa*',
-        '',
+        ...(catatan ? ['📝 Keterangan: ' + catatan, ''] : []),
         'Kegiatan belajar mengajar pada kelas tersebut diliburkan. Kegiatan belajar kembali dilaksanakan sesuai jadwal sekolah.',
         '',
         'Terima kasih atas perhatian dan kerja sama Bapak/Ibu. 😊',
