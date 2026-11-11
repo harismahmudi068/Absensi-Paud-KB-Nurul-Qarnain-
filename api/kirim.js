@@ -151,12 +151,37 @@ module.exports = async (req, res) => {
       const siswaIds = siswa.map(x => Number(x.id)).filter(Number.isInteger);
       const abs = await sb(`/rest/v1/absensi?siswa_id=in.(${siswaIds.join(',')})&tanggal=eq.${tanggal}&status=eq.libur&select=siswa_id&limit=10000`);
       const setLibur = new Set((abs || []).map(x => String(x.siswa_id)));
-      const kelasLibur = kelasDipilih.filter(k => {
+      let kelasLibur = kelasDipilih.filter(k => {
         const anak = siswa.filter(s => Number(s.kelas_id) === Number(k.id));
         return anak.length > 0 && anak.every(s => setLibur.has(String(s.id)));
       });
       if (kelasLibur.length !== kelasDipilih.length) return res.status(400).json({ error: 'Status Libur belum tercatat untuk seluruh siswa pada kelas yang dipilih' });
 
+      // Klaim penanda per kelas secara atomik. Kelas yang sudah sent/partial/processing dilewati;
+      // kelas failed boleh dicoba ulang karena belum ada pengiriman yang berhasil.
+      const batch = `manual-libur-${sekolahId}-${tanggal}-${crypto.randomUUID()}`;
+      const klaimRes = await fetch(SB + '/rest/v1/rpc/klaim_notifikasi_libur_manual_kelas', {
+        method: 'POST',
+        headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          p_sekolah_id: sekolahId,
+          p_tanggal: tanggal,
+          p_kelas_ids: kelasLibur.map(x => Number(x.id)),
+          p_batch_id: batch
+        })
+      });
+      const klaimRows = await klaimRes.json().catch(() => []);
+      if (!klaimRes.ok) throw new Error('Gagal mengunci proses per kelas: ' + klaimRes.status + ' ' + JSON.stringify(klaimRows));
+      const klaimSet = new Set((Array.isArray(klaimRows) ? klaimRows : []).map(x => Number(x.kelas_id)).filter(Number.isInteger));
+      const kelasDilewati = kelasLibur.filter(x => !klaimSet.has(Number(x.id))).map(x => x.nama);
+      if (!klaimSet.size) {
+        return res.status(200).json({
+          ok: true, duplicate: true, status: 'duplicate',
+          kelas_diproses: [], kelas_dilewati: kelasDilewati,
+          pesan: 'Semua kelas yang dipilih sudah pernah diproses atau sedang diproses. Tidak ada pesan yang dikirim ulang.'
+        });
+      }
+      kelasLibur = kelasLibur.filter(x => klaimSet.has(Number(x.id)));
       const kelasIds = kelasLibur.map(x => Number(x.id));
       const relasi = await sb(`/rest/v1/kelas_grup_wa?sekolah_id=eq.${sekolahId}&kelas_id=in.(${kelasIds.join(',')})&select=kelas_id,grup_wa_id`);
       const grupIds = [...new Set((relasi || []).map(x => Number(x.grup_wa_id)).filter(Number.isInteger))];
@@ -205,40 +230,6 @@ module.exports = async (req, res) => {
         '🏫 *' + namaSekolah + '*'
       ].join('\n');
 
-      // Kunci satu notifikasi per sekolah/tanggal. Jika sebelumnya gagal/parsial,
-      // hanya satu pemanggil yang boleh mengambil alih; pesan kepala yang sudah diterima tidak diulang.
-      let notifId = null;
-      let ulangParsial = false;
-      const ins = await fetch(SB + '/rest/v1/notifikasi_libur?on_conflict=sekolah_id,tanggal', {
-        method: 'POST',
-        headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=representation' },
-        body: JSON.stringify({ sekolah_id: sekolahId, tanggal, pesan: buatPesan(namaKelas), status: 'processing', percobaan: 1 })
-      });
-      const insRows = await ins.json().catch(() => []);
-      if (!ins.ok) throw new Error('Gagal mengunci notifikasi libur: ' + ins.status);
-      if (Array.isArray(insRows) && insRows.length) {
-        notifId = insRows[0].id;
-      } else {
-        const existing = (await sb(`/rest/v1/notifikasi_libur?sekolah_id=eq.${sekolahId}&tanggal=eq.${tanggal}&select=id,status,percobaan&limit=1`)) || [];
-        const old = existing[0];
-        if (!old) throw new Error('Catatan notifikasi libur sudah ada tetapi tidak dapat dibaca');
-        if (!['failed', 'partial'].includes(String(old.status))) {
-          return res.status(200).json({ ok: true, duplicate: true, status: old.status, pesan: 'Notifikasi libur hari ini sudah diproses; tidak dikirim ulang.' });
-        }
-        const claim = await fetch(SB + `/rest/v1/notifikasi_libur?id=eq.${old.id}&status=in.(failed,partial)`, {
-          method: 'PATCH',
-          headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify({ status: 'processing', percobaan: Number(old.percobaan || 1) + 1, terakhir_error: null })
-        });
-        const claimed = await claim.json().catch(() => []);
-        if (!claim.ok || !Array.isArray(claimed) || !claimed.length) {
-          return res.status(200).json({ ok: true, duplicate: true, pesan: 'Notifikasi sedang diproses oleh permintaan lain.' });
-        }
-        notifId = old.id;
-        ulangParsial = true;
-      }
-
-      const batch = `manual-libur-${sekolahId}-${tanggal}-${notifId}`;
       const logs = [];
       const gagal = [];
       let waktu = Math.floor(Date.now() / 1000);
@@ -261,16 +252,14 @@ module.exports = async (req, res) => {
         }
       };
 
-      // Kepala sekolah sudah menerima pada percobaan pertama; jangan kirim duplikat saat retry parsial.
-      if (!ulangParsial) {
-        try {
-          const hasil = await kirimFonnte(tokenUtama, kepala, buatPesan(namaKelas));
-          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, fonnte_id: idFonnte(hasil), state_fonnte: hasil && hasil.detail && hasil.detail.id ? String(hasil.detail.id) : null, status: 'terjadwal', status_fonnte: hasil && hasil.status ? String(hasil.status) : null });
-        } catch (e) {
-          const alasan = potong(e.message || e, 300);
-          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, status: 'gagal', error: alasan });
-          gagal.push('Kepala Sekolah: ' + alasan);
-        }
+      // Kepala sekolah menerima pemberitahuan untuk kelas baru yang berhasil diklaim.
+      try {
+        const hasil = await kirimFonnte(tokenUtama, kepala, buatPesan(namaKelas));
+        logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, fonnte_id: idFonnte(hasil), state_fonnte: hasil && hasil.detail && hasil.detail.id ? String(hasil.detail.id) : null, status: 'terjadwal', status_fonnte: hasil && hasil.status ? String(hasil.status) : null });
+      } catch (e) {
+        const alasan = potong(e.message || e, 300);
+        logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, status: 'gagal', error: alasan });
+        gagal.push('Kepala Sekolah: ' + alasan);
       }
 
       const nomorSudah = new Set([kepala]);
@@ -293,13 +282,13 @@ module.exports = async (req, res) => {
       const sukses = logs.filter(x => x.status === 'terjadwal').length;
       const gagalSemua = gagal.length > 0;
       const statusAkhir = gagalSemua ? (sukses > 0 ? 'partial' : 'failed') : 'sent';
-      const patch = await fetch(SB + `/rest/v1/notifikasi_libur?id=eq.${notifId}`, {
+      const patch = await fetch(SB + `/rest/v1/notifikasi_libur_manual_kelas?sekolah_id=eq.${sekolahId}&tanggal=eq.${tanggal}&kelas_id=in.(${kelasIds.join(',')})&batch_id=eq.${encodeURIComponent(batch)}`, {
         method: 'PATCH',
         headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-        body: JSON.stringify({ status: statusAkhir, terkirim: sukses ? new Date().toISOString() : null, terakhir_error: gagalSemua ? potong(gagal.join('; '), 500) : null })
+        body: JSON.stringify({ status: statusAkhir, terkirim: sukses ? new Date().toISOString() : null, terakhir_error: gagalSemua ? potong(gagal.join('; '), 500) : null, diubah: new Date().toISOString() })
       });
-      if (!patch.ok) console.error('Gagal memperbarui status notifikasi libur manual:', patch.status);
-      return res.status(200).json({ ok: true, sent: sukses > 0, kepala: ulangParsial ? 0 : (logs.some(x => x.label === 'Kepala Sekolah' && x.status === 'terjadwal') ? 1 : 0), staf: logs.filter(x => x.status === 'terjadwal' && x.label !== 'Kepala Sekolah' && !String(x.nomor).includes('@g.us')).length, grup: logs.filter(x => x.status === 'terjadwal' && String(x.nomor).includes('@g.us')).length, gagal: gagal.length, detail_gagal: gagal.slice(0, 8), duplicate: false, status: statusAkhir });
+      if (!patch.ok) console.error('Gagal memperbarui status penanda libur per kelas:', patch.status, await patch.text());
+      return res.status(200).json({ ok: true, sent: sukses > 0, kepala: logs.some(x => x.label === 'Kepala Sekolah' && x.status === 'terjadwal') ? 1 : 0, staf: logs.filter(x => x.status === 'terjadwal' && x.label !== 'Kepala Sekolah' && !String(x.nomor).includes('@g.us')).length, grup: logs.filter(x => x.status === 'terjadwal' && String(x.nomor).includes('@g.us')).length, gagal: gagal.length, detail_gagal: gagal.slice(0, 8), duplicate: false, status: statusAkhir, kelas_diproses: namaKelas, kelas_dilewati: kelasDilewati });
     }
 
     // ---------- PEMBATALAN PESAN GRUP LIBUR OTOMATIS ----------
