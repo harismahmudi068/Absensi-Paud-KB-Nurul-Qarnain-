@@ -120,11 +120,11 @@ module.exports = async (req, res) => {
       }
 
       const [kelasRows, siswaRows, rahasiaRows, tokenRows, sekolahRows] = await Promise.all([
-        sb(\`/rest/v1/kelas?sekolah_id=eq.\${sekolahId}&select=id,nama&limit=5000\`),
-        sb(\`/rest/v1/siswa?sekolah_id=eq.\${sekolahId}&aktif=eq.true&select=id,kelas_id&limit=5000\`),
-        sb(\`/rest/v1/pengaturan_rahasia?sekolah_id=eq.\${sekolahId}&select=nomor_kepala\`),
-        sb(\`/rest/v1/fonnte_token?sekolah_id=eq.\${sekolahId}&select=id,token&order=id.asc\`),
-        sb(\`/rest/v1/pengaturan?sekolah_id=eq.\${sekolahId}&select=nama_sekolah&limit=1\`)
+        sb(`/rest/v1/kelas?sekolah_id=eq.${sekolahId}&select=id,nama&limit=5000`),
+        sb(`/rest/v1/siswa?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,kelas_id&limit=5000`),
+        sb(`/rest/v1/pengaturan_rahasia?sekolah_id=eq.${sekolahId}&select=nomor_kepala`),
+        sb(`/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=id,token&order=id.asc`),
+        sb(`/rest/v1/pengaturan?sekolah_id=eq.${sekolahId}&select=nama_sekolah&limit=1`)
       ]);
       const tokenUtama = (tokenRows || [])[0]?.token || FONNTE;
       const bersihNomor = n => String(n || '').replace(/\D/g, '');
@@ -135,7 +135,7 @@ module.exports = async (req, res) => {
       const siswa = siswaRows || [];
       if (!siswa.length) return res.status(400).json({ error: 'Belum ada siswa aktif di sekolah ini' });
       const siswaIds = siswa.map(x => Number(x.id)).filter(Number.isInteger);
-      const abs = await sb(\`/rest/v1/absensi?siswa_id=in.(\${siswaIds.join(',')})&tanggal=eq.\${tanggal}&status=eq.libur&select=siswa_id&limit=10000\`);
+      const abs = await sb(`/rest/v1/absensi?siswa_id=in.(${siswaIds.join(',')})&tanggal=eq.${tanggal}&status=eq.libur&select=siswa_id&limit=10000`);
       const setLibur = new Set((abs || []).map(x => String(x.siswa_id)));
       const kelasLibur = (kelasRows || []).filter(k => {
         const anak = siswa.filter(s => Number(s.kelas_id) === Number(k.id));
@@ -144,14 +144,14 @@ module.exports = async (req, res) => {
       if (!kelasLibur.length) return res.status(200).json({ ok: true, dilewati: true, pesan: 'Belum ada kelas yang seluruh siswanya berstatus Libur' });
 
       const kelasIds = kelasLibur.map(x => Number(x.id));
-      const relasi = await sb(\`/rest/v1/kelas_grup_wa?sekolah_id=eq.\${sekolahId}&kelas_id=in.(\${kelasIds.join(',')})&select=kelas_id,grup_wa_id\`);
+      const relasi = await sb(`/rest/v1/kelas_grup_wa?sekolah_id=eq.${sekolahId}&kelas_id=in.(${kelasIds.join(',')})&select=kelas_id,grup_wa_id`);
       const grupIds = [...new Set((relasi || []).map(x => Number(x.grup_wa_id)).filter(Number.isInteger))];
       const [grupRows, anggotaRows] = await Promise.all([
-        grupIds.length ? sb(\`/rest/v1/grup_wa?sekolah_id=eq.\${sekolahId}&id=in.(\${grupIds.join(',')})&select=id,grup_id,label,token_id\`) : Promise.resolve([]),
-        sb(\`/rest/v1/keanggotaan?sekolah_id=eq.\${sekolahId}&aktif=eq.true&select=profil_id\`)
+        grupIds.length ? sb(`/rest/v1/grup_wa?sekolah_id=eq.${sekolahId}&id=in.(${grupIds.join(',')})&select=id,grup_id,label,token_id`) : Promise.resolve([]),
+        sb(`/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id`)
       ]);
       const anggotaIds = [...new Set((anggotaRows || []).map(x => String(x.profil_id)).filter(x => /^[0-9a-f-]{36}$/i.test(x)))];
-      const profilRows = anggotaIds.length ? await sb(\`/rest/v1/profil?id=in.(\${anggotaIds.join(',')})&aktif=eq.true&select=id,nama,no_wa\`) : [];
+      const profilRows = anggotaIds.length ? await sb(`/rest/v1/profil?id=in.(${anggotaIds.join(',')})&aktif=eq.true&select=id,nama,no_wa`) : [];
       const tokenById = new Map((tokenRows || []).map(x => [String(x.id), x.token]));
       const grupById = new Map((grupRows || []).map(x => [String(x.id), x]));
       const kelasById = new Map(kelasLibur.map(x => [String(x.id), x]));
@@ -205,13 +205,13 @@ module.exports = async (req, res) => {
       if (Array.isArray(insRows) && insRows.length) {
         notifId = insRows[0].id;
       } else {
-        const existing = (await sb(\`/rest/v1/notifikasi_libur?sekolah_id=eq.\${sekolahId}&tanggal=eq.\${tanggal}&select=id,status,percobaan&limit=1\`)) || [];
+        const existing = (await sb(`/rest/v1/notifikasi_libur?sekolah_id=eq.${sekolahId}&tanggal=eq.${tanggal}&select=id,status,percobaan&limit=1`)) || [];
         const old = existing[0];
         if (!old) throw new Error('Catatan notifikasi libur sudah ada tetapi tidak dapat dibaca');
         if (!['failed', 'partial'].includes(String(old.status))) {
           return res.status(200).json({ ok: true, duplicate: true, status: old.status, pesan: 'Notifikasi libur hari ini sudah diproses; tidak dikirim ulang.' });
         }
-        const claim = await fetch(SB + \`/rest/v1/notifikasi_libur?id=eq.\${old.id}&status=in.(failed,partial)\`, {
+        const claim = await fetch(SB + `/rest/v1/notifikasi_libur?id=eq.${old.id}&status=in.(failed,partial)`, {
           method: 'PATCH',
           headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=representation' },
           body: JSON.stringify({ status: 'processing', percobaan: Number(old.percobaan || 1) + 1, terakhir_error: null })
@@ -224,7 +224,7 @@ module.exports = async (req, res) => {
         ulangParsial = true;
       }
 
-      const batch = \`manual-libur-\${sekolahId}-\${tanggal}-\${notifId}\`;
+      const batch = `manual-libur-${sekolahId}-${tanggal}-${notifId}`;
       const logs = [];
       const gagal = [];
       let waktu = Math.floor(Date.now() / 1000);
@@ -279,7 +279,7 @@ module.exports = async (req, res) => {
       const sukses = logs.filter(x => x.status === 'terjadwal').length;
       const gagalSemua = gagal.length > 0;
       const statusAkhir = gagalSemua ? (sukses > 0 ? 'partial' : 'failed') : 'sent';
-      const patch = await fetch(SB + \`/rest/v1/notifikasi_libur?id=eq.\${notifId}\`, {
+      const patch = await fetch(SB + `/rest/v1/notifikasi_libur?id=eq.${notifId}`, {
         method: 'PATCH',
         headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify({ status: statusAkhir, terkirim: sukses ? new Date().toISOString() : null, terakhir_error: gagalSemua ? potong(gagal.join('; '), 500) : null })
