@@ -1686,8 +1686,8 @@ function pencarianTutup(){
  cariHasil=[];cariPilih=0;
 }
 function pencarianCocok(q,item){
- const norm=x=>String(x||'').toLocaleLowerCase('id').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
- const kata=norm(q).split(/\\s+/).filter(Boolean),target=norm(item.label+' '+item.path);
+ const norm=x=>String(x||'').toLocaleLowerCase('id').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+ const kata=norm(q).split(/\s+/).filter(Boolean),target=norm(item.label+' '+item.path);
  if(!kata.length)return false;
  const tokens=target.split(' ');
  return kata.every(k=>tokens.some(t=>t.startsWith(k)||t.includes(k))||target.includes(k));
@@ -1959,7 +1959,7 @@ function editWaSiswa(id){
 function simpanWaSiswa(id){
  const s=siswaById(id),el=$('#waSiswaInp');if(!s||!el)return;
  const raw=el.value.trim(),wa=raw?normWA(raw):'';
- if(raw&&!/^628\\d{8,12}$/.test(wa))return toast('Nomor WhatsApp tidak valid. Gunakan nomor Indonesia yang benar.',false);
+ if(raw&&!/^628\d{8,12}$/.test(wa))return toast('Nomor WhatsApp tidak valid. Gunakan nomor Indonesia yang benar.',false);
  if(wa===normWA(s.wa))return closeM();
  guard(async()=>{
   await setWali(id,wa);
