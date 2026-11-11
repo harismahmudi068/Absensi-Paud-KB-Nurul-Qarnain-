@@ -150,7 +150,7 @@ function pkKepHTML(e, kl) {
   if (!pnUas2() || !kl) return '';
   window._kepE = e;
   const k = e.kep, kunci = !!k && k.status !== 'sementara', J = { naik: 'Naik kelas', tinggal: 'Tinggal kelas', lulus: 'Lulus' }, ST = { sementara: 'Sementara', disahkan: 'Disahkan', diterapkan: 'Diterapkan' };
-  let h = '<div class="tbkh">Keputusan akhir tahun <span class="mu">(tidak wajib)</span></div>';
+  let h = '<div class="tbkh">Keputusan akhir tahun <span class="mu">(wajib saat menerbitkan UAS semester 2)</span></div>';
   if (kunci) return h + `<div class="note"><b>${esc(J[k.jenis] || k.jenis)}</b>${k.jenis === 'naik' && k.kelas_tujuan_nama ? ' → ' + esc(k.kelas_tujuan_nama) : ''} · ${esc(ST[k.status] || k.status)}. Keputusan sudah final; koreksinya lewat menu Kelola Siswa.</div>`;
   const dis = e.b ? '' : ' disabled';
   /* kelas akhir: Tinggal kelas atau Lulus. Kelas lain: Naik kelas atau Tinggal kelas (Lulus tidak ditampilkan). Pilihan yang sudah tersimpan tetap ditampilkan. */
@@ -275,6 +275,7 @@ function pkSimpan(lanjut) {
   const e = PKR.ed, kl = pnKl(pnK); if (!e || !e.b || !kl) return; let k; try { k = pkBaca(); } catch (x) { return toast(x.message, false); }
   const ids = new Set(pkIndAll(e.M).map(i => i.id)), n = {}, o = {}, oc = {};
   ids.forEach(id => { const v = +e.n[id]; if (v >= 1 && v <= 4) n[id] = v; if (e.o[id]) o[id] = e.o[id]; if (e.oc[id]) oc[id] = e.oc[id]; });
+  if (pnUas2() && !(e.kep && e.kep.status !== 'sementara') && !k.kj) return toast('Isi keputusan akhir tahun sebelum menerbitkan raport UAS semester 2', false);
   if (pnUas2() && !(e.kep && e.kep.status !== 'sementara') && k.kj === 'naik' && !k.kt) return toast('Pilih kelas tujuan untuk keputusan Naik kelas', false);
   const kur = pkKurangAspek(e.M, n);
   if ((lanjut === 'terbit' || lanjut === 'terbitlanjut') && kur.length) { pkTampilKurang(kur); return toast('Belum bisa diterbitkan: ' + kur.length + ' tabel belum lengkap', false); }
