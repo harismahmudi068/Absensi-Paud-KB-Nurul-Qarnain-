@@ -586,6 +586,67 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // ---------------------------------------------------------
+    // PEMANTAUAN STORAGE SUPABASE (khusus Developer + AAL2)
+    // ---------------------------------------------------------
+    if (b.aksi === 'pemantauan_storage') {
+      if (!L.SB || !L.KEY) throw new Error('Konfigurasi Supabase belum lengkap');
+      const dasar = String(L.SB).replace(/\\/$/, '');
+      const headers = { apikey: L.KEY, Authorization: 'Bearer ' + L.KEY, 'Content-Type': 'application/json' };
+      async function storageReq(path, method, body) {
+        const r = await fetch(dasar + path, {
+          method: method || 'GET',
+          headers,
+          ...(body === undefined ? {} : { body: JSON.stringify(body) })
+        });
+        const raw = await r.text();
+        let data = null;
+        try { data = raw ? JSON.parse(raw) : null; } catch (_) {}
+        if (!r.ok) {
+          const pesan = data && (data.message || data.error) || raw || ('HTTP ' + r.status);
+          throw new Error(String(pesan).slice(0, 240));
+        }
+        return data;
+      }
+      const daftar = await storageReq('/storage/v1/bucket', 'GET');
+      const hasil = [];
+      for (const bucket of (Array.isArray(daftar) ? daftar : [])) {
+        const item = { id: bucket.id, nama: bucket.name || bucket.id, publik: !!bucket.public, jumlah_file: 0, ukuran_byte: 0, terpotong: false, error: null };
+        try {
+          const antre = [''];
+          let dipindai = 0;
+          while (antre.length && dipindai < 20000) {
+            const prefix = antre.pop();
+            let offset = 0;
+            while (dipindai < 20000) {
+              const rows = await storageReq('/storage/v1/object/list/' + encodeURIComponent(bucket.id), 'POST', {
+                prefix, limit: 1000, offset,
+                sortBy: { column: 'name', order: 'asc' }
+              });
+              const isi = Array.isArray(rows) ? rows : [];
+              for (const obj of isi) {
+                dipindai++;
+                if (obj && (obj.id || obj.metadata)) {
+                  item.jumlah_file++;
+                  item.ukuran_byte += Math.max(0, Number(obj.metadata && obj.metadata.size) || 0);
+                } else if (obj && obj.name && prefix.split('/').filter(Boolean).length < 12) {
+                  antre.push(prefix ? prefix + '/' + obj.name : obj.name);
+                }
+                if (dipindai >= 20000) break;
+              }
+              if (isi.length < 1000 || dipindai >= 20000) break;
+              offset += isi.length;
+            }
+          }
+          item.terpotong = antre.length > 0 || dipindai >= 20000;
+        } catch (e) {
+          item.error = e.message || 'Gagal membaca isi bucket';
+        }
+        hasil.push(item);
+      }
+      return res.status(200).json({ ok: true, buckets: hasil, diperbarui: new Date().toISOString() });
+    }
+
     return res.status(400).json({ error: 'Aksi tidak dikenal' });
   } catch (e) {
     console.error('developer.js', e.message);
