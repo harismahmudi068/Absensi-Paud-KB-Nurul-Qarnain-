@@ -1486,9 +1486,11 @@ const galatSesi=e=>{const m=String((e&&e.message)||e||'').toLowerCase(),c=String
 async function gagalMuat(e){
  if(galatSesi(e)){try{await db.auth.signOut()}catch(x){}return loginView('Sesi berakhir, silakan masuk lagi')}
  try{ld(0)}catch(x){}
+ const mentah=String((e&&e.message)||e||'Kesalahan tidak diketahui'),detail=String((e&&e.stack)||mentah);
+ if(role==='Developer')console.error('[Developer startup error]',e);
  let g=document.getElementById('gm');if(g)g.remove();
- g=document.createElement('div');g.id='gm';g.style.cssText='position:fixed;inset:0;z-index:200;background:var(--bg,#f6fbf5);color:var(--tx,#20352a);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center';
- g.innerHTML='<div style="max-width:340px"><div style="font-size:42px">📡</div><h3 style="margin:10px 0 6px">Gagal memuat data</h3><div style="color:var(--mu,#6d7d73);font-size:14px;margin-bottom:14px">'+esc(idErr((e&&e.message)||String(e)))+'<br>Akun Anda tetap masuk. Periksa sambungan internet lalu coba lagi.</div><button class="btn success" style="width:100%" id="gmUlang">Coba lagi</button><button class="btn soft" style="width:100%;margin-top:8px" id="gmKeluar">Keluar</button></div>';
+ g=document.createElement('div');g.id='gm';g.style.cssText='position:fixed;inset:0;z-index:200;background:var(--bg,#f6fbf5);color:var(--tx,#20352a);display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;overflow:auto';
+ g.innerHTML='<div style="max-width:520px;width:100%"><div style="font-size:42px">📡</div><h3 style="margin:10px 0 6px">Gagal memuat data</h3><div style="color:var(--mu,#6d7d73);font-size:14px;margin-bottom:14px">'+esc(idErr(mentah))+'<br>Akun Anda tetap masuk. Periksa sambungan internet lalu coba lagi.</div>'+(role==='Developer'?'<details style="text-align:left;margin:12px 0;padding:10px;border:1px solid var(--bd,#ddd);border-radius:10px"><summary style="cursor:pointer;font-weight:600">Rincian kesalahan untuk pemeriksaan</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px;max-height:35vh;overflow:auto;margin-top:10px">'+esc(detail)+'</pre></details>':'')+'<button class="btn success" style="width:100%" id="gmUlang">Coba lagi</button><button class="btn soft" style="width:100%;margin-top:8px" id="gmKeluar">Keluar</button></div>';
  document.body.appendChild(g);
  g.querySelector('#gmUlang').onclick=()=>{g.remove();mulai()};
  g.querySelector('#gmKeluar').onclick=async()=>{g.remove();try{await db.auth.signOut()}catch(x){}loginView('')}}
