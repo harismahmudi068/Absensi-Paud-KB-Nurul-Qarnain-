@@ -15,6 +15,25 @@ button,input,select{font:inherit}button{cursor:pointer}.hid{display:none!importa
 .main{flex:1;min-width:0}
 .top{height:62px;background:linear-gradient(90deg,#6d43a8,#8057bf);color:#fff;display:flex;align-items:center;padding:0 12px;position:sticky;top:0;z-index:20;gap:8px}
 .top small{display:block;opacity:.85;font-size:12px}.hamb{display:none;border:0;background:none;color:#fff4c7;font-size:26px}
+.dash-search-toggle{background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.25)!important;padding:7px 10px!important;font-size:17px!important;line-height:1}
+.dash-search-panel{position:sticky;top:62px;z-index:19;background:var(--card);border-bottom:1px solid var(--bd);box-shadow:0 5px 18px rgba(20,25,35,.12);padding:10px 14px}
+.dash-search-panel[hidden]{display:none}
+.dash-search-inner{display:flex;align-items:center;gap:8px;max-width:850px;margin:auto}
+.dash-search-icon{font-size:19px}
+.dash-search-inner .input{flex:1;min-width:0}
+.dash-search-results{max-width:850px;margin:6px auto 0;display:grid;gap:4px;max-height:min(52vh,390px);overflow:auto}
+.dash-search-result{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);cursor:pointer}
+.dash-search-result:active{background:var(--bg)}
+.dash-search-result .dsr-icon{font-size:19px;flex:0 0 26px;text-align:center}
+.dash-search-result .dsr-main{min-width:0;flex:1}
+.dash-search-result .dsr-name{font-weight:750}
+.dash-search-result .dsr-path{font-size:12px;color:var(--mu);margin-top:2px}
+.dash-search-empty{padding:12px;color:var(--mu);text-align:center;font-size:13px}
+.wa-siswa-cell{display:inline-flex;align-items:center;gap:3px;white-space:nowrap}
+.wa-edit-btn{border:0;background:transparent;color:var(--mu);padding:2px 4px;border-radius:6px;cursor:pointer;font-size:13px;line-height:1}
+.wa-edit-btn:active{background:var(--bg)}
+@media(max-width:600px){.top{gap:6px;padding:0 8px}.dash-search-toggle{padding:6px 8px!important}.dash-search-panel{padding:8px}.dash-search-result{padding:9px}}
+
 .pill{background:rgba(255,255,255,.16);border:0;color:#fff;border-radius:10px;padding:7px 11px;font-size:12px;font-weight:700}.hb{color:#fff;text-decoration:none;font-size:20px;padding:4px;background:none;border:0}
 .content{max-width:1300px;margin:auto;padding:18px}
 .hero{background:linear-gradient(100deg,#e4f6e8,#fff8df 62%,#eee5fb);border:1px solid #d5e8d6;border-radius:18px;padding:20px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--sh);gap:10px}
@@ -741,7 +760,8 @@ button.click-fx::after{display:none!important}
 <div id="dua" class="login hid"><div class="lbox"><div class="logo">🔐</div><h2 style="text-align:center;margin:0 0 4px">Verifikasi 2 langkah</h2><div id="duaIsi"></div><div id="duaErr" class="mu" style="color:var(--rd);margin-top:10px;text-align:center"></div><p class="mu" style="text-align:center;margin:14px 0 0"><a href="#" onclick="batalDuaFaktor();return false">Batal dan kembali ke halaman masuk</a></p></div></div>
 <div class="app hid" id="ap">
 <aside class="sidebar"><div class="brand"><div class="logo">🏫</div><div><b id="bnm">Sistem Absensi</b><br><small>Sistem Absensi</small></div></div><nav id="sn" class="nav"></nav><div class="foot"><a class="wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener">💬 Bantuan via WhatsApp</a>Anak Hebat Berawal dari<br>Kebiasaan Baik ♡</div></aside>
-<main class="main"><header class="top"><button class="hamb" onclick="drw(1,1)">☰</button><div style="flex:1;min-width:0"><small id="who" style="font-size:14px;opacity:1;font-weight:700"></small></div><div class="pill dtp" id="dt"></div><button class="tm" id="tmBtn" type="button" onclick="tmToggle()" aria-label="Mode gelap" aria-pressed="false" title="Mode terang / gelap"><i class="tmk"><svg class="k-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="k-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/></svg></i></button><a class="hb wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener" title="Bantuan via WhatsApp">💬</a><button class="pill keluar-ic" type="button" onclick="tanyaKeluar()" aria-label="Keluar" title="Keluar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button></header>
+<main class="main"><header class="top"><button class="hamb" onclick="drw(1,1)">☰</button><div style="flex:1;min-width:0"><small id="who" style="font-size:14px;opacity:1;font-weight:700"></small></div><button class="btn soft sm dash-search-toggle" id="dashSearchToggle" type="button" onclick="pencarianToggle()" aria-label="Cari menu" title="Cari menu">🔎</button><div class="pill dtp" id="dt"></div><button class="tm" id="tmBtn" type="button" onclick="tmToggle()" aria-label="Mode gelap" aria-pressed="false" title="Mode terang / gelap"><i class="tmk"><svg class="k-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="k-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4 6.5 6.5 0 0 0 20 14.5z"/></svg></i></button><a class="hb wab" href="https://wa.me/6285117441486" target="_blank" rel="noopener" title="Bantuan via WhatsApp">💬</a><button class="pill keluar-ic" type="button" onclick="tanyaKeluar()" aria-label="Keluar" title="Keluar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button></header>
+<div id="dashSearchPanel" class="dash-search-panel" hidden><div class="dash-search-inner"><span class="dash-search-icon">🔎</span><input id="dashSearchInput" type="search" class="input" placeholder="Cari menu atau fitur, misalnya alpa otomatis..." autocomplete="off" oninput="pencarianInput(this.value)" onkeydown="pencarianKey(event)"><button type="button" class="btn soft sm" onclick="pencarianTutup()" aria-label="Tutup pencarian">✕</button></div><div id="dashSearchResults" class="dash-search-results" role="listbox" aria-label="Hasil pencarian"></div></div>
 <section class="content" id="v"></section></main></div>
 <nav class="bottom hid" id="bn"></nav>
 <div class="mb" id="drw" onclick="if(event.target===this)drw(0)"><div class="modal"><div class="mh"><b>Menu</b><button onclick="drw(0)">✕</button></div><div class="mbody"><div id="dn" class="nav"></div></div></div></div>
@@ -1631,6 +1651,72 @@ let drwT=null;
 function drw(o){const d=$('#drw');if(o){clearTimeout(drwT);d.classList.remove('closing');d.classList.add('show');return}
  if(!d.classList.contains('show')||d.classList.contains('closing'))return;
  d.classList.add('closing');clearTimeout(drwT);drwT=setTimeout(()=>d.classList.remove('show','closing'),310)}
+
+/* Pencarian menu dan fitur: hasil dipilih manual, tidak ada navigasi saat mengetik. */
+const CARI_FITUR=[
+ ...MENUS.map(m=>({id:m[0],label:m[1],path:m[1],icon:m[2],type:'menu'})),
+ {id:'pnAlpa',label:'Alpa Otomatis',path:'Pengaturan → Alpa Otomatis',icon:'⏰',type:'pengaturan'},
+ {id:'pnNotifLibur',label:'Notifikasi Libur',path:'Pengaturan → Notifikasi Libur',icon:'🔔',type:'pengaturan'},
+ {id:'pnTabungan',label:'Pengaturan Tabungan',path:'Pengaturan → Tabungan',icon:'💰',type:'pengaturan'},
+ {id:'pnPiket',label:'Jadwal Piket',path:'Pengaturan → Jadwal Piket',icon:'🧹',type:'pengaturan'},
+ {id:'pnHafalan',label:'Pengaturan Hafalan',path:'Pengaturan → Hafalan',icon:'📖',type:'pengaturan'},
+ {id:'pnNotifOrtu',label:'Notifikasi Orang Tua',path:'Pengaturan → Notifikasi Orang Tua',icon:'📨',type:'pengaturan'},
+ {id:'pnNama',label:'Nama Sekolah',path:'Pengaturan → Nama Sekolah',icon:'🏫',type:'pengaturan'},
+ {id:'pnLogo',label:'Logo Sekolah',path:'Pengaturan → Logo Sekolah',icon:'🖼️',type:'pengaturan'},
+ {id:'pnStempel',label:'Stempel Sekolah',path:'Pengaturan → Stempel Sekolah',icon:'🔖',type:'pengaturan'},
+ {id:'pnFotoOrtu',label:'Foto Orang Tua',path:'Pengaturan → Foto Orang Tua',icon:'👨‍👩‍👧',type:'pengaturan'},
+ {id:'pnAlamat',label:'Alamat Sekolah',path:'Pengaturan → Alamat Sekolah',icon:'📍',type:'pengaturan'},
+ {id:'pnKonfig',label:'Konfigurasi Webhook',path:'Pengaturan → Konfigurasi Webhook',icon:'🔗',type:'pengaturan'},
+ {id:'kel',label:'Pengaturan Penilaian',path:'Penilaian Siswa → Pengaturan',icon:'⚙️',type:'penilaian'},
+ {id:'mapel',label:'Mapel dan KKM',path:'Penilaian Siswa → Mapel & KKM',icon:'📚',type:'penilaian'},
+ {id:'kep',label:'Keputusan Akhir',path:'Penilaian Siswa → Keputusan Akhir',icon:'🎓',type:'penilaian'},
+ {id:'kirim',label:'Kirim Laporan Raport',path:'Penilaian Siswa → Kirim Laporan',icon:'📤',type:'penilaian'}
+];
+let cariTerbuka=false,cariHasil=[],cariPilih=0;
+function pencarianToggle(){
+ const p=$('#dashSearchPanel');if(!p)return;
+ cariTerbuka=!cariTerbuka;p.hidden=!cariTerbuka;
+ if(cariTerbuka){setTimeout(()=>$('#dashSearchInput')?.focus(),50);pencarianInput($('#dashSearchInput')?.value||'')}
+ else pencarianTutup();
+}
+function pencarianTutup(){
+ cariTerbuka=false;const p=$('#dashSearchPanel');if(p)p.hidden=true;
+ const i=$('#dashSearchInput');if(i)i.value='';
+ const r=$('#dashSearchResults');if(r)r.innerHTML='';
+ cariHasil=[];cariPilih=0;
+}
+function pencarianCocok(q,item){
+ const norm=x=>String(x||'').toLocaleLowerCase('id').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+ const kata=norm(q).split(/\\s+/).filter(Boolean),target=norm(item.label+' '+item.path);
+ if(!kata.length)return false;
+ const tokens=target.split(' ');
+ return kata.every(k=>tokens.some(t=>t.startsWith(k)||t.includes(k))||target.includes(k));
+}
+function pencarianInput(v){
+ const r=$('#dashSearchResults');if(!r)return;
+ const q=String(v||'').trim();cariPilih=0;
+ if(!q){cariHasil=[];r.innerHTML='<div class="dash-search-empty">Ketik nama menu atau fitur yang ingin dicari.</div>';return}
+ cariHasil=CARI_FITUR.filter(x=>allowed(x.type==='pengaturan'?'pengaturan':x.type==='penilaian'?'penilaian':x.id)&&pencarianCocok(q,x)).slice(0,10);
+ r.innerHTML=cariHasil.length?cariHasil.map((x,i)=>'<button type="button" class="dash-search-result" role="option" aria-selected="'+(i===0)+'" onclick="pencarianBuka('+i+')"><span class="dsr-icon">'+x.icon+'</span><span class="dsr-main"><span class="dsr-name">'+esc(x.label)+'</span><span class="dsr-path">'+esc(x.path)+'</span></span><span aria-hidden="true">›</span></button>').join(''):'<div class="dash-search-empty">Tidak ada menu atau fitur yang cocok.</div>';
+}
+function pencarianKey(e){
+ if(e.key==='Escape'){e.preventDefault();pencarianTutup();return}
+ if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+  if(!cariHasil.length)return;e.preventDefault();cariPilih=(cariPilih+(e.key==='ArrowDown'?1:-1)+cariHasil.length)%cariHasil.length;
+  document.querySelectorAll('.dash-search-result').forEach((b,i)=>b.setAttribute('aria-selected',String(i===cariPilih)));
+  document.querySelectorAll('.dash-search-result')[cariPilih]?.scrollIntoView({block:'nearest'});return
+ }
+ if(e.key==='Enter'&&cariHasil.length){e.preventDefault();pencarianBuka(cariPilih)}
+}
+async function pencarianBuka(i){
+ const x=cariHasil[i];if(!x)return;
+ pencarianTutup();
+ if(x.type==='pengaturan')return lompatPengaturan(x.id);
+ if(x.type==='penilaian'){await go('penilaian');pnHal(x.id);return}
+ return go(x.id);
+}
+document.addEventListener('click',e=>{const p=$('#dashSearchPanel'),b=$('#dashSearchToggle');if(cariTerbuka&&p&&!p.contains(e.target)&&b&&!b.contains(e.target))pencarianTutup()});
+
 async function go(id){if(scanKunci()&&id!=='scan')return tolakKunci();if(!await jagaTanya('semua'))return;tpTutup();usbStop(true);await stopScan();TODAY=hariIni();const paksa=(id===view);view=id;try{if(allowed(id))sessionStorage.setItem('menu_terakhir',id)}catch(e){}if(id!=='pesan'){pHapusMode=false;pesTab='masuk';psel.clear()}if(id==='scan')kunciMulai();drw(0);if(id!=='absensi')draft=null;liburPrompted={};$('#v').innerHTML='';ld(1);
  try{if(LOAD[id]){const ck=cmKunci(id);if(!(ck&&!paksa&&cmOk(ck[0],ck[1]))){const v0=cmVer;await LOAD[id](paksa);if(ck&&v0===cmVer)cmCatat(ck[0],v0)}}}catch(e){toast(e.message||e,false)}finally{ld(0)}renderAll();scrollTo(0,0)}
 function renderAll(){
@@ -1860,8 +1946,28 @@ V.siswa=()=>{
 };
 function siswaRows(){if(!sk&&!sNon)return '<tr><td colspan="12" class="mu" style="text-align:center">'+PKM+'</td></tr>';const hs=S.siswa.filter(s=>(sNon?!s.aktif:(sk==='*'||s.kelas===sk))&&(s.nama.toLowerCase().includes(q.toLowerCase())||String(s.nisn||'').includes(q.trim())||cocokWA(s.wa,q))).map((s,i)=>{
  const pilih=sHapusMode?`<td><input type="checkbox" class="cks" data-id="${s.id}" ${ssel.has(s.id)?'checked':''} onchange="pilihSiswa(${s.id},this.checked)"></td>`:'';
- return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan)}</div></td><td>${esc(s.nisn||'-')}</td><td>${esc(s.kelas)}</td><td>${esc(ttlPjg(s.tempat,s.tgl))||'-'}</td><td>${jkNama(s.jk)||'-'}</td><td>${esc(s.alamat||'-')}</td><td>${s.masuk||'-'}</td><td>${nomorHtml(s.wa)}</td><td>${s.aktif?'<span class="badge Hadir">Aktif</span>':`<button type="button" class="badge Belum" style="cursor:pointer;border:0;font:inherit" title="Ketuk untuk mengaktifkan" onclick="togSiswa(${s.id})">Nonaktif ▶ Aktifkan</button>`}</td><td><button class="btn sm soft aksi-btn" aria-label="Aksi" onclick="aksiSiswa(${s.id},this)">✏️</button></td></tr>`;
+ return `<tr>${pilih}<td>${i+1}</td><td><b>${esc(s.nama)}</b><div class="mu">${esc(s.pan)}</div></td><td>${esc(s.nisn||'-')}</td><td>${esc(s.kelas)}</td><td>${esc(ttlPjg(s.tempat,s.tgl))||'-'}</td><td>${jkNama(s.jk)||'-'}</td><td>${esc(s.alamat||'-')}</td><td>${s.masuk||'-'}</td><td><span class="wa-siswa-cell">${nomorHtml(s.wa)}<button type="button" class="wa-edit-btn" onclick="editWaSiswa(${s.id})" title="Ubah nomor WhatsApp" aria-label="Ubah nomor WhatsApp siswa ${esc(s.nama)}">✏️</button></span></td><td>${s.aktif?'<span class="badge Hadir">Aktif</span>':`<button type="button" class="badge Belum" style="cursor:pointer;border:0;font:inherit" title="Ketuk untuk mengaktifkan" onclick="togSiswa(${s.id})">Nonaktif ▶ Aktifkan</button>`}</td><td><button class="btn sm soft aksi-btn" aria-label="Aksi" onclick="aksiSiswa(${s.id},this)">✏️</button></td></tr>`;
 }).join('');return hs||(sNon?'<tr><td colspan="12" class="mu" style="text-align:center">Tidak ada siswa nonaktif.</td></tr>':'')}
+
+function editWaSiswa(id){
+ const s=siswaById(id);if(!s)return;
+ info('Ubah nomor WhatsApp · '+s.nama,'
+ <div class="fd"><label class="l" for="waSiswaInp">Nomor WhatsApp orang tua</label><input id="waSiswaInp" class="input" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" value="'+esc(nomorLokal(s.wa))+'" placeholder="08xxxxxxxxxx"><div class="mu" style="margin-top:5px">Gunakan nomor aktif WhatsApp. Nomor boleh diawali 08 atau 628.</div></div>
+ <div class="tb" style="margin-top:12px"><button type="button" class="btn soft grow" onclick="closeM()">Batal</button><button type="button" class="btn success grow" onclick="simpanWaSiswa('+id+')">💾 Simpan</button></div>');
+ setTimeout(()=>{const e=$('#waSiswaInp');if(e){e.focus();e.select();e.addEventListener('keydown',ev=>{if(ev.key==='Enter')simpanWaSiswa(id)})}},80);
+}
+function simpanWaSiswa(id){
+ const s=siswaById(id),el=$('#waSiswaInp');if(!s||!el)return;
+ const raw=el.value.trim(),wa=raw?normWA(raw):'';
+ if(raw&&!/^628\\d{8,12}$/.test(wa))return toast('Nomor WhatsApp tidak valid. Gunakan nomor Indonesia yang benar.',false);
+ if(wa===normWA(s.wa))return closeM();
+ guard(async()=>{
+  await setWali(id,wa);
+  await muatDasar();
+  closeM();toast('Nomor WhatsApp '+s.nama+' berhasil diperbarui');renderV();
+ });
+}
+
 function cariSiswaInput(el){q=el.value;const tb=$('#sb');if(tb)tb.innerHTML=siswaRows();}
 /* centang cepat: hanya ubah kotak, hitungan, dan tombol yang terlihat (tanpa membangun ulang halaman) */
 /* seluruh sel yang berisi kotak centang ikut menjadi area ketuk */
