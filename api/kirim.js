@@ -139,16 +139,23 @@ module.exports = async (req, res) => {
       if (!tokenUtama) return res.status(400).json({ error: 'Token Fonnte sekolah belum dikonfigurasi' });
       if (!RE_NOMOR.test(kepala)) return res.status(400).json({ error: 'Nomor WhatsApp Kepala Sekolah belum valid di Pengaturan' });
 
-      const siswa = siswaRows || [];
-      if (!siswa.length) return res.status(400).json({ error: 'Belum ada siswa aktif di sekolah ini' });
+      const semuaSiswa = siswaRows || [];
+      if (!semuaSiswa.length) return res.status(400).json({ error: 'Belum ada siswa aktif di sekolah ini' });
+      const diminta = Array.isArray(b.kelas_ids) ? [...new Set(b.kelas_ids.map(Number).filter(x => Number.isInteger(x) && x > 0))] : [];
+      if (!diminta.length) return res.status(400).json({ error: 'Pilih minimal satu kelas untuk diliburkan' });
+      const kelasDipilih = (kelasRows || []).filter(k => diminta.includes(Number(k.id)));
+      if (kelasDipilih.length !== diminta.length) return res.status(400).json({ error: 'Ada kelas yang tidak terdaftar pada sekolah ini' });
+      const idsDipilih = new Set(kelasDipilih.map(k => Number(k.id)));
+      const siswa = semuaSiswa.filter(s => idsDipilih.has(Number(s.kelas_id)));
+      if (!siswa.length) return res.status(400).json({ error: 'Tidak ada siswa aktif pada kelas yang dipilih' });
       const siswaIds = siswa.map(x => Number(x.id)).filter(Number.isInteger);
       const abs = await sb(`/rest/v1/absensi?siswa_id=in.(${siswaIds.join(',')})&tanggal=eq.${tanggal}&status=eq.libur&select=siswa_id&limit=10000`);
       const setLibur = new Set((abs || []).map(x => String(x.siswa_id)));
-      const kelasLibur = (kelasRows || []).filter(k => {
+      const kelasLibur = kelasDipilih.filter(k => {
         const anak = siswa.filter(s => Number(s.kelas_id) === Number(k.id));
         return anak.length > 0 && anak.every(s => setLibur.has(String(s.id)));
       });
-      if (!kelasLibur.length) return res.status(200).json({ ok: true, dilewati: true, pesan: 'Belum ada kelas yang seluruh siswanya berstatus Libur' });
+      if (kelasLibur.length !== kelasDipilih.length) return res.status(400).json({ error: 'Status Libur belum tercatat untuk seluruh siswa pada kelas yang dipilih' });
 
       const kelasIds = kelasLibur.map(x => Number(x.id));
       const relasi = await sb(`/rest/v1/kelas_grup_wa?sekolah_id=eq.${sekolahId}&kelas_id=in.(${kelasIds.join(',')})&select=kelas_id,grup_wa_id`);
