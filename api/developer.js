@@ -586,6 +586,156 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // ---------------------------------------------------------
+    // PEMANTAUAN STORAGE SUPABASE (khusus Developer + AAL2)
+    // ---------------------------------------------------------
+    if (b.aksi === 'pemantauan_storage') {
+      if (!L.SB || !L.KEY) throw new Error('Konfigurasi Supabase belum lengkap');
+      const dasar = String(L.SB).replace(/\/$/, '');
+      const headers = { apikey: L.KEY, Authorization: 'Bearer ' + L.KEY, 'Content-Type': 'application/json' };
+      async function storageReq(path, method, body) {
+        const r = await fetch(dasar + path, {
+          method: method || 'GET', headers,
+          ...(body === undefined ? {} : { body: JSON.stringify(body) })
+        });
+        const raw = await r.text();
+        let data = null;
+        try { data = raw ? JSON.parse(raw) : null; } catch (_) {}
+        if (!r.ok) {
+          const pesan = data && (data.message || data.error) || raw || ('HTTP ' + r.status);
+          throw new Error(String(pesan).slice(0, 240));
+        }
+        return data;
+      }
+      async function semuaRows(path) {
+        const out = [];
+        for (let offset = 0; offset < 50000; offset += 1000) {
+          const pemisah = path.includes('?') ? '&' : '?';
+          const rows = await L.panggil(path + pemisah + 'limit=1000&offset=' + offset, 'GET');
+          const isi = Array.isArray(rows) ? rows : [];
+          out.push(...isi);
+          if (isi.length < 1000) break;
+        }
+        return out;
+      }
+      const [sekolahRows, siswaRows, profilRows, anggotaRows] = await Promise.all([
+        semuaRows('/rest/v1/sekolah?select=id,nama&order=nama.asc'),
+        semuaRows('/rest/v1/siswa?select=id,nama,sekolah_id,foto_path'),
+        semuaRows('/rest/v1/profil?select=id,nama,ttd_path'),
+        semuaRows('/rest/v1/keanggotaan?select=sekolah_id,profil_id,aktif')
+      ]);
+      const sekolahMap = new Map(sekolahRows.map(x => [Number(x.id), {
+        id: Number(x.id), nama: x.nama, jumlah_foto: 0, ukuran_foto: 0,
+        jumlah_ttd: 0, ukuran_ttd: 0, jumlah_file: 0, ukuran_byte: 0, daftar_file: []
+      }]));
+      const siswaPath = new Map(siswaRows.filter(x => x.foto_path).map(x => [String(x.foto_path), x]));
+      const profilMap = new Map(profilRows.map(x => [String(x.id), x]));
+      const anggotaMap = new Map();
+      for (const x of anggotaRows) {
+        const id = String(x.profil_id);
+        if (!anggotaMap.has(id)) anggotaMap.set(id, []);
+        anggotaMap.get(id).push({ sekolah_id: Number(x.sekolah_id), aktif: !!x.aktif });
+      }
+      const daftar = await storageReq('/storage/v1/bucket', 'GET');
+      const hasil = [];
+      const fileByBucket = {};
+      for (const bucket of (Array.isArray(daftar) ? daftar : [])) {
+        const item = { id: bucket.id, nama: bucket.name || bucket.id, publik: !!bucket.public, jumlah_file: 0, ukuran_byte: 0, terpotong: false, error: null };
+        const files = [];
+        try {
+          const antre = [''];
+          let dipindai = 0;
+          while (antre.length && dipindai < 20000) {
+            const prefix = antre.pop();
+            let offset = 0;
+            while (dipindai < 20000) {
+              const rows = await storageReq('/storage/v1/object/list/' + encodeURIComponent(bucket.id), 'POST', {
+                prefix, limit: 1000, offset, sortBy: { column: 'name', order: 'asc' }
+              });
+              const isi = Array.isArray(rows) ? rows : [];
+              for (const obj of isi) {
+                dipindai++;
+                if (obj && (obj.id || obj.metadata)) {
+                  const size = Math.max(0, Number(obj.metadata && obj.metadata.size) || 0);
+                  const path = prefix ? prefix + '/' + obj.name : obj.name;
+                  item.jumlah_file++;
+                  item.ukuran_byte += size;
+                  files.push({
+                    path, ukuran_byte: size,
+                    diperbarui: obj.updated_at || obj.created_at || obj.metadata?.lastModified || null,
+                    mime: obj.metadata?.mimetype || null
+                  });
+                } else if (obj && obj.name && prefix.split('/').filter(Boolean).length < 12) {
+                  antre.push(prefix ? prefix + '/' + obj.name : obj.name);
+                }
+                if (dipindai >= 20000) break;
+              }
+              if (isi.length < 1000 || dipindai >= 20000) break;
+              offset += isi.length;
+            }
+          }
+          item.terpotong = antre.length > 0 || dipindai >= 20000;
+        } catch (e) {
+          item.error = e.message || 'Gagal membaca isi bucket';
+        }
+        fileByBucket[item.id] = files;
+        hasil.push(item);
+      }
+
+      function catatFile(sid, data) {
+        const sk = sekolahMap.get(Number(sid));
+        if (!sk) return;
+        sk.daftar_file.push(data);
+        sk.jumlah_file++;
+        sk.ukuran_byte += data.ukuran_byte;
+        if (data.jenis === 'Foto siswa') {
+          sk.jumlah_foto++;
+          sk.ukuran_foto += data.ukuran_byte;
+        } else if (data.jenis === 'Tanda tangan guru') {
+          sk.jumlah_ttd++;
+          sk.ukuran_ttd += data.ukuran_byte;
+        }
+      }
+      for (const f of (fileByBucket['foto-siswa'] || [])) {
+        const bagian = String(f.path).split('/');
+        const sid = Number(bagian[0]);
+        const siswa = siswaPath.get(f.path) || null;
+        catatFile(sid, {
+          jenis: 'Foto siswa', nama: siswa?.nama || 'Foto siswa (tidak tertaut)',
+          pemilik: siswa?.nama || ('ID file: ' + (bagian[1] || f.path)),
+          path: f.path, ukuran_byte: f.ukuran_byte, diperbarui: f.diperbarui,
+          status: siswa ? 'Terhubung ke data siswa' : 'Tidak tertaut ke data siswa'
+        });
+      }
+      for (const f of (fileByBucket['ttd-guru'] || [])) {
+        const bagian = String(f.path).split('/');
+        const pid = bagian[0];
+        const profil = profilMap.get(pid) || null;
+        const anggota = anggotaMap.get(pid) || [];
+        const aktif = !!(profil && profil.ttd_path === f.path);
+        const sekolahPemilik = anggota.length ? anggota : [];
+        for (const k of sekolahPemilik) {
+          catatFile(k.sekolah_id, {
+            jenis: 'Tanda tangan guru', nama: profil?.nama || 'Tanda tangan (akun tidak ditemukan)',
+            pemilik: profil?.nama || pid, path: f.path, ukuran_byte: f.ukuran_byte,
+            diperbarui: f.diperbarui,
+            status: aktif ? 'Tanda tangan aktif' : 'File lama/tidak tertaut',
+            keanggotaan: k.aktif ? 'Aktif' : 'Nonaktif',
+            dipakaiLintasSekolah: sekolahPemilik.length > 1
+          });
+        }
+      }
+      const rincianSekolah = [...sekolahMap.values()].map(sk => ({
+        ...sk,
+        daftar_file: sk.daftar_file.sort((x, y) =>
+          (x.jenis === y.jenis ? x.nama.localeCompare(y.nama, 'id') : x.jenis.localeCompare(y.jenis, 'id')))
+      })).sort((x, y) => x.nama.localeCompare(y.nama, 'id'));
+      return res.status(200).json({
+        ok: true, buckets: hasil, sekolah_storage: rincianSekolah,
+        diperbarui: new Date().toISOString()
+      });
+    }
+
     return res.status(400).json({ error: 'Aksi tidak dikenal' });
   } catch (e) {
     console.error('developer.js', e.message);
