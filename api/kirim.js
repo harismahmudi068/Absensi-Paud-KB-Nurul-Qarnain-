@@ -45,10 +45,17 @@ const daftarId = (v) => {
 async function catatLog(baris) {
   if (!baris.length) return true;
   try {
+    // PostgREST bulk insert mensyaratkan semua objek memiliki kumpulan key yang sama.
+    // Samakan key seluruh baris; kolom yang tidak relevan diisi null agar riwayat
+    // kepala sekolah, staf, dan grup dapat disimpan dalam satu batch.
+    const kolom = [...new Set(baris.flatMap((x) => Object.keys(x || {})))];
+    const barisSeragam = baris.map((x) => Object.fromEntries(
+      kolom.map((k) => [k, x && x[k] !== undefined ? x[k] : (k === 'oleh_developer' ? false : null)])
+    ));
     const r = await fetch(SB + '/rest/v1/kirim_log', {
       method: 'POST',
       headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify(baris)
+      body: JSON.stringify(barisSeragam)
     });
     if (!r.ok) {
       console.error('Catat riwayat kirim gagal:', r.status, await r.text());
