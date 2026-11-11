@@ -101,6 +101,143 @@ module.exports = async (req, res) => {
     const FONNTE = t0.token || (sekolahId === SEKOLAH_PERTAMA ? ENV_FONNTE : '');
     if (!FONNTE) return res.status(500).json({ error: 'Token Fonnte sekolah belum diisi di Pengaturan > Koneksi' });
 
+
+    // ---------- LIBUR MANUAL: semua guru boleh, tanpa membuka Pengaturan ----------
+    if (b.aksi === 'libur_manual') {
+      const tanggal = String(b.tanggal || '');
+      const hariIni = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(tanggal) || tanggal !== hariIni) {
+        return res.status(400).json({ error: 'Tombol Liburkan Siswa hanya mengirim notifikasi untuk hari ini' });
+      }
+
+      const [kelasRows, siswaRows, rahasiaRows, tokenRows] = await Promise.all([
+        sb(`/rest/v1/kelas?sekolah_id=eq.${sekolahId}&select=id,nama`),
+        sb(`/rest/v1/siswa?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,kelas_id`),
+        sb(`/rest/v1/pengaturan_rahasia?sekolah_id=eq.${sekolahId}&select=nomor_kepala`),
+        sb(`/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=id,token&order=id.asc`)
+      ]);
+      const tokenUtama = (tokenRows || [])[0]?.token || FONNTE;
+      const kepala = String((rahasiaRows || [])[0]?.nomor_kepala || '').replace(/\\D/g, '');
+      if (!tokenUtama) return res.status(400).json({ error: 'Token Fonnte sekolah belum dikonfigurasi' });
+      if (!RE_NOMOR.test(kepala)) return res.status(400).json({ error: 'Nomor WhatsApp Kepala Sekolah belum valid di Profil/Pengaturan' });
+
+      const siswa = siswaRows || [];
+      if (!siswa.length) return res.status(400).json({ error: 'Belum ada siswa aktif di sekolah ini' });
+      const siswaIds = siswa.map(x => Number(x.id)).filter(Number.isInteger);
+      const abs = await sb(`/rest/v1/absensi?siswa_id=in.(${siswaIds.join(',')})&tanggal=eq.${tanggal}&status=eq.libur&select=siswa_id`);
+      const setLibur = new Set((abs || []).map(x => String(x.siswa_id)));
+      const kelasLibur = (kelasRows || []).filter(k => {
+        const anak = siswa.filter(s => Number(s.kelas_id) === Number(k.id));
+        return anak.length > 0 && anak.every(s => setLibur.has(String(s.id)));
+      });
+      if (!kelasLibur.length) return res.status(200).json({ ok: true, dilewati: true, pesan: 'Belum ada kelas yang seluruh siswanya berstatus Libur' });
+
+      const kelasIds = kelasLibur.map(x => Number(x.id));
+      const relasi = await sb(`/rest/v1/kelas_grup_wa?sekolah_id=eq.${sekolahId}&kelas_id=in.(${kelasIds.join(',')})&select=kelas_id,grup_wa_id`);
+      const grupIds = [...new Set((relasi || []).map(x => Number(x.grup_wa_id)).filter(Number.isInteger))];
+      const [grupRows, anggotaRows] = await Promise.all([
+        grupIds.length ? sb(`/rest/v1/grup_wa?sekolah_id=eq.${sekolahId}&id=in.(${grupIds.join(',')})&select=id,grup_id,label,token_id`) : Promise.resolve([]),
+        sb(`/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id`)
+      ]);
+      const anggotaIds = [...new Set((anggotaRows || []).map(x => String(x.profil_id)).filter(x => /^[0-9a-f-]{36}$/i.test(x)))];
+      const profilRows = anggotaIds.length ? await sb(`/rest/v1/profil?id=in.(${anggotaIds.join(',')})&aktif=eq.true&select=id,nama,no_wa`) : [];
+      const tokenById = new Map((tokenRows || []).map(x => [String(x.id), x.token]));
+      const grupById = new Map((grupRows || []).map(x => [String(x.id), x]));
+      const kelasById = new Map(kelasLibur.map(x => [String(x.id), x]));
+      const grupMap = new Map();
+      for (const rel of relasi || []) {
+        const g = grupById.get(String(rel.grup_wa_id));
+        const k = kelasById.get(String(rel.kelas_id));
+        if (!g || !g.grup_id || !k) continue;
+        if (!grupMap.has(String(g.id))) grupMap.set(String(g.id), { grup: g, kelas: [] });
+        grupMap.get(String(g.id)).kelas.push(k.nama);
+      }
+
+      const tanggalTeks = new Date(tanggal + 'T00:00:00+07:00').toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const namaKelas = kelasLibur.map(x => x.nama).sort((a,b) => a.localeCompare(b, 'id'));
+      const namaSekolah = ((await sb(`/rest/v1/sekolah?id=eq.${sekolahId}&select=nama`)) || [])[0]?.nama || 'Sekolah';
+      const pesan = [
+        '🌸 *INFORMASI LIBUR SEKOLAH*', '',
+        'Assalamu’alaikum warahmatullahi wabarakatuh.', '',
+        'Kami informasikan bahwa kegiatan belajar mengajar pada:', '',
+        '📅 Hari/Tanggal: *' + tanggalTeks + '*',
+        '🏫 Kelas yang diliburkan: *' + namaKelas.join(', ') + '*',
+        '📝 Keterangan: *Libur hari ini melalui tombol Liburkan Siswa*', '',
+        'Kegiatan belajar mengajar pada kelas tersebut diliburkan untuk hari ini.',
+        'Terima kasih atas perhatian dan kerja sama Bapak/Ibu. 😊', '',
+        '🏫 *' + namaSekolah + '*'
+      ].join('\\n');
+
+      // Klaim atomik: UNIQUE(sekolah_id,tanggal) mencegah dua guru/cron mengirim dua kali.
+      const ins = await fetch(SB + '/rest/v1/notifikasi_libur?on_conflict=sekolah_id,tanggal', {
+        method: 'POST',
+        headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=representation' },
+        body: JSON.stringify({ sekolah_id: sekolahId, tanggal, pesan, status: 'processing', percobaan: 1 })
+      });
+      const insRows = await ins.json().catch(() => []);
+      if (!ins.ok) throw new Error('Gagal mengunci notifikasi libur: ' + ins.status);
+      if (!Array.isArray(insRows) || !insRows.length) {
+        const existing = (await sb(`/rest/v1/notifikasi_libur?sekolah_id=eq.${sekolahId}&tanggal=eq.${tanggal}&select=status,terkirim,terakhir_error&limit=1`)) || [];
+        return res.status(200).json({ ok: true, duplicate: true, status: existing[0]?.status || 'sudah tercatat', pesan: 'Notifikasi libur sekolah untuk hari ini sudah pernah dibuat; tidak dikirim ulang.' });
+      }
+      const notifId = insRows[0].id;
+      const batch = `manual-libur-${sekolahId}-${tanggal}-${notifId}`;
+      const logs = [];
+      let waktu = Math.floor(Date.now() / 1000);
+      const kirimTerjadwal = async (target, teks, token, label, jeda) => {
+        if (!token) {
+          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label, nomor: target, status: 'gagal', error: 'Token Fonnte tidak ditemukan' });
+          return 'Token Fonnte tidak ditemukan';
+        }
+        waktu += jeda;
+        try {
+          const hasil = await kirimFonnte(token, target, teks, waktu);
+          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label, nomor: target, fonnte_id: idFonnte(hasil), status: 'terjadwal', jadwal_pada: new Date(waktu * 1000).toISOString() });
+          return null;
+        } catch (e) {
+          const alasan = potong(e.message || e, 300);
+          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label, nomor: target, status: 'gagal', error: alasan });
+          return alasan;
+        }
+      };
+
+      const gagal = [];
+      try {
+        const hKepala = await kirimFonnte(tokenUtama, kepala, pesan);
+        logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, fonnte_id: idFonnte(hKepala), status: 'terjadwal' });
+      } catch (e) {
+        throw new Error('Pengiriman ke Kepala Sekolah gagal: ' + (e.message || e));
+      }
+
+      const nomorSudah = new Set([kepala]);
+      for (const a of profilRows || []) {
+        const nomor = String(a.no_wa || '').replace(/\\D/g, '');
+        if (!RE_NOMOR.test(nomor) || nomorSudah.has(nomor)) continue;
+        nomorSudah.add(nomor);
+        const err = await kirimTerjadwal(nomor, pesan, tokenUtama, a.nama || 'Staf sekolah', 15 + Math.floor(Math.random() * 16));
+        if (err) gagal.push((a.nama || nomor) + ': ' + err);
+      }
+
+      for (const item of grupMap.values()) {
+        const g = item.grup;
+        const target = String(g.grup_id || '');
+        const nama = [...new Set(item.kelas)].sort((a,b) => a.localeCompare(b, 'id'));
+        const pesanGrup = pesan.replace('Kelas yang diliburkan: *' + namaKelas.join(', ') + '*', 'Kelas yang diliburkan: *' + nama.join(', ') + '*');
+        const tokenGrup = g.token_id ? tokenById.get(String(g.token_id)) : tokenUtama;
+        const err = await kirimTerjadwal(target, pesanGrup, tokenGrup, 'Grup ' + (g.label || target), 30 + Math.floor(Math.random() * 31));
+        if (err) gagal.push('Grup ' + target + ': ' + err);
+      }
+
+      await catatLog(logs);
+      const patch = await fetch(SB + `/rest/v1/notifikasi_libur?id=eq.${notifId}`, {
+        method: 'PATCH',
+        headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({ status: 'sent', terkirim: new Date().toISOString(), terakhir_error: gagal.length ? potong(gagal.join('; '), 500) : null })
+      });
+      if (!patch.ok) console.error('Gagal memperbarui status notifikasi libur manual:', patch.status);
+      return res.status(200).json({ ok: true, sent: true, kepala: 1, staf: Math.max(0, nomorSudah.size - 1), grup: grupMap.size, gagal: gagal.length, detail_gagal: gagal.slice(0, 5), duplicate: false });
+    }
+
     // ---------- PEMBATALAN PESAN GRUP LIBUR OTOMATIS ----------
     if (b.aksi === 'batalkan_libur_grup') {
       const tanggal = String(b.tanggal || '');
