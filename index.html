@@ -4618,6 +4618,7 @@ const DEVSET={
  cron:async()=>{S.devCron=await dbq(db.rpc('developer_cron_daftar')).catch(ERR)},
  kirim:async()=>{S.devKirim=await dbq(db.rpc('developer_kirim_log',{p_batas:300,p_sekolah:devKirimSek?Number(devKirimSek):null})).catch(ERR)},
  simpan:async()=>{S.devSimpan=await dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(ERR)},
+ storage:async()=>{S.devStorage=await apiDev({aksi:'pemantauan_storage'}).catch(ERR)},
  alpa:async()=>{S.devAlpa=await dbq(db.rpc('developer_alpa')).catch(ERR)},
  nl:async()=>{S.devNL=await dbq(db.rpc('developer_notif_libur')).catch(ERR)},
  np:async()=>{S.devNP=await dbq(db.rpc('developer_notif_piket')).catch(ERR)},
@@ -4629,7 +4630,7 @@ const DEVSET={
  kal:async()=>{await muatKalNas().catch(()=>{})},
  profil:async()=>{await muatProfilSaya()}
 };
-const DEV_BUTUH={dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
+const DEV_BUTUH={dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
 const DEVT={};
 function devButuh(){const t=devTab==='ringkas'?'setuju':devTab;
  const b=view==='developer'?(DEV_BUTUH[t]||[]):view==='dashboard'?DEV_BUTUH.dashboard:view==='profil'?['profil']:[];
@@ -4809,38 +4810,43 @@ function devTambahGuru(sid){form('Tambah guru',[{k:'wa',l:'Nomor WhatsApp guru (
   setTimeout(()=>{form('Guru baru',[{k:'nama',l:'Nama guru'},{k:'nip',l:'NIP (opsional)'},{k:'user',l:'Username (huruf kecil, tanpa spasi)'},{k:'sandi',l:'Kata sandi awal (minimal 6 karakter)',t:'password'},{k:'role',l:'Peran',o:['Guru','Operator','Pengelola/Pengasuh','Wakil Kepala Sekolah','Kepala Sekolah']}],async z=>{await apiGuru({sekolah_id:sid,aksi:'tambah',nama:z.nama,nip:z.nip,username:z.user,sandi:z.sandi,role:KEYR[z.role]||'guru',no_wa:wa});await muatDev();toast('Guru ditambahkan');renderV()})},150)});$('#ms').textContent='Lanjut'}
 const BATAS_DB_MB=450;
 const RETENSI=[
- ['pesan_masuk','1 hari','Hanya data hari ini'],
- ['percakapan_tertunda','1 hari','Hanya data hari ini'],
- ['pesan_dedup','1 hari','Hanya data hari ini (jendela anti-duplikat pesan tetap 5 menit)'],
- ['otp_kode','1 hari','Hanya data hari ini'],
- ['laporan_ortu','1 hari','Hanya data hari ini'],
- ['notifikasi_alpa','1 hari','Hanya data hari ini'],
- ['notifikasi_libur','1 hari','Hanya data hari ini'],
- ['kirim_log','7 hari','Riwayat kirim WhatsApp: hanya 7 hari terakhir (tugas bersihkan-kirim-log pukul 02.30 WIB, fungsi bersihkan_kirim_log). Developer juga bisa menghapusnya di tab Riwayat Kirim'],
- ['piket_notif_log','3 hari','Hanya 3 hari terakhir (tugas bersihkan_piket_notif_log pukul 00.15 WIB)'],
- ['alpa_proses','1 hari','Hanya data hari ini'],
- ['libur_batal','Sampai tanggal lewat','Dihapus bila tanggal pembatalannya sudah lewat; hari ini masih disimpan'],
- ['libur_tanggal','Sampai tanggal lewat','Dihapus bila tanggal akhirnya sudah lewat; hari ini masih disimpan'],
- ['libur_nasional','Sampai tanggal lewat','Dihapus bila tanggalnya sudah lewat; impor Developer juga mengganti seluruh isinya'],
- ['log_audit','3 hari','Hari ini + 2 hari sebelumnya'],
- ['pendaftaran_sekolah','7 hari','Hanya yang sudah diproses; yang masih menunggu tidak dihapus'],
- ['permintaan_nomor','7 hari','Hanya yang sudah diproses; yang masih menunggu tidak dihapus'],
- ['notif_antrean','Hanya antrean menunggu','Dibersihkan pukul 00.07 WIB (tugas bersihkan_notif_antrean). Yang disimpan hanya antrean berstatus menunggu yang jatuh tempo hari ini atau sesudahnya'],
- ['alumni','2 tahun','Dihapus bila lebih dari 2 tahun sejak dicatat sebagai alumni (tugas bersihkan-alumni pukul 00.15 WIB)'],
- ['push_langganan','Saat HP mati atau siswa dihapus','Dihapus oleh pengirim notifikasi (api/notif-siswa) bila alamat HP mati (404/410) atau gagal 5 kali berturut-turut. Juga ikut terhapus otomatis (CASCADE) bila siswanya dihapus, misalnya siswa lulus atau nonaktif saat tahun ajaran baru, atau bila sekolahnya dihapus. Bukan oleh jadwal'],
- ['cron.job_run_details','1 hari','Riwayat cron dikosongkan pukul 00.08 WIB (tugas bersihkan_cron_log); bukan tabel aplikasi']];
+ ['pesan_masuk','1 hari','Hanya data hari ini; dibersihkan pukul 00.05 WIB'],
+ ['percakapan_tertunda','1 hari','Hanya data hari ini; dibersihkan pukul 00.05 WIB'],
+ ['pesan_dedup','1 hari','Hanya data hari ini; jendela anti-duplikat pesan tetap 5 menit'],
+ ['otp_kode','1 hari','Hanya data hari ini; dibersihkan pukul 00.05 WIB'],
+ ['laporan_ortu','1 hari','Hanya data hari ini; dibersihkan pukul 00.05 WIB'],
+ ['notifikasi_alpa','1 hari','Hanya data hari ini; dibersihkan pukul 00.05 WIB'],
+ ['notifikasi_libur','1 hari','Hanya data hari ini; dibersihkan pukul 00.05 WIB'],
+ ['alpa_proses','1 hari','Hanya data hari ini; dibersihkan pukul 00.05 WIB'],
+ ['notifikasi_libur_grup','1 hari','Hanya status terminal terkirim/gagal/dibatalkan; antrean menunggu atau mengirim tidak disentuh'],
+ ['notifikasi_libur_manual_kelas','1 hari','Penanda pengiriman libur manual per kelas; dibersihkan pukul 00.05 WIB'],
+ ['kirim_log','7 hari','Riwayat kirim WhatsApp; tugas bersihkan-kirim-log pukul 02.30 WIB'],
+ ['piket_notif_log','3 hari','Riwayat notifikasi piket; tugas bersihkan_piket_notif_log pukul 00.15 WIB'],
+ ['log_audit','3 hari','Hari ini dan 2 hari sebelumnya; dibersihkan pukul 00.05 WIB'],
+ ['pendaftaran_sekolah','7 hari','Hanya data yang sudah diproses; status menunggu tidak dihapus'],
+ ['permintaan_nomor','7 hari','Hanya data yang sudah diproses; status menunggu tidak dihapus'],
+ ['notif_antrean','Antrean aktif saja','Pukul 00.07 WIB: hanya status menunggu yang jadwalnya hari ini atau sesudahnya dipertahankan'],
+ ['alumni','2 tahun','Dihapus bila lebih dari 2 tahun sejak dicatat sebagai alumni; tugas pukul 00.15 WIB'],
+ ['libur_batal','Sampai tanggal lewat','Dihapus bila tanggal pembatalan sudah lewat; tanggal hari ini masih disimpan'],
+ ['libur_tanggal','Sampai tanggal lewat','Dihapus bila tanggal akhir (atau tanggal mulai) sudah lewat; hari ini masih disimpan'],
+ ['libur_nasional','Sampai tanggal lewat','Tanggal yang sudah lewat dihapus; impor kalender nasional juga mengganti daftar'],
+ ['push_langganan','Saat HP mati atau siswa dihapus','Alamat push dihapus bila respons 404/410 atau gagal 5 kali berturut-turut; ikut terhapus saat siswa/sekolah dihapus'],
+ ['cron.job_run_details','Dikosongkan harian','Riwayat eksekusi cron dikosongkan pukul 00.08 WIB; tabel internal pg_cron, bukan tabel aplikasi']
+];
 const RET_MAP=Object.fromEntries(RETENSI.map(r=>[r[0],r]));
 const SIMPAN_LAIN={absensi:'Sampai tahun ajaran baru',tabungan_transaksi:'Sampai tahun ajaran baru',hafalan_setoran:'Sampai tahun ajaran baru'};
 const fmtBy=n=>{n=Number(n)||0;return n>=1073741824?(n/1073741824).toFixed(2)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'};
-function devPenyimpanan(){const d=S.devSimpan;
+function devPenyimpanan(){const d=S.devSimpan,st=S.devStorage;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat data penyimpanan...</div></div></div>';
- if(d.error)return `<div class="panel"><div class="ph">💾 Penyimpanan Supabase</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL langkah 11 sudah dijalankan.</div></div></div>`;
+ if(d.error)return `<div class="panel"><div class="ph">💾 Penyimpanan Database</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Data ukuran database belum tersedia.</div></div></div>`;
  const pk=Number(d.persen_aman)||0,wr=pk<60?'#1f9d55':pk<85?'#e0a100':'#d64545',tbl=d.tabel||[],ss=(d.sekolah||[]).slice().sort((a,b)=>b.ukuran-a.ukuran),B=(x,k)=>(x.baris||{})[k]||0;
- return `<div class="panel"><div class="ph">💾 Database Size Supabase <button class="btn soft sm" onclick="perbaruiPemakaian()">↻ Perbarui sekarang</button></div><div class="pb"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${fmtBy(d.ukuran_db)} dari ${fmtBy(d.batas_aman)}</b><span class="mu">${pk.toFixed(1)}% terpakai · sisa ${fmtBy(d.sisa_aman)}</span></div><div style="height:14px;background:#e6e9ee;border-radius:8px;overflow:hidden;margin:8px 0"><div style="width:${pk}%;height:100%;background:${wr}"></div></div><div class="cards"><div class="card stat"><b>${fmtBy(d.sisa_gratis)}</b>Sisa kuota gratis<div class="mu">dari ${fmtBy(d.kuota_gratis)}</div></div><div class="card stat"><b>${fmtBy(d.sisa_aman)}</b>Sisa batas aman<div class="mu">dari ${fmtBy(d.batas_aman)}</div></div></div><div class="note">Diperbarui otomatis 1x sehari pukul 00.20 WIB (setelah pembersihan data pukul 00.05 WIB) dan disimpan di tabel pemakaian_db. Total mengikuti Database Size PostgreSQL seluruh cluster, sehingga mencakup database utama dan database template yang ikut dilaporkan Supabase. WAL tidak dihitung di sini. Terakhir diperbarui: ${waktuId(d.diperbarui)}. Rincian tabel di bawah berasal dari tabel aplikasi pada schema public. Ukuran di disk tidak selalu turun segera setelah data dihapus.</div></div></div>
-<div class="panel"><div class="ph">🏫 Pemakaian per sekolah <span class="mu">perkiraan</span></div><div class="pb">${ss.length?tab(['Sekolah','Perkiraan ukuran','Siswa','Absensi','Tabungan','Total baris'],ss.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${fmtBy(x.ukuran)}</td><td>${B(x,'siswa')}</td><td>${B(x,'absensi')}</td><td>${B(x,'tabungan_transaksi')}</td><td>${Object.values(x.baris||{}).reduce((a,b)=>a+(Number(b)||0),0)}</td></tr>`).join('')):'<div class="mu">Belum ada sekolah.</div>'}<div class="note" style="margin-top:8px">Perkiraan dihitung dari porsi jumlah baris tiap sekolah pada setiap tabel yang punya kolom sekolah_id.</div></div></div>
-<div class="panel"><div class="ph">🗂 Semua tabel <span class="mu">${tbl.length} tabel</span></div><div class="pb">${tab(['Tabel','Ukuran','Jumlah baris','Disimpan'],tbl.slice().sort((a,b)=>(Number(b.ukuran)||0)-(Number(a.ukuran)||0)).map(x=>{const r=RET_MAP[String(x.nama).replace(/^public\./,'')];return `<tr><td><b>${esc(x.nama)}</b></td><td>${fmtBy(x.ukuran)}</td><td>${x.baris}</td><td>${r?r[1]:(SIMPAN_LAIN[String(x.nama).replace(/^public\./,'')]||'Permanen')}</td></tr>`}).join(''))}<div class="note" style="margin-top:8px">Kolom Disimpan mengikuti pembersihan otomatis harian. Tabel berlabel Permanen tidak dihapus otomatis; absensi, tabungan, dan setoran hafalan terhapus saat Kepala Sekolah memulai tahun ajaran baru (absensi dan tabungan juga bisa lewat tombol di tab Hapus Data). Libur tanggal dan libur nasional dihapus otomatis setelah tanggalnya lewat; libur nasional juga diganti seluruhnya setiap impor.</div></div></div>`}
-function perbaruiPemakaian(){guard(async()=>{await dbq(db.rpc('developer_perbarui_pemakaian'));await muatDev();toast('Data penyimpanan diperbarui');renderV()})}
-const waktuId=x=>x?new Date(x).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'short',timeStyle:'short'}):'-';
+ const buckets=st&&Array.isArray(st.buckets)?st.buckets:[],totalFile=buckets.reduce((n,x)=>n+(Number(x.jumlah_file)||0),0),totalByte=buckets.reduce((n,x)=>n+(Number(x.ukuran_byte)||0),0);
+ const storagePanel=`<div class="panel"><div class="ph">🗄 Supabase Storage <button class="btn soft sm" onclick="perbaruiPemakaian()">↻ Perbarui</button></div><div class="pb">${!st?'<div class="note">⏳ Memuat daftar bucket dan ukuran file...</div>':st.error?`<div class="note" style="color:var(--rd)">⚠ ${esc(st.error)}</div>`: `<div class="cards"><div class="card stat"><b>${totalFile.toLocaleString('id-ID')}</b>Total file</div><div class="card stat"><b>${fmtBy(totalByte)}</b>Total ukuran file</div><div class="card stat"><b>${buckets.length}</b>Bucket</div></div>${buckets.length?tab(['Bucket','Akses','Jumlah file','Ukuran','Keterangan'],buckets.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${x.publik?'Publik':'Privat'}</td><td>${Number(x.jumlah_file)||0}</td><td>${fmtBy(x.ukuran_byte)}</td><td>${x.error?`<span style="color:var(--rd)">${esc(x.error)}</span>`:x.terpotong?'Pemindaian dibatasi 20.000 objek':'Terhitung'}</td></tr>`).join('')):'<div class="mu">Belum ada bucket.</div>'}<div class="note" style="margin-top:8px">Ukuran Storage dihitung langsung dari metadata file pada setiap bucket saat panel dimuat atau diperbarui. Nilai ini terpisah dari Database Size PostgreSQL dan tidak dijumlahkan ke kuota database.</div>`}</div></div>`;
+ return `<div class="panel"><div class="ph">💾 Database Size Supabase <button class="btn soft sm" onclick="perbaruiPemakaian()">↻ Perbarui sekarang</button></div><div class="pb"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${fmtBy(d.ukuran_db)} dari ${fmtBy(d.batas_aman)}</b><span class="mu">${pk.toFixed(1)}% terpakai · sisa ${fmtBy(d.sisa_aman)}</span></div><div style="height:14px;background:#e6e9ee;border-radius:8px;overflow:hidden;margin:8px 0"><div style="width:${pk}%;height:100%;background:${wr}"></div></div><div class="cards"><div class="card stat"><b>${fmtBy(d.sisa_gratis)}</b>Sisa kuota gratis<div class="mu">dari ${fmtBy(d.kuota_gratis)}</div></div><div class="card stat"><b>${fmtBy(d.sisa_aman)}</b>Sisa batas aman<div class="mu">dari ${fmtBy(d.batas_aman)}</div></div></div><div class="note">Ukuran database diperbarui otomatis 1x sehari pukul 00.20 WIB, setelah pembersihan data pukul 00.05 WIB, dan disimpan di pemakaian_db. Total mengikuti Database Size PostgreSQL yang dilaporkan Supabase; WAL tidak dihitung. Terakhir diperbarui: ${waktuId(d.diperbarui)}. Rincian tabel di bawah hanya untuk schema public. Ukuran fisik di disk tidak selalu langsung turun setelah baris dihapus.</div></div></div>
+ <div class="panel"><div class="ph">🏫 Pemakaian per sekolah <span class="mu">perkiraan</span></div><div class="pb">${ss.length?tab(['Sekolah','Perkiraan ukuran','Siswa','Absensi','Tabungan','Total baris'],ss.map(x=>`<tr><td><b>${esc(x.nama)}</b></td><td>${fmtBy(x.ukuran)}</td><td>${B(x,'siswa')}</td><td>${B(x,'absensi')}</td><td>${B(x,'tabungan_transaksi')}</td><td>${Object.values(x.baris||{}).reduce((a,b)=>a+(Number(b)||0),0)}</td></tr>`).join('')):'<div class="mu">Belum ada sekolah.</div>'}<div class="note" style="margin-top:8px">Perkiraan dihitung dari porsi jumlah baris tiap sekolah pada setiap tabel yang memiliki kolom sekolah_id; bukan pengukuran byte per sekolah secara langsung.</div></div></div>
+ <div class="panel"><div class="ph">🗂 Semua tabel <span class="mu">${tbl.length} tabel</span></div><div class="pb">${tab(['Tabel','Ukuran','Jumlah baris','Disimpan'],tbl.slice().sort((a,b)=>(Number(b.ukuran)||0)-(Number(a.ukuran)||0)).map(x=>{const r=RET_MAP[String(x.nama).replace(/^public\\./,'')];return `<tr><td><b>${esc(x.nama)}</b></td><td>${fmtBy(x.ukuran)}</td><td>${x.baris}</td><td>${r?r[1]:(SIMPAN_LAIN[String(x.nama).replace(/^public\\./,'')]||'Permanen')}</td></tr>`}).join(''))}<div class="note" style="margin-top:8px">Daftar Disimpan menunjukkan retensi otomatis yang berlaku saat ini. Tabel berlabel Permanen tidak masuk jadwal pembersihan otomatis. Absensi, tabungan, dan setoran hafalan disimpan sampai proses tahun ajaran baru atau tindakan hapus khusus Developer/Kepala Sekolah yang tersedia.</div></div></div>${storagePanel}`;
+}
+function perbaruiPemakaian(){guard(async()=>{await dbq(db.rpc('developer_perbarui_pemakaian'));cmKosong();await muatDev();toast('Data database dan Storage diperbarui');renderV()})}
 function statusAlpa(x){if(x.status_sekolah!=='aktif')return['off','Non-Aktif','Sekolah nonaktif'];if(!x.alpa_aktif)return['off','Non-Aktif','Alpa otomatis dimatikan di Pengaturan sekolah'];
  if(!x.cron_ada)return['err','Error','Jadwal cron belum terbentuk. Tekan Sinkron ulang jadwal'];if(!x.cron_aktif)return['err','Error','Jadwal cron tidak aktif. Tekan Sinkron ulang jadwal'];
  if(x.terakhir_status==='failed')return['err','Error','Eksekusi terakhir gagal: '+(x.terakhir_pesan||'')];
