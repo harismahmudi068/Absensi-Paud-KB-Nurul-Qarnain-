@@ -4840,6 +4840,7 @@ const RETENSI=[
 const RET_MAP=Object.fromEntries(RETENSI.map(r=>[r[0],r]));
 const SIMPAN_LAIN={absensi:'Sampai tahun ajaran baru',tabungan_transaksi:'Sampai tahun ajaran baru',hafalan_setoran:'Sampai tahun ajaran baru'};
 const fmtBy=n=>{n=Number(n)||0;return n>=1073741824?(n/1073741824).toFixed(2)+' GB':n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'};
+const waktuId=x=>x?new Date(x).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'short',timeStyle:'short'}):'-';
 function devPenyimpanan(){const d=S.devSimpan,st=S.devStorage;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat data penyimpanan...</div></div></div>';
  if(d.error)return `<div class="panel"><div class="ph">💾 Penyimpanan Database</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Data ukuran database belum tersedia.</div></div></div>`;
