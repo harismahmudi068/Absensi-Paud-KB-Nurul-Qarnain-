@@ -43,15 +43,22 @@ const daftarId = (v) => {
 
 // Mencatat riwayat ke tabel kirim_log. Gagal mencatat TIDAK boleh menggagalkan pengiriman.
 async function catatLog(baris) {
-  if (!baris.length) return;
+  if (!baris.length) return true;
   try {
     const r = await fetch(SB + '/rest/v1/kirim_log', {
       method: 'POST',
       headers: { apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
       body: JSON.stringify(baris)
     });
-    if (!r.ok) console.error('Catat riwayat kirim gagal:', r.status, await r.text());
-  } catch (e) { console.error('Catat riwayat kirim gagal:', e); }
+    if (!r.ok) {
+      console.error('Catat riwayat kirim gagal:', r.status, await r.text());
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('Catat riwayat kirim gagal:', e);
+    return false;
+  }
 }
 
 async function sb(path, token) {
@@ -267,7 +274,8 @@ module.exports = async (req, res) => {
         await jadwalkan(target, buatPesan(nama), tokenGrup, 'Grup ' + (g.label || target));
       }
 
-      await catatLog(logs);
+      const logTercatat = await catatLog(logs);
+      if (!logTercatat) gagal.push('Riwayat status pesan gagal disimpan ke database');
       const sukses = logs.filter(x => x.status === 'terjadwal').length;
       const gagalSemua = gagal.length > 0;
       const statusAkhir = gagalSemua ? (sukses > 0 ? 'partial' : 'failed') : 'sent';
