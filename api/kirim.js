@@ -239,7 +239,7 @@ module.exports = async (req, res) => {
         waktu += 30 + Math.floor(Math.random() * 31);
         try {
           const hasil = await kirimFonnte(token, nomor, teks, waktu);
-          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label, nomor, fonnte_id: idFonnte(hasil), stateid: hasil && hasil.detail && hasil.detail.id ? String(hasil.detail.id) : null, status: 'terjadwal', status_fonnte: hasil && hasil.status ? String(hasil.status) : null, jadwal_pada: new Date(waktu * 1000).toISOString() });
+          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label, nomor, fonnte_id: idFonnte(hasil), state_fonnte: hasil && hasil.detail && hasil.detail.id ? String(hasil.detail.id) : null, status: 'terjadwal', status_fonnte: hasil && hasil.status ? String(hasil.status) : null, jadwal_pada: new Date(waktu * 1000).toISOString() });
         } catch (e) {
           const alasan = potong(e.message || e, 300);
           logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label, nomor, status: 'gagal', error: alasan });
@@ -251,7 +251,7 @@ module.exports = async (req, res) => {
       if (!ulangParsial) {
         try {
           const hasil = await kirimFonnte(tokenUtama, kepala, buatPesan(namaKelas));
-          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, fonnte_id: idFonnte(hasil), stateid: hasil && hasil.detail && hasil.detail.id ? String(hasil.detail.id) : null, status: 'terjadwal', status_fonnte: hasil && hasil.status ? String(hasil.status) : null });
+          logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, fonnte_id: idFonnte(hasil), state_fonnte: hasil && hasil.detail && hasil.detail.id ? String(hasil.detail.id) : null, status: 'terjadwal', status_fonnte: hasil && hasil.status ? String(hasil.status) : null });
         } catch (e) {
           const alasan = potong(e.message || e, 300);
           logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, status: 'gagal', error: alasan });
