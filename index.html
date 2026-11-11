@@ -1951,9 +1951,9 @@ function siswaRows(){if(!sk&&!sNon)return '<tr><td colspan="12" class="mu" style
 
 function editWaSiswa(id){
  const s=siswaById(id);if(!s)return;
- info('Ubah nomor WhatsApp · '+s.nama,'
- <div class="fd"><label class="l" for="waSiswaInp">Nomor WhatsApp orang tua</label><input id="waSiswaInp" class="input" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" value="'+esc(nomorLokal(s.wa))+'" placeholder="08xxxxxxxxxx"><div class="mu" style="margin-top:5px">Gunakan nomor aktif WhatsApp. Nomor boleh diawali 08 atau 628.</div></div>
- <div class="tb" style="margin-top:12px"><button type="button" class="btn soft grow" onclick="closeM()">Batal</button><button type="button" class="btn success grow" onclick="simpanWaSiswa('+id+')">💾 Simpan</button></div>');
+ info('Ubah nomor WhatsApp · '+s.nama,`
+ <div class="fd"><label class="l" for="waSiswaInp">Nomor WhatsApp orang tua</label><input id="waSiswaInp" class="input" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" value="${esc(nomorLokal(s.wa))}" placeholder="08xxxxxxxxxx"><div class="mu" style="margin-top:5px">Gunakan nomor aktif WhatsApp. Nomor boleh diawali 08 atau 628.</div></div>
+ <div class="tb" style="margin-top:12px"><button type="button" class="btn soft grow" onclick="closeM()">Batal</button><button type="button" class="btn success grow" onclick="simpanWaSiswa(${id})">💾 Simpan</button></div>`);
  setTimeout(()=>{const e=$('#waSiswaInp');if(e){e.focus();e.select();e.addEventListener('keydown',ev=>{if(ev.key==='Enter')simpanWaSiswa(id)})}},80);
 }
 function simpanWaSiswa(id){
