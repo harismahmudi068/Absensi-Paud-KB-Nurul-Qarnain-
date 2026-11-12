@@ -48,28 +48,54 @@ function klasifikasiErrorGemini(error) {
   const tpm=/tokens?[\s._/-]*per[\s._/-]*minute|inputtokensperminute|\btpm\b/.test(gabungan);
   const rpm=/requests?[\s._/-]*per[\s._/-]*minute|generaterequestsperminute|\brpm\b/.test(gabungan);
   const jenisKuota=rpd?'RPD':tpm?'TPM':rpm?'RPM':'';
-  return {
-    httpStatus:kuota?429:status,
-    kode:kuota?('RESOURCE_EXHAUSTED'+(jenisKuota?'_'+jenisKuota:'')):(kode&&/^[A-Z0-9_.:-]{1,70}$/.test(kode)?kode:(status?'HTTP_'+status:'AI_REQUEST_FAILED')),
-    retryAfter:parseRetryGemini(error,details,jenisKuota)
-  };
+  const httpStatus=kuota?429:status;
+  const kodeFinal=kuota?('RESOURCE_EXHAUSTED'+(jenisKuota?'_'+jenisKuota:'')):(kode&&/^[A-Z0-9_.:-]{1,70}$/.test(kode)?kode:(status?'HTTP_'+status:'AI_REQUEST_FAILED'));
+  const network=/timeout|timed out|aborterror|econnreset|econnrefused|enotfound|eai_again|socket hang up|fetch failed|network/i.test(pesan)
+    || ['ETIMEDOUT','ECONNRESET','ECONNREFUSED','ENOTFOUND','EAI_AGAIN'].includes(String(error?.code||'').toUpperCase());
+  const sementara=network || [408,425,429,500,502,503,504].includes(Number(httpStatus));
+  const permanen=!sementara;
+  return {httpStatus,kode:kodeFinal,retryAfter:parseRetryGemini(error,details,jenisKuota),sementara,permanen};
 }
 function errorPengamanGemini(kode,tunggu) {
   const e=new Error(kode==='cooldown'?'AI sekolah sedang dijeda sementara karena batas kuota Gemini.':kode==='batas_lokal_per_menit'?'Batas aman permintaan AI sekolah per menit tercapai.':kode==='jeda_antar_permintaan'?'Permintaan AI sekolah terlalu berdekatan.':'Pengaman kuota Gemini belum dapat diperiksa.');
   e.isGeminiGuard=true;e.code='GEMINI_GUARD_'+String(kode||'UNAVAILABLE').toUpperCase();e.retryAfterSeconds=Number(tunggu)||null;return e;
 }
-async function generateContentDenganPengaman({model,pengamanGemini,generate}) {
-  if(!pengamanGemini||typeof pengamanGemini.ambilIzin!=='function'||typeof pengamanGemini.catatHasil!=='function')throw errorPengamanGemini('unavailable');
-  let izin;try{izin=await pengamanGemini.ambilIzin(model);}catch(_){throw errorPengamanGemini('unavailable');}
-  if(!izin||izin.allowed!==true)throw errorPengamanGemini(izin?.reason||'unavailable',izin?.retry_after_seconds);
-  try{
+async function generateContentDenganPengaman({model,pengamanGemini,apiKeyId,generate}) {
+  if(!pengamanGemini) throw errorPengamanGemini('unavailable');
+  const perKey=Number.isSafeInteger(Number(apiKeyId)) && Number(apiKeyId)>0
+    && typeof pengamanGemini.ambilIzinKey==='function'
+    && typeof pengamanGemini.catatHasilKey==='function';
+  let izin;
+  try {
+    izin=perKey
+      ? await pengamanGemini.ambilIzinKey(Number(apiKeyId),model)
+      : (typeof pengamanGemini.ambilIzin==='function' ? await pengamanGemini.ambilIzin(model) : null);
+  } catch(_) { throw errorPengamanGemini('unavailable'); }
+  if(!izin||izin.allowed!==true) {
+    const e=errorPengamanGemini(izin?.reason||'unavailable',izin?.retry_after_seconds);
+    e.geminiInfo={httpStatus:null,kode:e.code,retryAfter:izin?.retry_after_seconds||null,sementara:true,permanen:false,perluNotifikasi:false};
+    throw e;
+  }
+  try {
     const hasil=await generate();
-    await pengamanGemini.catatHasil({model,status:'berhasil',httpStatus:200,kode:null,retryAfter:null}).catch(()=>{});
+    if(perKey) await pengamanGemini.catatHasilKey({id:Number(apiKeyId),model,status:'berhasil',httpStatus:200,kode:null,detail:null,retryAfter:null,permanen:false}).catch(()=>false);
+    else if(typeof pengamanGemini.catatHasil==='function') await pengamanGemini.catatHasil({model,status:'berhasil',httpStatus:200,kode:null,retryAfter:null}).catch(()=>{});
     return hasil;
-  }catch(error){
+  } catch(error) {
     const info=klasifikasiErrorGemini(error);
-    await pengamanGemini.catatHasil({model,status:'gagal',httpStatus:info.httpStatus,kode:info.kode,retryAfter:info.retryAfter}).catch(()=>{});
+    let perluNotifikasi=false;
+    if(perKey) {
+      try {
+        perluNotifikasi=await pengamanGemini.catatHasilKey({
+          id:Number(apiKeyId),model,status:'gagal',httpStatus:info.httpStatus,kode:info.kode,
+          detail:error?.message||String(error),retryAfter:info.retryAfter,permanen:info.permanen
+        });
+      } catch(_) {}
+    } else if(typeof pengamanGemini.catatHasil==='function') {
+      await pengamanGemini.catatHasil({model,status:'gagal',httpStatus:info.httpStatus,kode:info.kode,retryAfter:info.retryAfter}).catch(()=>{});
+    }
+    try { error.geminiInfo={...info,perluNotifikasi:!!perluNotifikasi}; } catch(_) {}
     throw error;
   }
 }
-module.exports={generateContentDenganPengaman};
+module.exports={generateContentDenganPengaman,klasifikasiErrorGemini};
