@@ -2031,7 +2031,7 @@ function ttdEditorHtml(data,scope,id,nama){
  const sid=String(id||'').replace(/[^a-zA-Z0-9_-]/g,'');
  return '<div id="ttdEditor_'+scope+'" data-id="'+esc(sid)+'" data-nama="'+esc(nama||'')+'">'+
   ttdBoxGambar(data)+
-  '<div class="mu" style="margin:8px 0">Pilih salah satu cara. Hasil disimpan sebagai PNG transparan, maksimal 360 × 120 piksel.</div>'+
+  '<div class="mu" style="margin:8px 0">Pilih salah satu cara. Hasil disimpan sebagai PNG transparan, maksimal 720 × 240 piksel dan 1 MB.</div>'+
   '<div class="tb" style="gap:8px;flex-wrap:wrap"><button type="button" class="btn success sm" onclick="document.getElementById(\'ttdFile_'+scope+'\').click()">📁 Unggah File</button><button type="button" class="btn soft sm" onclick="ttdModeGambar(\''+scope+'\')">✍️ Gambar Sendiri</button></div>'+
   '<input id="ttdFile_'+scope+'" class="hid" type="file" accept="image/png,image/jpeg,image/webp" onchange="ttdFilePilih(this,\''+scope+'\')">'+
   '<div id="ttdDrawPanel_'+scope+'" class="hid" style="position:fixed;inset:0;z-index:10000;margin:0!important;border:0!important;border-radius:0!important;padding:max(16px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom))!important;background:var(--bg);overflow:auto;box-shadow:none">'+
@@ -2109,11 +2109,12 @@ function ttdNormalisasi(data){
     }
     if(maxX<minX||maxY<minY)return reject(new Error('Tanda tangan belum terlihat. Gunakan tinta yang lebih gelap.'));
     x.putImageData(image,0,0);
-    const bw=maxX-minX+1,bh=maxY-minY+1,out=document.createElement('canvas');out.width=360;out.height=120;
-    const ox=out.getContext('2d'),fit=Math.min(336/bw,96/bh),dw=bw*fit,dh=bh*fit;
-    ox.drawImage(c,minX,minY,bw,bh, (360-dw)/2,(120-dh)/2,dw,dh);
-    const result=out.toDataURL('image/png');
-    if(result.length>700000)return reject(new Error('Hasil gambar terlalu besar. Silakan gambar atau unggah ulang.'));
+    const bw=maxX-minX+1,bh=maxY-minY+1,out=document.createElement('canvas');out.width=720;out.height=240;
+    const ox=out.getContext('2d'),fit=Math.min(672/bw,192/bh),dw=bw*fit,dh=bh*fit;
+    ox.drawImage(c,minX,minY,bw,bh, (720-dw)/2,(240-dh)/2,dw,dh);
+    const result=out.toDataURL('image/png'),b64=result.slice(result.indexOf(',')+1);
+    const bytes=Math.floor(b64.length*3/4)-(b64.endsWith('==')?2:b64.endsWith('=')?1:0);
+    if(bytes>1048576)return reject(new Error('Hasil tanda tangan melebihi batas 1 MB. Gunakan gambar yang lebih sederhana atau unggah ulang.'));
     resolve(result);
    }catch(e){reject(e)}
   };im.onerror=()=>reject(new Error('Gambar tidak dapat dibaca'));im.src=data;
@@ -2129,7 +2130,7 @@ function ttdDataSimpan(scope,data){
 }
 async function ttdFilePilih(inp,scope){
  const f=inp.files&&inp.files[0];inp.value='';if(!f)return;
- guard(async()=>{if(!['image/png','image/jpeg','image/webp'].includes(f.type))throw new Error('File harus berupa PNG, JPG, atau WEBP');if(f.size>524288)throw new Error('Ukuran file maksimal 512 KB');const raw=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result||''));r.onerror=()=>no(new Error('File tidak bisa dibaca'));r.readAsDataURL(f)});const png=await ttdNormalisasi(raw);await ttdDataSimpan(scope,png)});
+ guard(async()=>{if(!['image/png','image/jpeg','image/webp'].includes(f.type))throw new Error('File harus berupa PNG, JPG, atau WEBP');if(f.size>1048576)throw new Error('Ukuran file yang diunggah maksimal 1 MB');const raw=await new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(String(r.result||''));r.onerror=()=>no(new Error('File tidak bisa dibaca'));r.readAsDataURL(f)});const png=await ttdNormalisasi(raw);await ttdDataSimpan(scope,png)});
 }
 async function ttdGambarSimpan(scope){
  const s=TTD_DRAW_STATE;if(!s||s.scope!==scope)return toast('Silakan gambar tanda tangan terlebih dahulu',false);
@@ -2180,7 +2181,7 @@ async function ttdPngAmbil(ids){
  const out={};
  for(let i=0;i<unik.length;i+=6){
   const batch=unik.slice(i,i+6),j=await apiTtd({aksi:'ambil_banyak',ids:batch});
-  await Promise.all(batch.map(async id=>{const data=j.tanda_tangan&&j.tanda_tangan[id];if(data){const im=await Rapor.logoPng(data);if(im)out[id]=im.url}}));
+  await Promise.all(batch.map(async id=>{const data=j.tanda_tangan&&j.tanda_tangan[id];if(data){const im=await Rapor.ttdPng(data);if(im)out[id]=im.url}}));
  }
  return out;
 }
