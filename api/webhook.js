@@ -974,7 +974,9 @@ const IZIN = /\b(izin|ijin|permisi|tidak masuk|ga masuk|gak masuk|nggak masuk|ng
 
 // Penyaring awal KHUSUS pesan grup: percakapan umum tidak perlu memakai kuota Gemini.
 // Pemicu hanya mengarahkan pesan ke deteksi cepat/AI, bukan otomatis mencatat absensi.
-const PEMICU_PESAN_GRUP = /\b(izin|ijin|permisi|sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit|tidak masuk(?: sekolah)?|ga masuk|gak masuk|nggak masuk|ngga masuk|tidak bisa masuk(?: sekolah)?|tidak dapat masuk(?: sekolah)?|ga bisa masuk|gak bisa masuk|nggak bisa masuk|tidak hadir|tidak bisa hadir|tidak dapat hadir|tidak bisa berangkat|tidak dapat berangkat|tidak bisa sekolah|tidak dapat sekolah|belum bisa masuk|belum bisa sekolah|belum bisa berangkat|berhalangan hadir|tidak mengikuti (?:pembelajaran|kegiatan|sekolah)|berobat|ke dokter|dirawat|acara keluarga|keluar kota|mudik|keperluan keluarga)\b/i;
+// Pemicu grup harus menunjukkan maksud ketidakhadiran, bukan sekadar menyebut penyakit.
+// Kata "sakit/demam/flu/batuk" tanpa konteks tidak cukup (mis. doa untuk teman yang sakit).
+const PEMICU_PESAN_GRUP = /\b(izin(?:\s+(?:tidak\s+masuk|tidak\s+hadir|tidak\s+bisa\s+masuk|tidak\s+bisa\s+hadir|sekolah|karena))|ijin(?:\s+(?:tidak\s+masuk|tidak\s+hadir|tidak\s+bisa\s+masuk|tidak\s+bisa\s+hadir|sekolah|karena))|permisi(?:\s+(?:tidak\s+masuk|tidak\s+hadir|tidak\s+bisa\s+hadir))|tidak\s+masuk(?:\s+sekolah)?|ga\s+masuk|gak\s+masuk|nggak\s+masuk|ngga\s+masuk|tidak\s+bisa\s+masuk(?:\s+sekolah)?|tidak\s+dapat\s+masuk(?:\s+sekolah)?|ga\s+bisa\s+masuk|gak\s+bisa\s+masuk|nggak\s+bisa\s+masuk|tidak\s+hadir|tidak\s+bisa\s+hadir|tidak\s+dapat\s+hadir|tidak\s+bisa\s+berangkat|tidak\s+dapat\s+berangkat|tidak\s+bisa\s+sekolah|tidak\s+dapat\s+sekolah|belum\s+bisa\s+masuk|belum\s+bisa\s+sekolah|belum\s+bisa\s+berangkat|berhalangan\s+hadir|tidak\s+mengikuti\s+(?:pembelajaran|kegiatan|sekolah)|tidak\s+masuk\s+karena|tidak\s+masuk\s+akibat)\b/i;
 
 function adaPemicuPesanGrup(pesan) {
   return PEMICU_PESAN_GRUP.test(String(pesan || ''));
