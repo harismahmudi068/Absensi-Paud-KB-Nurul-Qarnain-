@@ -2040,7 +2040,7 @@ function ttdEditorHtml(data,scope,id,nama){
    '<div class="tb" style="margin-top:9px;gap:7px;flex-wrap:wrap"><button type="button" class="btn soft sm" onclick="ttdGambarUndo(\''+scope+'\')">↶ Urungkan</button><button type="button" class="btn soft sm" onclick="ttdGambarBersih(\''+scope+'\')">Hapus Gambar</button><button type="button" class="btn success sm" onclick="ttdGambarSimpan(\''+scope+'\')">Simpan Tanda Tangan</button></div>'+
    '<div class="mu" style="margin-top:7px">Gunakan tinta hitam. Area kosong di sekitar goresan akan dipangkas otomatis.</div>'+
   '</div>'+
-  (data?'<div class="tb" style="margin-top:10px"><button type="button" class="btn danger sm" onclick="ttdHapusEditor(\\''+scope+'\\')">Hapus Tanda Tangan</button></div>':'')+
+  (data?'<div class="tb" style="margin-top:10px"><button type="button" class="btn danger sm" onclick="ttdHapusEditor(\''+scope+'\')">Hapus Tanda Tangan</button></div>':'')+
  '</div>';
 }
 function ttdHapusEditor(scope){const wrap=document.getElementById('ttdEditor_'+scope);if(!wrap)return;if(scope==='profil')return ttdHapusSaya();return ttdGuruHapus(wrap.dataset.id,wrap.dataset.nama||'Guru')}
