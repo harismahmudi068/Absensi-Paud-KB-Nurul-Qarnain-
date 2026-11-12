@@ -1,24 +1,48 @@
 // Pengaman kuota Gemini: batas lokal per sekolah + cooldown saat Google mengirim 429.
-function parseRetryGemini(error) {
+function detailGemini(error) {
+  const sumber = [
+    error?.errorDetails, error?.details, error?.error?.details,
+    error?.response?.data?.error?.details
+  ];
+  return sumber.flatMap(x => Array.isArray(x) ? x : (x && typeof x === 'object' ? [x] : []));
+}
+
+function detikKeResetHarianGemini() {
+  const zona = 'America/Los_Angeles';
+  const format = new Intl.DateTimeFormat('en-CA', {
+    timeZone: zona, year: 'numeric', month: '2-digit', day: '2-digit'
+  });
+  const awal = Date.now();
+  const hari = format.format(new Date(awal));
+  let bawah = awal, atas = awal + 36 * 60 * 60 * 1000;
+  while (format.format(new Date(atas)) === hari) atas += 12 * 60 * 60 * 1000;
+  while (atas - bawah > 1000) {
+    const tengah = Math.floor((bawah + atas) / 2);
+    if (format.format(new Date(tengah)) === hari) bawah = tengah;
+    else atas = tengah;
+  }
+  return Math.max(1, Math.ceil((atas - awal) / 1000));
+}
+
+function parseRetryGemini(error, details = detailGemini(error), jenisKuota = '') {
   const candidates = [
-    error?.retryAfter,
-    error?.retry_after,
+    error?.retryAfter, error?.retry_after,
     error?.response?.headers?.get?.('retry-after'),
     error?.headers?.get?.('retry-after')
   ];
   for (const value of candidates) {
     if (value == null || value === '') continue;
     const n = Number(value);
-    if (Number.isFinite(n) && n > 0) return Math.min(3600, Math.ceil(n));
+    if (Number.isFinite(n) && n > 0) return Math.min(86400, Math.ceil(n));
     const t = Date.parse(String(value));
-    if (Number.isFinite(t) && t > Date.now()) return Math.min(3600, Math.ceil((t - Date.now()) / 1000));
+    if (Number.isFinite(t) && t > Date.now()) return Math.min(86400, Math.ceil((t - Date.now()) / 1000));
   }
-  const details = error?.errorDetails || error?.details || [];
-  for (const detail of Array.isArray(details) ? details : []) {
+  for (const detail of details) {
     const delay = String(detail?.retryDelay || detail?.retry_delay || '');
-    const match = delay.match(/([0-9]+(?:\.[0-9]+)?)s/i);
-    if (match) return Math.min(3600, Math.ceil(Number(match[1])));
+    const match = delay.match(/([0-9]+(?:\\.[0-9]+)?)s/i);
+    if (match) return Math.min(86400, Math.ceil(Number(match[1])));
   }
+  if (jenisKuota === 'RPD') return detikKeResetHarianGemini();
   return null;
 }
 
@@ -26,13 +50,22 @@ function klasifikasiErrorGemini(error) {
   const status = Number(error?.status || error?.statusCode || error?.response?.status || 0) || null;
   const kode = String(error?.code || error?.status || error?.error?.status || '').toUpperCase();
   const pesan = String(error?.message || '').toLowerCase();
+  const details = detailGemini(error);
+  const detailText = details.map(x => {
+    const violations = Array.isArray(x?.violations) ? x.violations : [];
+    return [x?.quotaId, x?.quotaMetric, ...violations.flatMap(v => [v?.quotaId, v?.quotaMetric])]
+      .filter(Boolean).join(' ');
+  }).join(' ').toLowerCase();
   const kuota = status === 429 || kode === 'RESOURCE_EXHAUSTED'
     || /resource_exhausted|too many requests|rate.?limit|quota exceeded/.test(pesan);
+  const jenisKuota = /per.?day|requestsperday|\\brpd\\b/.test(detailText) ? 'RPD'
+    : /tokensperminute|inputtokensperminute|\\btpm\\b/.test(detailText) ? 'TPM'
+    : /requestsperminute|generaterequestsperminute|\\brpm\\b/.test(detailText) ? 'RPM' : '';
   return {
     httpStatus: kuota ? 429 : status,
-    kode: kuota ? 'RESOURCE_EXHAUSTED'
+    kode: kuota ? ('RESOURCE_EXHAUSTED' + (jenisKuota ? '_' + jenisKuota : ''))
       : (kode && /^[A-Z0-9_.:-]{1,70}$/.test(kode) ? kode : (status ? 'HTTP_' + status : 'AI_REQUEST_FAILED')),
-    retryAfter: parseRetryGemini(error)
+    retryAfter: parseRetryGemini(error, details, jenisKuota)
   };
 }
 
