@@ -586,6 +586,57 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+
+    // ---------------------------------------------------------
+    // PEMANTAUAN PEMAKAIAN AI (khusus Developer + AAL2)
+    // ---------------------------------------------------------
+    if (b.aksi === 'pemantauan_ai') {
+      if (!L.SB || !L.KEY) throw new Error('Konfigurasi Supabase belum lengkap');
+      const [ringkasan, riwayat] = await Promise.all([
+        L.panggil('/rest/v1/rpc/developer_pemakaian_ai_ringkasan', 'POST', {}),
+        L.panggil('/rest/v1/pemakaian_ai_riwayat?select=id,created_at,sekolah_id,sekolah(nama),layanan,model,input_tokens,output_tokens,total_tokens,status,kode_error&order=created_at.desc&limit=200', 'GET')
+      ]);
+      return res.status(200).json({
+        ok: true,
+        ringkasan: ringkasan || {},
+        riwayat: Array.isArray(riwayat) ? riwayat : [],
+        batas_riwayat_hari: 30,
+        diperbarui: new Date().toISOString()
+      });
+    }
+
+    if (b.aksi === 'hapus_riwayat_ai') {
+      const rows = await L.panggil(
+        '/rest/v1/pemakaian_ai_riwayat?id=not.is.null&select=id',
+        'DELETE',
+        null,
+        { Prefer: 'return=representation' }
+      );
+      const jumlah = Array.isArray(rows) ? rows.length : 0;
+      await L.catatLog({
+        pelaku: user.id,
+        aksi: 'hapus_riwayat_ai',
+        rincian: 'Riwayat rinci pemakaian AI dihapus (' + jumlah + ' catatan); ringkasan harian/bulanan dipertahankan'
+      });
+      return res.status(200).json({ ok: true, jumlah });
+    }
+
+    if (b.aksi === 'hapus_ringkasan_ai') {
+      const rows = await L.panggil(
+        '/rest/v1/pemakaian_ai_ringkasan_harian?tanggal=not.is.null&select=tanggal,sekolah_id,layanan,model',
+        'DELETE',
+        null,
+        { Prefer: 'return=representation' }
+      );
+      const jumlah = Array.isArray(rows) ? rows.length : 0;
+      await L.catatLog({
+        pelaku: user.id,
+        aksi: 'hapus_ringkasan_ai',
+        rincian: 'Ringkasan harian dan agregat bulanan pemakaian AI dihapus (' + jumlah + ' baris); riwayat rinci dipertahankan'
+      });
+      return res.status(200).json({ ok: true, jumlah });
+    }
+
     // ---------------------------------------------------------
     // PEMANTAUAN STORAGE SUPABASE (khusus Developer + AAL2)
     // ---------------------------------------------------------
