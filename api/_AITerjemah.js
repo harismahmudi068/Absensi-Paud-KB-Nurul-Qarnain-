@@ -68,23 +68,20 @@ async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian, penga
 
   const percobaan=[];
   for(const kunci of daftarKunci){
-    let timer,response=null;
+    let response=null;
     const label=String(kunci.label||'Akun Gemini').slice(0,60);
-    const batasWaktu=new Promise((_,reject)=>{
-      timer=setTimeout(()=>{const e=new Error('Terjemahan melebihi batas waktu');e.code='AI_TIMEOUT';reject(e)},BATAS_WAKTU_MS);
-    });
     try{
       const ai=new GoogleGenAI({apiKey:String(kunci.api_key).trim()});
-      response=await Promise.race([
-        generateContentDenganPengaman({
-          model:AI_MODEL_TERJEMAH,apiKeyId:kunci.id,pengamanGemini,
-          generate:()=>ai.models.generateContent({
-            model:AI_MODEL_TERJEMAH,contents:asli,
-            config:{systemInstruction:buatPrompt(tujuan),temperature:0,maxOutputTokens:2048}
-          })
-        }),
-        batasWaktu
-      ]);
+      response=await generateContentDenganPengaman({
+        model:AI_MODEL_TERJEMAH,apiKeyId:kunci.id,pengamanGemini,
+        generate:()=>ai.models.generateContent({
+          model:AI_MODEL_TERJEMAH,contents:asli,
+          config:{
+            systemInstruction:buatPrompt(tujuan),temperature:0,maxOutputTokens:2048,
+            abortSignal:typeof AbortSignal!=='undefined'&&AbortSignal.timeout?AbortSignal.timeout(BATAS_WAKTU_MS):undefined
+          }
+        })
+      });
       const hasil=String(response?.text||'').trim();
       if(!hasil) {const e=new Error('Respons penerjemah kosong');e.code='OUTPUT_INVALID';throw e}
       if(hasil.length<asli.length*0.3) {const e=new Error('Hasil terjemahan tidak wajar (terlalu pendek)');e.code='OUTPUT_INVALID';throw e}
@@ -109,7 +106,7 @@ async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian, penga
         detail:String(e?.message||e).slice(0,500),sementara:info.sementara===true,permanen,perluNotifikasi};
       percobaan.push(gangguan);
       if(perluNotifikasi&&typeof onGangguan==='function')await onGangguan(gangguan).catch(()=>{});
-    }finally{clearTimeout(timer)}
+    }
   }
   const gagal=new Error('Seluruh API Key Gemini gagal menerjemahkan balasan.');
   gagal.code='ALL_GEMINI_KEYS_FAILED';gagal.attempts=percobaan;
