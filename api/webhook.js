@@ -924,6 +924,14 @@ async function cariAnak(dari) {
 const SAKIT = /\b(sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit)\b/i;
 const IZIN = /\b(izin|ijin|permisi|tidak masuk|ga masuk|gak masuk|nggak masuk|ngga masuk|libur|acara|keluar kota|mudik|keperluan keluarga)\b/i;
 
+// Penyaring awal KHUSUS pesan grup: percakapan umum tidak perlu memakai kuota Gemini.
+// Pemicu hanya mengarahkan pesan ke deteksi cepat/AI, bukan otomatis mencatat absensi.
+const PEMICU_PESAN_GRUP = /\b(izin|ijin|permisi|sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit|tidak masuk(?: sekolah)?|ga masuk|gak masuk|nggak masuk|ngga masuk|tidak hadir|tidak bisa hadir|tidak dapat hadir|tidak bisa berangkat|tidak dapat berangkat|tidak bisa sekolah|tidak dapat sekolah|belum bisa masuk|belum bisa sekolah|belum bisa berangkat|berhalangan hadir|tidak mengikuti (?:pembelajaran|kegiatan|sekolah)|berobat|ke dokter|dirawat|acara keluarga|keluar kota|mudik|keperluan keluarga)\b/i;
+
+function adaPemicuPesanGrup(pesan) {
+  return PEMICU_PESAN_GRUP.test(String(pesan || ''));
+}
+
 // Frasa ini membuat konteks perlu dianalisis AI, agar pesan lama/masa depan/penyangkalan
 // tidak salah dicatat sebagai absensi hari ini.
 const KONTEKS_TIDAK_HARI_INI = /\b(kemarin|kemaren|tadi malam|tadi pagi|sebelumnya|dulu|besok|lusa|nanti|minggu depan|minggu lalu|bulan depan|bulan lalu|hari lain)\b/i;
@@ -1254,6 +1262,13 @@ async function proses(b) {
   if (!dari) return;
   const anak = await cariAnak(dari);
   if (!anak.length) return;
+
+  // Pesan grup tanpa indikasi izin/sakit/ketidakhadiran berhenti di sini tanpa Gemini.
+  // Pesan pribadi tidak melewati filter ini dan tetap memakai alur lama.
+  if (ctx.dariGrup && !adaPemicuPesanGrup(pesan)) {
+    console.log('Pesan grup tanpa pemicu absensi diabaikan tanpa AI');
+    return;
+  }
 
   // 3. Anti-duplikat: nomor + isi pesan sama dalam 5 menit -> diabaikan total.
   const kunci = kunciDuplikat(dari, pesan);
