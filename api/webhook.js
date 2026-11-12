@@ -1525,7 +1525,7 @@ async function kirimNotifikasiGangguanSekolah(sementara, detail) {
     'Untuk sementara, pengelola, kepala sekolah, dan wali kelas dimohon melakukan pencatatan absensi secara manual.',
     '',
     sementara
-      ? hanyaGangguanGuardSingkat(detail)
+      ? (hanyaGangguanGuardSingkat(detail)
           ? 'Sistem sedang membatasi lonjakan permintaan secara otomatis. Percobaan ulang berikutnya dijadwalkan sekitar 1 menit lagi.'
           : 'Gangguan terdeteksi bersifat sementara. Sistem akan mencoba kembali secara otomatis sekitar 15 menit ke depan. Waktu pemulihan dapat berubah mengikuti kondisi layanan Gemini.')
       : 'Gangguan memerlukan pemeriksaan developer. Developer sudah diberi tahu dan sedang menangani. Kami akan mengirim pemberitahuan kembali setelah perbaikan diuji dan layanan normal.',
