@@ -2897,11 +2897,11 @@ function fotoAksiPopup(id){
  const foot=document.createElement('div');foot.className='mf';foot.style.justifyContent='stretch';
  const cancel=document.createElement('button');cancel.type='button';cancel.className='btn soft';cancel.textContent='Batal';
  const change=document.createElement('button');change.type='button';change.className='btn success';change.textContent='Ganti Foto';
- const download=document.createElement('button');download.type='button';download.className='btn soft';download.textContent='Unduh Foto Kartu';
+ const download=document.createElement('button');download.type='button';download.className='btn soft';download.textContent='Unduh Foto Siswa';
  foot.append(cancel,change,download);panel.append(head,body,foot);bg.append(panel);document.body.append(bg);
  const tutup=()=>bg.remove();bg.addEventListener('click',e=>{if(e.target===bg)tutup()});close.onclick=cancel.onclick=tutup;
  change.onclick=()=>{tutup();fotoPilih(id)};
- download.onclick=()=>{tutup();unduhKartuJpg(id)};
+ download.onclick=()=>{tutup();fotoUnduhAsli(id,null)};
 }
 function kartuFotoAksi(id){fotoAksiPopup(id)}
 async function fotoUnduhAsli(id,btn){
