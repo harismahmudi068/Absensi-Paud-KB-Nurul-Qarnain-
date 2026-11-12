@@ -1652,8 +1652,8 @@ async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
           method:'PATCH',body:{developer_notified_at:new Date().toISOString()},prefer:'return=minimal'
         }).catch(()=>{});
       }
-      if (status.baru) {
-        await kirimNotifikasiGangguanSekolah(!!e.semuaSementara, e)
+      if (status.baru || status.naikKePermanen) {
+        await kirimNotifikasiGangguanSekolah(!!e.semuaSementara && !status.naikKePermanen, e)
           .then(async()=>sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`,{
             method:'PATCH',body:{sekolah_notified_at:new Date().toISOString()},prefer:'return=minimal'
           }))
