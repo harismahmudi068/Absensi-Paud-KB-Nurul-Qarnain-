@@ -1180,7 +1180,7 @@ async function notifikasiGangguanKeyDeveloper(daftar, pengirim, namaAnak) {
       `👤 *Pengirim:* ${pengirim || '-'}`,
       `👧 *Anak:* ${namaAnak || '-'}`,
       `🔧 *Detail:* ${String(x.detail || '').slice(0,500)}`, '',
-      'Sistem telah mencoba API Key lain. Mohon periksa akun Gemini tersebut di menu Pemantauan AI.',
+      'Sistem akan mengalihkan percobaan ke API Key lain jika tersedia. Mohon periksa akun Gemini tersebut di menu Pemantauan AI.',
       '', penutup()
     ].join('\n');
     const batch = crypto.randomUUID();
