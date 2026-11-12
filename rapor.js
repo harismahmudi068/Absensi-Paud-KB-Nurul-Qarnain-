@@ -545,6 +545,27 @@ const Rapor = (() => {
       im.onerror = () => ok(null); im.src = src;
     });
   }
+  // Tanda tangan dipertahankan pada resolusi aslinya; berbeda dari logo yang dibatasi 300 px.
+  function ttdPng(src) {
+    if (!(typeof src === 'string' && /^data:image\/(png|webp|jpeg);base64,/.test(src))) return Promise.resolve(null);
+    return new Promise(ok => {
+      const im = new Image();
+      im.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, im.naturalWidth || im.width);
+          c.height = Math.max(1, im.naturalHeight || im.height);
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          const url = c.toDataURL('image/png'), out = new Image();
+          out.onload = () => { imgC[url] = out; ok({ url, w: c.width, h: c.height }); };
+          out.onerror = () => ok(null);
+          out.src = url;
+        } catch (e) { ok(null); }
+      };
+      im.onerror = () => ok(null);
+      im.src = src;
+    });
+  }
   function muatSkrip(u) { return new Promise((ok, gagal) => { const s = document.createElement('script'); s.src = u; s.onload = ok; s.onerror = () => gagal(new Error('Pustaka PDF gagal dimuat, periksa koneksi internet')); document.head.appendChild(s); }); }
   async function muatPdf() { if (window.jspdf && window.jspdf.jsPDF) return; await muatSkrip('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'); }
   /* Ds = daftar data hasil susun(); satu data = satu raport. Hasilnya diunduh sebagai PDF. */
@@ -564,5 +585,5 @@ const Rapor = (() => {
   }
   function lebar(wadah, px) { wadah.querySelectorAll('canvas').forEach(c => { c.style.width = px + 'px'; c.style.height = (297 / 210 * px) + 'px'; }); }
 
-  return { versi: '2', pred, desk, nip, susun, gambar, aspekGrup, pdf, pratinjau, lebar, logoPng, muatPdf, cap, catI, pendidik, pengaturan, pohon, nomorFmt, tglIndo, hariJkt };
+  return { versi: '2', pred, desk, nip, susun, gambar, aspekGrup, pdf, pratinjau, lebar, logoPng, ttdPng, muatPdf, cap, catI, pendidik, pengaturan, pohon, nomorFmt, tglIndo, hariJkt };
 })();
