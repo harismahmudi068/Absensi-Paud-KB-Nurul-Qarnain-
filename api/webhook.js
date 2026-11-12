@@ -670,7 +670,7 @@ function cariHariTanggalBeda(entri, T) {
   return null;
 }
 
-async function buatRencana(status, waktu) {
+async function buatRencana(status, waktu, anak = []) {
   const T = tanggal();
   const entri = Array.isArray(waktu) ? waktu : [];
   // Tanggal sudah lewat: tidak dicatat, wali diminta memeriksa dan mengirim ulang.
@@ -884,7 +884,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
 // Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
 async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa, namaSalah = [], namaTerdaftar = '' }) {
   K().namaAnak = daftarNama(anak);
-  const rencana = await buatRencana(status, waktu);
+  const rencana = await buatRencana(status, waktu, anak);
   // Nama yang tidak cocok (sebagian nama di pesan cocok): ditolak SETELAH tanggal/waktu diperiksa.
   // Teksnya digabung ke balasan wali; ragam kalimat bergantung pada hasil pemeriksaan tanggal.
   const bagianNama = (mode, cocok = '') => namaSalah.length ? [bagianNamaSalah(namaSalah, namaTerdaftar, mode, cocok)] : [];
