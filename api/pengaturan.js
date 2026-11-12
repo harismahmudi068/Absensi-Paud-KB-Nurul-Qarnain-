@@ -78,7 +78,7 @@ async function kirimFonnte(token, target, pesan) {
 // Tes kunci Gemini dengan satu permintaan singkat
 async function tesGemini(kunci) {
   const ac = new AbortController();
-  const waktu = setTimeout(() => ac.abort(), 6000);
+  const waktu = setTimeout(() => ac.abort(), 30000);
   try {
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`,
@@ -505,33 +505,30 @@ module.exports = async (req, res) => {
     }
 
     if (b.aksi === 'tes_ai') {
-      const r = await ambil();
-      const daftarKey = await panggil('/rest/v1/rpc/gemini_key_daftar_rotasi', 'POST', {
-        p_sekolah_id: sekolahId, p_model: AI_MODEL
-      }).catch(() => []);
       let balasan = '';
-      let keyBerhasil = null;
-      const kegagalan = [];
-      if (Array.isArray(daftarKey) && daftarKey.length) {
-        for (const k of daftarKey) {
-          try {
-            balasan = await tesGemini(k.api_key);
-            keyBerhasil = k;
-            await panggil('/rest/v1/rpc/gemini_key_catat_hasil', 'POST', {
-              p_sekolah_id: sekolahId, p_id: k.id, p_status: 'berhasil',
-              p_http_status: 200, p_kode_error: null, p_detail: null,
-              p_retry_after_seconds: null, p_permanen: false
-            }).catch(() => {});
-            break;
-          } catch (e) {
-            kegagalan.push((k.label || 'Akun Gemini') + ': ' + e.message);
-          }
+      let keyLabel = '';
+      try {
+        if (b.legacy === true) {
+          const r = await ambil();
+          if (!r.kunci_ai) throw new Error('API Key Gemini lama tidak ditemukan');
+          balasan = await tesGemini(r.kunci_ai);
+          keyLabel = 'API Key lama';
+        } else {
+          const id = Number(b.id);
+          if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Pilih satu API Key Gemini yang valid');
+          const k = await panggil('/rest/v1/rpc/gemini_key_ambil_untuk_tes', 'POST', {
+            p_sekolah_id: sekolahId,
+            p_id: id
+          });
+          if (!k || !k.api_key) throw new Error('API Key tidak ditemukan pada sekolah ini');
+          balasan = await tesGemini(k.api_key);
+          keyLabel = k.label || ('API Key #' + id);
         }
-        if (!keyBerhasil) throw new Error('Semua API Key Gemini gagal diuji. ' + kegagalan.join(' | '));
-      } else {
-        if (!r.kunci_ai) throw new Error('Belum ada API Key Gemini yang diisi');
-        balasan = await tesGemini(r.kunci_ai);
+      } catch (e) {
+        await catat(user.id, sekolahId, 'tes_ai', 'Gagal ' + (keyLabel || ('API Key #' + (b.id || 'lama'))) + ': ' + e.message);
+        throw e;
       }
+
       let tambahan = '';
       const tk = await ambilToken();
       if (tk.length) {
@@ -539,7 +536,7 @@ module.exports = async (req, res) => {
         const h = await kirimFonnte(
           tk[0].token,
           penerima.nomor,
-          `✅ *TES API AI*\nSekolah: ${await namaSekolah()}\nPenerima: ${penerima.nama}\nBalasan AI: ${balasan}\n\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
+          `✅ *TES API AI*\\nSekolah: ${await namaSekolah()}\\nAPI Key: ${keyLabel}\\nPenerima: ${penerima.nama}\\nBalasan AI: ${balasan}\\n\\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
         );
         tambahan = h.ok
           ? ' Pesan tes dikirim ke ' + penerima.nama + '.'
@@ -547,8 +544,8 @@ module.exports = async (req, res) => {
       } else {
         tambahan = ' (Pesan WhatsApp tidak dikirim: belum ada token Fonnte.)';
       }
-      await catat(user.id, sekolahId, 'tes_ai', keyBerhasil ? ('berhasil melalui ' + keyBerhasil.label) : 'berhasil menggunakan API Key lama');
-      return res.status(200).json({ ok: true, pesan: 'API AI berfungsi' + (keyBerhasil ? ' melalui ' + keyBerhasil.label : '') + '. Balasan: ' + balasan + '.' + tambahan });
+      await catat(user.id, sekolahId, 'tes_ai', 'Berhasil melalui ' + keyLabel);
+      return res.status(200).json({ ok: true, pesan: keyLabel + ' berfungsi. Balasan: ' + balasan + '.' + tambahan });
     }
 
     // ---------------------------------------------------------
