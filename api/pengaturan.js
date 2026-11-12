@@ -360,10 +360,10 @@ module.exports = async (req, res) => {
     // API KEY GEMINI (banyak akun per sekolah; rahasia disimpan di Supabase Vault)
     // ---------------------------------------------------------
     if (b.aksi === 'gemini_key_tambah') {
-      const label = String(b.label || '').replace(/\\s+/g, ' ').trim().slice(0, 60);
+      const label = String(b.label || '').replace(/\s+/g, ' ').trim().slice(0, 60);
       const apiKey = String(b.api_key || '').trim();
       if (!label) throw new Error('Nama akun Gemini wajib diisi');
-      if (apiKey.length < 20 || /\\s/.test(apiKey)) throw new Error('API Key Gemini tidak valid');
+      if (apiKey.length < 20 || /\s/.test(apiKey)) throw new Error('API Key Gemini tidak valid');
       const hasil = await panggil('/rest/v1/rpc/gemini_key_tambah', 'POST', {
         p_sekolah_id: sekolahId, p_label: label, p_api_key: apiKey
       });
