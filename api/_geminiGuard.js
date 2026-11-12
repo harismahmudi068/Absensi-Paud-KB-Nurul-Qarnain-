@@ -57,8 +57,12 @@ function klasifikasiErrorGemini(error) {
     /operation was aborted|the operation was aborted|aborted/i.test(pesan);
   const network=dibatalkan || /timeout|timed out|aborterror|econnreset|econnrefused|enotfound|eai_again|socket hang up|fetch failed|network/i.test(pesan)
     || ['ETIMEDOUT','ECONNRESET','ECONNREFUSED','ENOTFOUND','EAI_AGAIN','ABORT_ERR'].includes(kodeError);
-  const sementara=network || [408,425,429,500,502,503,504].includes(Number(httpStatus));
-  const permanen=!sementara;
+  const permanen = [401,403].includes(Number(httpStatus)) ||
+    (Number(httpStatus) === 400 && /api[ _-]?key|api_key_invalid|invalid key|key not valid|key expired|key revoked|unauthorized/i.test(gabungan));
+  // Selain kegagalan kredensial/izin yang jelas, perlakukan error sebagai sementara.
+  // Timeout, abort, respons kosong/JSON rusak, 429, 503, dan error jaringan tidak
+  // boleh menonaktifkan API key secara permanen.
+  const sementara = !permanen || network || [408,425,429,500,502,503,504].includes(Number(httpStatus));
   return {httpStatus,kode:kodeFinal,retryAfter:parseRetryGemini(error,details,jenisKuota),sementara,permanen};
 }
 function errorPengamanGemini(kode,tunggu) {
