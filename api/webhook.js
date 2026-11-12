@@ -1871,6 +1871,7 @@ async function prosesAntrianAI() {
   await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${sekolahId}&model=eq.gemini-3.5-flash-lite`,{
     method:'PATCH',body:{status_gangguan:'normal',next_retry_at:null,detail_gangguan:null,sekolah_notified_at:null,developer_notified_at:null,diperbarui:new Date().toISOString()},prefer:'return=minimal'
   });
+  await sb('rpc/gemini_hapus_retry',{method:'POST',body:{p_sekolah_id:sekolahId}}).catch(()=>{});
   await kirimNotifikasiAIKembaliNormal().catch(e=>console.error('Pemberitahuan AI normal gagal:',e.message));
   return {diproses,tersisa:0,status:'normal'};
 }
