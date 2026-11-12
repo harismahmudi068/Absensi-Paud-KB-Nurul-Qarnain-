@@ -528,6 +528,13 @@ module.exports = async (req, res) => {
           }
         }
         if (!keyBerhasil) throw new Error('Semua API Key Gemini gagal diuji. ' + kegagalan.join(' | '));
+        if (r.webhook_kunci) {
+          await fetch(urlWebhook(req,r.webhook_kunci),{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({__ai_recovery_confirmed:true})
+          }).catch(e=>console.error('Konfirmasi pemulihan layanan AI gagal:',e.message));
+        }
       } else {
         if (!r.kunci_ai) throw new Error('Belum ada API Key Gemini yang diisi');
         balasan = await tesGemini(r.kunci_ai);
