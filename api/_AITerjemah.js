@@ -18,7 +18,7 @@ const AI_MODEL_TERJEMAH = 'gemini-3.5-flash-lite';
 const BATAS_WAKTU_MS = 8000;
 
 
-async function catatPemakaian(catat, response, status, kodeError) {
+async function simpanPemakaianAI(catat, response, status, kodeError) {
   if (typeof catat !== 'function') return;
   const u = response && response.usageMetadata ? response.usageMetadata : {};
   const angka = v => Number.isFinite(Number(v)) && v !== null && v !== undefined ? Math.max(0, Math.trunc(Number(v))) : null;
@@ -70,8 +70,9 @@ async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian }) {
     timer = setTimeout(() => reject(new Error('Terjemahan melebihi batas waktu')), BATAS_WAKTU_MS);
   });
 
+  let response = null;
   try {
-    const response = await Promise.race([
+    response = await Promise.race([
       ai.models.generateContent({
         model: AI_MODEL_TERJEMAH,
         contents: asli,
@@ -88,7 +89,12 @@ async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian }) {
     if (!hasil) throw new Error('Respons penerjemah kosong');
     // Pengaman sederhana: hasil yang jauh lebih pendek dari aslinya dianggap tidak wajar.
     if (hasil.length < asli.length * 0.3) throw new Error('Hasil terjemahan tidak wajar (terlalu pendek)');
+    await simpanPemakaianAI(catatPemakaian, response, 'berhasil', null);
     return hasil;
+  } catch (e) {
+    const kode = /melebihi batas waktu/i.test(String(e && e.message)) ? 'AI_TIMEOUT' : (/terlalu pendek|kosong/i.test(String(e && e.message)) ? 'OUTPUT_INVALID' : 'AI_REQUEST_FAILED');
+    await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
+    throw e;
   } finally {
     clearTimeout(timer);
   }
