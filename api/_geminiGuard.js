@@ -62,7 +62,7 @@ function klasifikasiErrorGemini(error) {
   return {httpStatus,kode:kodeFinal,retryAfter:parseRetryGemini(error,details,jenisKuota),sementara,permanen};
 }
 function errorPengamanGemini(kode,tunggu) {
-  const e=new Error(kode==='cooldown'?'AI sekolah sedang dijeda sementara karena batas kuota Gemini.':kode==='batas_lokal_per_menit'?'Batas aman permintaan AI sekolah per menit tercapai.':kode==='jeda_antar_permintaan'?'Permintaan AI sekolah terlalu berdekatan.':'Pengaman kuota Gemini belum dapat diperiksa.');
+  const e=new Error(kode==='busy'?'API Key Gemini sedang digunakan oleh permintaan lain.':kode==='cooldown'?'API Key Gemini sedang dijeda sementara karena batas kuota.':kode==='batas_lokal_per_menit'?'Batas aman permintaan AI sekolah per menit tercapai.':kode==='jeda_antar_permintaan'?'API Key Gemini masih dalam jeda 60 detik.':'Pengaman kuota Gemini belum dapat diperiksa.');
   e.isGeminiGuard=true;e.code='GEMINI_GUARD_'+String(kode||'UNAVAILABLE').toUpperCase();e.retryAfterSeconds=Number(tunggu)||null;return e;
 }
 async function generateContentDenganPengaman({model,pengamanGemini,apiKeyId,generate}) {
@@ -105,6 +105,10 @@ async function generateContentDenganPengaman({model,pengamanGemini,apiKeyId,gene
     }
     try { error.geminiInfo={...info,perluNotifikasi:!!perluNotifikasi}; } catch(_) {}
     throw error;
+  } finally {
+    if(perKey && izin?.reservation_token && typeof pengamanGemini.lepasIzinKey==='function') {
+      await pengamanGemini.lepasIzinKey(Number(apiKeyId),String(izin.reservation_token)).catch(()=>false);
+    }
   }
 }
 module.exports={generateContentDenganPengaman,klasifikasiErrorGemini};

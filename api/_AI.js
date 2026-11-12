@@ -358,14 +358,14 @@ async function simpanPemakaianAI(catat, response, status, kodeError) {
 function buatErrorAI(error) {
   const hasil = new Error(error?.message || 'Kesalahan Gemini tidak diketahui');
   if (error && typeof error === 'object') {
-    for (const k of ['code','status','statusCode','geminiInfo','attempts','semuaSementara','permanen','isGeminiFailover','isGeminiGuard']) {
+    for (const k of ['code','status','statusCode','geminiInfo','attempts','semuaSementara','permanen','isGeminiFailover','isGeminiGuard','isGeminiBusy','retryAfterSeconds']) {
       if (error[k] !== undefined) hasil[k] = error[k];
     }
   }
   return hasil;
 }
 
-async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian, pengamanGemini }) {
+async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian, pengamanGemini, reservasiGemini }) {
   // Hapus karakter penanda kurung, tetapi pertahankan teks di dalamnya agar nama tetap terbaca.
   const pesanUntukAnalisis = String(pesan || '').replace(/[\[\](){}（）［］｛｝【】〔〕]/g, ' ');
   const daftarKunci = Array.isArray(kunciAi)
@@ -439,6 +439,13 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
     anak_wali: daftarAnak(anak)
   };
 
+  const pengamanUntukPesan = reservasiGemini ? {
+    ...pengamanGemini,
+    ambilIzinKey: async id => Number(id) === Number(reservasiGemini.id)
+      ? { allowed: true, reservation_token: reservasiGemini.token }
+      : pengamanGemini.ambilIzinKey(Number(id))
+  } : pengamanGemini;
+
   const percobaan = [];
   let errorTerakhir = null;
 
@@ -450,7 +457,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
       response = await generateContentDenganPengaman({
         model: AI_MODEL,
         apiKeyId: kunci.id,
-        pengamanGemini,
+        pengamanGemini: pengamanUntukPesan,
         generate: () => ai.models.generateContent({
           model: AI_MODEL,
           contents: JSON.stringify(input),
@@ -459,7 +466,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
             responseMimeType: 'application/json',
             responseSchema,
             maxOutputTokens: 512,
-            abortSignal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined
+            abortSignal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined
           }
         })
       });
@@ -504,12 +511,25 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
         kode: info.kode || 'AI_REQUEST_FAILED',
         detail: String(e?.message || e || 'Kesalahan tidak diketahui').slice(0,500),
         sementara: info.sementara === true,
-        retry_after_seconds: info.retryAfter || null,
+        retry_after_seconds: info.retryAfter || e?.retryAfterSeconds || null,
         permanen,
-        perluNotifikasi
+        perluNotifikasi,
+        guard: e?.isGeminiGuard === true
       });
       errorTerakhir = e;
     }
+  }
+
+  const semuaMenunggu = percobaan.length > 0 && percobaan.length === daftarKunci.length &&
+    percobaan.every(x => x.guard && /^GEMINI_GUARD_(BUSY|COOLDOWN|JEDA_ANTAR_PERMINTAAN|BATAS_LOKAL_PER_MENIT)$/.test(String(x.kode || '')));
+  if (semuaMenunggu) {
+    const e = new Error('Seluruh API Key Gemini sedang digunakan atau masih dalam jeda pemanggilan.');
+    e.code = 'ALL_GEMINI_KEYS_BUSY';
+    e.isGeminiBusy = true;
+    e.attempts = percobaan;
+    const waktu = percobaan.map(x => Number(x.retry_after_seconds || 0)).filter(x => x > 0);
+    e.retryAfterSeconds = waktu.length ? Math.min(...waktu) : 60;
+    throw buatErrorAI(e);
   }
 
   const gagal = new Error('Seluruh API Key Gemini sekolah gagal memproses pesan.');
