@@ -1514,11 +1514,13 @@ async function kirimNotifikasiGangguanSekolah(sementara, detail) {
   ].join('\n');
 
   const tujuan = new Map();
-  const anggota = await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&role=in.(kepala_sekolah,pengelola)&select=profil_id,role,profil(nama,no_wa,aktif)`).catch(()=>[]);
+  const anggota = await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role,profil(nama,no_wa,aktif,role)`).catch(()=>[]);
   for (const a of anggota || []) {
     const p = Array.isArray(a.profil) ? a.profil[0] : a.profil;
+    const role = String(a.role || '');
+    if (role !== 'kepala_sekolah' && role !== 'pengelola' && p?.role !== 'pengelola') continue;
     const n = normDevice(p?.no_wa);
-    if (p?.aktif !== false && RE_WA.test(n)) tujuan.set(n,{nomor:n,label:p?.nama || a.role});
+    if (p?.aktif !== false && RE_WA.test(n)) tujuan.set(n,{nomor:n,label:p?.nama || role || 'Pengelola'});
   }
   const kelas = await sb(`kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,nama,wali_profil_id`).catch(()=>[]);
   const waliIds = [...new Set((kelas||[]).map(x=>x.wali_profil_id).filter(x=>RE_UUID.test(String(x||''))))];
@@ -1559,8 +1561,8 @@ async function kirimNotifikasiAIKembaliNormal() {
     '',penutup()
   ].join('\n');
   const tujuan=new Map();
-  const anggota=await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&role=in.(kepala_sekolah,pengelola)&select=profil_id,role,profil(nama,no_wa,aktif)`).catch(()=>[]);
-  for(const a of anggota||[]){const p=Array.isArray(a.profil)?a.profil[0]:a.profil;const n=normDevice(p?.no_wa);if(p?.aktif!==false&&RE_WA.test(n))tujuan.set(n,{nomor:n,label:p?.nama||a.role})}
+  const anggota=await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role,profil(nama,no_wa,aktif,role)`).catch(()=>[]);
+  for(const a of anggota||[]){const p=Array.isArray(a.profil)?a.profil[0]:a.profil;const role=String(a.role||'');if(role!=='kepala_sekolah'&&role!=='pengelola'&&p?.role!=='pengelola')continue;const n=normDevice(p?.no_wa);if(p?.aktif!==false&&RE_WA.test(n))tujuan.set(n,{nomor:n,label:p?.nama||role||'Pengelola'})}
   const kelas=await sb(`kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=wali_profil_id,nama`).catch(()=>[]);
   const wali=[...new Set((kelas||[]).map(x=>x.wali_profil_id).filter(x=>RE_UUID.test(String(x||''))))];
   if(wali.length){const ang=await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&profil_id=in.(${wali.join(',')})&select=profil_id`).catch(()=>[]);const ids=[...new Set((ang||[]).map(x=>x.profil_id))];if(ids.length){const ps=await sb(`profil?id=in.(${ids.join(',')})&aktif=eq.true&select=id,nama,no_wa`).catch(()=>[]);for(const p of ps||[]){const n=normDevice(p.no_wa);if(RE_WA.test(n)&&!tujuan.has(n))tujuan.set(n,{nomor:n,label:p.nama||n})}}}
