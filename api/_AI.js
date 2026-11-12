@@ -6,6 +6,7 @@
 // npm install @google/genai
 
 const { GoogleGenAI, Type } = require('@google/genai');
+const { generateContentDenganPengaman, klasifikasiErrorGemini } = require('./_geminiGuard');
 
 // ============================================================
 // KONFIGURASI AI — MUDAH DIUBAH
@@ -24,6 +25,9 @@ KATEGORI:
 - Jika hanya waktu yang ambigu, tetap gunakan "izin_sakit" dan biarkan waktu kosong.
 
 ATURAN WAKTU:
+- Untuk status sakit, pilih tanggal anak TIDAK MASUK SEKOLAH, bukan semata-mata tanggal mulai gejala sakit.
+- Contoh: "besok Riko tidak bisa masuk karena sakit demam" berarti waktu besok, walaupun demam mulai hari ini.
+- Jika orang tua hanya menyatakan anak sakit/tidak masuk tanpa menyebut tanggal lain, gunakan hari ini.
 - Bandingkan semua waktu dengan tanggal_hari_ini.
 - Hari ini → tipe "hari_ini".
 - Tanggal yang sama dengan hari ini, misalnya "hari ini (06 Oktober)" → tetap "hari_ini",
@@ -55,6 +59,8 @@ ATURAN NAMA:
 - Jangan mengambil nama dari anak_wali jika nama tersebut tidak disebut.
 - Jika tidak ada nama anak dalam pesan, daftar_nama harus kosong.
 - Jangan mengganti nama yang disebut dengan nama anak terdaftar jika tidak cocok.
+- Abaikan penanda kurung yang hanya mengapit nama. Contoh: "[Putra]", "(Putra)", atau "【Putra】" harus dibaca sebagai nama "Putra".
+- Tanda kurung bukan bagian dari nama; baca dan cocokkan kata di dalamnya seperti teks biasa.
 - Penentuan anak yang tidak disebut dalam pesan dilakukan oleh sistem berdasarkan data anak wali.
 
 PESAN:
@@ -328,26 +334,48 @@ function normalisasi(raw, anak, pesan = '') {
   };
 }
 
-function buatErrorAI(error) {
-  if (error?.message) return new Error(error.message);
+
+async function simpanPemakaianAI(catat, response, status, kodeError) {
+  if (typeof catat !== 'function') return;
+  const u = response && response.usageMetadata ? response.usageMetadata : {};
+  const angka = v => Number.isFinite(Number(v)) && v !== null && v !== undefined ? Math.max(0, Math.trunc(Number(v))) : null;
+  const adaMetadata = u.promptTokenCount != null || u.candidatesTokenCount != null || u.totalTokenCount != null;
   try {
-    return new Error(JSON.stringify(error));
-  } catch (_) {
-    return new Error('Kesalahan Gemini tidak diketahui');
+    await catat({
+      layanan: 'analisis',
+      model: AI_MODEL,
+      input_tokens: angka(u.promptTokenCount),
+      output_tokens: angka(u.candidatesTokenCount),
+      total_tokens: angka(u.totalTokenCount),
+      status: status === 'gagal' ? 'gagal' : (adaMetadata ? 'berhasil' : 'metadata_tidak_tersedia'),
+      kode_error: kodeError || null
+    });
+  } catch (e) {
+    console.warn('Pencatatan pemakaian AI dilewati:', e && e.message ? e.message : 'gagal');
   }
 }
 
-async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
-  const AI_API_KEY = String(kunciAi || '').trim();
-  if (!AI_API_KEY) {
-    throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
+function buatErrorAI(error) {
+  const hasil = new Error(error?.message || 'Kesalahan Gemini tidak diketahui');
+  if (error && typeof error === 'object') {
+    for (const k of ['code','status','statusCode','geminiInfo','attempts','semuaSementara','permanen','isGeminiFailover','isGeminiGuard','isGeminiBusy','retryAfterSeconds']) {
+      if (error[k] !== undefined) hasil[k] = error[k];
+    }
   }
+  return hasil;
+}
 
-  let ai;
-  try {
-    ai = new GoogleGenAI({ apiKey: AI_API_KEY });
-  } catch (e) {
-    throw buatErrorAI(e);
+async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian, pengamanGemini, reservasiGemini }) {
+  // Hapus karakter penanda kurung, tetapi pertahankan teks di dalamnya agar nama tetap terbaca.
+  const pesanUntukAnalisis = String(pesan || '').replace(/[\[\](){}（）［］｛｝【】〔〕]/g, ' ');
+  const daftarKunci = Array.isArray(kunciAi)
+    ? kunciAi.filter(x => x && x.error_permanen !== true && String(x.api_key || '').trim())
+    : (String(kunciAi || '').trim() ? [{ id: null, label: 'API Key sekolah', api_key: String(kunciAi).trim() }] : []);
+  if (!daftarKunci.length) {
+    const e = new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
+    e.code = 'GEMINI_KEY_EMPTY'; e.permanen = true; e.semuaSementara = false;
+    e.isGeminiFailover = true; e.attempts = [{ label: 'Konfigurasi API Key', kode: 'GEMINI_KEY_EMPTY', detail: e.message, permanen: true, sementara: false, perluNotifikasi: true }];
+    throw e;
   }
 
   const responseSchema = {
@@ -407,36 +435,141 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
 
   const input = {
     tanggal_hari_ini: String(tanggalHariIni || ''),
-    pesan_asli: String(pesan || ''),
+    pesan_asli: pesanUntukAnalisis,
     anak_wali: daftarAnak(anak)
   };
 
-  try {
-    const response = await ai.models.generateContent({
-      model: AI_MODEL,
-      contents: JSON.stringify(input),
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: 'application/json',
-        responseSchema,
-        maxOutputTokens: 512
-      }
-    });
+  const pengamanUntukPesan = reservasiGemini ? {
+    ...pengamanGemini,
+    ambilIzinKey: async id => Number(id) === Number(reservasiGemini.id)
+      ? { allowed: true, reservation_token: reservasiGemini.token }
+      : pengamanGemini.ambilIzinKey(Number(id))
+  } : pengamanGemini;
 
-    const content = String(response?.text || '').trim();
-    if (!content) throw new Error('Respons Gemini kosong');
+  const percobaan = [];
+  let errorTerakhir = null;
 
-    let hasil;
+  for (const kunci of daftarKunci) {
+    let response = null;
+    const label = String(kunci.label || ('Akun Gemini ' + (percobaan.length + 1))).slice(0,60);
     try {
-      hasil = JSON.parse(content);
-    } catch (_) {
-      throw new Error(`Respons Gemini bukan JSON valid: ${content.slice(0, 1000)}`);
-    }
+      const ai = new GoogleGenAI({ apiKey: String(kunci.api_key).trim() });
+      response = await generateContentDenganPengaman({
+        model: AI_MODEL,
+        apiKeyId: kunci.id,
+        pengamanGemini: pengamanUntukPesan,
+        generate: () => ai.models.generateContent({
+          model: AI_MODEL,
+          contents: JSON.stringify(input),
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            responseMimeType: 'application/json',
+            responseSchema,
+            maxOutputTokens: 512,
+            abortSignal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(30000) : undefined
+          }
+        })
+      });
 
-    return normalisasi(hasil, anak, pesan);
-  } catch (e) {
+      const content = String(response?.text || '').trim();
+      if (!content) {
+        const e = new Error('Respons Gemini kosong'); e.code = 'RESPONSE_INVALID'; throw e;
+      }
+      let hasil;
+      try { hasil = JSON.parse(content); }
+      catch (_) {
+        const e = new Error(`Respons Gemini bukan JSON valid: ${content.slice(0,1000)}`);
+        e.code = 'RESPONSE_INVALID'; throw e;
+      }
+
+      const hasilAkhir = normalisasi(hasil, anak, pesanUntukAnalisis);
+      await simpanPemakaianAI(catatPemakaian, response, 'berhasil', null);
+      hasilAkhir.gangguanApiKeys = percobaan.filter(x => x.permanen && x.perluNotifikasi);
+      return hasilAkhir;
+    } catch (e) {
+      const info = e?.geminiInfo || klasifikasiErrorGemini(e);
+      const permanen = info.permanen === true;
+      let perluNotifikasi = !!info.perluNotifikasi;
+
+      if (!e?.geminiInfo && kunci.id && typeof pengamanGemini?.catatHasilKey === 'function') {
+        try {
+          perluNotifikasi = await pengamanGemini.catatHasilKey({
+            id: Number(kunci.id), model: AI_MODEL, status: 'gagal',
+            httpStatus: info.httpStatus || 200, kode: info.kode || 'RESPONSE_INVALID',
+            detail: e?.message || String(e), retryAfter: info.retryAfter || null,
+            permanen
+          });
+        } catch (_) {}
+      }
+
+      const kodeLog = (info.kode || 'AI_REQUEST_FAILED') + ':' + label;
+      if (!e?.isGeminiGuard) await simpanPemakaianAI(catatPemakaian, response, 'gagal', kodeLog);
+      percobaan.push({
+        key_id: kunci.id || null,
+        label,
+        http_status: info.httpStatus || null,
+        kode: info.kode || 'AI_REQUEST_FAILED',
+        detail: String(e?.message || e || 'Kesalahan tidak diketahui').slice(0,500),
+        sementara: info.sementara === true,
+        retry_after_seconds: info.retryAfter || e?.retryAfterSeconds || null,
+        permanen,
+        perluNotifikasi,
+        guard: e?.isGeminiGuard === true
+      });
+      errorTerakhir = e;
+    }
+  }
+
+  const semuaMenunggu = percobaan.length > 0 && percobaan.length === daftarKunci.length &&
+    percobaan.every(x => x.guard && /^GEMINI_GUARD_(BUSY|COOLDOWN|JEDA_ANTAR_PERMINTAAN|BATAS_LOKAL_PER_MENIT)$/.test(String(x.kode || '')));
+  if (semuaMenunggu) {
+    const e = new Error('Seluruh API Key Gemini sedang digunakan atau masih dalam jeda pemanggilan.');
+    e.code = 'ALL_GEMINI_KEYS_BUSY';
+    e.isGeminiBusy = true;
+    e.attempts = percobaan;
+    const waktu = percobaan.map(x => Number(x.retry_after_seconds || 0)).filter(x => x > 0);
+    e.retryAfterSeconds = waktu.length ? Math.min(...waktu) : 60;
     throw buatErrorAI(e);
   }
+
+  const gagal = new Error('Seluruh API Key Gemini sekolah gagal memproses pesan.');
+  gagal.code = 'ALL_GEMINI_KEYS_FAILED';
+  gagal.attempts = percobaan;
+  gagal.semuaSementara = percobaan.length > 0 && percobaan.every(x => x.sementara);
+  gagal.permanen = percobaan.some(x => x.permanen);
+  gagal.isGeminiFailover = true;
+  gagal.cause = errorTerakhir || null;
+  throw buatErrorAI(gagal);
 }
 
-module.exports = { analisisPesan };
+async function ujiKoneksiGemini({ kunci, pengamanGemini }) {
+  if (!kunci || !kunci.api_key || !Number(kunci.id)) {
+    const e = new Error('API Key pemulihan tidak valid');
+    e.code = 'GEMINI_KEY_INVALID';
+    e.permanen = true;
+    throw e;
+  }
+  const ai = new GoogleGenAI({ apiKey: String(kunci.api_key).trim() });
+  const response = await generateContentDenganPengaman({
+    model: AI_MODEL,
+    apiKeyId: Number(kunci.id),
+    pengamanGemini,
+    generate: () => ai.models.generateContent({
+      model: AI_MODEL,
+      contents: 'Balas hanya dengan satu kata: OK',
+      config: {
+        maxOutputTokens: 8,
+        abortSignal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+          ? AbortSignal.timeout(15000) : undefined
+      }
+    })
+  });
+  if (!String(response?.text || '').trim()) {
+    const e = new Error('Respons uji pemulihan Gemini kosong');
+    e.code = 'RESPONSE_INVALID';
+    throw e;
+  }
+  return true;
+}
+
+module.exports = { analisisPesan, ujiKoneksiGemini };
