@@ -651,6 +651,12 @@ module.exports = async (req, res) => {
         { status_gangguan: 'menunggu_uji', ditangani_oleh: user.id, ditangani_pada: new Date().toISOString() },
         { Prefer: 'return=minimal' }
       );
+      await L.panggil(
+        `/rest/v1/gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&error_permanen=eq.true`,
+        'PATCH',
+        { dev_notified_at: null, ditangani_oleh: user.id, ditangani_pada: new Date().toISOString() },
+        { Prefer: 'return=minimal' }
+      );
       await L.panggil('/rest/v1/rpc/gemini_jadwalkan_retry', 'POST', {
         p_sekolah_id: sekolahId, p_delay_menit: 0
       });
