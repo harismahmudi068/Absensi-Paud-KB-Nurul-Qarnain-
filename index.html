@@ -5150,6 +5150,7 @@ function aiStatusKey(x){
  if(x.cooldown_until&&new Date(x.cooldown_until).getTime()>now)return aiBadge('Cooldown kuota','Alpa');
  if(x.reservasi_sampai&&new Date(x.reservasi_sampai).getTime()>now)return aiBadge('Sedang dipakai','Belum');
  if(x.status_terakhir==='berhasil')return aiBadge('Normal','Hadir');
+ if(x.ditangani_pada&&(!x.terakhir_dicoba||new Date(x.ditangani_pada).getTime()>new Date(x.terakhir_dicoba).getTime()))return aiBadge('Menunggu uji ulang','Belum');
  if(x.kode_error_terakhir)return aiBadge('Gangguan sementara','Belum');
  return aiBadge('Belum diuji','Belum');
 }
