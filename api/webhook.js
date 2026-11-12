@@ -2013,8 +2013,22 @@ async function prosesAntrianAI() {
     }
   }
 
-  const statusAkhir = await bacaStatusGangguanAI();
+  let statusAkhir = await bacaStatusGangguanAI();
   const sisa = await sb(`pesan_ai_antrean?sekolah_id=eq.${sekolahId}&status=in.(menunggu,diproses,kedaluwarsa)&select=id,status&limit=500`);
+  if (Array.isArray(sisa) && sisa.length) {
+    const kondisiKey = await sb(`gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,error_permanen,cooldown_until,next_allowed_at,reservasi_sampai`).catch(()=>[]);
+    const now = Date.now();
+    const adaKeySiap = (kondisiKey||[]).some(k =>
+      k.error_permanen !== true &&
+      (!k.cooldown_until || new Date(k.cooldown_until).getTime()<=now) &&
+      (!k.next_allowed_at || new Date(k.next_allowed_at).getTime()<=now) &&
+      (!k.reservasi_sampai || new Date(k.reservasi_sampai).getTime()<=now)
+    );
+    if (!adaKeySiap && statusAkhir.status_gangguan==='normal') {
+      await perbaruiStatusGangguanAI({code:'ALL_GEMINI_KEYS_UNAVAILABLE',attempts:[]}).catch(e=>console.error('Gagal mencatat semua key tidak tersedia:',e.message));
+      statusAkhir = await bacaStatusGangguanAI();
+    }
+  }
   const pemulihan = await sb('rpc/gemini_key_daftar_pemulihan',{method:'POST',body:{p_sekolah_id:sekolahId,p_model:'gemini-3.5-flash-lite'}}).catch(()=>[]);
   const adaKeyPerluPulih = Array.isArray(pemulihan) && pemulihan.length > 0;
   if ((Array.isArray(sisa) && sisa.length) || adaKeyPerluPulih) {
