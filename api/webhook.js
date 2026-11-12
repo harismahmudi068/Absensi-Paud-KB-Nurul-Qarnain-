@@ -1788,7 +1788,7 @@ async function prosesAntrianAI() {
     method:'PATCH',body:{status:'menunggu',klaim_sampai:null,diperbarui:sekarang},prefer:'return=minimal'
   }).catch(()=>{});
 
-  const rows=await sb(`pesan_ai_antrean?sekolah_id=eq.${sekolahId}&status=eq.menunggu&coba_lagi_pada=lte.${encodeURIComponent(sekarang)}&order=dibuat.asc&limit=30`);
+  const rows=await sb(`pesan_ai_antrean?sekolah_id=eq.${sekolahId}&status=eq.menunggu&coba_lagi_pada=lte.${encodeURIComponent(sekarang)}&order=dibuat.asc&limit=1`);
   let diproses=0,macet=false;
   for(const row of rows||[]){
     const klaim=await sb(`pesan_ai_antrean?id=eq.${row.id}&sekolah_id=eq.${sekolahId}&status=eq.menunggu`,{
@@ -1818,7 +1818,10 @@ async function prosesAntrianAI() {
 
   const sisa=await sb(`pesan_ai_antrean?sekolah_id=eq.${sekolahId}&select=id,status,coba_lagi_pada&limit=500`);
   if(Array.isArray(sisa)&&sisa.length){
-    await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:sekolahId,p_delay_menit:15}})
+    // Saat AI sudah berhasil, antrean dilanjutkan dengan pemanggilan satu kali berikutnya.
+    // Ini bukan cron yang terus berjalan; job menghapus dirinya setelah setiap pemanggilan.
+    const jedaMenit=diproses>0&&!macet?0:15;
+    await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:sekolahId,p_delay_menit:jedaMenit}})
       .catch(e=>console.error('Jadwal antrean AI berikutnya gagal:',e.message));
     return {diproses,tersisa:sisa.length,status:'menunggu'};
   }
