@@ -1852,11 +1852,14 @@ async function prosesAntrianAI() {
   if(diproses===0){
     try{
       const keys=await ambilKunciAiRotasi();
-      await analisisPesan({
+      const hasilUji=await analisisPesan({
         pesan:'Ini adalah pengujian koneksi AI internal, bukan laporan absensi.',
         anak:[{id:'uji-ai-internal',nama:'Uji Sistem',nama_panggilan:'Uji Sistem'}],
         tanggalHariIni:tanggal(),kunciAi:keys,catatPemakaian:catatPemakaianAI,pengamanGemini
       });
+      if(Array.isArray(hasilUji.gangguanApiKeys)&&hasilUji.gangguanApiKeys.length){
+        await notifikasiGangguanKeyDeveloper(hasilUji.gangguanApiKeys,'Sistem','Uji pemulihan AI').catch(()=>{});
+      }
     }catch(e){
       if(e?.isGeminiFailover){
         const st=await perbaruiStatusGangguanAI(e).catch(()=>({}));
