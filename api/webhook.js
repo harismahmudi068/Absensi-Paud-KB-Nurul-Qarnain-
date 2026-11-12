@@ -1134,6 +1134,7 @@ function notifikasiAIGagalDeveloper(pengirim, namaAnak, pesan, error) {
   const detail = String(error?.message || error || 'Kesalahan tidak diketahui').slice(0, 500);
   const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
   return [
+    salam(), '',
     '🚨 *[DEVELOPER] Gemini Error di Webhook*',
     '',
     `🏫 *Sekolah ID:* ${K().sekolahId || '-'}`,
@@ -1144,7 +1145,8 @@ function notifikasiAIGagalDeveloper(pengirim, namaAnak, pesan, error) {
     '',
     `🔧 *Error:* ${detail}`,
     '',
-    'Absensi tidak diubah otomatis. Pesan perlu dicek manual.'
+    'Absensi tidak diubah otomatis. Pesan perlu dicek manual.',
+    '', penutup()
   ].join('\n');
 }
 
@@ -1788,9 +1790,12 @@ async function prosesAntrianAI() {
       const payload={...(row.payload||{}),__ai_retry_replay:true,__ai_dedup_key:row.kunci_duplikat};
       await proses(payload);
       const cek=await sb(`pesan_ai_antrean?id=eq.${row.id}&sekolah_id=eq.${sekolahId}&select=status`);
-      if(cek?.[0]?.status==='diproses')await sb(`pesan_ai_antrean?id=eq.${row.id}&sekolah_id=eq.${sekolahId}`,{method:'DELETE',prefer:'return=minimal'});
-      else {macet=true;break;}
-      diproses++;
+      if(!Array.isArray(cek)||!cek.length) {
+        diproses++;
+      } else if(cek[0].status==='diproses') {
+        await sb(`pesan_ai_antrean?id=eq.${row.id}&sekolah_id=eq.${sekolahId}`,{method:'DELETE',prefer:'return=minimal'});
+        diproses++;
+      } else {macet=true;break;}
     } catch(e) {
       await sb(`pesan_ai_antrean?id=eq.${row.id}&sekolah_id=eq.${sekolahId}`,{
         method:'PATCH',body:{status:'menunggu',klaim_sampai:null,coba_lagi_pada:new Date(Date.now()+15*60000).toISOString(),error_terakhir:String(e?.message||e).slice(0,1000),diperbarui:new Date().toISOString()},prefer:'return=minimal'
