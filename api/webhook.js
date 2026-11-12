@@ -142,7 +142,37 @@ async function catatHasilGemini(data) {
   });
 }
 
-const pengamanGemini = { ambilIzin: ambilIzinGemini, catatHasil: catatHasilGemini };
+async function ambilIzinKeyGemini(id) {
+  const sekolahId = Number(K().sekolahId);
+  return sb('rpc/gemini_key_ambil_izin', { method: 'POST', body: { p_sekolah_id: sekolahId, p_id: Number(id) } });
+}
+async function catatHasilKeyGemini(data) {
+  const sekolahId = Number(K().sekolahId);
+  return sb('rpc/gemini_key_catat_hasil', {
+    method: 'POST',
+    body: {
+      p_sekolah_id: sekolahId, p_id: Number(data.id), p_status: data.status,
+      p_http_status: data.httpStatus, p_kode_error: data.kode,
+      p_detail: data.detail || null, p_retry_after_seconds: data.retryAfter,
+      p_permanen: !!data.permanen
+    }
+  });
+}
+async function ambilKunciAiRotasi() {
+  const sekolahId = Number(K().sekolahId);
+  if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) return K().kunciAi || '';
+  const daftar = await sb('rpc/gemini_key_daftar_rotasi', {
+    method: 'POST',
+    body: { p_sekolah_id: sekolahId, p_model: 'gemini-3.5-flash-lite' }
+  });
+  return Array.isArray(daftar) && daftar.length ? daftar : (K().kunciAi || '');
+}
+const pengamanGemini = {
+  ambilIzin: ambilIzinGemini,
+  catatHasil: catatHasilGemini,
+  ambilIzinKey: ambilIzinKeyGemini,
+  catatHasilKey: catatHasilKeyGemini
+};
 
 async function kirimFonnteRinci(target, teks, jadwal) {
   const tokenFonnte = K().tokenFonnte;
@@ -217,7 +247,7 @@ async function kirimBalasanWali(target, teks, bahasa) {
   let isi = teks;
   if (perluTerjemah(bahasa)) {
     try {
-      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: K().kunciAi, catatPemakaian: catatPemakaianAI, pengamanGemini });
+      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: await ambilKunciAiRotasi(), catatPemakaian: catatPemakaianAI, pengamanGemini });
     } catch (e) {
       console.error(`Terjemahan ke ${bahasa} gagal, balasan dikirim dalam Bahasa Indonesia:`, e.message);
       isi = teks;
@@ -1118,6 +1148,36 @@ function notifikasiAIGagalDeveloper(pengirim, namaAnak, pesan, error) {
   ].join('\n');
 }
 
+async function notifikasiGangguanKeyDeveloper(daftar, pengirim, namaAnak) {
+  if (!NOMOR_DEVELOPER.length) {
+    console.warn('DEV_WA belum diisi/valid: laporan gangguan API Key dilewati');
+    return;
+  }
+  const sk = await sb(`sekolah?id=eq.${K().sekolahId}&select=nama`).catch(() => []);
+  const namaSekolah = sk?.[0]?.nama || ('Sekolah ID ' + K().sekolahId);
+  for (const x of daftar || []) {
+    if (!x.perluNotifikasi) continue;
+    const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
+    const teks = [
+      salam(), '',
+      '🚨 *[DEVELOPER] Gangguan API Key Gemini Sekolah*', '',
+      `🏫 *Sekolah:* ${namaSekolah}`,
+      `🔑 *Nama API Key:* ${x.label || 'Tidak diketahui'}`,
+      `🧾 *Kode error:* ${x.kode || '-'} (${x.http_status || '-'})`,
+      `🕒 *Waktu:* ${waktu} WIB`,
+      `👤 *Pengirim:* ${pengirim || '-'}`,
+      `👧 *Anak:* ${namaAnak || '-'}`,
+      `🔧 *Detail:* ${String(x.detail || '').slice(0,500)}`, '',
+      'Sistem telah mencoba API Key lain. Mohon periksa akun Gemini tersebut di menu Pemantauan AI.',
+      '', penutup()
+    ].join('\\n');
+    const batch = crypto.randomUUID();
+    await Promise.allSettled(NOMOR_DEVELOPER.map(n =>
+      kirimDanCatat(n, teks, { batch, judul: 'Gangguan API Key Gemini', label: x.label || 'API Key', olehDev: true })
+    ));
+  }
+}
+
 // Mengirim notifikasi ragu ke wali kelas dari anak yang dimaksud (hanya jika kelasnya punya wali).
 // Wali harus anggota aktif sekolah ini, profil aktif, dan punya nomor WhatsApp valid.
 // Gagal di sini TIDAK boleh mengganggu alur utama.
@@ -1389,7 +1449,12 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
   // 5. Bahasa bebas/ambigu masuk ke AI.js.
   let hasilAI;
   try {
-    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: K().kunciAi, catatPemakaian: catatPemakaianAI, pengamanGemini });
+    const daftarKunciAi = await ambilKunciAiRotasi();
+    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: daftarKunciAi, catatPemakaian: catatPemakaianAI, pengamanGemini });
+    if (Array.isArray(hasilAI.gangguanApiKeys) && hasilAI.gangguanApiKeys.length) {
+      await notifikasiGangguanKeyDeveloper(hasilAI.gangguanApiKeys, dari, anak.length === 1 ? anak[0].nama : 'Belum berhasil diidentifikasi')
+        .catch(e => console.error('Pemberitahuan gangguan API Key ke developer gagal:', e.message || e));
+    }
   } catch (e) {
     // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
     console.error('AI error:', e);
