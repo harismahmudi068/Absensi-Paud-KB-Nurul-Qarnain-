@@ -8,7 +8,7 @@
 // mengirim balasan Bahasa Indonesia asli sebagai cadangan.
 
 const { GoogleGenAI } = require('@google/genai');
-const { generateContentDenganPengaman } = require('./_geminiGuard');
+const { generateContentDenganPengaman, klasifikasiErrorGemini } = require('./_geminiGuard');
 
 // ============================================================
 // KONFIGURASI PENERJEMAH — MUDAH DIUBAH
@@ -56,53 +56,66 @@ ATURAN:
 `;
 }
 
-async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian, pengamanGemini }) {
-  const AI_API_KEY = String(kunciAi || '').trim();
+async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian, pengamanGemini, onGangguan }) {
+  const daftarKunci = Array.isArray(kunciAi)
+    ? kunciAi.filter(x => x && String(x.api_key || '').trim())
+    : (String(kunciAi || '').trim() ? [{id:null,label:'API Key sekolah',api_key:String(kunciAi).trim()}] : []);
   const asli = String(teks || '');
   const tujuan = String(bahasa || '').trim();
   if (!asli.trim()) throw new Error('Teks yang akan diterjemahkan kosong');
   if (!tujuan) throw new Error('Bahasa tujuan kosong');
-  if (!AI_API_KEY) throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
+  if (!daftarKunci.length) throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
 
-  const ai = new GoogleGenAI({ apiKey: AI_API_KEY });
-
-  let timer;
-  const batasWaktu = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error('Terjemahan melebihi batas waktu')), BATAS_WAKTU_MS);
-  });
-
-  let response = null;
-  try {
-    response = await Promise.race([
-      generateContentDenganPengaman({
-        model: AI_MODEL_TERJEMAH,
-        pengamanGemini,
-        generate: () => ai.models.generateContent({
-          model: AI_MODEL_TERJEMAH,
-          contents: asli,
-          config: {
-            systemInstruction: buatPrompt(tujuan),
-            temperature: 0,
-            maxOutputTokens: 2048
-          }
-        })
-      }),
-      batasWaktu
-    ]);
-
-    const hasil = String(response?.text || '').trim();
-    if (!hasil) throw new Error('Respons penerjemah kosong');
-    // Pengaman sederhana: hasil yang jauh lebih pendek dari aslinya dianggap tidak wajar.
-    if (hasil.length < asli.length * 0.3) throw new Error('Hasil terjemahan tidak wajar (terlalu pendek)');
-    await simpanPemakaianAI(catatPemakaian, response, 'berhasil', null);
-    return hasil;
-  } catch (e) {
-    const kode = /melebihi batas waktu/i.test(String(e && e.message)) ? 'AI_TIMEOUT' : (/terlalu pendek|kosong/i.test(String(e && e.message)) ? 'OUTPUT_INVALID' : 'AI_REQUEST_FAILED');
-    if (!e?.isGeminiGuard) await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
-    throw e;
-  } finally {
-    clearTimeout(timer);
+  const percobaan=[];
+  for(const kunci of daftarKunci){
+    let timer,response=null;
+    const label=String(kunci.label||'Akun Gemini').slice(0,60);
+    const batasWaktu=new Promise((_,reject)=>{
+      timer=setTimeout(()=>{const e=new Error('Terjemahan melebihi batas waktu');e.code='AI_TIMEOUT';reject(e)},BATAS_WAKTU_MS);
+    });
+    try{
+      const ai=new GoogleGenAI({apiKey:String(kunci.api_key).trim()});
+      response=await Promise.race([
+        generateContentDenganPengaman({
+          model:AI_MODEL_TERJEMAH,apiKeyId:kunci.id,pengamanGemini,
+          generate:()=>ai.models.generateContent({
+            model:AI_MODEL_TERJEMAH,contents:asli,
+            config:{systemInstruction:buatPrompt(tujuan),temperature:0,maxOutputTokens:2048}
+          })
+        }),
+        batasWaktu
+      ]);
+      const hasil=String(response?.text||'').trim();
+      if(!hasil) {const e=new Error('Respons penerjemah kosong');e.code='OUTPUT_INVALID';throw e}
+      if(hasil.length<asli.length*0.3) {const e=new Error('Hasil terjemahan tidak wajar (terlalu pendek)');e.code='OUTPUT_INVALID';throw e}
+      await simpanPemakaianAI(catatPemakaian,response,'berhasil',null);
+      return hasil;
+    }catch(e){
+      const info=e?.geminiInfo||klasifikasiErrorGemini(e);
+      const permanen=info.permanen===true;
+      let perluNotifikasi=!!info.perluNotifikasi;
+      if(!e?.geminiInfo&&kunci.id&&typeof pengamanGemini?.catatHasilKey==='function'){
+        try{
+          perluNotifikasi=await pengamanGemini.catatHasilKey({
+            id:Number(kunci.id),model:AI_MODEL_TERJEMAH,status:'gagal',
+            httpStatus:info.httpStatus||200,kode:info.kode||'OUTPUT_INVALID',
+            detail:e?.message||String(e),retryAfter:info.retryAfter||null,permanen
+          });
+        }catch(_){}
+      }
+      const kode=info.kode||(/melebihi batas waktu/i.test(String(e?.message))?'AI_TIMEOUT':'AI_REQUEST_FAILED');
+      if(!e?.isGeminiGuard)await simpanPemakaianAI(catatPemakaian,response,'gagal',kode+':'+label);
+      const gangguan={key_id:kunci.id||null,label,http_status:info.httpStatus||null,kode,
+        detail:String(e?.message||e).slice(0,500),sementara:info.sementara===true,permanen,perluNotifikasi};
+      percobaan.push(gangguan);
+      if(perluNotifikasi&&typeof onGangguan==='function')await onGangguan(gangguan).catch(()=>{});
+    }finally{clearTimeout(timer)}
   }
+  const gagal=new Error('Seluruh API Key Gemini gagal menerjemahkan balasan.');
+  gagal.code='ALL_GEMINI_KEYS_FAILED';gagal.attempts=percobaan;
+  gagal.semuaSementara=percobaan.length>0&&percobaan.every(x=>x.sementara);
+  gagal.permanen=percobaan.some(x=>x.permanen);gagal.isGeminiFailover=true;
+  throw gagal;
 }
 
 module.exports = { terjemahkanBalasan };
