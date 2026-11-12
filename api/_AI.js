@@ -6,6 +6,7 @@
 // npm install @google/genai
 
 const { GoogleGenAI, Type } = require('@google/genai');
+const { generateContentDenganPengaman } = require('./_geminiGuard');
 
 // ============================================================
 // KONFIGURASI AI — MUDAH DIUBAH
@@ -358,7 +359,7 @@ function buatErrorAI(error) {
   }
 }
 
-async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian }) {
+async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian, pengamanGemini }) {
   const AI_API_KEY = String(kunciAi || '').trim();
   if (!AI_API_KEY) {
     throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
@@ -434,15 +435,19 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
 
   let response = null;
   try {
-    response = await ai.models.generateContent({
+    response = await generateContentDenganPengaman({
       model: AI_MODEL,
-      contents: JSON.stringify(input),
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        responseMimeType: 'application/json',
-        responseSchema,
-        maxOutputTokens: 512
-      }
+      pengamanGemini,
+      generate: () => ai.models.generateContent({
+        model: AI_MODEL,
+        contents: JSON.stringify(input),
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          responseMimeType: 'application/json',
+          responseSchema,
+          maxOutputTokens: 512
+        }
+      })
     });
 
     const content = String(response?.text || '').trim();
@@ -460,7 +465,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
     return hasilAkhir;
   } catch (e) {
     const kode = /json valid|bukan JSON/i.test(String(e && e.message)) ? 'RESPONSE_INVALID' : 'AI_REQUEST_FAILED';
-    await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
+    if (!e?.isGeminiGuard) await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
     throw buatErrorAI(e);
   }
 }
