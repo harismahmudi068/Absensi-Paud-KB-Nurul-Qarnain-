@@ -1429,6 +1429,147 @@ async function proses(b) {
   }
 }
 
+function payloadUntukAntrean(b, pesan) {
+  const x = b || {};
+  return {
+    message: String(pesan || ''),
+    sender: x.sender || '',
+    member: x.member || '',
+    group_id: x.group_id || '',
+    groupId: x.groupId || '',
+    chat_id: x.chat_id || '',
+    chatId: x.chatId || '',
+    device: x.device || ''
+  };
+}
+
+async function bacaStatusGangguanAI() {
+  const rows = await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite&select=status_gangguan,next_retry_at,gangguan_mulai,developer_notified_at,sekolah_notified_at`);
+  return Array.isArray(rows) && rows[0] ? rows[0] : { status_gangguan: 'normal' };
+}
+
+async function simpanAntrianAI({ pesan, dari, payload, kunci, error }) {
+  const sekolahId = Number(K().sekolahId);
+  const isi = {
+    sekolah_id: sekolahId,
+    kunci_duplikat: String(kunci || kunciDuplikat(dari,pesan)),
+    payload: payloadUntukAntrean(payload,pesan),
+    dari_nomor: String(dari || ''),
+    isi: String(pesan || ''),
+    status: 'menunggu',
+    coba_lagi_pada: new Date(Date.now()+15*60000).toISOString(),
+    klaim_sampai: null,
+    error_terakhir: error ? String(error.message || error).slice(0,1000) : null,
+    diperbarui: new Date().toISOString()
+  };
+  if (K().antrianId) {
+    await sb(`pesan_ai_antrean?id=eq.${Number(K().antrianId)}&sekolah_id=eq.${sekolahId}`, {
+      method: 'PATCH', body: isi, prefer: 'return=minimal'
+    });
+    return Number(K().antrianId);
+  }
+  const rows = await sb('pesan_ai_antrean?on_conflict=sekolah_id,kunci_duplikat', {
+    method: 'POST', body: isi, prefer: 'resolution=merge-duplicates,return=representation'
+  });
+  return Number(rows?.[0]?.id) || null;
+}
+
+async function kirimNotifikasiGangguanSekolah(sementara, detail) {
+  const sekolahId = Number(K().sekolahId), batch = crypto.randomUUID();
+  const sk = await sb(`sekolah?id=eq.${sekolahId}&select=nama`).catch(()=>[]);
+  const namaSekolah = sk?.[0]?.nama || 'Sekolah';
+  const teks = [
+    salam(), '',
+    sementara ? '⚠️ *PEMBERITAHUAN GANGGUAN SEMENTARA AI*' : '🚨 *PEMBERITAHUAN GANGGUAN LAYANAN AI*',
+    '',
+    `Layanan AI sekolah *${namaSekolah}* saat ini belum dapat digunakan karena seluruh akun Gemini mengalami kendala.`,
+    '',
+    'Untuk sementara, pengelola, kepala sekolah, dan wali kelas dimohon melakukan pencatatan absensi secara manual.',
+    '',
+    sementara
+      ? 'Gangguan terdeteksi bersifat sementara. Sistem akan mencoba kembali secara otomatis sekitar 15 menit ke depan. Waktu pemulihan dapat berubah mengikuti kondisi layanan Gemini.'
+      : 'Gangguan memerlukan pemeriksaan developer. Developer sudah diberi tahu dan sedang menangani. Kami akan mengirim pemberitahuan kembali setelah perbaikan diuji dan layanan normal.',
+    '',
+    'Pesan WhatsApp yang masuk tetap disimpan dalam antrean dan akan diproses setelah AI kembali tersedia.',
+    '', penutup()
+  ].join('\\n');
+
+  const tujuan = new Map();
+  const anggota = await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&role=in.(kepala_sekolah,pengelola)&select=profil_id,role,profil(nama,no_wa,aktif)`).catch(()=>[]);
+  for (const a of anggota || []) {
+    const p = Array.isArray(a.profil) ? a.profil[0] : a.profil;
+    const n = normDevice(p?.no_wa);
+    if (p?.aktif !== false && RE_WA.test(n)) tujuan.set(n,{nomor:n,label:p?.nama || a.role});
+  }
+  const kelas = await sb(`kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,nama,wali_profil_id`).catch(()=>[]);
+  const waliIds = [...new Set((kelas||[]).map(x=>x.wali_profil_id).filter(x=>RE_UUID.test(String(x||''))))];
+  if (waliIds.length) {
+    const ang = await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&profil_id=in.(${waliIds.join(',')})&select=profil_id`).catch(()=>[]);
+    const ids = [...new Set((ang||[]).map(x=>x.profil_id))];
+    if (ids.length) {
+      const prof = await sb(`profil?id=in.(${ids.join(',')})&aktif=eq.true&select=id,nama,no_wa`).catch(()=>[]);
+      for (const p of prof || []) {
+        const n = normDevice(p.no_wa);
+        if (RE_WA.test(n) && !tujuan.has(n)) {
+          const namaKelas = (kelas||[]).filter(k=>k.wali_profil_id===p.id).map(k=>k.nama).join(', ');
+          tujuan.set(n,{nomor:n,label:(p.nama||n)+' (wali '+(namaKelas||'kelas')+')'});
+        }
+      }
+    }
+  }
+  const kepala = normDevice(K().nomorKepala);
+  if (RE_WA.test(kepala)) tujuan.set(kepala,{nomor:kepala,label:'Kepala Sekolah'});
+  let waktu = Math.floor(Date.now()/1000);
+  const daftar = [...tujuan.values()];
+  const hasil = await Promise.allSettled(daftar.map(t=>{
+    waktu += jedaAcak();
+    return kirimDanCatat(t.nomor,teks,{jadwal:waktu,batch,judul:'Gangguan AI sekolah',label:t.label});
+  }));
+  hasil.forEach((h,i)=>{if(h.status!=='fulfilled'||h.value!==true)console.error('Notifikasi gangguan AI gagal ke:',daftar[i].label)});
+  return true;
+}
+
+async function kirimNotifikasiAIKembaliNormal() {
+  const sekolahId=Number(K().sekolahId),batch=crypto.randomUUID();
+  const sk=await sb(`sekolah?id=eq.${sekolahId}&select=nama`).catch(()=>[]);
+  const teks=[
+    salam(),'','✅ *PEMBERITAHUAN: LAYANAN AI KEMBALI NORMAL*','',
+    `Layanan Gemini sekolah *${sk?.[0]?.nama||'Sekolah'}* telah berhasil diuji dan dapat digunakan kembali.`,
+    '',
+    'Pesan absensi yang sempat tertunda sedang/akan diproses kembali oleh sistem. Pencatatan absensi manual dapat dihentikan setelah guru memastikan data yang diperlukan sudah lengkap.',
+    '',penutup()
+  ].join('\\n');
+  const tujuan=new Map();
+  const anggota=await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&role=in.(kepala_sekolah,pengelola)&select=profil_id,role,profil(nama,no_wa,aktif)`).catch(()=>[]);
+  for(const a of anggota||[]){const p=Array.isArray(a.profil)?a.profil[0]:a.profil;const n=normDevice(p?.no_wa);if(p?.aktif!==false&&RE_WA.test(n))tujuan.set(n,{nomor:n,label:p?.nama||a.role})}
+  const kelas=await sb(`kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=wali_profil_id,nama`).catch(()=>[]);
+  const wali=[...new Set((kelas||[]).map(x=>x.wali_profil_id).filter(x=>RE_UUID.test(String(x||''))))];
+  if(wali.length){const ang=await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&profil_id=in.(${wali.join(',')})&select=profil_id`).catch(()=>[]);const ids=[...new Set((ang||[]).map(x=>x.profil_id))];if(ids.length){const ps=await sb(`profil?id=in.(${ids.join(',')})&aktif=eq.true&select=id,nama,no_wa`).catch(()=>[]);for(const p of ps||[]){const n=normDevice(p.no_wa);if(RE_WA.test(n)&&!tujuan.has(n))tujuan.set(n,{nomor:n,label:p.nama||n})}}}
+  const kepala=normDevice(K().nomorKepala);if(RE_WA.test(kepala))tujuan.set(kepala,{nomor:kepala,label:'Kepala Sekolah'});
+  let waktu=Math.floor(Date.now()/1000);const daftar=[...tujuan.values()];
+  await Promise.allSettled(daftar.map(t=>{waktu+=jedaAcak();return kirimDanCatat(t.nomor,teks,{jadwal:waktu,batch,judul:'AI kembali normal',label:t.label})}));
+}
+
+async function perbaruiStatusGangguanAI(error) {
+  const sebelum=await bacaStatusGangguanAI();
+  const permanen=error?.permanen===true || (Array.isArray(error?.attempts)&&error.attempts.some(x=>x.permanen));
+  const statusBaru=permanen?'perlu_developer':'gangguan_sementara';
+  const statusLama=sebelum.status_gangguan||'normal';
+  const naikKePermanen=statusLama==='gangguan_sementara'&&permanen;
+  const body={
+    status_gangguan:(statusLama==='perlu_developer'||statusLama==='menunggu_uji')?statusLama:statusBaru,
+    gangguan_mulai:sebelum.gangguan_mulai||new Date().toISOString(),
+    detail_gangguan:{attempts:error?.attempts||[],kode:error?.code||'AI_REQUEST_FAILED',sementara:!!error?.semuaSementara},
+    diperbarui:new Date().toISOString()
+  };
+  await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`,{method:'PATCH',body,prefer:'return=minimal'});
+  const baru=statusLama==='normal';
+  if(baru||naikKePermanen) {
+    await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:Number(K().sekolahId),p_delay_menit:15}}).catch(e=>console.error('Jadwal uji ulang Gemini gagal:',e.message));
+  }
+  return {baru,naikKePermanen,permanen};
+}
+
 async function prosesPesan({ pesan, dari, target, anak, kunci }) {
   // 4. Deteksi cepat hanya untuk kalimat yang cukup aman. SAKIT tetap menang atas IZIN.
   // Jika ada kata yang bukan nama anak terdaftar dan bukan kata umum (kemungkinan nama anak lain
