@@ -8,6 +8,7 @@
 // mengirim balasan Bahasa Indonesia asli sebagai cadangan.
 
 const { GoogleGenAI } = require('@google/genai');
+const { generateContentDenganPengaman } = require('./_geminiGuard');
 
 // ============================================================
 // KONFIGURASI PENERJEMAH — MUDAH DIUBAH
@@ -55,7 +56,7 @@ ATURAN:
 `;
 }
 
-async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian }) {
+async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian, pengamanGemini }) {
   const AI_API_KEY = String(kunciAi || '').trim();
   const asli = String(teks || '');
   const tujuan = String(bahasa || '').trim();
@@ -73,14 +74,18 @@ async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian }) {
   let response = null;
   try {
     response = await Promise.race([
-      ai.models.generateContent({
+      generateContentDenganPengaman({
         model: AI_MODEL_TERJEMAH,
-        contents: asli,
-        config: {
-          systemInstruction: buatPrompt(tujuan),
-          temperature: 0,
-          maxOutputTokens: 2048
-        }
+        pengamanGemini,
+        generate: () => ai.models.generateContent({
+          model: AI_MODEL_TERJEMAH,
+          contents: asli,
+          config: {
+            systemInstruction: buatPrompt(tujuan),
+            temperature: 0,
+            maxOutputTokens: 2048
+          }
+        })
       }),
       batasWaktu
     ]);
@@ -93,7 +98,7 @@ async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian }) {
     return hasil;
   } catch (e) {
     const kode = /melebihi batas waktu/i.test(String(e && e.message)) ? 'AI_TIMEOUT' : (/terlalu pendek|kosong/i.test(String(e && e.message)) ? 'OUTPUT_INVALID' : 'AI_REQUEST_FAILED');
-    await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
+    if (!e?.isGeminiGuard) await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
     throw e;
   } finally {
     clearTimeout(timer);
