@@ -160,7 +160,7 @@ async function catatHasilKeyGemini(data) {
 }
 async function tandaiTerakhirKeyGemini(id, model) {
   return sb('rpc/gemini_key_tandai_terakhir', {
-    method: 'POST', body: { p_sekolah_id: Number(K().sekolahId), p_id: Number(id), p_model: model }
+    method: 'POST', body: { p_sekolah_id: Number(K().sekolahId), p_id: Number(id), p_model: 'gemini-3.5-flash-lite' }
   });
 }
 async function ambilKunciAiRotasi() {
