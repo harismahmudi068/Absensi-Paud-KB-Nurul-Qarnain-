@@ -613,7 +613,7 @@ module.exports = async (req, res) => {
       });
     }
 
-    if (b.aksi === 'tandai_ai_key_ditangani') {
+    if (b.aksi === 'tandai_ai_key_ditangani' || b.aksi === 'tangani_ai_key') {
       const sekolahId = Number(b.sekolah_id), keyId = Number(b.key_id);
       if (!Number.isInteger(sekolahId) || sekolahId <= 0 || !Number.isInteger(keyId) || keyId <= 0)
         throw new Error('Sekolah atau API Key tidak valid');
@@ -650,7 +650,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, key_id: keyId, status: 'menunggu_uji' });
     }
 
-    if (b.aksi === 'tandai_ai_ditangani') {
+    if (b.aksi === 'tandai_ai_ditangani' || b.aksi === 'jadwalkan_pemulihan_ai') {
       const sekolahId = Number(b.sekolah_id);
       if (!Number.isInteger(sekolahId) || sekolahId <= 0) throw new Error('Sekolah tidak valid');
       const rows = await L.panggil(
