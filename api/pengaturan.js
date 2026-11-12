@@ -536,7 +536,7 @@ module.exports = async (req, res) => {
         const h = await kirimFonnte(
           tk[0].token,
           penerima.nomor,
-          `✅ *TES API AI*\\nSekolah: ${await namaSekolah()}\\nAPI Key: ${keyLabel}\\nPenerima: ${penerima.nama}\\nBalasan AI: ${balasan}\\n\\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
+          `✅ *TES API AI*\nSekolah: ${await namaSekolah()}\nAPI Key: ${keyLabel}\nPenerima: ${penerima.nama}\nBalasan AI: ${balasan}\n\nPesan ini dikirim dari menu Pengaturan > Konfigurasi.`
         );
         tambahan = h.ok
           ? ' Pesan tes dikirim ke ' + penerima.nama + '.'
