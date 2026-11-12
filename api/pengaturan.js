@@ -573,30 +573,37 @@ module.exports = async (req, res) => {
         tokenReservasi = izin.reservation_token;
 
         try {
-          const k = await panggil('/rest/v1/rpc/gemini_key_ambil_untuk_tes', 'POST', {
-            p_sekolah_id: sekolahId,
-            p_id: idKey
-          });
-          if (!k || !k.api_key) {
-            const err = new Error('API Key tidak ditemukan pada sekolah ini');
-            err.kodeError = 'API_KEY_NOT_FOUND';
-            throw err;
-          }
-          keyLabel = k.label || ('API Key #' + idKey);
-          balasan = await tesGemini(k.api_key);
-          await catatStatusKeyTes('berhasil', null);
-          hasilKeyTercatat = true;
-        } catch (e) {
-          if (!hasilKeyTercatat) {
+          try {
+            const k = await panggil('/rest/v1/rpc/gemini_key_ambil_untuk_tes', 'POST', {
+              p_sekolah_id: sekolahId,
+              p_id: idKey
+            });
+            if (!k || !k.api_key) {
+              const err = new Error('API Key tidak ditemukan pada sekolah ini');
+              err.kodeError = 'API_KEY_NOT_FOUND';
+              throw err;
+            }
+            keyLabel = k.label || ('API Key #' + idKey);
+            balasan = await tesGemini(k.api_key);
+          } catch (e) {
             try {
               await catatStatusKeyTes('gagal', e);
               hasilKeyTercatat = true;
             } catch (statusError) {
-              console.error('Pencatatan hasil tes Gemini gagal:', statusError.message);
+              console.error('Pencatatan kegagalan tes Gemini gagal:', statusError.message);
               e.message += ' (hasil tes tidak berhasil dicatat ke status API Key)';
             }
+            throw e;
           }
-          throw e;
+
+          try {
+            await catatStatusKeyTes('berhasil', null);
+            hasilKeyTercatat = true;
+          } catch (statusError) {
+            const err = new Error('Gemini sudah memberikan jawaban, tetapi status keberhasilan gagal disimpan: ' + statusError.message);
+            err.kodeError = 'GEMINI_STATUS_WRITE_FAILED';
+            throw err;
+          }
         } finally {
           if (tokenReservasi) {
             await panggil('/rest/v1/rpc/gemini_key_lepas_izin', 'POST', {
