@@ -3260,15 +3260,18 @@ function rkMuatStatus(jenis,paksa){const c=RKS[jenis]||(RKS[jenis]={rows:[],t:0,
  const q=k=>dbq(db.from('kirim_log').select(k).eq('sekolah_id',SEK).eq('jenis',jenis).order('dibuat',{ascending:false}).limit(500));
  c.load=(async()=>{try{let rows;try{rows=await q(kol+',siswa_ids')}catch(e1){rows=await q(kol)}c.rows=rows||[];c.t=Date.now();c.err=false}catch(e){c.err=true;console.error('Status pesan gagal dimuat:',e)}finally{c.load=null}rkIsiSel()})();return c.load}
 async function rkSegar(jenis,btn){if(btn)btn.disabled=true;try{await rkMuatStatus(jenis,true);toast(RKS[jenis]&&RKS[jenis].err?'Status pesan belum bisa dimuat':'Status pesan diperbarui',!(RKS[jenis]&&RKS[jenis].err))}finally{if(btn)btn.disabled=false}}
-function rkHtml(rows){if(!rows.length)return'<div class="note">Belum ada riwayat pengiriman. Riwayat muncul setelah tombol kirim dipakai.</div>';
- const m=new Map();rows.forEach(r=>{if(!m.has(r.batch_id))m.set(r.batch_id,[]);m.get(r.batch_id).push(r)});
- let h='',n=0;
- m.forEach(list=>{if(n++>=15)return;
-  const awal=list[list.length-1];
+function rkHtml(rows){if(!rows.length)return'<div class="note">Belum ada riwayat pengiriman. Riwayat muncul setelah tombol kirim dipakai.';
+ const waktu=v=>{const t=v?Date.parse(v):NaN;return Number.isFinite(t)?t:0};
+ const waktuKirim=r=>waktu(r.waktu_terkirim||r.jadwal_pada||r.dibuat);
+ const m=new Map();rows.forEach(r=>{const k=r.batch_id||('tanpa-batch-'+String(r.dibuat||'')+'-'+String(r.nomor||''));if(!m.has(k))m.set(k,[]);m.get(k).push(r)});
+ const grup=[...m.values()].map(list=>({list,terbaru:Math.max(...list.map(r=>waktu(r.dibuat))),awal:list.reduce((a,b)=>waktu(a.dibuat)<=waktu(b.dibuat)?a:b)})).sort((a,b)=>b.terbaru-a.terbaru);
+ let h='';
+ grup.slice(0,15).forEach(({list,awal})=>{
   const chip=(ik,tx,v)=>v?'<span>'+ik+' '+tx+' '+v+'</span>':'';
+  const isi=list.slice().sort((a,b)=>waktuKirim(a)-waktuKirim(b)||waktu(a.dibuat)-waktu(b.dibuat));
   h+='<details class="rk"><summary><b>'+esc(awal.judul||RK_JENIS[awal.jenis]||'Pengiriman')+'</b><span class="mu"> · '+esc(rkWaktu(awal.dibuat))+' · '+list.length+' pesan</span><div class="rkc">'
    +rkChips(list)+'</div></summary><div class="rkb">'
-   +list.slice().reverse().map(r=>rkBaris(r,0)).join('')+'</div></details>'});
+   +isi.map(r=>rkBaris(r,0)).join('')+'</div></details>'});
  return h+'<div class="mu">Menampilkan pengiriman terbaru. Penanda seperti WhatsApp: ✓ terkirim, ✓✓ sampai ke HP, ✓✓ biru terbaca. Jam (WIB) dicatat saat kabar diterima server; terbaca hanya muncul bila penerima mengaktifkan tanda baca. Riwayat disimpan 7 hari.</div>'}
 async function rkMuat(){try{const rows=await dbq(db.from('kirim_log').select('batch_id,jenis,judul,label,nomor,status,status_fonnte,state_fonnte,error,jadwal_pada,dibuat,waktu_terkirim,waktu_sampai,waktu_terbaca').eq('sekolah_id',SEK).order('dibuat',{ascending:false}).limit(400));
  const el=$('#rkIsi');if(el)el.innerHTML=rkHtml(rows||[])}catch(e){const el=$('#rkIsi');if(el)el.innerHTML='<div class="note">Riwayat belum bisa dibaca: '+esc(e.message||String(e))+'</div>'}}
