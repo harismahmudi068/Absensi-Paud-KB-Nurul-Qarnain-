@@ -334,8 +334,8 @@ module.exports = async (req, res) => {
         for (const f of b.hapus) {
           if (f === 'kunci_ai') {
             const keys = await ambilGeminiKeys();
-            for (const key of keys) {
-              await panggil('/rest/v1/rpc/gemini_key_hapus', 'POST', { p_sekolah_id: sekolahId, p_id: Number(key.id) });
+            if (keys.length) {
+              throw new Error('API Key Gemini sekarang dikelola satu per satu pada daftar akun. Gunakan tombol Hapus di samping akun yang ingin dihapus.');
             }
             isi[f] = null;
             if (!diubah.includes('gemini_api_key')) diubah.push('gemini_api_key');
