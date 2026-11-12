@@ -328,6 +328,27 @@ function normalisasi(raw, anak, pesan = '') {
   };
 }
 
+
+async function simpanPemakaianAI(catat, response, status, kodeError) {
+  if (typeof catat !== 'function') return;
+  const u = response && response.usageMetadata ? response.usageMetadata : {};
+  const angka = v => Number.isFinite(Number(v)) && v !== null && v !== undefined ? Math.max(0, Math.trunc(Number(v))) : null;
+  const adaMetadata = u.promptTokenCount != null || u.candidatesTokenCount != null || u.totalTokenCount != null;
+  try {
+    await catat({
+      layanan: 'analisis',
+      model: AI_MODEL,
+      input_tokens: angka(u.promptTokenCount),
+      output_tokens: angka(u.candidatesTokenCount),
+      total_tokens: angka(u.totalTokenCount),
+      status: status === 'gagal' ? 'gagal' : (adaMetadata ? 'berhasil' : 'metadata_tidak_tersedia'),
+      kode_error: kodeError || null
+    });
+  } catch (e) {
+    console.warn('Pencatatan pemakaian AI dilewati:', e && e.message ? e.message : 'gagal');
+  }
+}
+
 function buatErrorAI(error) {
   if (error?.message) return new Error(error.message);
   try {
@@ -337,7 +358,7 @@ function buatErrorAI(error) {
   }
 }
 
-async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
+async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian }) {
   const AI_API_KEY = String(kunciAi || '').trim();
   if (!AI_API_KEY) {
     throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
@@ -411,8 +432,9 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
     anak_wali: daftarAnak(anak)
   };
 
+  let response = null;
   try {
-    const response = await ai.models.generateContent({
+    response = await ai.models.generateContent({
       model: AI_MODEL,
       contents: JSON.stringify(input),
       config: {
@@ -433,8 +455,12 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
       throw new Error(`Respons Gemini bukan JSON valid: ${content.slice(0, 1000)}`);
     }
 
-    return normalisasi(hasil, anak, pesan);
+    const hasilAkhir = normalisasi(hasil, anak, pesan);
+    await simpanPemakaianAI(catatPemakaian, response, 'berhasil', null);
+    return hasilAkhir;
   } catch (e) {
+    const kode = /json valid|bukan JSON/i.test(String(e && e.message)) ? 'RESPONSE_INVALID' : 'AI_REQUEST_FAILED';
+    await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
     throw buatErrorAI(e);
   }
 }

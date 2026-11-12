@@ -17,6 +17,27 @@ const { GoogleGenAI } = require('@google/genai');
 const AI_MODEL_TERJEMAH = 'gemini-3.5-flash-lite';
 const BATAS_WAKTU_MS = 8000;
 
+
+async function simpanPemakaianAI(catat, response, status, kodeError) {
+  if (typeof catat !== 'function') return;
+  const u = response && response.usageMetadata ? response.usageMetadata : {};
+  const angka = v => Number.isFinite(Number(v)) && v !== null && v !== undefined ? Math.max(0, Math.trunc(Number(v))) : null;
+  const adaMetadata = u.promptTokenCount != null || u.candidatesTokenCount != null || u.totalTokenCount != null;
+  try {
+    await catat({
+      layanan: 'terjemahan',
+      model: AI_MODEL_TERJEMAH,
+      input_tokens: angka(u.promptTokenCount),
+      output_tokens: angka(u.candidatesTokenCount),
+      total_tokens: angka(u.totalTokenCount),
+      status: status === 'gagal' ? 'gagal' : (adaMetadata ? 'berhasil' : 'metadata_tidak_tersedia'),
+      kode_error: kodeError || null
+    });
+  } catch (e) {
+    console.warn('Pencatatan pemakaian terjemahan dilewati:', e && e.message ? e.message : 'gagal');
+  }
+}
+
 function buatPrompt(bahasa) {
   return `
 Anda adalah penerjemah balasan WhatsApp sekolah PAUD kepada wali murid.
@@ -34,7 +55,7 @@ ATURAN:
 `;
 }
 
-async function terjemahkanBalasan({ teks, bahasa, kunciAi }) {
+async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian }) {
   const AI_API_KEY = String(kunciAi || '').trim();
   const asli = String(teks || '');
   const tujuan = String(bahasa || '').trim();
@@ -49,8 +70,9 @@ async function terjemahkanBalasan({ teks, bahasa, kunciAi }) {
     timer = setTimeout(() => reject(new Error('Terjemahan melebihi batas waktu')), BATAS_WAKTU_MS);
   });
 
+  let response = null;
   try {
-    const response = await Promise.race([
+    response = await Promise.race([
       ai.models.generateContent({
         model: AI_MODEL_TERJEMAH,
         contents: asli,
@@ -67,7 +89,12 @@ async function terjemahkanBalasan({ teks, bahasa, kunciAi }) {
     if (!hasil) throw new Error('Respons penerjemah kosong');
     // Pengaman sederhana: hasil yang jauh lebih pendek dari aslinya dianggap tidak wajar.
     if (hasil.length < asli.length * 0.3) throw new Error('Hasil terjemahan tidak wajar (terlalu pendek)');
+    await simpanPemakaianAI(catatPemakaian, response, 'berhasil', null);
     return hasil;
+  } catch (e) {
+    const kode = /melebihi batas waktu/i.test(String(e && e.message)) ? 'AI_TIMEOUT' : (/terlalu pendek|kosong/i.test(String(e && e.message)) ? 'OUTPUT_INVALID' : 'AI_REQUEST_FAILED');
+    await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
+    throw e;
   } finally {
     clearTimeout(timer);
   }
