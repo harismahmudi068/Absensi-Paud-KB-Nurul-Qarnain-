@@ -2036,7 +2036,7 @@ function ttdEditorHtml(data,scope,id,nama){
   '<input id="ttdFile_'+scope+'" class="hid" type="file" accept="image/png,image/jpeg,image/webp" onchange="ttdFilePilih(this,\''+scope+'\')">'+
   '<div id="ttdDrawPanel_'+scope+'" class="hid" style="position:fixed;inset:0;z-index:10000;margin:0!important;border:0!important;border-radius:0!important;padding:max(16px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom))!important;background:var(--bg);overflow:auto;box-shadow:none">'+
    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px"><div><b style="font-size:18px">✍️ Gambar Tanda Tangan</b><div class="mu">Gunakan area luas ini untuk menggambar dengan jari.</div></div><button type="button" class="btn soft sm" onclick="ttdModeTutup(\''+scope+'\')">✕ Tutup</button></div>'+
-   '<canvas id="ttdCanvas_'+scope+'" width="720" height="420" style="display:block;width:100%;height:min(55vh,480px);max-height:none;touch-action:none;background:#fff;border:1px dashed var(--mu);border-radius:12px;cursor:crosshair" onpointerdown="ttdGambarMulai(event,\''+scope+'\')" onpointermove="ttdGambarGerak(event,\''+scope+'\')" onpointerup="ttdGambarAkhiri(event,\''+scope+'\')" onpointercancel="ttdGambarAkhiri(event,\''+scope+'\')" onpointerleave="ttdGambarAkhiri(event,\''+scope+'\')"></canvas>'+
+   '<canvas id="ttdCanvas_'+scope+'" width="1440" height="840" style="display:block;width:100%;height:min(55vh,480px);max-height:none;touch-action:none;background:#fff;border:1px dashed var(--mu);border-radius:12px;cursor:crosshair" onpointerdown="ttdGambarMulai(event,\''+scope+'\')" onpointermove="ttdGambarGerak(event,\''+scope+'\')" onpointerup="ttdGambarAkhiri(event,\''+scope+'\')" onpointercancel="ttdGambarAkhiri(event,\''+scope+'\')"></canvas>'+
    '<div class="tb" style="margin-top:9px;gap:7px;flex-wrap:wrap"><button type="button" class="btn soft sm" onclick="ttdGambarUndo(\''+scope+'\')">↶ Urungkan</button><button type="button" class="btn soft sm" onclick="ttdGambarBersih(\''+scope+'\')">Hapus Gambar</button><button type="button" class="btn success sm" onclick="ttdGambarSimpan(\''+scope+'\')">Simpan Tanda Tangan</button></div>'+
    '<div class="mu" style="margin-top:7px">Gunakan tinta hitam. Area kosong di sekitar goresan akan dipangkas otomatis.</div>'+
   '</div>'+
@@ -2060,15 +2060,30 @@ function ttdGambarMulai(e,scope){
  const c=document.getElementById('ttdCanvas_'+scope);if(!c)return;ttdModeGambar(scope);
  const s=TTD_DRAW_STATE;if(!s||s.canvas!==c)return;
  s.undo.push(c.toDataURL('image/png'));if(s.undo.length>20)s.undo.shift();
- const p=ttdPosisi(e,c);s.ctx.beginPath();s.ctx.moveTo(p.x,p.y);s.ctx.lineCap='round';s.ctx.lineJoin='round';s.ctx.strokeStyle='#111';s.ctx.lineWidth=7;s.drawing=true;
+ const p=ttdPosisi(e,c);s.ctx.beginPath();s.ctx.moveTo(p.x,p.y);s.ctx.lineCap='round';s.ctx.lineJoin='round';s.ctx.strokeStyle='#111';s.ctx.lineWidth=12;s.drawing=true;s.lastPoint=p;s.hasMoved=false;
  try{c.setPointerCapture(e.pointerId)}catch(_){}
  e.preventDefault();
 }
 function ttdGambarGerak(e,scope){
  const s=TTD_DRAW_STATE;if(!s||s.scope!==scope||!s.drawing)return;
- const p=ttdPosisi(e,s.canvas);s.ctx.lineTo(p.x,p.y);s.ctx.stroke();e.preventDefault();
+ const events=typeof e.getCoalescedEvents==='function'?e.getCoalescedEvents():[e];
+ for(const ev of events){
+  const p=ttdPosisi(ev,s.canvas),last=s.lastPoint;if(!last)continue;
+  const mx=(last.x+p.x)/2,my=(last.y+p.y)/2;
+  s.ctx.quadraticCurveTo(last.x,last.y,mx,my);s.ctx.stroke();
+  s.ctx.beginPath();s.ctx.moveTo(mx,my);s.lastPoint=p;s.hasMoved=true;
+ }
+ e.preventDefault();
 }
-function ttdGambarAkhiri(e,scope){const s=TTD_DRAW_STATE;if(s&&s.scope===scope)s.drawing=false}
+function ttdGambarAkhiri(e,scope){
+ const s=TTD_DRAW_STATE;if(!s||s.scope!==scope||!s.drawing)return;
+ if(s.lastPoint){
+  if(!s.hasMoved){s.ctx.beginPath();s.ctx.arc(s.lastPoint.x,s.lastPoint.y,6,0,Math.PI*2);s.ctx.fillStyle='#111';s.ctx.fill()}
+  else{s.ctx.lineTo(s.lastPoint.x,s.lastPoint.y);s.ctx.stroke()}
+ }
+ s.drawing=false;s.lastPoint=null;s.hasMoved=false;
+ if(e&&e.preventDefault)e.preventDefault();
+}
 function ttdGambarUndo(scope){
  const s=TTD_DRAW_STATE;if(!s||s.scope!==scope||!s.undo.length)return;
  const data=s.undo.pop(),im=new Image();im.onload=()=>{s.ctx.clearRect(0,0,s.canvas.width,s.canvas.height);s.ctx.drawImage(im,0,0)};im.src=data;
