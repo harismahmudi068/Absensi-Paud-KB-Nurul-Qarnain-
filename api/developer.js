@@ -596,7 +596,7 @@ module.exports = async (req, res) => {
         L.panggil('/rest/v1/rpc/developer_pemakaian_ai_ringkasan', 'POST', {}),
         L.panggil('/rest/v1/pemakaian_ai_riwayat?select=id,created_at,sekolah_id,sekolah(nama),layanan,model,input_tokens,output_tokens,total_tokens,status,kode_error&order=created_at.desc&limit=200', 'GET'),
         L.panggil('/rest/v1/rpc/developer_gemini_pengaman', 'POST', {}),
-        L.panggil('/rest/v1/gemini_api_key_sekolah?select=id,sekolah_id,sekolah(nama),label,aktif,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_error,terakhir_berhasil,cooldown_until,jumlah_permintaan_window,next_allowed_at,consecutive_429&order=sekolah_id.asc,urutan.asc,id.asc', 'GET'),
+        L.panggil('/rest/v1/gemini_api_key_sekolah?select=id,sekolah_id,sekolah(nama),label,aktif,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_error,terakhir_berhasil,cooldown_until,jumlah_permintaan_window,next_allowed_at,consecutive_429,ditangani_oleh,ditangani_pada&order=sekolah_id.asc,urutan.asc,id.asc', 'GET'),
         L.panggil('/rest/v1/gemini_pengaman_sekolah?select=sekolah_id,sekolah(nama),model,status_gangguan,gangguan_mulai,next_retry_at,developer_notified_at,sekolah_notified_at,detail_gangguan,ditangani_oleh,ditangani_pada&status_gangguan=neq.normal&order=gangguan_mulai.desc', 'GET'),
         L.panggil('/rest/v1/pesan_ai_antrean?select=id,sekolah_id,status,jumlah_percobaan,coba_lagi_pada,dibuat&order=dibuat.asc&limit=500', 'GET')
       ]);
@@ -611,6 +611,29 @@ module.exports = async (req, res) => {
         batas_riwayat_hari: 30,
         diperbarui: new Date().toISOString()
       });
+    }
+
+    if (b.aksi === 'tandai_ai_key_ditangani') {
+      const sekolahId = Number(b.sekolah_id), keyId = Number(b.key_id);
+      if (!Number.isInteger(sekolahId) || sekolahId <= 0 || !Number.isInteger(keyId) || keyId <= 0)
+        throw new Error('Sekolah atau API Key tidak valid');
+      const rows = await L.panggil(
+        `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}&select=id,label`,
+        'GET'
+      );
+      if (!Array.isArray(rows) || !rows.length) throw new Error('API Key tidak ditemukan pada sekolah tersebut');
+      await L.panggil(
+        `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}`,
+        'PATCH',
+        { error_permanen: false, dev_notified_at: null, ditangani_oleh: user.id, ditangani_pada: new Date().toISOString() },
+        { Prefer: 'return=minimal' }
+      );
+      await L.catatLog({
+        pelaku: user.id, sekolah_id: sekolahId,
+        aksi: 'gemini_api_key_ditangani',
+        rincian: 'Developer menandai API Key ' + rows[0].label + ' sudah diperiksa'
+      });
+      return res.status(200).json({ ok: true, key_id: keyId, status: 'ditangani' });
     }
 
     if (b.aksi === 'tandai_ai_ditangani') {
