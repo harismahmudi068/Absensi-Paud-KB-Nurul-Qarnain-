@@ -65,6 +65,7 @@ async function generateContentDenganPengaman({model,pengamanGemini,apiKeyId,gene
   const perKey=Number.isSafeInteger(Number(apiKeyId)) && Number(apiKeyId)>0
     && typeof pengamanGemini.ambilIzinKey==='function'
     && typeof pengamanGemini.catatHasilKey==='function';
+  const tandaiTerakhir=async()=>{if(perKey&&typeof pengamanGemini.tandaiTerakhirKey==='function')await pengamanGemini.tandaiTerakhirKey(Number(apiKeyId),model).catch(()=>{});};
   let izin;
   try {
     izin=perKey
@@ -72,17 +73,20 @@ async function generateContentDenganPengaman({model,pengamanGemini,apiKeyId,gene
       : (typeof pengamanGemini.ambilIzin==='function' ? await pengamanGemini.ambilIzin(model) : null);
   } catch(_) { throw errorPengamanGemini('unavailable'); }
   if(!izin||izin.allowed!==true) {
+    await tandaiTerakhir();
     const e=errorPengamanGemini(izin?.reason||'unavailable',izin?.retry_after_seconds);
     e.geminiInfo={httpStatus:null,kode:e.code,retryAfter:izin?.retry_after_seconds||null,sementara:true,permanen:false,perluNotifikasi:false};
     throw e;
   }
   try {
     const hasil=await generate();
+    await tandaiTerakhir();
     if(perKey) await pengamanGemini.catatHasilKey({id:Number(apiKeyId),model,status:'berhasil',httpStatus:200,kode:null,detail:null,retryAfter:null,permanen:false}).catch(()=>false);
     else if(typeof pengamanGemini.catatHasil==='function') await pengamanGemini.catatHasil({model,status:'berhasil',httpStatus:200,kode:null,retryAfter:null}).catch(()=>{});
     return hasil;
   } catch(error) {
     const info=klasifikasiErrorGemini(error);
+    await tandaiTerakhir();
     let perluNotifikasi=false;
     if(perKey) {
       try {
