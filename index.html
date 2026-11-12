@@ -3494,7 +3494,7 @@ async function devAturPush(sid,jenis,on){
   finally{renderV()}})}
 let CFG_SID=null;
 function panelWebhook(){return `<div class="panel"><div class="ph">🔗 Alamat Webhook</div><div class="pb"><div class="note">Satu alamat Webhook untuk semua akun Fonnte sekolah Anda: pasang alamat yang sama di setiap perangkat Fonnte. Alamat ini rahasia dan unik untuk sekolah Anda, jadi disembunyikan. Untuk melihatnya, masukkan kata sandi akun Anda.</div><div class="tb"><button class="btn success" onclick="mintaWebhook(false)">🔓 Tampilkan alamat</button><button class="btn danger" onclick="mintaWebhook(true)">♻ Buat ulang kunci</button></div></div></div>`}
-function cfgIsi(){const R=RHS||{},tks=R.tokens||[],grp=R.grup||[],ai=R.kunci_ai||{},pts=R.penerima_tes||[];
+function cfgIsi(){const R=RHS||{},tks=R.tokens||[],grp=R.grup||[],ai=R.kunci_ai||{},gkeys=R.gemini_keys||[],pts=R.penerima_tes||[];
  const pilihan=pts.some(x=>String(x.id)===String(penerimaTesId))?penerimaTesId:'';
  penerimaTesId=String(pilihan||'');
  const daftarPenerima=pts.length?`<select id="penerimaTes" class="select" style="width:100%;max-width:420px" onchange="penerimaTesId=this.value"><option value="" disabled ${!penerimaTesId?'selected':''}>Pilih nomor tujuan tes terlebih dahulu</option>${pts.map(x=>`<option value="${esc(x.id)}" ${String(x.id)===penerimaTesId?'selected':''}>${esc(x.nama)} — ${esc(({kepala_sekolah:'Kepala Sekolah',wakil_kepala:'Wakil Kepala Sekolah',operator:'Operator',pengelola:'Pengelola/Pengasuh'})[x.role]||x.role)} ${x.nomor?'('+esc(x.nomor)+')':'(nomor belum diisi)'}</option>`).join('')}</select>`:'<div class="note">Belum ada anggota aktif dengan nomor WhatsApp yang bisa dipilih untuk uji tes.</div>';
@@ -3507,8 +3507,10 @@ function cfgIsi(){const R=RHS||{},tks=R.tokens||[],grp=R.grup||[],ai=R.kunci_ai|
  const pemetaanHtml=`<div class="fd" style="margin-top:18px;padding-top:14px;border-top:1px dashed var(--bd)"><label class="l">🔗 Hubungkan Kelas ke Grup WhatsApp</label><div class="note">Tekan “Sambungkan Kelas” pada masing-masing ID grup, lalu centang kelas yang akan menerima pemberitahuan melalui grup tersebut. Satu grup dapat dihubungkan dengan beberapa kelas.</div></div>`;
  return `<div class="note">Kunci dan token tidak ditampilkan lagi setelah disimpan. Satu sekolah boleh memakai beberapa akun Fonnte dan beberapa grup WhatsApp (misalnya satu grup per kelas), semuanya lewat satu alamat Webhook. Setiap uji tes wajib memilih nomor tujuan dari anggota aktif sekolah yang tersedia. Notifikasi rutin tetap mengikuti nomor WhatsApp Kepala Sekolah di Profil.</div>${mm}${err}
 <div class="fd" style="margin-top:10px"><label class="l">Nomor tujuan uji tes WhatsApp</label>${daftarPenerima}</div>
-<div class="fd"><label class="l">Kunci API AI (Gemini) ${aiSt}</label><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="rhAI" class="input" type="password" autocomplete="off" placeholder="Tempel kunci baru di sini" style="flex:1;min-width:160px"><button class="btn sm soft" ${ai.ada?'':'disabled'} onclick="tesAI(this)">🧪 Tes AI</button>${ai.ada?`<button class="btn sm danger" onclick="hapusRahasia('kunci_ai')">Hapus</button>`:''}</div></div>
-<button class="btn success" style="margin-top:10px" onclick="simpanKoneksi(this)">💾 Simpan kunci AI</button>
+<div class="fd"><label class="l">API Key AI (Gemini) · ${gkeys.filter(x=>x.aktif).length} akun aktif</label>
+<div class="note">Tambahkan API Key dari akun Google yang berbeda. Semua akun digunakan bergiliran, bukan sebagai akun utama dan cadangan. Kunci disimpan secara terenkripsi dan tidak ditampilkan kembali.</div>
+${gkeys.length?gkeys.map(k=>`<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:7px 0"><div style="min-width:160px;flex:1"><b>${esc(k.label)}</b> <span class="badge ${k.aktif?'Hadir':'Belum'}">${k.aktif?'Aktif':'Nonaktif'}</span><div class="mu">${k.status==='berhasil'?'Terakhir berhasil':k.status==='kuota'?'Terkena batas kuota':k.status==='gagal'?'Gangguan: '+esc(k.kode_error||'perlu diperiksa'):'Belum pernah digunakan'}${k.terakhir_error?' · '+waktuId(k.terakhir_error):''}</div></div><button class="btn sm danger" onclick="hapusGeminiKey(${k.id})">Hapus</button></div>`).join(''):'<div class="mu">Belum ada API Key Gemini.</div>'}
+<div class="tb" style="margin-top:9px"><button class="btn sm success" onclick="tambahGeminiKey()">+ Tambah akun Gemini</button><button class="btn sm soft" ${gkeys.some(x=>x.aktif)||ai.ada?'':'disabled'} onclick="tesAI(this)">🧪 Tes semua akun AI</button></div></div>
 <div class="fd" style="margin-top:16px"><label class="l">Token Fonnte</label>${barisT}<button id="btnTambahToken" class="btn sm success" onclick="tambahToken()">+ Token Fonnte</button></div>
 <div class="fd" style="margin-top:16px"><label class="l">ID Group WhatsApp</label>${barisG}<button class="btn sm success" ${tks.length?'':'disabled'} onclick="tambahGrup()">+ ID Group</button>${tks.length?'':'<div class="mu">Tambahkan token Fonnte dulu.</div>'}</div>${pemetaanHtml}`}
 function panelKonfigurasi(){return `<div class="panel" id="pnKonfig"><div class="ph">⚙ Konfigurasi</div><div class="pb">${cfgIsi()}</div></div>`}
@@ -3522,6 +3524,13 @@ function simpanKoneksi(btn){const ai=$('#rhAI').value.trim();if(!ai)return toast
  return guard(async()=>{await apiPengaturan(b);await segarCfg();toast('Kunci AI disimpan');return true})}
 async function hapusRahasia(f){if(!await konfirmasi('Hapus kunci API AI sekolah ini? Fitur AI berhenti sampai diisi lagi.',{judul:'Hapus kunci AI',ya:'Hapus',bahaya:1}))return;
  guard(async()=>{await apiPengaturan({aksi:'simpan',hapus:[f]});await segarCfg();toast('Kunci AI dihapus')})}
+function tambahGeminiKey(){form('Tambah akun Gemini',[{k:'label',l:'Nama akun/API (contoh: Gemini Sekolah 2)'},{k:'api_key',l:'API Key Gemini',t:'password'}],async v=>{
+ if(!v.label||!v.api_key)throw new Error('Nama akun dan API Key wajib diisi');
+ await apiPengaturan({aksi:'gemini_key_tambah',label:v.label,api_key:v.api_key});
+ await segarCfg();toast('API Key Gemini berhasil ditambahkan dan disimpan terenkripsi')})}
+async function hapusGeminiKey(id){const k=((RHS||{}).gemini_keys||[]).find(x=>Number(x.id)===Number(id));if(!k)return;
+ if(!await konfirmasi('Hapus API Key '+k.label+'? Key ini tidak akan dipakai lagi oleh sistem.',{judul:'Hapus API Key Gemini',ya:'Hapus',bahaya:1}))return;
+ guard(async()=>{await apiPengaturan({aksi:'gemini_key_hapus',id});await segarCfg();toast('API Key '+k.label+' dihapus')})}
 function tambahToken(){form('Tambah token Fonnte',[{k:'label',l:'Nama (contoh Kelas A)'},{k:'token',l:'Token Fonnte',t:'password'},{k:'perangkat',l:'Nomor WhatsApp perangkat (opsional, contoh 08123456789)'}],async v=>{
   if(!v.token)throw new Error('Isi token Fonnte');await apiPengaturan({aksi:'token_tambah',label:v.label,token:v.token,perangkat:v.perangkat});await segarCfg();toast('Token ditambahkan. Tekan Tes untuk memastikan token benar')})}
 async function hapusToken(id){const t=((RHS||{}).tokens||[]).find(x=>x.id===id);if(!await konfirmasi('Hapus token '+(t?t.label:'ini')+'? Grup yang memakainya akan memakai token utama.',{judul:'Hapus token',ya:'Hapus',bahaya:1}))return;
@@ -5146,7 +5155,7 @@ function devPemantauanAI(){
  const d=S.devAI;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat pemantauan pemakaian AI...</div></div></div>';
  if(d.error)return `<div class="panel"><div class="ph">🤖 Pemantauan AI</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan migrasi pemantauan_ai sudah diterapkan pada Supabase.</div><button class="btn soft sm" onclick="muatAI()">↻ Coba lagi</button></div></div>`;
- const r=d.ringkasan||{},t=r.total||{},harian=r.harian_per_sekolah||[],bulanan=r.bulanan_per_sekolah||[],sekolah=r.per_sekolah||[],riwayat=d.riwayat||[],pengaman=d.pengaman||[];
+ const r=d.ringkasan||{},t=r.total||{},harian=r.harian_per_sekolah||[],bulanan=r.bulanan_per_sekolah||[],sekolah=r.per_sekolah||[],riwayat=d.riwayat||[],pengaman=d.pengaman||[],gangguan=d.gangguan||[],geminiKeys=d.gemini_keys||[],antrean=d.antrean||[];
  S.devAISekolah=S.devAISekolah||'*';
  const opsiSekolah=[{value:'*',label:'Semua sekolah'},...sekolah.map(x=>({value:String(x.sekolah_id),label:x.nama||('Sekolah '+x.sekolah_id)}))];
  const pilihan=cpick('aiSekolahPick','sekolah',S.devAISekolah,opsiSekolah,'aiPilihSekolah','Pilih sekolah');
@@ -5161,8 +5170,15 @@ function devPemantauanAI(){
  const pengamanTampil=pilihSemua?pengaman:pengaman.filter(x=>String(x.sekolah_id)===String(S.devAISekolah));
  const statusPengaman=x=>x.status==='cooldown'?'<span class="badge Alpa">Jeda kuota</span>':x.status==='jeda'?'<span class="badge Belum">Jeda singkat</span>':'<span class="badge Hadir">Normal</span>';
  const pengamanRows=pengamanTampil.map(x=>`<tr>${pilihSemua?`<td><b>${esc(x.nama||('Sekolah '+x.sekolah_id))}</b></td>`:''}<td>${esc(x.model||'-')}</td><td>${statusPengaman(x)}</td><td>${aiAngka(x.permintaan_60_detik)} / 10</td><td>${aiAngka(x.consecutive_429)}</td><td>${x.cooldown_until&&new Date(x.cooldown_until)>new Date()?waktuId(x.cooldown_until):'—'}</td><td>${esc(x.kode_error_terakhir||'—')}</td></tr>`).join('');
+ const gangguanTampil=pilihSemua?gangguan:gangguan.filter(x=>String(x.sekolah_id)===String(S.devAISekolah));
+ const gangguanRows=gangguanTampil.map(x=>{const sk=Array.isArray(x.sekolah)?x.sekolah[0]:x.sekolah;const status=x.status_gangguan==='gangguan_sementara'?'Gangguan sementara':x.status_gangguan==='menunggu_uji'?'Menunggu uji ulang':'Perlu developer';const jumlah=antrean.filter(a=>String(a.sekolah_id)===String(x.sekolah_id)).length;return `<tr>${pilihSemua?`<td><b>${esc(sk&&sk.nama||('Sekolah '+x.sekolah_id))}</b></td>`:''}<td><span class="badge ${x.status_gangguan==='gangguan_sementara'?'Belum':x.status_gangguan==='menunggu_uji'?'Hadir':'Alpa'}">${status}</span><div class="mu">${esc(x.model||'')}</div></td><td>${waktuId(x.gangguan_mulai)}</td><td>${x.next_retry_at?waktuId(x.next_retry_at):'—'}</td><td>${jumlah}</td><td>${x.detail_gangguan?esc(JSON.stringify(x.detail_gangguan).slice(0,350)):'—'}</td><td>${x.status_gangguan==='perlu_developer'?'<button class="btn sm success" onclick="aiTandaiDitangani('+x.sekolah_id+')">Tandai Sudah Dikerjakan</button>':x.status_gangguan==='menunggu_uji'?'Uji ulang dijadwalkan':'Menunggu pemulihan otomatis'}</td></tr>`}).join('');
+ const keyRows=geminiKeys.filter(x=>pilihSemua||String(x.sekolah_id)===String(S.devAISekolah)).map(x=>{const sk=Array.isArray(x.sekolah)?x.sekolah[0]:x.sekolah;return `<tr>${pilihSemua?`<td>${esc(sk&&sk.nama||('Sekolah '+x.sekolah_id))}</td>`:''}<td><b>${esc(x.label)}</b></td><td>${x.aktif?'Aktif':'Nonaktif'}</td><td>${esc(x.status_terakhir||'belum_ada')}</td><td>${esc(x.kode_error_terakhir||'—')}</td><td>${x.error_permanen?'Perlu diperiksa':'—'}</td><td>${waktuId(x.terakhir_error)}</td></tr>`}).join('');
  return `<div class="panel"><div class="ph">🤖 Pemantauan Pemakaian AI <button class="btn soft sm" onclick="muatAI()">↻ Muat ulang</button></div><div class="pb">
  <div class="note">Data ini khusus Developer. Yang disimpan hanya jumlah permintaan, model, token, status, dan sekolah. Isi pesan WhatsApp, nama anak, nomor orang tua, serta kunci API tidak disimpan. Riwayat rinci otomatis dihapus setelah 30 hari; ringkasan harian dan bulanan tetap tersimpan sampai dihapus manual.</div>
+ <div class="tbkh">Insiden gangguan AI sekolah</div>
+ ${tab((pilihSemua?['Sekolah']:[]).concat(['Status','Mulai gangguan','Coba lagi','Pesan tertunda','Detail terakhir','Tindakan developer']),gangguanRows,'Tidak ada insiden AI aktif.')}
+ <div class="tbkh">Status setiap API Key sekolah</div>
+ ${tab((pilihSemua?['Sekolah']:[]).concat(['Nama API','Status akun','Status terakhir','Kode error','Keterangan','Waktu error']),keyRows,'Belum ada API Key sekolah yang terdaftar.')}
  <div class="tbkh">Status pengaman kuota Gemini per sekolah</div>
  <div class="note">Batas lokal konservatif: maksimal 10 permintaan per 60 detik dan jeda minimum 6 detik untuk sekolah-model yang sama. Ini batas pengaman aplikasi, bukan angka kuota resmi Google. Jika Gemini mengirim error 429, hanya sekolah tersebut yang dijeda sesuai waktu tunggu Google. Jika detailnya menunjukkan batas harian (RPD), jeda sampai reset harian Google pukul 00.00 waktu Pasifik; jika tidak ada petunjuk waktu, jeda bertahap dimulai 1 menit hingga maksimal 1 jam. Analisis yang tertahan masuk pemeriksaan manual; terjemahan yang tertahan memakai balasan Bahasa Indonesia.</div>
  ${tab((pilihSemua?['Sekolah']:[]).concat(['Model','Status','Permintaan/menit','429 beruntun','Jeda sampai','Error terakhir']),pengamanRows,'Belum ada status pengaman Gemini.')}
@@ -5183,6 +5199,10 @@ function devPemantauanAI(){
  <div class="tb" style="flex-wrap:wrap"><button class="btn danger sm" onclick="aiHapusRiwayat()">🗑 Hapus Riwayat</button><button class="btn danger sm" onclick="aiHapusRingkasan()">🗑 Hapus Ringkasan</button></div>
  <div class="note"><b>Hapus Riwayat</b> hanya menghapus catatan rinci 30 hari; ringkasan harian dan bulanan tetap ada. <b>Hapus Ringkasan</b> hanya menghapus ringkasan harian/bulanan; riwayat rinci tetap ada. Riwayat lama yang sudah tidak memiliki ringkasan tidak dihitung ulang secara otomatis.</div>
  </div></div>`;
+}
+async function aiTandaiDitangani(sekolahId){
+ if(!await konfirmasi('Tandai gangguan AI sekolah ini sudah diperbaiki? Sistem akan menguji ulang Gemini secara otomatis sebelum mengirim pemberitahuan bahwa layanan normal.',{judul:'Konfirmasi penanganan AI',ya:'Tandai dan uji ulang'}))return;
+ guard(async()=>{await apiDev({aksi:'tandai_ai_ditangani',sekolah_id:Number(sekolahId)});S.devAI=await apiDev({aksi:'pemantauan_ai'});toast('Penanganan dicatat. Uji ulang AI dijadwalkan.');renderV()})
 }
 function aiPilihSekolah(v){S.devAISekolah=String(v||'*');renderV()}
 async function muatAI(){guard(async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'});renderV()})}
