@@ -547,7 +547,7 @@ const Rapor = (() => {
   }
   // Tanda tangan dipertahankan pada resolusi aslinya; berbeda dari logo yang dibatasi 300 px.
   function ttdPng(src) {
-    if (!(typeof src === 'string' && /^data:image\\/(png|webp|jpeg);base64,/.test(src))) return Promise.resolve(null);
+    if (!(typeof src === 'string' && /^data:image\/(png|webp|jpeg);base64,/.test(src))) return Promise.resolve(null);
     return new Promise(ok => {
       const im = new Image();
       im.onload = () => {
