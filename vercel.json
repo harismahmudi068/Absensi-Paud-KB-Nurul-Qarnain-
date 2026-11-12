@@ -11,6 +11,9 @@
     },
     "api/webhook.js": {
       "maxDuration": 60
+    },
+    "api/pengaturan.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
