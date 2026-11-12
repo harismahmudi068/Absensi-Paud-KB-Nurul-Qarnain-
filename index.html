@@ -5145,7 +5145,7 @@ function devPemantauanAI(){
  const d=S.devAI;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat pemantauan pemakaian AI...</div></div></div>';
  if(d.error)return `<div class="panel"><div class="ph">🤖 Pemantauan AI</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan migrasi pemantauan_ai sudah diterapkan pada Supabase.</div><button class="btn soft sm" onclick="muatAI()">↻ Coba lagi</button></div></div>`;
- const r=d.ringkasan||{},t=r.total||{},harian=r.harian_per_sekolah||[],bulanan=r.bulanan_per_sekolah||[],sekolah=r.per_sekolah||[],riwayat=d.riwayat||[];
+ const r=d.ringkasan||{},t=r.total||{},harian=r.harian_per_sekolah||[],bulanan=r.bulanan_per_sekolah||[],sekolah=r.per_sekolah||[],riwayat=d.riwayat||[],pengaman=d.pengaman||[];
  S.devAISekolah=S.devAISekolah||'*';
  const opsiSekolah=[{value:'*',label:'Semua sekolah'},...sekolah.map(x=>({value:String(x.sekolah_id),label:x.nama||('Sekolah '+x.sekolah_id)}))];
  const pilihan=cpick('aiSekolahPick','sekolah',S.devAISekolah,opsiSekolah,'aiPilihSekolah','Pilih sekolah');
@@ -5157,8 +5157,14 @@ function devPemantauanAI(){
  const kepala=(pilihSemua?['Sekolah']:[]).concat(['Tanggal/Bulan','Permintaan','Berhasil','Gagal','Tanpa metadata','Token masuk','Token keluar','Total token']);
  const sekolahRows=sekolah.map(x=>`<tr><td><b>${esc(x.nama||('Sekolah '+x.sekolah_id))}</b></td><td>${aiAngka(x.jumlah_permintaan)}</td><td>${aiAngka(x.jumlah_gagal)}</td><td>${aiAngka(x.input_tokens)}</td><td>${aiAngka(x.output_tokens)}</td><td><b>${aiAngka(x.total_tokens)}</b></td></tr>`).join('');
  const riwayatRows=riwayat.map(x=>{const sk=Array.isArray(x.sekolah)?x.sekolah[0]:x.sekolah;return `<tr><td>${waktuId(x.created_at)}</td><td>${esc(sk&&sk.nama||('Sekolah '+x.sekolah_id))}</td><td>${x.layanan==='analisis'?'Analisis pesan':'Terjemahan'}</td><td>${esc(x.model||'-')}</td><td>${x.input_tokens==null?'—':aiAngka(x.input_tokens)}</td><td>${x.output_tokens==null?'—':aiAngka(x.output_tokens)}</td><td>${x.total_tokens==null?'—':aiAngka(x.total_tokens)}</td><td>${aiStatus(x.status)}${x.kode_error?'<div class="mu">'+esc(x.kode_error)+'</div>':''}</td></tr>`}).join('');
+ const pengamanTampil=pilihSemua?pengaman:pengaman.filter(x=>String(x.sekolah_id)===String(S.devAISekolah));
+ const statusPengaman=x=>x.status==='cooldown'?'<span class="badge Alpa">Jeda kuota</span>':x.status==='jeda'?'<span class="badge Belum">Jeda singkat</span>':'<span class="badge Hadir">Normal</span>';
+ const pengamanRows=pengamanTampil.map(x=>`<tr>${pilihSemua?`<td><b>${esc(x.nama||('Sekolah '+x.sekolah_id))}</b></td>`:''}<td>${esc(x.model||'-')}</td><td>${statusPengaman(x)}</td><td>${aiAngka(x.permintaan_60_detik)} / 10</td><td>${aiAngka(x.consecutive_429)}</td><td>${x.cooldown_until&&new Date(x.cooldown_until)>new Date()?waktuId(x.cooldown_until):'—'}</td><td>${esc(x.kode_error_terakhir||'—')}</td></tr>`).join('');
  return `<div class="panel"><div class="ph">🤖 Pemantauan Pemakaian AI <button class="btn soft sm" onclick="muatAI()">↻ Muat ulang</button></div><div class="pb">
  <div class="note">Data ini khusus Developer. Yang disimpan hanya jumlah permintaan, model, token, status, dan sekolah. Isi pesan WhatsApp, nama anak, nomor orang tua, serta kunci API tidak disimpan. Riwayat rinci otomatis dihapus setelah 30 hari; ringkasan harian dan bulanan tetap tersimpan sampai dihapus manual.</div>
+ <div class="tbkh">Status pengaman kuota Gemini per sekolah</div>
+ <div class="note">Batas lokal konservatif: maksimal 10 permintaan per 60 detik dan jeda minimum 6 detik untuk sekolah-model yang sama. Ini batas pengaman aplikasi, bukan angka kuota resmi Google. Jika Gemini mengirim error 429, hanya sekolah tersebut yang dijeda sesuai waktu tunggu dari Google bila tersedia; jika tidak, jeda bertahap dimulai 1 menit dan dapat meningkat sampai 1 jam. Analisis yang tertahan masuk pemeriksaan manual; terjemahan yang tertahan memakai balasan Bahasa Indonesia.</div>
+ ${tab((pilihSemua?['Sekolah']:[]).concat(['Model','Status','Permintaan/menit','429 beruntun','Jeda sampai','Error terakhir']),pengamanRows,'Belum ada status pengaman Gemini.')}
  <div class="cards">${stat(t.jumlah_permintaan,'Total permintaan')}${stat(t.jumlah_berhasil,'Berhasil')}${stat(t.jumlah_gagal,'Gagal')}${stat(t.total_tokens,'Total token')}${stat(t.input_tokens,'Token masuk')}${stat(t.output_tokens,'Token keluar')}</div>
  <div class="tbkh">Rincian pemakaian berdasarkan sekolah</div>
  <div class="tb">Pilih sekolah: ${pilihan}</div>
