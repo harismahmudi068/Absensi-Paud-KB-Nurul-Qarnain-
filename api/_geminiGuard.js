@@ -39,7 +39,7 @@ function parseRetryGemini(error, details = detailGemini(error), jenisKuota = '')
   }
   for (const detail of details) {
     const delay = String(detail?.retryDelay || detail?.retry_delay || '');
-    const match = delay.match(/([0-9]+(?:\\.[0-9]+)?)s/i);
+    const match = delay.match(/([0-9]+(?:\.[0-9]+)?)s/i);
     if (match) return Math.min(86400, Math.ceil(Number(match[1])));
   }
   if (jenisKuota === 'RPD') return detikKeResetHarianGemini();
@@ -58,9 +58,9 @@ function klasifikasiErrorGemini(error) {
   }).join(' ').toLowerCase();
   const kuota = status === 429 || kode === 'RESOURCE_EXHAUSTED'
     || /resource_exhausted|too many requests|rate.?limit|quota exceeded/.test(pesan);
-  const jenisKuota = /per.?day|requestsperday|\\brpd\\b/.test(detailText) ? 'RPD'
-    : /tokensperminute|inputtokensperminute|\\btpm\\b/.test(detailText) ? 'TPM'
-    : /requestsperminute|generaterequestsperminute|\\brpm\\b/.test(detailText) ? 'RPM' : '';
+  const jenisKuota = /per.?day|requestsperday|\brpd\b/.test(detailText) ? 'RPD'
+    : /tokensperminute|inputtokensperminute|\btpm\b/.test(detailText) ? 'TPM'
+    : /requestsperminute|generaterequestsperminute|\brpm\b/.test(detailText) ? 'RPM' : '';
   return {
     httpStatus: kuota ? 429 : status,
     kode: kuota ? ('RESOURCE_EXHAUSTED' + (jenisKuota ? '_' + jenisKuota : ''))
