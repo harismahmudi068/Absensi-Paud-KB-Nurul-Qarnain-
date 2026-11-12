@@ -1570,7 +1570,7 @@ async function perbaruiStatusGangguanAI(error) {
   return {baru,naikKePermanen,permanen};
 }
 
-async function prosesPesan({ pesan, dari, target, anak, kunci }) {
+async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
   // 4. Deteksi cepat hanya untuk kalimat yang cukup aman. SAKIT tetap menang atas IZIN.
   // Jika ada kata yang bukan nama anak terdaftar dan bukan kata umum (kemungkinan nama anak lain
   // atau nama salah), pesan diserahkan ke AI supaya nama dibandingkan dengan data terdaftar.
@@ -1587,7 +1587,16 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
     }
   }
 
-  // 5. Bahasa bebas/ambigu masuk ke AI.js.
+  // 5. Jika sekolah sedang dalam status gangguan, jangan panggil Gemini lagi.
+  // Pesan disimpan agar diproses setelah uji pemulihan berhasil.
+  const statusGangguan = await bacaStatusGangguanAI();
+  if (statusGangguan.status_gangguan !== 'normal' &&
+      (!statusGangguan.next_retry_at || Date.now() < new Date(statusGangguan.next_retry_at).getTime())) {
+    await simpanAntrianAI({ pesan, dari, payload, kunci });
+    return;
+  }
+
+  // 6. Bahasa bebas/ambigu masuk ke AI.js dengan rotasi API Key.
   let hasilAI;
   try {
     const daftarKunciAi = await ambilKunciAiRotasi();
@@ -1597,11 +1606,32 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
         .catch(e => console.error('Pemberitahuan gangguan API Key ke developer gagal:', e.message || e));
     }
   } catch (e) {
-    // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
+    // Kegagalan seluruh akun tidak boleh mengubah absensi. Simpan pesan ke antrean.
     console.error('AI error:', e);
-    await lepasKlaim(kunci); // pesan yang dikirim ulang nanti tetap boleh diproses
-    await catatPesan(dari, pesan, 'Gemini error - belum dianalisis, perlu pengecekan manual', true).catch(() => {});
     const nama = anak.length === 1 ? (anak[0].nama || anak[0].nama_panggilan) : 'Belum berhasil diidentifikasi';
+    if (e && e.isGeminiFailover) {
+      await simpanAntrianAI({ pesan, dari, payload, kunci, error: e }).catch(err => console.error('Gagal menyimpan antrean AI:', err.message));
+      const status = await perbaruiStatusGangguanAI(e).catch(err => {
+        console.error('Gagal memperbarui status gangguan AI:', err.message);
+        return { baru: false, permanen: !!e.permanen };
+      });
+      const keyBermasalah = (e.attempts || []).filter(x => x.perluNotifikasi);
+      if (keyBermasalah.length) {
+        await notifikasiGangguanKeyDeveloper(keyBermasalah, dari, nama)
+          .catch(err => console.error('Gagal melaporkan error API Key ke developer:', err.message));
+      }
+      if (status.baru) {
+        await kirimNotifikasiGangguanSekolah(!!e.semuaSementara, e)
+          .then(async()=>sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`,{
+            method:'PATCH',body:{sekolah_notified_at:new Date().toISOString()},prefer:'return=minimal'
+          }))
+          .catch(err=>console.error('Gagal mengirim pemberitahuan gangguan sekolah:',err.message));
+      }
+      return;
+    }
+
+    await lepasKlaim(kunci);
+    await catatPesan(dari, pesan, 'Gemini error - belum dianalisis, perlu pengecekan manual', true).catch(() => {});
     await notifikasiKeKepala(dari, nama, pesan, 'ai_error', e).catch(err => console.error('Gagal notifikasi AI error:', err));
     return;
   }
