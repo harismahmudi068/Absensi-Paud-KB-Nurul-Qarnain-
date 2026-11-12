@@ -1714,7 +1714,7 @@ function pencarianInput(v){
  const r=$('#dashSearchResults');if(!r)return;
  const q=String(v||'').trim();cariPilih=0;
  if(!q){cariHasil=[];r.innerHTML='<div class="dash-search-empty">Ketik nama menu atau fitur yang ingin dicari.</div>';return}
- cariHasil=CARI_FITUR.filter(x=>allowed(x.type==='pengaturan'?'pengaturan':x.type==='penilaian'?'penilaian':x.id)&&pencarianCocok(q,x)).slice(0,10);
+ cariHasil=CARI_FITUR.filter(x=>allowed(x.type==='tab'?x.parent:x.type==='pengaturan'?'pengaturan':x.type==='penilaian'?'penilaian':x.id)&&pencarianCocok(q,x)).slice(0,10);
  r.innerHTML=cariHasil.length?cariHasil.map((x,i)=>'<button type="button" class="dash-search-result" role="option" aria-selected="'+(i===0)+'" onclick="pencarianBuka('+i+')"><span class="dsr-icon">'+x.icon+'</span><span class="dsr-main"><span class="dsr-name">'+esc(x.label)+'</span><span class="dsr-path">'+esc(x.path)+'</span></span><span aria-hidden="true">›</span></button>').join(''):'<div class="dash-search-empty">Tidak ada menu atau fitur yang cocok.</div>';
 }
 function pencarianKey(e){
