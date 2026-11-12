@@ -309,9 +309,15 @@ module.exports = async (req, res) => {
 
       const kunciAi = String(b.kunci_ai || '').trim();
       if (kunciAi) {
-        if (kunciAi.length < 10 || /\s/.test(kunciAi)) throw new Error('Kunci AI tidak valid');
-        isi.kunci_ai = kunciAi;
-        diubah.push('kunci_ai');
+        if (kunciAi.length < 20 || /\s/.test(kunciAi)) throw new Error('Kunci AI tidak valid');
+        const keysSaatIni = await ambilGeminiKeys();
+        if (keysSaatIni.some(x => x.aktif)) {
+          throw new Error('Sekolah sudah menggunakan daftar beberapa API Key. Tambahkan atau ganti akun melalui tombol Tambah akun Gemini.');
+        }
+        await panggil('/rest/v1/rpc/gemini_key_tambah', 'POST', {
+          p_sekolah_id: sekolahId, p_label: 'Akun Gemini 1', p_api_key: kunciAi
+        });
+        diubah.push('gemini_api_key');
       }
 
       // Token Fonnte dan ID grup diatur lewat aksi token_tambah / grup_tambah (boleh banyak).
@@ -327,8 +333,12 @@ module.exports = async (req, res) => {
       if (Array.isArray(b.hapus)) {
         for (const f of b.hapus) {
           if (f === 'kunci_ai') {
+            const keys = await ambilGeminiKeys();
+            for (const key of keys) {
+              await panggil('/rest/v1/rpc/gemini_key_hapus', 'POST', { p_sekolah_id: sekolahId, p_id: Number(key.id) });
+            }
             isi[f] = null;
-            if (!diubah.includes(f)) diubah.push(f);
+            if (!diubah.includes('gemini_api_key')) diubah.push('gemini_api_key');
           }
         }
       }
