@@ -656,7 +656,7 @@ function hitungAkhir(s, mulai, T) {
 }
 
 // Menyusun tanggal yang akan dicatat. Hasilnya `untuk(kelasId)` karena libur_tanggal bisa khusus per kelas.
-// - sakit : HARI_SAKIT_OTOMATIS hari sekolah aktif mulai hari ini (hanya jika pesan bicara hari ini).
+// - sakit : HARI_SAKIT_OTOMATIS hari sekolah aktif mulai tanggal sakit yang disebut (maksimal dua hari sekolah aktif ke depan).
 // - izin  : sesuai tanggal/hari yang disebut (tanpa penanda waktu = hari ini).
 // Mencari penanda tanggal yang nama harinya tidak cocok dengan hari sebenarnya dari tanggal itu.
 function cariHariTanggalBeda(entri, T) {
@@ -670,7 +670,7 @@ function cariHariTanggalBeda(entri, T) {
   return null;
 }
 
-async function buatRencana(status, waktu) {
+async function buatRencana(status, waktu, anak = []) {
   const T = tanggal();
   const entri = Array.isArray(waktu) ? waktu : [];
   // Tanggal sudah lewat: tidak dicatat, wali diminta memeriksa dan mengirim ulang.
@@ -683,27 +683,75 @@ async function buatRencana(status, waktu) {
   const libur = await ambilLibur(T, tambahHari(T, BATAS_HARI_KE_DEPAN + BATAS_JUMLAH_HARI_IZIN + 15));
 
   if (status === 'sakit') {
-    // Laporan sakit hanya untuk HARI INI. Dianggap hari ini: tipe hari_ini, tanggal yang sama dengan
-    // hari ini (mis. "Tanggal: 6 November 2026" dikirim pada 6 November 2026), atau nama hari yang
-    // sama dengan hari ini (mis. "Hari: Jumat" dikirim pada hari Jumat).
-    const hariIni = indeksHari(T);
-    const untukHariIni = x => x.tipe === 'hari_ini'
-      || (x.tipe === 'tanggal' && hitungTanggal(x, T) === T)
-      || (x.tipe === 'nama_hari' && !x.pekan_depan && INDEKS_HARI[x.nama_hari] === hariIni);
-    if (entri.some(x => !untukHariIni(x))) {
-      return { ok: false, alasan: 'sakit untuk waktu selain hari ini' };
+    // Tanggal mulai sakit boleh hari pesan dikirim atau dua hari sekolah aktif berikutnya.
+    // Jika tanggal yang disebut jatuh pada hari libur, geser ke hari sekolah aktif berikutnya.
+    // Hitungan dilakukan per kelas karena libur tertentu dapat berlaku khusus untuk satu kelas.
+    const buatRencanaSakit = kelasId => {
+      const batasMulai = [];
+      const jumlahBatas = hariSekolah(T, libur, kelasId) ? 3 : 2;
+      let d = T;
+      for (let i = 0; i < 60 && batasMulai.length < jumlahBatas; i++, d = tambahHari(d, 1)) {
+        if (hariSekolah(d, libur, kelasId)) batasMulai.push(d);
+      }
+
+      const sumber = entri.length ? entri : [{ tipe: 'hari_ini' }];
+      const calonMulai = [];
+      for (const x of sumber) {
+        let diminta;
+        // Nama hari yang sama dengan hari pesan berarti hari ini, bukan pekan depan.
+        if (x.tipe === 'nama_hari' && !x.pekan_depan && INDEKS_HARI[x.nama_hari] === indeksHari(T)) {
+          diminta = T;
+        } else {
+          diminta = hitungTanggal(x, T, true);
+        }
+        if (!diminta || diminta < T) {
+          return { valid: false, alasan: 'tanggal mulai sakit tidak dapat ditentukan' };
+        }
+
+        let aktif = diminta;
+        for (let i = 0; i < 60 && !hariSekolah(aktif, libur, kelasId); i++) {
+          aktif = tambahHari(aktif, 1);
+        }
+        if (!hariSekolah(aktif, libur, kelasId) || !batasMulai.includes(aktif)) {
+          return { valid: false, alasan: 'tanggal sakit melewati batas dua hari sekolah aktif' };
+        }
+        calonMulai.push(aktif);
+      }
+
+      const mulai = calonMulai.sort()[0] || batasMulai[0];
+      if (!mulai) return { valid: false, alasan: 'tidak ditemukan hari sekolah aktif' };
+
+      const tanggalSakit = [];
+      d = mulai;
+      for (let i = 0; i < 60 && tanggalSakit.length < HARI_SAKIT_OTOMATIS; i++, d = tambahHari(d, 1)) {
+        if (hariSekolah(d, libur, kelasId)) tanggalSakit.push(d);
+      }
+      const terakhir = tanggalSakit[tanggalSakit.length - 1];
+      return {
+        valid: true,
+        hasil: {
+          tanggal: tanggalSakit,
+          tidakAktif: [],
+          lanjut: terakhir ? hariMasukBerikutnya(terakhir, libur, kelasId) : null
+        }
+      };
+    };
+
+    const rencanaPerKelas = new Map();
+    for (const siswa of (anak || [])) {
+      const k = String(siswa.kelas_id ?? '');
+      if (!rencanaPerKelas.has(k)) {
+        const hasil = buatRencanaSakit(siswa.kelas_id);
+        if (!hasil.valid) return { ok: false, alasan: hasil.alasan };
+        rencanaPerKelas.set(k, hasil.hasil);
+      }
     }
+    const cadangan = rencanaPerKelas.size ? null : buatRencanaSakit(null);
+    if (cadangan && !cadangan.valid) return { ok: false, alasan: cadangan.alasan };
+
     return {
       ok: true,
-      untuk: kelasId => {
-        const tanggalSakit = [];
-        let d = T;
-        for (let i = 0; i < 40 && tanggalSakit.length < HARI_SAKIT_OTOMATIS; i++, d = tambahHari(d, 1)) {
-          if (hariSekolah(d, libur, kelasId)) tanggalSakit.push(d);
-        }
-        const terakhir = tanggalSakit[tanggalSakit.length - 1];
-        return { tanggal: tanggalSakit, tidakAktif: [], lanjut: terakhir ? hariMasukBerikutnya(terakhir, libur, kelasId) : null };
-      }
+      untuk: kelasId => rencanaPerKelas.get(String(kelasId ?? '')) || cadangan?.hasil
     };
   }
 
@@ -836,7 +884,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
 // Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
 async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa, namaSalah = [], namaTerdaftar = '' }) {
   K().namaAnak = daftarNama(anak);
-  const rencana = await buatRencana(status, waktu);
+  const rencana = await buatRencana(status, waktu, anak);
   // Nama yang tidak cocok (sebagian nama di pesan cocok): ditolak SETELAH tanggal/waktu diperiksa.
   // Teksnya digabung ke balasan wali; ragam kalimat bergantung pada hasil pemeriksaan tanggal.
   const bagianNama = (mode, cocok = '') => namaSalah.length ? [bagianNamaSalah(namaSalah, namaTerdaftar, mode, cocok)] : [];
@@ -923,6 +971,14 @@ async function cariAnak(dari) {
 
 const SAKIT = /\b(sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit)\b/i;
 const IZIN = /\b(izin|ijin|permisi|tidak masuk|ga masuk|gak masuk|nggak masuk|ngga masuk|libur|acara|keluar kota|mudik|keperluan keluarga)\b/i;
+
+// Penyaring awal KHUSUS pesan grup: percakapan umum tidak perlu memakai kuota Gemini.
+// Pemicu hanya mengarahkan pesan ke deteksi cepat/AI, bukan otomatis mencatat absensi.
+const PEMICU_PESAN_GRUP = /\b(izin|ijin|permisi|sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit|tidak masuk(?: sekolah)?|ga masuk|gak masuk|nggak masuk|ngga masuk|tidak bisa masuk(?: sekolah)?|tidak dapat masuk(?: sekolah)?|ga bisa masuk|gak bisa masuk|nggak bisa masuk|tidak hadir|tidak bisa hadir|tidak dapat hadir|tidak bisa berangkat|tidak dapat berangkat|tidak bisa sekolah|tidak dapat sekolah|belum bisa masuk|belum bisa sekolah|belum bisa berangkat|berhalangan hadir|tidak mengikuti (?:pembelajaran|kegiatan|sekolah)|berobat|ke dokter|dirawat|acara keluarga|keluar kota|mudik|keperluan keluarga)\b/i;
+
+function adaPemicuPesanGrup(pesan) {
+  return PEMICU_PESAN_GRUP.test(String(pesan || ''));
+}
 
 // Frasa ini membuat konteks perlu dianalisis AI, agar pesan lama/masa depan/penyangkalan
 // tidak salah dicatat sebagai absensi hari ini.
@@ -1254,6 +1310,13 @@ async function proses(b) {
   if (!dari) return;
   const anak = await cariAnak(dari);
   if (!anak.length) return;
+
+  // Pesan grup tanpa indikasi izin/sakit/ketidakhadiran berhenti di sini tanpa Gemini.
+  // Pesan pribadi tidak melewati filter ini dan tetap memakai alur lama.
+  if (ctx.dariGrup && !adaPemicuPesanGrup(pesan)) {
+    console.log('Pesan grup tanpa pemicu absensi diabaikan tanpa AI');
+    return;
+  }
 
   // 3. Anti-duplikat: nomor + isi pesan sama dalam 5 menit -> diabaikan total.
   const kunci = kunciDuplikat(dari, pesan);

@@ -25,6 +25,9 @@ KATEGORI:
 - Jika hanya waktu yang ambigu, tetap gunakan "izin_sakit" dan biarkan waktu kosong.
 
 ATURAN WAKTU:
+- Untuk status sakit, pilih tanggal anak TIDAK MASUK SEKOLAH, bukan semata-mata tanggal mulai gejala sakit.
+- Contoh: "besok Riko tidak bisa masuk karena sakit demam" berarti waktu besok, walaupun demam mulai hari ini.
+- Jika orang tua hanya menyatakan anak sakit/tidak masuk tanpa menyebut tanggal lain, gunakan hari ini.
 - Bandingkan semua waktu dengan tanggal_hari_ini.
 - Hari ini → tipe "hari_ini".
 - Tanggal yang sama dengan hari ini, misalnya "hari ini (06 Oktober)" → tetap "hari_ini",
