@@ -1576,7 +1576,7 @@ async function kirimNotifikasiAIKembaliNormal() {
     salam(),'','✅ *PEMBERITAHUAN: LAYANAN AI KEMBALI NORMAL*','',
     `Layanan Gemini sekolah *${sk?.[0]?.nama||'Sekolah'}* telah berhasil diuji dan dapat digunakan kembali.`,
     '',
-    'Pesan absensi yang sempat tertunda sedang/akan diproses kembali oleh sistem. Pencatatan absensi manual dapat dihentikan setelah guru memastikan data yang diperlukan sudah lengkap.',
+    'Pesan absensi yang sempat tertunda telah selesai diproses oleh sistem. Pencatatan absensi manual dapat dihentikan setelah guru memastikan seluruh data sudah sesuai.',
     '',penutup()
   ].join('\n');
   const tujuan=new Map();
