@@ -1719,6 +1719,7 @@ async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
     const nama = anak.length === 1 ? (anak[0].nama || anak[0].nama_panggilan) : 'Belum berhasil diidentifikasi';
 
     if (e?.isGeminiBusy) {
+      await perbaruiStatusGangguanAI(e).catch(err=>console.error('Gagal mencatat semua key sedang sibuk:',err.message));
       const tunggu = Math.max(1, Math.min(60, Number(e.retryAfterSeconds) || 60));
       await simpanAntrianAI({
         pesan, dari, payload, kunci, error: e,
@@ -1898,7 +1899,14 @@ async function prosesAntrianAI() {
         method: 'DELETE', prefer: 'return=minimal'
       }).catch(() => {});
     }
-    await sb('rpc/gemini_hapus_retry', { method: 'POST', body: { p_sekolah_id: sekolahId } }).catch(() => {});
+    const daftarPemulihan = await sb('rpc/gemini_key_daftar_pemulihan', {
+      method:'POST',body:{p_sekolah_id:sekolahId,p_model:'gemini-3.5-flash-lite'}
+    }).catch(()=>[]);
+    if (Array.isArray(daftarPemulihan) && daftarPemulihan.length) {
+      await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:sekolahId,p_delay_menit:0}}).catch(()=>{});
+    } else {
+      await sb('rpc/gemini_hapus_retry', { method: 'POST', body: { p_sekolah_id: sekolahId } }).catch(() => {});
+    }
     return { diproses: 0, tersisa: 0, status: 'perlu_manual' };
   }
 
@@ -1917,8 +1925,11 @@ async function prosesAntrianAI() {
   }
   if (kedaluwarsa.length) {
     const statusGangguan=await bacaStatusGangguanAI();
-    if (statusGangguan.status_gangguan==='gangguan_sementara' && statusGangguan.gangguan_mulai &&
-        Date.now()-new Date(statusGangguan.gangguan_mulai).getTime()>=5*60*1000) {
+    const keyTersedia=await sb(`gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&aktif=eq.true&error_permanen=eq.false&select=id&limit=1`).catch(()=>[]);
+    const sudahLimaMenit=statusGangguan.gangguan_mulai &&
+      Date.now()-new Date(statusGangguan.gangguan_mulai).getTime()>=5*60*1000;
+    if ((statusGangguan.status_gangguan==='gangguan_sementara' && sudahLimaMenit) ||
+        (!Array.isArray(keyTersedia) || keyTersedia.length===0)) {
       await aktifkanModeManualAI({code:'BATAS_GANGGUAN_5_MENIT'}).catch(e=>console.error('Aktifkan mode manual gagal:',e.message));
     }
   }
