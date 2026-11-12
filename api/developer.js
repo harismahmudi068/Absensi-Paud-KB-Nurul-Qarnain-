@@ -586,6 +586,34 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+
+    // ---------------------------------------------------------
+    // PEMANTAUAN PEMAKAIAN AI (khusus Developer + AAL2)
+    // Hanya mengembalikan metadata; tidak mengambil isi pesan atau API key.
+    // ---------------------------------------------------------
+    if (b.aksi === 'pemantauan_ai') {
+      if (!L.SB || !L.KEY) throw new Error('Konfigurasi Supabase belum lengkap');
+      const [ringkasan, riwayat, pengaman, geminiKeys, gangguan, antrean] = await Promise.all([
+        L.panggil('/rest/v1/rpc/developer_pemakaian_ai_ringkasan', 'POST', {}),
+        L.panggil('/rest/v1/pemakaian_ai_riwayat?select=id,created_at,sekolah_id,sekolah(nama),layanan,model,input_tokens,output_tokens,total_tokens,status,kode_error&order=created_at.desc&limit=200', 'GET'),
+        L.panggil('/rest/v1/rpc/developer_gemini_pengaman', 'POST', {}),
+        L.panggil('/rest/v1/gemini_api_key_sekolah?select=id,sekolah_id,sekolah(nama),label,aktif,urutan,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_dicoba,terakhir_error,terakhir_berhasil,cooldown_until,next_allowed_at,jumlah_permintaan_window,consecutive_429,reservasi_mulai,reservasi_sampai,ditangani_oleh,ditangani_pada&order=sekolah_id.asc,urutan.asc,id.asc', 'GET'),
+        L.panggil('/rest/v1/gemini_pengaman_sekolah?select=sekolah_id,sekolah(nama),model,status_gangguan,gangguan_mulai,next_retry_at,developer_notified_at,sekolah_notified_at,detail_gangguan,last_key_id,ditangani_oleh,ditangani_pada&order=sekolah_id.asc', 'GET'),
+        L.panggil('/rest/v1/pesan_ai_antrean?select=id,sekolah_id,sekolah(nama),status,jumlah_percobaan,coba_lagi_pada,dibuat,api_key_id&order=dibuat.asc&limit=500', 'GET')
+      ]);
+      return res.status(200).json({
+        ok: true,
+        ringkasan: ringkasan || {},
+        riwayat: Array.isArray(riwayat) ? riwayat : [],
+        pengaman: Array.isArray(pengaman) ? pengaman : [],
+        gemini_keys: Array.isArray(geminiKeys) ? geminiKeys : [],
+        gangguan: Array.isArray(gangguan) ? gangguan : [],
+        antrean: Array.isArray(antrean) ? antrean : [],
+        batas_riwayat_hari: 30,
+        diperbarui: new Date().toISOString()
+      });
+    }
+
     // ---------------------------------------------------------
     // PEMANTAUAN STORAGE SUPABASE (khusus Developer + AAL2)
     // ---------------------------------------------------------
