@@ -25,6 +25,7 @@ function detikKeResetHarianGemini() {
 }
 
 function parseRetryGemini(error, details = detailGemini(error), jenisKuota = '') {
+  if (jenisKuota === 'RPD') return detikKeResetHarianGemini();
   const candidates = [
     error?.retryAfter, error?.retry_after,
     error?.response?.headers?.get?.('retry-after'),
@@ -42,7 +43,6 @@ function parseRetryGemini(error, details = detailGemini(error), jenisKuota = '')
     const match = delay.match(/([0-9]+(?:\.[0-9]+)?)s/i);
     if (match) return Math.min(86400, Math.ceil(Number(match[1])));
   }
-  if (jenisKuota === 'RPD') return detikKeResetHarianGemini();
   return null;
 }
 
