@@ -191,6 +191,12 @@ module.exports = async (req, res) => {
         `/rest/v1/fonnte_token?sekolah_id=eq.${sekolahId}&select=id,label,token,perangkat&order=id.asc`,
         'GET'
       )) || [];
+
+    const ambilGeminiKeys = async () =>
+      (await panggil(
+        `/rest/v1/gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&select=id,label,aktif,urutan,status_terakhir,kode_error_terakhir,error_permanen,terakhir_error,terakhir_berhasil&order=urutan.asc,id.asc`,
+        'GET'
+      )) || [];
     const ambilGrup = async () =>
       (await panggil(
         `/rest/v1/grup_wa?sekolah_id=eq.${sekolahId}&select=id,grup_id,label,token_id&order=id.asc`,
@@ -268,12 +274,17 @@ module.exports = async (req, res) => {
     // BACA
     // ---------------------------------------------------------
     if (b.aksi === 'baca') {
-      const [r, tk, gp, penerimaTes, kelas, pemetaan] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes(), ambilKelas(), ambilPemetaan()]);
+      const [r, tk, gp, penerimaTes, kelas, pemetaan, geminiKeys] = await Promise.all([ambil(), ambilToken(), ambilGrup(), ambilPenerimaTes(), ambilKelas(), ambilPemetaan(), ambilGeminiKeys()]);
       const tampil = !!b.tampilkan && isDev;
       if (tampil) await catat(user.id, sekolahId, 'lihat_rahasia', 'kunci AI dan token Fonnte');
       return res.status(200).json({
         ok: true,
-        kunci_ai: { ada: !!r.kunci_ai, tampil: samar(r.kunci_ai), nilai: tampil ? r.kunci_ai || '' : undefined },
+        kunci_ai: { ada: geminiKeys.some(x => x.aktif) || !!r.kunci_ai, tampil: geminiKeys.length ? (geminiKeys.length + ' akun') : samar(r.kunci_ai), nilai: tampil ? r.kunci_ai || '' : undefined },
+        gemini_keys: geminiKeys.map(x => ({
+          id: x.id, label: x.label, aktif: x.aktif, status: x.status_terakhir,
+          kode_error: x.kode_error_terakhir, error_permanen: !!x.error_permanen,
+          terakhir_error: x.terakhir_error, terakhir_berhasil: x.terakhir_berhasil
+        })),
         tokens: tk.map((t) => ({
           id: t.id,
           label: t.label,
@@ -332,6 +343,34 @@ module.exports = async (req, res) => {
         Prefer: 'resolution=merge-duplicates,return=minimal'
       });
       await catat(user.id, sekolahId, 'ubah_pengaturan_rahasia', diubah.join(', '));
+      return res.status(200).json({ ok: true });
+    }
+
+    // ---------------------------------------------------------
+    // API KEY GEMINI (banyak akun per sekolah; rahasia disimpan di Supabase Vault)
+    // ---------------------------------------------------------
+    if (b.aksi === 'gemini_key_tambah') {
+      const label = String(b.label || '').replace(/\\s+/g, ' ').trim().slice(0, 60);
+      const apiKey = String(b.api_key || '').trim();
+      if (!label) throw new Error('Nama akun Gemini wajib diisi');
+      if (apiKey.length < 20 || /\\s/.test(apiKey)) throw new Error('API Key Gemini tidak valid');
+      const hasil = await panggil('/rest/v1/rpc/gemini_key_tambah', 'POST', {
+        p_sekolah_id: sekolahId, p_label: label, p_api_key: apiKey
+      });
+      await catat(user.id, sekolahId, 'gemini_api_key_tambah', label);
+      return res.status(200).json({ ok: true, key: hasil });
+    }
+
+    if (b.aksi === 'gemini_key_hapus') {
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id <= 0) throw new Error('API Key tidak valid');
+      const ada = (await ambilGeminiKeys()).find(x => Number(x.id) === id);
+      if (!ada) throw new Error('API Key tidak ditemukan di sekolah ini');
+      const hasil = await panggil('/rest/v1/rpc/gemini_key_hapus', 'POST', {
+        p_sekolah_id: sekolahId, p_id: id
+      });
+      if (hasil !== true) throw new Error('API Key gagal dihapus');
+      await catat(user.id, sekolahId, 'gemini_api_key_hapus', ada.label);
       return res.status(200).json({ ok: true });
     }
 
