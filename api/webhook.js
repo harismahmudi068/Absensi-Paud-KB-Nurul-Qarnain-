@@ -1180,7 +1180,7 @@ async function notifikasiGangguanKeyDeveloper(daftar, pengirim, namaAnak) {
     `${i+1}. *${x.label||'API Key tidak diketahui'}*`,
     `   Kode: ${x.kode||'-'} (${x.http_status||'-'})`,
     `   Detail: ${String(x.detail||'').slice(0,300)}`
-  ].join('\\n')).join('\\n');
+  ].join('\n')).join('\n');
   const teks = [
     salam(), '',
     '🚨 *[DEVELOPER] Gangguan API Key Gemini Sekolah*', '',
@@ -1193,7 +1193,7 @@ async function notifikasiGangguanKeyDeveloper(daftar, pengirim, namaAnak) {
     rincian, '',
     'Sistem akan mengalihkan percobaan ke API Key lain jika tersedia. Mohon periksa akun-akun tersebut di menu Pemantauan AI.',
     '', penutup()
-  ].join('\\n');
+  ].join('\n');
   const batch = crypto.randomUUID();
   await Promise.allSettled(NOMOR_DEVELOPER.map(n =>
     kirimDanCatat(n, teks, { batch, judul: 'Gangguan API Key Gemini', label: bermasalah.length+' API Key', olehDev: true })
