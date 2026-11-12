@@ -517,7 +517,7 @@ module.exports = async (req, res) => {
         idKey = Number(b.id);
         if (!Number.isSafeInteger(idKey) || idKey <= 0) throw new Error('Pilih satu API Key Gemini yang valid');
 
-        const izin = await panggil('/rest/v1/rpc/gemini_key_ambil_izin', 'POST', {
+        const izin = await panggil('/rest/v1/rpc/gemini_key_ambil_izin_tes', 'POST', {
           p_sekolah_id: sekolahId,
           p_id: idKey
         });
