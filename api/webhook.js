@@ -926,7 +926,7 @@ const IZIN = /\b(izin|ijin|permisi|tidak masuk|ga masuk|gak masuk|nggak masuk|ng
 
 // Penyaring awal KHUSUS pesan grup: percakapan umum tidak perlu memakai kuota Gemini.
 // Pemicu hanya mengarahkan pesan ke deteksi cepat/AI, bukan otomatis mencatat absensi.
-const PEMICU_PESAN_GRUP = /\b(izin|ijin|permisi|sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit|tidak masuk(?: sekolah)?|ga masuk|gak masuk|nggak masuk|ngga masuk|tidak hadir|tidak bisa hadir|tidak dapat hadir|tidak bisa berangkat|tidak dapat berangkat|tidak bisa sekolah|tidak dapat sekolah|belum bisa masuk|belum bisa sekolah|belum bisa berangkat|berhalangan hadir|tidak mengikuti (?:pembelajaran|kegiatan|sekolah)|berobat|ke dokter|dirawat|acara keluarga|keluar kota|mudik|keperluan keluarga)\b/i;
+const PEMICU_PESAN_GRUP = /\b(izin|ijin|permisi|sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit|tidak masuk(?: sekolah)?|ga masuk|gak masuk|nggak masuk|ngga masuk|tidak bisa masuk(?: sekolah)?|tidak dapat masuk(?: sekolah)?|ga bisa masuk|gak bisa masuk|nggak bisa masuk|tidak hadir|tidak bisa hadir|tidak dapat hadir|tidak bisa berangkat|tidak dapat berangkat|tidak bisa sekolah|tidak dapat sekolah|belum bisa masuk|belum bisa sekolah|belum bisa berangkat|berhalangan hadir|tidak mengikuti (?:pembelajaran|kegiatan|sekolah)|berobat|ke dokter|dirawat|acara keluarga|keluar kota|mudik|keperluan keluarga)\b/i;
 
 function adaPemicuPesanGrup(pesan) {
   return PEMICU_PESAN_GRUP.test(String(pesan || ''));
