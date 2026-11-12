@@ -78,7 +78,7 @@ async function kirimFonnte(token, target, pesan) {
 // Tes kunci Gemini dengan satu permintaan singkat
 async function tesGemini(kunci) {
   const ac = new AbortController();
-  const waktu = setTimeout(() => ac.abort(), 15000);
+  const waktu = setTimeout(() => ac.abort(), 8000);
   try {
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`,
