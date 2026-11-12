@@ -93,6 +93,25 @@ async function sb(path, { method = 'GET', body, prefer } = {}) {
 
 // Versi rinci: mengembalikan { ok, id, error } agar balasan ke wali bisa dicatat di kirim_log.
 // jadwal (opsional) = unix timestamp detik; bila diisi, Fonnte yang mengirim pada jam tersebut.
+
+async function catatPemakaianAI(data) {
+  const sekolahId = Number(K().sekolahId);
+  if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) return;
+  await sb('rpc/catat_pemakaian_ai', {
+    method: 'POST',
+    body: {
+      p_sekolah_id: sekolahId,
+      p_layanan: data.layanan,
+      p_model: data.model,
+      p_input_tokens: data.input_tokens,
+      p_output_tokens: data.output_tokens,
+      p_total_tokens: data.total_tokens,
+      p_status: data.status,
+      p_kode_error: data.kode_error || null
+    }
+  });
+}
+
 async function kirimFonnteRinci(target, teks, jadwal) {
   const tokenFonnte = K().tokenFonnte;
   if (!target || !tokenFonnte) return { ok: false, id: null, error: 'Token atau nomor tujuan kosong' };
@@ -166,7 +185,7 @@ async function kirimBalasanWali(target, teks, bahasa) {
   let isi = teks;
   if (perluTerjemah(bahasa)) {
     try {
-      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: K().kunciAi });
+      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: K().kunciAi, catatPemakaian: catatPemakaianAI });
     } catch (e) {
       console.error(`Terjemahan ke ${bahasa} gagal, balasan dikirim dalam Bahasa Indonesia:`, e.message);
       isi = teks;
@@ -1239,7 +1258,7 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
   // 5. Bahasa bebas/ambigu masuk ke AI.js.
   let hasilAI;
   try {
-    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: K().kunciAi });
+    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: K().kunciAi, catatPemakaian: catatPemakaianAI });
   } catch (e) {
     // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
     console.error('AI error:', e);
