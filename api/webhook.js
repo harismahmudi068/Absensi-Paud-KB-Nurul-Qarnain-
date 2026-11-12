@@ -47,7 +47,7 @@ const NOMOR_DEVELOPER = String(process.env.DEV_WA || '')
 // Status yang TIDAK boleh ditimpa pesan izin/sakit wali, lalu dibalas "sudah tercatat".
 // Alpa boleh ditimpa. Libur juga tidak ditimpa, tetapi dibalas seperti hari libur biasa (lihat simpan()).
 const STATUS_DILINDUNGI = new Set(['hadir', 'terlambat']);
-const LABEL_STATUS = { hadir: 'Hadir', terlambat: 'Terlambat' };
+const LABEL_STATUS = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpa: 'Alpa' };
 
 // Konteks per permintaan (aman untuk permintaan bersamaan): sekolahId, tokens, grup, tokenFonnte, kunciAi, nomorKepala
 const { AsyncLocalStorage } = require('async_hooks');
@@ -880,12 +880,18 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
   if (aktif.length) {
     const semuaTgl = [...new Set(aktif.flatMap(p => p.tanggal))];
     const ids = aktif.map(p => p.s.id).join(',');
-    const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&sekolah_id=eq.${K().sekolahId}&select=siswa_id,tanggal,status`);
+    const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&sekolah_id=eq.${K().sekolahId}&select=siswa_id,tanggal,status,cara`);
 
     for (const p of aktif) {
       // Hanya tanggal yang memang akan ditulis untuk anak ini yang diperiksa.
       const adaAnak = ada.filter(a => a.siswa_id === p.s.id && p.tanggal.includes(a.tanggal));
-      const lindung = new Map(adaAnak.filter(a => STATUS_DILINDUNGI.has(a.status)).map(a => [a.tanggal, a.status]));
+      // Semua absensi yang dicatat manual (cara selain WhatsApp) tidak boleh ditimpa,
+      // termasuk izin/sakit/alpa yang diisi guru saat layanan AI sedang gangguan.
+      const manualDilindungi = adaAnak.filter(a => a.status !== 'libur' && String(a.cara || '').toLowerCase() !== 'whatsapp');
+      const lindung = new Map([
+        ...adaAnak.filter(a => STATUS_DILINDUNGI.has(a.status)),
+        ...manualDilindungi
+      ].map(a => [a.tanggal, a.status]));
       // Libur yang diisi guru: tidak ditimpa, dibalas seperti hari libur biasa.
       const liburManual = adaAnak.filter(a => a.status === 'libur').map(a => a.tanggal);
       const tidakAktif = [...new Set([...p.tidakAktif, ...liburManual])].sort();
@@ -1458,7 +1464,8 @@ function payloadUntukAntrean(b, pesan) {
     groupId: x.groupId || '',
     chat_id: x.chat_id || '',
     chatId: x.chatId || '',
-    device: x.device || ''
+    device: x.device || '',
+    tanggal_masuk: x.tanggal_masuk || tanggal()
   };
 }
 
@@ -1637,7 +1644,7 @@ async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
   let hasilAI;
   try {
     const daftarKunciAi = await ambilKunciAiRotasi();
-    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: daftarKunciAi, catatPemakaian: catatPemakaianAI, pengamanGemini });
+    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: payload?.tanggal_masuk || tanggal(), kunciAi: daftarKunciAi, catatPemakaian: catatPemakaianAI, pengamanGemini });
     if (Array.isArray(hasilAI.gangguanApiKeys) && hasilAI.gangguanApiKeys.length) {
       await notifikasiGangguanKeyDeveloper(hasilAI.gangguanApiKeys, dari, anak.length === 1 ? anak[0].nama : 'Belum berhasil diidentifikasi')
         .catch(e => console.error('Pemberitahuan gangguan API Key ke developer gagal:', e.message || e));
