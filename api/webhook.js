@@ -1172,7 +1172,7 @@ async function notifikasiGangguanKeyDeveloper(daftar, pengirim, namaAnak) {
       `🔧 *Detail:* ${String(x.detail || '').slice(0,500)}`, '',
       'Sistem telah mencoba API Key lain. Mohon periksa akun Gemini tersebut di menu Pemantauan AI.',
       '', penutup()
-    ].join('\\n');
+    ].join('\n');
     const batch = crypto.randomUUID();
     await Promise.allSettled(NOMOR_DEVELOPER.map(n =>
       kirimDanCatat(n, teks, { batch, judul: 'Gangguan API Key Gemini', label: x.label || 'API Key', olehDev: true })
@@ -1501,7 +1501,7 @@ async function kirimNotifikasiGangguanSekolah(sementara, detail) {
     '',
     'Pesan WhatsApp yang masuk tetap disimpan dalam antrean dan akan diproses setelah AI kembali tersedia.',
     '', penutup()
-  ].join('\\n');
+  ].join('\n');
 
   const tujuan = new Map();
   const anggota = await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&role=in.(kepala_sekolah,pengelola)&select=profil_id,role,profil(nama,no_wa,aktif)`).catch(()=>[]);
@@ -1547,7 +1547,7 @@ async function kirimNotifikasiAIKembaliNormal() {
     '',
     'Pesan absensi yang sempat tertunda sedang/akan diproses kembali oleh sistem. Pencatatan absensi manual dapat dihentikan setelah guru memastikan data yang diperlukan sudah lengkap.',
     '',penutup()
-  ].join('\\n');
+  ].join('\n');
   const tujuan=new Map();
   const anggota=await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&role=in.(kepala_sekolah,pengelola)&select=profil_id,role,profil(nama,no_wa,aktif)`).catch(()=>[]);
   for(const a of anggota||[]){const p=Array.isArray(a.profil)?a.profil[0]:a.profil;const n=normDevice(p?.no_wa);if(p?.aktif!==false&&RE_WA.test(n))tujuan.set(n,{nomor:n,label:p?.nama||a.role})}
