@@ -114,6 +114,36 @@ async function catatPemakaianAI(data) {
   });
 }
 
+// Reservasi dan status pengaman dipisah dari catatan token; tidak menyimpan isi pesan atau API key.
+async function ambilIzinGemini(model) {
+  const sekolahId = Number(K().sekolahId);
+  if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) throw new Error('Sekolah pengaman Gemini tidak valid');
+  return sb('rpc/gemini_ambil_izin', {
+    method: 'POST',
+    body: { p_sekolah_id: sekolahId, p_model: model }
+  });
+}
+
+async function catatHasilGemini(data) {
+  const sekolahId = Number(K().sekolahId);
+  if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) return;
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(1500) : undefined;
+  await sb('rpc/gemini_catat_hasil', {
+    method: 'POST',
+    signal,
+    body: {
+      p_sekolah_id: sekolahId,
+      p_model: data.model,
+      p_status: data.status,
+      p_http_status: data.httpStatus,
+      p_kode_error: data.kode,
+      p_retry_after_seconds: data.retryAfter
+    }
+  });
+}
+
+const pengamanGemini = { ambilIzin: ambilIzinGemini, catatHasil: catatHasilGemini };
+
 async function kirimFonnteRinci(target, teks, jadwal) {
   const tokenFonnte = K().tokenFonnte;
   if (!target || !tokenFonnte) return { ok: false, id: null, error: 'Token atau nomor tujuan kosong' };
@@ -187,7 +217,7 @@ async function kirimBalasanWali(target, teks, bahasa) {
   let isi = teks;
   if (perluTerjemah(bahasa)) {
     try {
-      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: K().kunciAi, catatPemakaian: catatPemakaianAI });
+      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: K().kunciAi, catatPemakaian: catatPemakaianAI, pengamanGemini });
     } catch (e) {
       console.error(`Terjemahan ke ${bahasa} gagal, balasan dikirim dalam Bahasa Indonesia:`, e.message);
       isi = teks;
@@ -1260,7 +1290,7 @@ async function prosesPesan({ pesan, dari, target, anak, kunci }) {
   // 5. Bahasa bebas/ambigu masuk ke AI.js.
   let hasilAI;
   try {
-    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: K().kunciAi, catatPemakaian: catatPemakaianAI });
+    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: K().kunciAi, catatPemakaian: catatPemakaianAI, pengamanGemini });
   } catch (e) {
     // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
     console.error('AI error:', e);
