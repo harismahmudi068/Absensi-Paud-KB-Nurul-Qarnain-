@@ -11,7 +11,7 @@
 // perangkat pada pesan masuk (field device), lalu token pertama (utama).
 
 const crypto = require('crypto');
-const { analisisPesan } = require('./_AI');
+const { analisisPesan, ujiKoneksiGemini } = require('./_AI');
 const { terjemahkanBalasan } = require('./_AITerjemah');
 
 // ============================================================
@@ -47,7 +47,7 @@ const NOMOR_DEVELOPER = String(process.env.DEV_WA || '')
 // Status yang TIDAK boleh ditimpa pesan izin/sakit wali, lalu dibalas "sudah tercatat".
 // Alpa boleh ditimpa. Libur juga tidak ditimpa, tetapi dibalas seperti hari libur biasa (lihat simpan()).
 const STATUS_DILINDUNGI = new Set(['hadir', 'terlambat']);
-const LABEL_STATUS = { hadir: 'Hadir', terlambat: 'Terlambat' };
+const LABEL_STATUS = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpa: 'Alpa' };
 
 // Konteks per permintaan (aman untuk permintaan bersamaan): sekolahId, tokens, grup, tokenFonnte, kunciAi, nomorKepala
 const { AsyncLocalStorage } = require('async_hooks');
@@ -78,13 +78,13 @@ function pilihToken(b, groupId) {
 
 function nomor(value) { return String(value || '').replace(/\D/g, ''); }
 
-async function sb(path, { method = 'GET', body, prefer } = {}) {
+async function sb(path, { method = 'GET', body, prefer, signal } = {}) {
   if (!SB || !KEY) throw new Error('SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum tersedia');
   const headers = { apikey: KEY, 'Content-Type': 'application/json' };
   if (KEY.startsWith('eyJ')) headers.Authorization = 'Bearer ' + KEY;
   if (prefer) headers.Prefer = prefer;
   const r = await fetch(`${SB}/rest/v1/${path}`, {
-    method, headers, body: body ? JSON.stringify(body) : undefined
+    method, headers, body: body ? JSON.stringify(body) : undefined, signal
   });
   const t = await r.text();
   if (!r.ok) throw new Error(`${r.status} ${t}`);
@@ -93,6 +93,100 @@ async function sb(path, { method = 'GET', body, prefer } = {}) {
 
 // Versi rinci: mengembalikan { ok, id, error } agar balasan ke wali bisa dicatat di kirim_log.
 // jadwal (opsional) = unix timestamp detik; bila diisi, Fonnte yang mengirim pada jam tersebut.
+
+async function catatPemakaianAI(data) {
+  const sekolahId = Number(K().sekolahId);
+  if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) return;
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(1500) : undefined;
+  await sb('rpc/catat_pemakaian_ai', {
+    method: 'POST',
+    signal,
+    body: {
+      p_sekolah_id: sekolahId,
+      p_layanan: data.layanan,
+      p_model: data.model,
+      p_input_tokens: data.input_tokens,
+      p_output_tokens: data.output_tokens,
+      p_total_tokens: data.total_tokens,
+      p_status: data.status,
+      p_kode_error: data.kode_error || null
+    }
+  });
+}
+
+// Reservasi dan status pengaman dipisah dari catatan token; tidak menyimpan isi pesan atau API key.
+async function ambilIzinGemini(model) {
+  const sekolahId = Number(K().sekolahId);
+  if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) throw new Error('Sekolah pengaman Gemini tidak valid');
+  return sb('rpc/gemini_ambil_izin', {
+    method: 'POST',
+    body: { p_sekolah_id: sekolahId, p_model: model }
+  });
+}
+
+async function catatHasilGemini(data) {
+  const sekolahId = Number(K().sekolahId);
+  if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) return;
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(1500) : undefined;
+  await sb('rpc/gemini_catat_hasil', {
+    method: 'POST',
+    signal,
+    body: {
+      p_sekolah_id: sekolahId,
+      p_model: data.model,
+      p_status: data.status,
+      p_http_status: data.httpStatus,
+      p_kode_error: data.kode,
+      p_retry_after_seconds: data.retryAfter
+    }
+  });
+}
+
+async function ambilIzinKeyGemini(id) {
+  const sekolahId = Number(K().sekolahId);
+  return sb('rpc/gemini_key_ambil_izin', { method: 'POST', body: { p_sekolah_id: sekolahId, p_id: Number(id) } });
+}
+async function catatHasilKeyGemini(data) {
+  const sekolahId = Number(K().sekolahId);
+  return sb('rpc/gemini_key_catat_hasil', {
+    method: 'POST',
+    body: {
+      p_sekolah_id: sekolahId, p_id: Number(data.id), p_status: data.status,
+      p_http_status: data.httpStatus, p_kode_error: data.kode,
+      p_detail: data.detail || null, p_retry_after_seconds: data.retryAfter,
+      p_permanen: !!data.permanen
+    }
+  });
+}
+async function tandaiTerakhirKeyGemini(id, model) {
+  return sb('rpc/gemini_key_tandai_terakhir', {
+    method: 'POST', body: { p_sekolah_id: Number(K().sekolahId), p_id: Number(id), p_model: 'gemini-3.5-flash-lite' }
+  });
+}
+async function lepasIzinKeyGemini(id, token) {
+  return sb('rpc/gemini_key_lepas_izin', {
+    method: 'POST',
+    body: { p_sekolah_id: Number(K().sekolahId), p_id: Number(id), p_reservation_token: String(token) }
+  });
+}
+async function ambilKunciAiRotasi() {
+  const sekolahId = Number(K().sekolahId);
+  if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) return K().kunciAi || '';
+  const daftar = await sb('rpc/gemini_key_daftar_rotasi', {
+    method: 'POST',
+    body: { p_sekolah_id: sekolahId, p_model: 'gemini-3.5-flash-lite' }
+  });
+  return Array.isArray(daftar) && daftar.length ? daftar : (K().kunciAi || '');
+}
+const pengamanGemini = {
+  ambilIzin: ambilIzinGemini,
+  catatHasil: catatHasilGemini,
+  ambilIzinKey: ambilIzinKeyGemini,
+  catatHasilKey: catatHasilKeyGemini,
+  tandaiTerakhirKey: tandaiTerakhirKeyGemini,
+  lepasIzinKey: lepasIzinKeyGemini
+};
+
 async function kirimFonnteRinci(target, teks, jadwal) {
   const tokenFonnte = K().tokenFonnte;
   if (!target || !tokenFonnte) return { ok: false, id: null, error: 'Token atau nomor tujuan kosong' };
@@ -166,13 +260,18 @@ async function kirimBalasanWali(target, teks, bahasa) {
   let isi = teks;
   if (perluTerjemah(bahasa)) {
     try {
-      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: K().kunciAi });
+      isi = await terjemahkanBalasan({
+        teks, bahasa, kunciAi: await ambilKunciAiRotasi(),
+        catatPemakaian: catatPemakaianAI, pengamanGemini,
+        onGangguan: x => notifikasiGangguanKeyDeveloper([x], target, 'Terjemahan balasan')
+      });
     } catch (e) {
       console.error(`Terjemahan ke ${bahasa} gagal, balasan dikirim dalam Bahasa Indonesia:`, e.message);
       isi = teks;
     }
   }
   const hasil = await kirimFonnteRinci(target, isi);
+  if (hasil.ok) await tandaiPesanDibalas();
   await catatBalasan(target, hasil);
   return hasil.ok;
 }
@@ -605,7 +704,7 @@ function hitungAkhir(s, mulai, T) {
 }
 
 // Menyusun tanggal yang akan dicatat. Hasilnya `untuk(kelasId)` karena libur_tanggal bisa khusus per kelas.
-// - sakit : HARI_SAKIT_OTOMATIS hari sekolah aktif mulai hari ini (hanya jika pesan bicara hari ini).
+// - sakit : HARI_SAKIT_OTOMATIS hari sekolah aktif mulai tanggal sakit yang disebut (maksimal dua hari sekolah aktif ke depan).
 // - izin  : sesuai tanggal/hari yang disebut (tanpa penanda waktu = hari ini).
 // Mencari penanda tanggal yang nama harinya tidak cocok dengan hari sebenarnya dari tanggal itu.
 function cariHariTanggalBeda(entri, T) {
@@ -619,7 +718,7 @@ function cariHariTanggalBeda(entri, T) {
   return null;
 }
 
-async function buatRencana(status, waktu) {
+async function buatRencana(status, waktu, anak = []) {
   const T = tanggal();
   const entri = Array.isArray(waktu) ? waktu : [];
   // Tanggal sudah lewat: tidak dicatat, wali diminta memeriksa dan mengirim ulang.
@@ -632,27 +731,75 @@ async function buatRencana(status, waktu) {
   const libur = await ambilLibur(T, tambahHari(T, BATAS_HARI_KE_DEPAN + BATAS_JUMLAH_HARI_IZIN + 15));
 
   if (status === 'sakit') {
-    // Laporan sakit hanya untuk HARI INI. Dianggap hari ini: tipe hari_ini, tanggal yang sama dengan
-    // hari ini (mis. "Tanggal: 6 November 2026" dikirim pada 6 November 2026), atau nama hari yang
-    // sama dengan hari ini (mis. "Hari: Jumat" dikirim pada hari Jumat).
-    const hariIni = indeksHari(T);
-    const untukHariIni = x => x.tipe === 'hari_ini'
-      || (x.tipe === 'tanggal' && hitungTanggal(x, T) === T)
-      || (x.tipe === 'nama_hari' && !x.pekan_depan && INDEKS_HARI[x.nama_hari] === hariIni);
-    if (entri.some(x => !untukHariIni(x))) {
-      return { ok: false, alasan: 'sakit untuk waktu selain hari ini' };
+    // Tanggal mulai sakit boleh hari pesan dikirim atau dua hari sekolah aktif berikutnya.
+    // Jika tanggal yang disebut jatuh pada hari libur, geser ke hari sekolah aktif berikutnya.
+    // Hitungan dilakukan per kelas karena libur tertentu dapat berlaku khusus untuk satu kelas.
+    const buatRencanaSakit = kelasId => {
+      const batasMulai = [];
+      const jumlahBatas = hariSekolah(T, libur, kelasId) ? 3 : 2;
+      let d = T;
+      for (let i = 0; i < 60 && batasMulai.length < jumlahBatas; i++, d = tambahHari(d, 1)) {
+        if (hariSekolah(d, libur, kelasId)) batasMulai.push(d);
+      }
+
+      const sumber = entri.length ? entri : [{ tipe: 'hari_ini' }];
+      const calonMulai = [];
+      for (const x of sumber) {
+        let diminta;
+        // Nama hari yang sama dengan hari pesan berarti hari ini, bukan pekan depan.
+        if (x.tipe === 'nama_hari' && !x.pekan_depan && INDEKS_HARI[x.nama_hari] === indeksHari(T)) {
+          diminta = T;
+        } else {
+          diminta = hitungTanggal(x, T, true);
+        }
+        if (!diminta || diminta < T) {
+          return { valid: false, alasan: 'tanggal mulai sakit tidak dapat ditentukan' };
+        }
+
+        let aktif = diminta;
+        for (let i = 0; i < 60 && !hariSekolah(aktif, libur, kelasId); i++) {
+          aktif = tambahHari(aktif, 1);
+        }
+        if (!hariSekolah(aktif, libur, kelasId) || !batasMulai.includes(aktif)) {
+          return { valid: false, alasan: 'tanggal sakit melewati batas dua hari sekolah aktif' };
+        }
+        calonMulai.push(aktif);
+      }
+
+      const mulai = calonMulai.sort()[0] || batasMulai[0];
+      if (!mulai) return { valid: false, alasan: 'tidak ditemukan hari sekolah aktif' };
+
+      const tanggalSakit = [];
+      d = mulai;
+      for (let i = 0; i < 60 && tanggalSakit.length < HARI_SAKIT_OTOMATIS; i++, d = tambahHari(d, 1)) {
+        if (hariSekolah(d, libur, kelasId)) tanggalSakit.push(d);
+      }
+      const terakhir = tanggalSakit[tanggalSakit.length - 1];
+      return {
+        valid: true,
+        hasil: {
+          tanggal: tanggalSakit,
+          tidakAktif: [],
+          lanjut: terakhir ? hariMasukBerikutnya(terakhir, libur, kelasId) : null
+        }
+      };
+    };
+
+    const rencanaPerKelas = new Map();
+    for (const siswa of (anak || [])) {
+      const k = String(siswa.kelas_id ?? '');
+      if (!rencanaPerKelas.has(k)) {
+        const hasil = buatRencanaSakit(siswa.kelas_id);
+        if (!hasil.valid) return { ok: false, alasan: hasil.alasan };
+        rencanaPerKelas.set(k, hasil.hasil);
+      }
     }
+    const cadangan = rencanaPerKelas.size ? null : buatRencanaSakit(null);
+    if (cadangan && !cadangan.valid) return { ok: false, alasan: cadangan.alasan };
+
     return {
       ok: true,
-      untuk: kelasId => {
-        const tanggalSakit = [];
-        let d = T;
-        for (let i = 0; i < 40 && tanggalSakit.length < HARI_SAKIT_OTOMATIS; i++, d = tambahHari(d, 1)) {
-          if (hariSekolah(d, libur, kelasId)) tanggalSakit.push(d);
-        }
-        const terakhir = tanggalSakit[tanggalSakit.length - 1];
-        return { tanggal: tanggalSakit, tidakAktif: [], lanjut: terakhir ? hariMasukBerikutnya(terakhir, libur, kelasId) : null };
-      }
+      untuk: kelasId => rencanaPerKelas.get(String(kelasId ?? '')) || cadangan?.hasil
     };
   }
 
@@ -685,7 +832,40 @@ async function buatRencana(status, waktu) {
 }
 
 async function catatPesan(dari, isi, hasil, cek) {
-  await sb('pesan_masuk', { method: 'POST', body: { sekolah_id: K().sekolahId, dari_nomor: dari, isi, hasil, perlu_dicek: cek }, prefer: 'return=minimal' });
+  // Simpan ID setiap catatan pesan pada konteks request ini agar balasan Fonnte
+  // dapat memperbarui baris pesan yang tepat (termasuk bila ada catatan tambahan).
+  const rows = await sb('pesan_masuk', {
+    method: 'POST',
+    body: { sekolah_id: K().sekolahId, dari_nomor: dari, isi, hasil, perlu_dicek: cek },
+    prefer: 'return=representation'
+  });
+  const ids = (Array.isArray(rows) ? rows : [])
+    .map(r => Number(r && r.id))
+    .filter(id => Number.isSafeInteger(id) && id > 0);
+  const c = K();
+  if (!Array.isArray(c.pesanMasukIds)) c.pesanMasukIds = [];
+  c.pesanMasukIds.push(...ids);
+  return ids;
+}
+
+async function tandaiPesanDibalas() {
+  const c = K();
+  const ids = [...new Set((c.pesanMasukIds || [])
+    .map(Number)
+    .filter(id => Number.isSafeInteger(id) && id > 0))];
+  if (!ids.length || !c.sekolahId) return;
+
+  try {
+    await sb(`pesan_masuk?id=in.(${ids.join(',')})&sekolah_id=eq.${c.sekolahId}`, {
+      method: 'PATCH',
+      body: { sudah_dibalas: true, dibalas_pada: new Date().toISOString() },
+      prefer: 'return=minimal'
+    });
+    c.pesanMasukIds = (c.pesanMasukIds || []).filter(id => !ids.includes(Number(id)));
+  } catch (e) {
+    // Kegagalan sinkronisasi tidak boleh mengubah status keberhasilan kirim WhatsApp.
+    console.error('Gagal memperbarui status pesan_masuk setelah balasan terkirim:', e.message || e);
+  }
 }
 
 async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []) {
@@ -707,12 +887,18 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
   if (aktif.length) {
     const semuaTgl = [...new Set(aktif.flatMap(p => p.tanggal))];
     const ids = aktif.map(p => p.s.id).join(',');
-    const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&sekolah_id=eq.${K().sekolahId}&select=siswa_id,tanggal,status`);
+    const ada = await sb(`absensi?tanggal=in.(${semuaTgl.join(',')})&siswa_id=in.(${ids})&sekolah_id=eq.${K().sekolahId}&select=siswa_id,tanggal,status,cara`);
 
     for (const p of aktif) {
       // Hanya tanggal yang memang akan ditulis untuk anak ini yang diperiksa.
       const adaAnak = ada.filter(a => a.siswa_id === p.s.id && p.tanggal.includes(a.tanggal));
-      const lindung = new Map(adaAnak.filter(a => STATUS_DILINDUNGI.has(a.status)).map(a => [a.tanggal, a.status]));
+      // Semua absensi yang dicatat manual (cara selain WhatsApp) tidak boleh ditimpa,
+      // termasuk izin/sakit/alpa yang diisi guru saat layanan AI sedang gangguan.
+      const manualDilindungi = adaAnak.filter(a => a.status !== 'libur' && String(a.cara || '').toLowerCase() !== 'whatsapp');
+      const lindung = new Map([
+        ...adaAnak.filter(a => STATUS_DILINDUNGI.has(a.status)),
+        ...manualDilindungi
+      ].map(a => [a.tanggal, a.status]));
       // Libur yang diisi guru: tidak ditimpa, dibalas seperti hari libur biasa.
       const liburManual = adaAnak.filter(a => a.status === 'libur').map(a => a.tanggal);
       const tidakAktif = [...new Set([...p.tidakAktif, ...liburManual])].sort();
@@ -785,7 +971,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
 // Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
 async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu, bahasa, namaSalah = [], namaTerdaftar = '' }) {
   K().namaAnak = daftarNama(anak);
-  const rencana = await buatRencana(status, waktu);
+  const rencana = await buatRencana(status, waktu, anak);
   // Nama yang tidak cocok (sebagian nama di pesan cocok): ditolak SETELAH tanggal/waktu diperiksa.
   // Teksnya digabung ke balasan wali; ragam kalimat bergantung pada hasil pemeriksaan tanggal.
   const bagianNama = (mode, cocok = '') => namaSalah.length ? [bagianNamaSalah(namaSalah, namaTerdaftar, mode, cocok)] : [];
@@ -872,6 +1058,16 @@ async function cariAnak(dari) {
 
 const SAKIT = /\b(sakit|demam|flu|batuk|pilek|panas|diare|muntah|pusing|cacar|tipes|dbd|opname|kurang sehat|kurang enak badan|tidak enak badan|tidak fit|nggak enak badan|gak enak badan|tidak sehat|kurang fit)\b/i;
 const IZIN = /\b(izin|ijin|permisi|tidak masuk|ga masuk|gak masuk|nggak masuk|ngga masuk|libur|acara|keluar kota|mudik|keperluan keluarga)\b/i;
+
+// Penyaring awal KHUSUS pesan grup: percakapan umum tidak perlu memakai kuota Gemini.
+// Pemicu hanya mengarahkan pesan ke deteksi cepat/AI, bukan otomatis mencatat absensi.
+// Pemicu grup harus menunjukkan maksud ketidakhadiran, bukan sekadar menyebut penyakit.
+// Kata "sakit/demam/flu/batuk" tanpa konteks tidak cukup (mis. doa untuk teman yang sakit).
+const PEMICU_PESAN_GRUP = /\b(izin(?:\s+(?:tidak\s+masuk|tidak\s+hadir|tidak\s+bisa\s+masuk|tidak\s+bisa\s+hadir|sekolah|karena))|ijin(?:\s+(?:tidak\s+masuk|tidak\s+hadir|tidak\s+bisa\s+masuk|tidak\s+bisa\s+hadir|sekolah|karena))|permisi(?:\s+(?:tidak\s+masuk|tidak\s+hadir|tidak\s+bisa\s+hadir))|tidak\s+masuk(?:\s+sekolah)?|ga\s+masuk|gak\s+masuk|nggak\s+masuk|ngga\s+masuk|tidak\s+bisa\s+masuk(?:\s+sekolah)?|tidak\s+dapat\s+masuk(?:\s+sekolah)?|ga\s+bisa\s+masuk|gak\s+bisa\s+masuk|nggak\s+bisa\s+masuk|tidak\s+hadir|tidak\s+bisa\s+hadir|tidak\s+dapat\s+hadir|tidak\s+bisa\s+berangkat|tidak\s+dapat\s+berangkat|tidak\s+bisa\s+sekolah|tidak\s+dapat\s+sekolah|belum\s+bisa\s+masuk|belum\s+bisa\s+sekolah|belum\s+bisa\s+berangkat|berhalangan\s+hadir|tidak\s+mengikuti\s+(?:pembelajaran|kegiatan|sekolah)|tidak\s+masuk\s+karena|tidak\s+masuk\s+akibat)\b/i;
+
+function adaPemicuPesanGrup(pesan) {
+  return PEMICU_PESAN_GRUP.test(String(pesan || ''));
+}
 
 // Frasa ini membuat konteks perlu dianalisis AI, agar pesan lama/masa depan/penyangkalan
 // tidak salah dicatat sebagai absensi hari ini.
@@ -961,6 +1157,7 @@ function notifikasiAIGagalDeveloper(pengirim, namaAnak, pesan, error) {
   const detail = String(error?.message || error || 'Kesalahan tidak diketahui').slice(0, 500);
   const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
   return [
+    salam(), '',
     '🚨 *[DEVELOPER] Gemini Error di Webhook*',
     '',
     `🏫 *Sekolah ID:* ${K().sekolahId || '-'}`,
@@ -971,16 +1168,45 @@ function notifikasiAIGagalDeveloper(pengirim, namaAnak, pesan, error) {
     '',
     `🔧 *Error:* ${detail}`,
     '',
-    'Absensi tidak diubah otomatis. Pesan perlu dicek manual.'
+    'Absensi tidak diubah otomatis. Pesan perlu dicek manual.',
+    '', penutup()
   ].join('\n');
 }
 
-// Mengirim notifikasi ragu ke wali kelas dari anak yang dimaksud (hanya jika kelasnya punya wali).
-// Wali harus anggota aktif sekolah ini, profil aktif, dan punya nomor WhatsApp valid.
-// Gagal di sini TIDAK boleh mengganggu alur utama.
-// Kirim satu pesan lewat Fonnte (langsung atau terjadwal) dan catat ke kirim_log supaya statusnya
-// (terjadwal/terkirim/sampai/terbaca/gagal) muncul di menu Pesan WA dan diperbarui status-kirim.js.
-// Gagal mencatat TIDAK boleh menggagalkan pengiriman. Mengembalikan true bila Fonnte menerima pesan.
+async function notifikasiGangguanKeyDeveloper(daftar, pengirim, namaAnak) {
+  if (!NOMOR_DEVELOPER.length) {
+    console.warn('DEV_WA belum diisi/valid: laporan gangguan API Key dilewati');
+    return;
+  }
+  const bermasalah=(daftar||[]).filter(x=>x&&x.perluNotifikasi);
+  if(!bermasalah.length)return;
+  const sk = await sb(`sekolah?id=eq.${K().sekolahId}&select=nama`).catch(() => []);
+  const namaSekolah = sk?.[0]?.nama || ('Sekolah ID ' + K().sekolahId);
+  const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
+  const rincian=bermasalah.map((x,i)=>[
+    `${i+1}. *${x.label||'API Key tidak diketahui'}*`,
+    `   Kode: ${x.kode||'-'} (${x.http_status||'-'})`,
+    `   Detail: ${String(x.detail||'').slice(0,300)}`
+  ].join('\n')).join('\n');
+  const teks = [
+    salam(), '',
+    '🚨 *[DEVELOPER] Gangguan API Key Gemini Sekolah*', '',
+    `🏫 *Sekolah:* ${namaSekolah}`,
+    `🕒 *Waktu:* ${waktu} WIB`,
+    `👤 *Pengirim:* ${pengirim || '-'}`,
+    `👧 *Anak:* ${namaAnak || '-'}`,
+    '',
+    '*API Key yang perlu diperiksa:*',
+    rincian, '',
+    'Sistem akan mengalihkan percobaan ke API Key lain jika tersedia. Mohon periksa akun-akun tersebut di menu Pemantauan AI.',
+    '', penutup()
+  ].join('\n');
+  const batch = crypto.randomUUID();
+  await Promise.allSettled(NOMOR_DEVELOPER.map(n =>
+    kirimDanCatat(n, teks, { batch, judul: 'Gangguan API Key Gemini', label: bermasalah.length+' API Key', olehDev: true })
+  ));
+}
+
 async function kirimDanCatat(target, teks, lg) {
   const hasil = await kirimFonnteRinci(target, teks, lg.jadwal);
   try {
@@ -1185,6 +1411,7 @@ async function lepasKlaim(kunci) {
 }
 
 async function proses(b) {
+  K().waktuDiterima = b?.__ai_received_at || K().waktuDiterima || new Date().toISOString();
   const pesan = String(b.message || b.text || '').trim();
   if (!pesan) return;
 
@@ -1204,48 +1431,334 @@ async function proses(b) {
   const anak = await cariAnak(dari);
   if (!anak.length) return;
 
+  // Pesan grup tanpa indikasi izin/sakit/ketidakhadiran berhenti di sini tanpa Gemini.
+  // Pesan pribadi tidak melewati filter ini dan tetap memakai alur lama.
+  if (ctx.dariGrup && !adaPemicuPesanGrup(pesan)) {
+    console.log('Pesan grup tanpa pemicu absensi diabaikan tanpa AI');
+    return;
+  }
+
   // 3. Anti-duplikat: nomor + isi pesan sama dalam 5 menit -> diabaikan total.
-  const kunci = kunciDuplikat(dari, pesan);
-  if (!(await klaimPesan(kunci))) {
+  const replay = b.__ai_retry_replay === true;
+  const kunci = replay ? String(b.__ai_dedup_key || kunciDuplikat(dari,pesan)) : kunciDuplikat(dari,pesan);
+  if (!replay && !(await klaimPesan(kunci))) {
     console.log('Pesan duplikat diabaikan');
     return;
   }
 
   try {
-    await prosesPesan({ pesan, dari, target, anak, kunci });
+    await prosesPesan({ pesan, dari, target, anak, kunci, payload: b });
+    if (replay && K().antrianId) {
+      const q = await sb(`pesan_ai_antrean?id=eq.${Number(K().antrianId)}&sekolah_id=eq.${K().sekolahId}&select=status`);
+      if (q?.[0]?.status === 'diproses') {
+        await sb(`pesan_ai_antrean?id=eq.${Number(K().antrianId)}&sekolah_id=eq.${K().sekolahId}`, { method: 'DELETE', prefer: 'return=minimal' });
+      }
+    }
   } catch (e) {
-    await lepasKlaim(kunci);
+    if (!replay) await lepasKlaim(kunci);
     throw e;
   }
 }
 
-async function prosesPesan({ pesan, dari, target, anak, kunci }) {
-  // 4. Deteksi cepat hanya untuk kalimat yang cukup aman. SAKIT tetap menang atas IZIN.
-  // Jika ada kata yang bukan nama anak terdaftar dan bukan kata umum (kemungkinan nama anak lain
-  // atau nama salah), pesan diserahkan ke AI supaya nama dibandingkan dengan data terdaftar.
+function payloadUntukAntrean(b, pesan) {
+  const x = b || {};
+  return {
+    message: String(pesan || ''),
+    sender: x.sender || '',
+    member: x.member || '',
+    group_id: x.group_id || '',
+    groupId: x.groupId || '',
+    chat_id: x.chat_id || '',
+    chatId: x.chatId || '',
+    device: x.device || '',
+    tanggal_masuk: x.tanggal_masuk || tanggal(),
+    __ai_received_at: x.__ai_received_at || K().waktuDiterima || new Date().toISOString()
+  };
+}
+
+async function bacaStatusGangguanAI() {
+  const rows = await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite&select=status_gangguan,next_retry_at,gangguan_mulai,developer_notified_at,sekolah_notified_at,detail_gangguan`);
+  return Array.isArray(rows) && rows[0] ? rows[0] : { status_gangguan: 'normal' };
+}
+
+async function simpanAntrianAI({ pesan, dari, payload, kunci, error, cobaLagiPada }) {
+  const sekolahId = Number(K().sekolahId);
+  const isi = {
+    sekolah_id: sekolahId,
+    kunci_duplikat: String(kunci || kunciDuplikat(dari,pesan)),
+    payload: payloadUntukAntrean(payload,pesan),
+    dari_nomor: String(dari || ''),
+    isi: String(pesan || ''),
+    status: 'menunggu',
+    diterima_pada: payload?.__ai_received_at || K().waktuDiterima || new Date().toISOString(),
+    coba_lagi_pada: cobaLagiPada || new Date().toISOString(),
+    klaim_sampai: null,
+    api_key_id: null,
+    reservasi_token: null,
+    error_terakhir: error ? String(error.message || error).slice(0,1000) : null,
+    diperbarui: new Date().toISOString()
+  };
+  if (K().antrianId) {
+    await sb(`pesan_ai_antrean?id=eq.${Number(K().antrianId)}&sekolah_id=eq.${sekolahId}`, {
+      method: 'PATCH', body: isi, prefer: 'return=minimal'
+    });
+    return Number(K().antrianId);
+  }
+  const rows = await sb('pesan_ai_antrean?on_conflict=sekolah_id,kunci_duplikat', {
+    method: 'POST', body: isi, prefer: 'resolution=merge-duplicates,return=representation'
+  });
+  return Number(rows?.[0]?.id) || null;
+}
+
+async function kirimNotifikasiGangguanSekolah(sementara, detail) {
+  const sekolahId = Number(K().sekolahId), batch = crypto.randomUUID();
+  const sk = await sb(`sekolah?id=eq.${sekolahId}&select=nama`).catch(()=>[]);
+  const namaSekolah = sk?.[0]?.nama || 'Sekolah';
+  const teks = [
+    salam(), '',
+    sementara ? '⚠️ *PEMBERITAHUAN GANGGUAN SEMENTARA AI*' : '🚨 *PEMBERITAHUAN GANGGUAN LAYANAN AI*',
+    '',
+    `Layanan AI sekolah *${namaSekolah}* saat ini belum dapat digunakan karena seluruh akun Gemini mengalami kendala.`,
+    '',
+    'Untuk sementara, pengelola, kepala sekolah, dan wali kelas dimohon melakukan pencatatan absensi secara manual.',
+    '',
+    sementara
+      ? 'Gangguan terdeteksi bersifat sementara. Untuk sementara, pencatatan absensi dilakukan secara manual. Pesan yang gagal dianalisis tidak akan dicoba ulang otomatis.'
+      : 'Gangguan memerlukan pemeriksaan developer. Developer sudah diberi tahu dan sedang menangani. Kami akan mengirim pemberitahuan kembali setelah perbaikan diuji dan layanan normal.',
+    '',
+    'Pesan yang tidak dapat dianalisis dicatat untuk pemeriksaan manual dan tidak akan diproses otomatis setelah layanan pulih.',
+    '', penutup()
+  ].join('\n');
+
+  const tujuan = new Map();
+  const anggota = await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role,profil(nama,no_wa,aktif,role)`).catch(()=>[]);
+  for (const a of anggota || []) {
+    const p = Array.isArray(a.profil) ? a.profil[0] : a.profil;
+    const role = String(a.role || '');
+    if (role !== 'kepala_sekolah' && role !== 'pengelola' && p?.role !== 'pengelola') continue;
+    const n = normDevice(p?.no_wa);
+    if (p?.aktif !== false && RE_WA.test(n)) tujuan.set(n,{nomor:n,label:p?.nama || role || 'Pengelola'});
+  }
+  const kelas = await sb(`kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,nama,wali_profil_id`).catch(()=>[]);
+  const waliIds = [...new Set((kelas||[]).map(x=>x.wali_profil_id).filter(x=>RE_UUID.test(String(x||''))))];
+  if (waliIds.length) {
+    const ang = await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&profil_id=in.(${waliIds.join(',')})&select=profil_id`).catch(()=>[]);
+    const ids = [...new Set((ang||[]).map(x=>x.profil_id))];
+    if (ids.length) {
+      const prof = await sb(`profil?id=in.(${ids.join(',')})&aktif=eq.true&select=id,nama,no_wa`).catch(()=>[]);
+      for (const p of prof || []) {
+        const n = normDevice(p.no_wa);
+        if (RE_WA.test(n) && !tujuan.has(n)) {
+          const namaKelas = (kelas||[]).filter(k=>k.wali_profil_id===p.id).map(k=>k.nama).join(', ');
+          tujuan.set(n,{nomor:n,label:(p.nama||n)+' (wali '+(namaKelas||'kelas')+')'});
+        }
+      }
+    }
+  }
+  const kepala = normDevice(K().nomorKepala);
+  if (RE_WA.test(kepala)) tujuan.set(kepala,{nomor:kepala,label:'Kepala Sekolah'});
+  let waktu = Math.floor(Date.now()/1000);
+  const daftar = [...tujuan.values()];
+  const hasil = await Promise.allSettled(daftar.map(t=>{
+    waktu += jedaAcak();
+    return kirimDanCatat(t.nomor,teks,{jadwal:waktu,batch,judul:'Gangguan AI sekolah',label:t.label});
+  }));
+  hasil.forEach((h,i)=>{if(h.status!=='fulfilled'||h.value!==true)console.error('Notifikasi gangguan AI gagal ke:',daftar[i].label)});
+  return true;
+}
+
+async function kirimNotifikasiAIKembaliNormal() {
+  const sekolahId=Number(K().sekolahId),batch=crypto.randomUUID();
+  const sk=await sb(`sekolah?id=eq.${sekolahId}&select=nama`).catch(()=>[]);
+  const teks=[
+    salam(),'','✅ *PEMBERITAHUAN: LAYANAN AI KEMBALI NORMAL*','',
+    `Layanan Gemini sekolah *${sk?.[0]?.nama||'Sekolah'}* telah berhasil diuji dan dapat digunakan kembali.`,
+    '',
+    'Pesan yang sudah ditangani secara manual selama gangguan tidak akan diproses ulang otomatis. Staf dapat kembali menggunakan pencatatan otomatis untuk pesan baru dan memastikan catatan manual selama gangguan sudah lengkap.',
+    '',penutup()
+  ].join('\n');
+  const tujuan=new Map();
+  const anggota=await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role,profil(nama,no_wa,aktif,role)`).catch(()=>[]);
+  for(const a of anggota||[]){const p=Array.isArray(a.profil)?a.profil[0]:a.profil;const role=String(a.role||'');if(role!=='kepala_sekolah'&&role!=='pengelola'&&p?.role!=='pengelola')continue;const n=normDevice(p?.no_wa);if(p?.aktif!==false&&RE_WA.test(n))tujuan.set(n,{nomor:n,label:p?.nama||role||'Pengelola'})}
+  const kelas=await sb(`kelas?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=wali_profil_id,nama`).catch(()=>[]);
+  const wali=[...new Set((kelas||[]).map(x=>x.wali_profil_id).filter(x=>RE_UUID.test(String(x||''))))];
+  if(wali.length){const ang=await sb(`keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&profil_id=in.(${wali.join(',')})&select=profil_id`).catch(()=>[]);const ids=[...new Set((ang||[]).map(x=>x.profil_id))];if(ids.length){const ps=await sb(`profil?id=in.(${ids.join(',')})&aktif=eq.true&select=id,nama,no_wa`).catch(()=>[]);for(const p of ps||[]){const n=normDevice(p.no_wa);if(RE_WA.test(n)&&!tujuan.has(n))tujuan.set(n,{nomor:n,label:p.nama||n})}}}
+  const kepala=normDevice(K().nomorKepala);if(RE_WA.test(kepala))tujuan.set(kepala,{nomor:kepala,label:'Kepala Sekolah'});
+  let waktu=Math.floor(Date.now()/1000);const daftar=[...tujuan.values()];
+  await Promise.allSettled(daftar.map(t=>{waktu+=jedaAcak();return kirimDanCatat(t.nomor,teks,{jadwal:waktu,batch,judul:'AI kembali normal',label:t.label})}));
+}
+
+async function perbaruiStatusGangguanAI(error) {
+  const sebelum = await bacaStatusGangguanAI();
+  const statusLama = sebelum.status_gangguan || 'normal';
+  if (statusLama === 'perlu_manual' || statusLama === 'perlu_developer') return { baru:false, permanen:false };
+  const sekarang = new Date().toISOString();
+  await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`, {
+    method:'PATCH',
+    body:{
+      status_gangguan:'gangguan_sementara',
+      gangguan_mulai:sebelum.gangguan_mulai || sekarang,
+      detail_gangguan:{attempts:error?.attempts||[],kode:error?.code||'AI_REQUEST_FAILED',sementara:true},
+      diperbarui:sekarang
+    },
+    prefer:'return=minimal'
+  });
+  return { baru:statusLama==='normal', permanen:false };
+}
+
+async function aktifkanModeManualAI(error) {
+  const sebelum = await bacaStatusGangguanAI();
+  if (['perlu_manual','perlu_developer'].includes(sebelum.status_gangguan)) return false;
+  const sekarang = new Date().toISOString();
+  await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`, {
+    method:'PATCH',
+    body:{
+      status_gangguan:'perlu_manual',
+      gangguan_mulai:sebelum.gangguan_mulai || sekarang,
+      detail_gangguan:{attempts:error?.attempts||[],kode:error?.code||'BATAS_GANGGUAN_5_MENIT'},
+      diperbarui:sekarang
+    },
+    prefer:'return=minimal'
+  });
+  await kirimNotifikasiGangguanSekolah(true,error||{});
+  await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`, {
+    method:'PATCH',body:{sekolah_notified_at:new Date().toISOString()},prefer:'return=minimal'
+  }).catch(()=>{});
+  return true;
+}
+
+async function pulihkanStatusGangguanAI() {
+  const sebelum = await bacaStatusGangguanAI();
+  if (!sebelum || sebelum.status_gangguan === 'normal') return false;
+  const perluNotifikasi = ['perlu_manual','perlu_developer'].includes(sebelum.status_gangguan)
+    || !!sebelum.sekolah_notified_at;
+  await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`, {
+    method:'PATCH',
+    body:{
+      status_gangguan:'normal',gangguan_mulai:null,next_retry_at:null,
+      detail_gangguan:null,sekolah_notified_at:null,developer_notified_at:null,
+      diperbarui:new Date().toISOString()
+    },
+    prefer:'return=minimal'
+  });
+  if (perluNotifikasi) await kirimNotifikasiAIKembaliNormal().catch(e=>console.error('Notifikasi AI pulih gagal:',e.message));
+  return true;
+}
+
+async function cobaPemulihanGemini() {
+  const daftar = await sb('rpc/gemini_key_daftar_pemulihan', {
+    method:'POST',body:{p_sekolah_id:Number(K().sekolahId),p_model:'gemini-3.5-flash-lite'}
+  });
+  const kunci = Array.isArray(daftar) ? daftar[0] : null;
+  if (!kunci) return false;
+  try {
+    await ujiKoneksiGemini({kunci,pengamanGemini});
+    await pulihkanStatusGangguanAI();
+    console.log('Recovery probe Gemini berhasil untuk key id:',kunci.id);
+    return true;
+  } catch (e) {
+    console.warn('Recovery probe Gemini belum berhasil:',kunci.label,e?.code||e?.message||e);
+    return false;
+  }
+}
+
+async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
+  // Deteksi cepat tetap didahulukan. Pesan yang sudah jelas tidak masuk antrean AI.
   const cepat = adaNamaAsing(pesan, anak) ? null : deteksiCepat(pesan);
   if (cepat) {
     let pilih = [];
     if (anak.length === 1) pilih = anak;
     else if (/\b(keduanya|semua|dua-duanya|duaduanya|semuanya)\b/i.test(pesan)) pilih = anak;
     else pilih = cariAnakDariNama(pesan, anak);
-
     if (pilih.length) {
       await catatDanBalas({ dari, pesan, target, anak: pilih, status: cepat, catatan: pesan, waktu: [] });
       return;
     }
   }
 
-  // 5. Bahasa bebas/ambigu masuk ke AI.js.
+  const statusGangguan = await bacaStatusGangguanAI();
+  if (['perlu_manual','perlu_developer'].includes(statusGangguan.status_gangguan)) {
+    await catatPesan(dari, pesan, 'Mode manual aktif: pesan belum dianalisis AI dan perlu dicatat oleh staf sekolah', true);
+    return;
+  }
+
+  // Pesan AI selalu dicatat ke antrean sebelum pemanggilan Gemini.
+  if (!K().antrianId) {
+    const id = await simpanAntrianAI({ pesan, dari, payload, kunci });
+    if (!id) {
+      await catatPesan(dari, pesan, 'Pesan AI gagal dimasukkan ke antrean; perlu pemeriksaan manual', true);
+      return;
+    }
+    await sb('rpc/gemini_jadwalkan_retry', {
+      method: 'POST',
+      body: { p_sekolah_id: Number(K().sekolahId), p_delay_menit: 0 }
+    }).catch(e => console.error('Jadwal antrean AI gagal:', e.message));
+    await prosesAntrianAI();
+    return;
+  }
+
   let hasilAI;
   try {
-    hasilAI = await analisisPesan({ pesan, anak, tanggalHariIni: tanggal(), kunciAi: K().kunciAi });
+    const daftarKunciAi = K().kunciAiReservasi || await ambilKunciAiRotasi();
+    hasilAI = await analisisPesan({
+      pesan,
+      anak,
+      tanggalHariIni: payload?.tanggal_masuk || tanggal(),
+      kunciAi: daftarKunciAi,
+      catatPemakaian: catatPemakaianAI,
+      pengamanGemini,
+      reservasiGemini: K().reservasiGemini || null
+    });
+    await pulihkanStatusGangguanAI().catch(err=>console.error('Gagal memulihkan status AI:',err.message));
+    if (Array.isArray(hasilAI.gangguanApiKeys) && hasilAI.gangguanApiKeys.length) {
+      await notifikasiGangguanKeyDeveloper(hasilAI.gangguanApiKeys, dari, anak.length === 1 ? anak[0].nama : 'Belum berhasil diidentifikasi')
+        .catch(e => console.error('Pemberitahuan gangguan API Key ke developer gagal:', e.message || e));
+    }
   } catch (e) {
-    // Kegagalan Gemini tidak boleh membuat absensi berubah otomatis.
     console.error('AI error:', e);
-    await lepasKlaim(kunci); // pesan yang dikirim ulang nanti tetap boleh diproses
-    await catatPesan(dari, pesan, 'Gemini error - belum dianalisis, perlu pengecekan manual', true).catch(() => {});
     const nama = anak.length === 1 ? (anak[0].nama || anak[0].nama_panggilan) : 'Belum berhasil diidentifikasi';
+
+    if (e?.isGeminiBusy) {
+      await perbaruiStatusGangguanAI(e).catch(err=>console.error('Gagal mencatat semua key sedang sibuk:',err.message));
+      const tunggu = Math.max(1, Math.min(60, Number(e.retryAfterSeconds) || 60));
+      await simpanAntrianAI({
+        pesan, dari, payload, kunci, error: e,
+        cobaLagiPada: new Date(Date.now() + tunggu * 1000).toISOString()
+      }).catch(err => console.error('Gagal mempertahankan antrean AI:', err.message));
+      await sb('rpc/gemini_jadwalkan_retry', {
+        method: 'POST',
+        body: { p_sekolah_id: Number(K().sekolahId), p_delay_menit: 0 }
+      }).catch(err => console.error('Jadwal antrean AI gagal:', err.message));
+      return;
+    }
+
+    if (e?.isGeminiFailover) {
+      await perbaruiStatusGangguanAI(e).catch(err=>console.error('Gagal mencatat gangguan sementara AI:',err.message));
+      const diterima = new Date(K().waktuDiterima || payload?.__ai_received_at || new Date().toISOString()).getTime();
+      const sisaMs = Math.max(0, 5 * 60 * 1000 - (Date.now() - diterima));
+      if (K().antrianId && sisaMs > 0) {
+        const tunggu = Math.max(5,Math.min(60,Math.ceil(sisaMs/1000)));
+        await simpanAntrianAI({
+          pesan,dari,payload,kunci,error:e,
+          cobaLagiPada:new Date(Date.now()+tunggu*1000).toISOString()
+        }).catch(err=>console.error('Gagal mempertahankan pesan untuk retry:',err.message));
+        await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:Number(K().sekolahId),p_delay_menit:0}})
+          .catch(err=>console.error('Jadwal retry AI gagal:',err.message));
+        return;
+      }
+
+      await catatPesan(dari,pesan,'Batas percobaan AI 5 menit terlampaui; perlu pencatatan manual',true).catch(()=>{});
+      if (K().antrianId) {
+        await sb(`pesan_ai_antrean?id=eq.${Number(K().antrianId)}&sekolah_id=eq.${Number(K().sekolahId)}`,{method:'DELETE',prefer:'return=minimal'}).catch(()=>{});
+      }
+      await aktifkanModeManualAI(e).catch(err=>console.error('Gagal mengaktifkan mode manual AI:',err.message));
+      const keyBermasalah=(e.attempts||[]).filter(x=>x.perluNotifikasi);
+      if(keyBermasalah.length) await notifikasiGangguanKeyDeveloper(keyBermasalah,dari,nama)
+        .catch(err=>console.error('Gagal melaporkan API key:',err.message));
+      return;
+    }
+
+    await catatPesan(dari, pesan, 'Gemini error - belum dianalisis, perlu pengecekan manual', true).catch(() => {});
     await notifikasiKeKepala(dari, nama, pesan, 'ai_error', e).catch(err => console.error('Gagal notifikasi AI error:', err));
     return;
   }
@@ -1359,6 +1872,180 @@ function adalKabarStatus(b) {
   } catch (e) { return false; }
 }
 
+async function prosesAntrianAI() {
+  const sekolahId = Number(K().sekolahId);
+  const sekarang = new Date().toISOString();
+
+  // Timeout Gemini 30 detik; klaim yang tertinggal lebih dari 2 menit aman dipulihkan.
+  await sb(`pesan_ai_antrean?sekolah_id=eq.${sekolahId}&status=eq.diproses&klaim_sampai=lt.${encodeURIComponent(sekarang)}`, {
+    method: 'PATCH',
+    body: {
+      status: 'menunggu', klaim_sampai: null, api_key_id: null,
+      reservasi_token: null, coba_lagi_pada: sekarang, diperbarui: sekarang
+    },
+    prefer: 'return=minimal'
+  }).catch(() => {});
+
+  if (K().aiRetry) {
+    await cobaPemulihanGemini().catch(e=>console.error('Recovery probe error:',e.message));
+    const statusSetelahProbe=await bacaStatusGangguanAI();
+    if (statusSetelahProbe.status_gangguan==='gangguan_sementara' && statusSetelahProbe.gangguan_mulai &&
+        Date.now()-new Date(statusSetelahProbe.gangguan_mulai).getTime()>=5*60*1000) {
+      await aktifkanModeManualAI({code:'BATAS_GANGGUAN_5_MENIT'}).catch(e=>console.error('Batas 5 menit AI gagal diterapkan:',e.message));
+    }
+  }
+  const statusAwal = await bacaStatusGangguanAI();
+  if (['perlu_manual','perlu_developer'].includes(statusAwal.status_gangguan)) {
+    const tertunda = await sb(`pesan_ai_antrean?sekolah_id=eq.${sekolahId}&status=in.(menunggu,kedaluwarsa)&order=diterima_pada.asc,id.asc&limit=100`);
+    for (const row of tertunda || []) {
+      const hasil = row.status === 'kedaluwarsa'
+        ? 'Batas tunggu antrean AI 5 menit terlampaui; perlu pemeriksaan manual'
+        : 'AI sekolah sedang mengalami gangguan; pesan belum dianalisis dan perlu pemeriksaan manual';
+      await catatPesan(row.dari_nomor, row.isi, hasil, true).catch(e => console.error('Gagal mencatat pesan antrean manual:', e.message));
+      await sb(`pesan_ai_antrean?id=eq.${Number(row.id)}&sekolah_id=eq.${sekolahId}`, {
+        method: 'DELETE', prefer: 'return=minimal'
+      }).catch(() => {});
+    }
+    const daftarPemulihan = await sb('rpc/gemini_key_daftar_pemulihan', {
+      method:'POST',body:{p_sekolah_id:sekolahId,p_model:'gemini-3.5-flash-lite'}
+    }).catch(()=>[]);
+    if (Array.isArray(daftarPemulihan) && daftarPemulihan.length) {
+      await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:sekolahId,p_delay_menit:0}}).catch(()=>{});
+    } else {
+      await sb('rpc/gemini_hapus_retry', { method: 'POST', body: { p_sekolah_id: sekolahId } }).catch(() => {});
+    }
+    return { diproses: 0, tersisa: 0, status: 'perlu_manual' };
+  }
+
+  const hasilBatch = await sb('rpc/gemini_antrean_ambil_batch', {
+    method: 'POST',
+    body: { p_sekolah_id: sekolahId, p_limit: 10 }
+  });
+  const jobs = Array.isArray(hasilBatch?.jobs) ? hasilBatch.jobs : [];
+  const kedaluwarsa = Array.isArray(hasilBatch?.expired) ? hasilBatch.expired : [];
+
+  for (const row of kedaluwarsa) {
+    await catatPesan(row.dari_nomor,row.isi,
+      'Batas tunggu antrean AI 5 menit terlampaui; pesan belum dianalisis dan perlu pemeriksaan manual',true)
+      .catch(e=>console.error('Gagal mencatat antrean kedaluwarsa:',e.message));
+    await sb(`pesan_ai_antrean?id=eq.${Number(row.id)}&sekolah_id=eq.${sekolahId}`,{method:'DELETE',prefer:'return=minimal'}).catch(()=>{});
+  }
+  if (kedaluwarsa.length) {
+    const statusGangguan=await bacaStatusGangguanAI();
+    const keyTersedia=await sb(`gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&aktif=eq.true&error_permanen=eq.false&select=id&limit=1`).catch(()=>[]);
+    const sudahLimaMenit=statusGangguan.gangguan_mulai &&
+      Date.now()-new Date(statusGangguan.gangguan_mulai).getTime()>=5*60*1000;
+    if ((statusGangguan.status_gangguan==='gangguan_sementara' && sudahLimaMenit) ||
+        (!Array.isArray(keyTersedia) || keyTersedia.length===0)) {
+      await aktifkanModeManualAI({code:'BATAS_GANGGUAN_5_MENIT'}).catch(e=>console.error('Aktifkan mode manual gagal:',e.message));
+    }
+  }
+
+  let diproses = 0;
+  if (jobs.length) {
+    let semuaKunci = [];
+    try {
+      semuaKunci = await ambilKunciAiRotasi();
+    } catch (e) {
+      console.error('Gagal memuat daftar API Key untuk antrean:', e.message || e);
+      for (const job of jobs) {
+        await sb(`pesan_ai_antrean?id=eq.${Number(job.id)}&sekolah_id=eq.${sekolahId}`, {
+          method: 'PATCH',
+          body: {
+            status: 'menunggu', klaim_sampai: null, api_key_id: null, reservasi_token: null,
+            coba_lagi_pada: new Date(Date.now() + 60000).toISOString(),
+            error_terakhir: 'Gagal memuat daftar API Key sekolah',
+            diperbarui: new Date().toISOString()
+          },
+          prefer: 'return=minimal'
+        }).catch(() => {});
+        await lepasIzinKeyGemini(Number(job.api_key_id), String(job.reservasi_token)).catch(() => {});
+      }
+      await sb('rpc/gemini_jadwalkan_retry', {
+        method: 'POST', body: { p_sekolah_id: sekolahId, p_delay_menit: 0 }
+      }).catch(() => {});
+      return { diproses: 0, tersisa: jobs.length, status: 'menunggu' };
+    }
+    const hasilProses = await Promise.allSettled(jobs.map(job => {
+      const idKey = Number(job.api_key_id);
+      const kunciTerpilih = {
+        id: idKey,
+        label: String(job.api_key_label || 'API Key sekolah'),
+        api_key: String(job.api_key || '')
+      };
+      const daftar = [
+        kunciTerpilih,
+        ...(Array.isArray(semuaKunci) ? semuaKunci.filter(x => Number(x?.id) !== idKey) : [])
+      ].filter(x => x.api_key);
+      const payload = {
+        ...(job.payload || {}),
+        __ai_retry_replay: true,
+        __ai_dedup_key: job.kunci_duplikat,
+        __ai_received_at: job.diterima_pada
+      };
+      const ctxJob = {
+        ...K(),
+        antrianId: Number(job.id),
+        pesanMasukIds: [],
+        waktuDiterima: job.diterima_pada,
+        reservasiGemini: { id: idKey, token: String(job.reservasi_token) },
+        kunciAiReservasi: daftar
+      };
+      return konteks.run(ctxJob, () => proses(payload));
+    }));
+    for (let i = 0; i < hasilProses.length; i++) {
+      if (hasilProses[i].status === 'fulfilled') {
+        diproses++;
+      } else {
+        const job = jobs[i];
+        console.error('Pemrosesan antrean AI gagal:', hasilProses[i].reason?.message || hasilProses[i].reason);
+        await sb(`pesan_ai_antrean?id=eq.${Number(job.id)}&sekolah_id=eq.${sekolahId}`, {
+          method: 'PATCH',
+          body: {
+            status: 'menunggu', klaim_sampai: null, api_key_id: null, reservasi_token: null,
+            coba_lagi_pada: new Date(Date.now() + 60000).toISOString(),
+            error_terakhir: String(hasilProses[i].reason?.message || hasilProses[i].reason || 'Kesalahan antrean').slice(0, 1000),
+            diperbarui: new Date().toISOString()
+          },
+          prefer: 'return=minimal'
+        }).catch(() => {});
+      }
+    }
+  }
+
+  let statusAkhir = await bacaStatusGangguanAI();
+  const sisa = await sb(`pesan_ai_antrean?sekolah_id=eq.${sekolahId}&status=in.(menunggu,diproses,kedaluwarsa)&select=id,status&limit=500`);
+  if (Array.isArray(sisa) && sisa.length) {
+    const kondisiKey = await sb(`gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=id,error_permanen,cooldown_until,next_allowed_at,reservasi_sampai`).catch(()=>[]);
+    const now = Date.now();
+    const adaKeySiap = (kondisiKey||[]).some(k =>
+      k.error_permanen !== true &&
+      (!k.cooldown_until || new Date(k.cooldown_until).getTime()<=now) &&
+      (!k.next_allowed_at || new Date(k.next_allowed_at).getTime()<=now) &&
+      (!k.reservasi_sampai || new Date(k.reservasi_sampai).getTime()<=now)
+    );
+    if (!adaKeySiap && statusAkhir.status_gangguan==='normal') {
+      await perbaruiStatusGangguanAI({code:'ALL_GEMINI_KEYS_UNAVAILABLE',attempts:[]}).catch(e=>console.error('Gagal mencatat semua key tidak tersedia:',e.message));
+      statusAkhir = await bacaStatusGangguanAI();
+    }
+  }
+  const pemulihan = await sb('rpc/gemini_key_daftar_pemulihan',{method:'POST',body:{p_sekolah_id:sekolahId,p_model:'gemini-3.5-flash-lite'}}).catch(()=>[]);
+  const adaKeyPerluPulih = Array.isArray(pemulihan) && pemulihan.length > 0;
+  if ((Array.isArray(sisa) && sisa.length) || adaKeyPerluPulih) {
+    await sb('rpc/gemini_jadwalkan_retry', {
+      method: 'POST', body: { p_sekolah_id: sekolahId, p_delay_menit: 0 }
+    }).catch(e => console.error('Jadwal antrean AI berikutnya gagal:', e.message));
+  } else {
+    await sb('rpc/gemini_hapus_retry', { method: 'POST', body: { p_sekolah_id: sekolahId } }).catch(() => {});
+  }
+
+  return {
+    diproses,
+    tersisa: Array.isArray(sisa) ? sisa.length : 0,
+    status: ['perlu_manual','perlu_developer'].includes(statusAkhir.status_gangguan) ? 'perlu_manual' : 'normal'
+  };
+}
+
 module.exports = async (req, res) => {
   const kunci = String((req.query && req.query.key) || '').trim();
 
@@ -1384,6 +2071,26 @@ module.exports = async (req, res) => {
   catch (e) { console.error('Webhook: gagal memuat sekolah:', e); return res.status(200).json({ ok: false }); }
   if (!ctx) return res.status(401).send('Tidak diizinkan');
   if (ctx.nonaktif) return res.status(200).json({ ok: true });
+
+  if (req.body && req.body.__ai_recovery_confirmed === true) {
+    try {
+      const pulih = await konteks.run(ctx, () => pulihkanStatusGangguanAI());
+      return res.status(200).json({ok:true,ai_recovered:pulih});
+    } catch(e) {
+      console.error('Konfirmasi pemulihan AI gagal:',e);
+      return res.status(200).json({ok:false,ai_recovered:false});
+    }
+  }
+
+  if (req.body && req.body.__ai_retry === true) {
+    try {
+      const hasil = await konteks.run({...ctx,aiRetry:true}, () => prosesAntrianAI());
+      return res.status(200).json({ ok: true, retry_ai: true, hasil });
+    } catch (e) {
+      console.error('Retry antrean AI gagal:', e);
+      return res.status(200).json({ ok: false, retry_ai: true });
+    }
+  }
 
   try { await konteks.run(ctx, () => proses(req.body || {})); }
   catch (e) { console.error('Webhook error:', e); }
