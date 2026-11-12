@@ -5145,18 +5145,27 @@ function devPemantauanAI(){
  const d=S.devAI;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat pemantauan pemakaian AI...</div></div></div>';
  if(d.error)return `<div class="panel"><div class="ph">🤖 Pemantauan AI</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan migrasi pemantauan_ai sudah diterapkan pada Supabase.</div><button class="btn soft sm" onclick="muatAI()">↻ Coba lagi</button></div></div>`;
- const r=d.ringkasan||{},t=r.total||{},harian=r.harian||[],bulanan=r.bulanan||[],sekolah=r.per_sekolah||[],riwayat=d.riwayat||[];
+ const r=d.ringkasan||{},t=r.total||{},harian=r.harian_per_sekolah||[],bulanan=r.bulanan_per_sekolah||[],sekolah=r.per_sekolah||[],riwayat=d.riwayat||[];
+ S.devAISekolah=S.devAISekolah||'*';
+ const opsiSekolah=[{value:'*',label:'Semua sekolah'},...sekolah.map(x=>({value:String(x.sekolah_id),label:x.nama||('Sekolah '+x.sekolah_id)}))];
+ const pilihan=cpick('aiSekolahPick','sekolah',S.devAISekolah,opsiSekolah,'aiPilihSekolah','Pilih sekolah');
+ const pilihSemua=S.devAISekolah==='*';
+ const harianTampil=pilihSemua?harian:harian.filter(x=>String(x.sekolah_id)===String(S.devAISekolah));
+ const bulananTampil=pilihSemua?bulanan:bulanan.filter(x=>String(x.sekolah_id)===String(S.devAISekolah));
  const stat=(n,l)=>`<div class="card stat"><b>${aiAngka(n)}</b>${l}</div>`;
- const rows=(ls)=>ls.map(x=>`<tr><td>${esc(String(x.tanggal||x.bulan||'').slice(0,10))}</td><td>${aiAngka(x.jumlah_permintaan)}</td><td>${aiAngka(x.jumlah_berhasil)}</td><td>${aiAngka(x.jumlah_gagal)}</td><td>${aiAngka(x.input_tokens)}</td><td>${aiAngka(x.output_tokens)}</td><td><b>${aiAngka(x.total_tokens)}</b></td></tr>`).join('');
+ const rows=(ls,periode)=>ls.map(x=>`<tr>${pilihSemua?`<td><b>${esc(x.nama||('Sekolah '+x.sekolah_id))}</b></td>`:''}<td>${esc(String(x[periode]||'').slice(0,10))}</td><td>${aiAngka(x.jumlah_permintaan)}</td><td>${aiAngka(x.jumlah_berhasil)}</td><td>${aiAngka(x.jumlah_gagal)}</td><td>${aiAngka(x.input_tokens)}</td><td>${aiAngka(x.output_tokens)}</td><td><b>${aiAngka(x.total_tokens)}</b></td></tr>`).join('');
+ const kepala=(pilihSemua?['Sekolah']:[]).concat(['Tanggal/Bulan','Permintaan','Berhasil','Gagal','Token masuk','Token keluar','Total token']);
  const sekolahRows=sekolah.map(x=>`<tr><td><b>${esc(x.nama||('Sekolah '+x.sekolah_id))}</b></td><td>${aiAngka(x.jumlah_permintaan)}</td><td>${aiAngka(x.jumlah_gagal)}</td><td>${aiAngka(x.input_tokens)}</td><td>${aiAngka(x.output_tokens)}</td><td><b>${aiAngka(x.total_tokens)}</b></td></tr>`).join('');
  const riwayatRows=riwayat.map(x=>{const sk=Array.isArray(x.sekolah)?x.sekolah[0]:x.sekolah;return `<tr><td>${waktuId(x.created_at)}</td><td>${esc(sk&&sk.nama||('Sekolah '+x.sekolah_id))}</td><td>${x.layanan==='analisis'?'Analisis pesan':'Terjemahan'}</td><td>${esc(x.model||'-')}</td><td>${x.input_tokens==null?'—':aiAngka(x.input_tokens)}</td><td>${x.output_tokens==null?'—':aiAngka(x.output_tokens)}</td><td>${x.total_tokens==null?'—':aiAngka(x.total_tokens)}</td><td>${aiStatus(x.status)}${x.kode_error?'<div class="mu">'+esc(x.kode_error)+'</div>':''}</td></tr>`}).join('');
  return `<div class="panel"><div class="ph">🤖 Pemantauan Pemakaian AI <button class="btn soft sm" onclick="muatAI()">↻ Muat ulang</button></div><div class="pb">
  <div class="note">Data ini khusus Developer. Yang disimpan hanya jumlah permintaan, model, token, status, dan sekolah. Isi pesan WhatsApp, nama anak, nomor orang tua, serta kunci API tidak disimpan. Riwayat rinci otomatis dihapus setelah 30 hari; ringkasan harian dan bulanan tetap tersimpan sampai dihapus manual.</div>
  <div class="cards">${stat(t.jumlah_permintaan,'Total permintaan')}${stat(t.jumlah_berhasil,'Berhasil')}${stat(t.jumlah_gagal,'Gagal')}${stat(t.total_tokens,'Total token')}${stat(t.input_tokens,'Token masuk')}${stat(t.output_tokens,'Token keluar')}</div>
- <div class="tbkh">Ringkasan harian · 31 hari terakhir</div>
- ${tab(['Tanggal','Permintaan','Berhasil','Gagal','Token masuk','Token keluar','Total token'],rows(harian),'Belum ada ringkasan harian.')}
- <div class="tbkh">Ringkasan bulanan · disimpan permanen</div>
- ${tab(['Bulan','Permintaan','Berhasil','Gagal','Token masuk','Token keluar','Total token'],rows(bulanan),'Belum ada ringkasan bulanan.')}
+ <div class="tbkh">Rincian pemakaian berdasarkan sekolah</div>
+ <div class="tb">Pilih sekolah: ${pilihan}</div>
+ <div class="tbkh">Pemakaian harian · 31 hari terakhir</div>
+ ${tab(kepala,rows(harianTampil,'tanggal'),'Belum ada pemakaian harian untuk sekolah ini.')}
+ <div class="tbkh">Pemakaian bulanan · seluruh periode tersimpan</div>
+ ${tab(kepala,rows(bulananTampil,'bulan'),'Belum ada pemakaian bulanan untuk sekolah ini.')}
  <div class="tbkh">Pemakaian per sekolah · sepanjang waktu</div>
  ${tab(['Sekolah','Permintaan','Gagal','Token masuk','Token keluar','Total token'],sekolahRows,'Belum ada pemakaian AI.')}
  <div class="tbkh">Riwayat rinci · maksimal 200 catatan terbaru</div>
@@ -5168,6 +5177,7 @@ function devPemantauanAI(){
  <div class="note"><b>Hapus Riwayat</b> hanya menghapus catatan rinci 30 hari; ringkasan harian dan bulanan tetap ada. <b>Hapus Ringkasan</b> hanya menghapus ringkasan harian/bulanan; riwayat rinci tetap ada. Riwayat lama yang sudah tidak memiliki ringkasan tidak dihitung ulang secara otomatis.</div>
  </div></div>`;
 }
+function aiPilihSekolah(v){S.devAISekolah=String(v||'*');renderV()}
 async function muatAI(){guard(async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'});renderV()})}
 async function aiHapusRiwayat(){
  if(!await konfirmasi('Hapus seluruh riwayat rinci pemakaian AI? Ringkasan harian dan bulanan tidak akan ikut terhapus.',{judul:'Hapus Riwayat AI',ya:'Hapus Riwayat',bahaya:1}))return;
