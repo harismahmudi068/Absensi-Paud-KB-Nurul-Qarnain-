@@ -592,19 +592,51 @@ module.exports = async (req, res) => {
     // ---------------------------------------------------------
     if (b.aksi === 'pemantauan_ai') {
       if (!L.SB || !L.KEY) throw new Error('Konfigurasi Supabase belum lengkap');
-      const [ringkasan, riwayat, pengaman] = await Promise.all([
+      const [ringkasan, riwayat, pengaman, geminiKeys, gangguan, antrean] = await Promise.all([
         L.panggil('/rest/v1/rpc/developer_pemakaian_ai_ringkasan', 'POST', {}),
         L.panggil('/rest/v1/pemakaian_ai_riwayat?select=id,created_at,sekolah_id,sekolah(nama),layanan,model,input_tokens,output_tokens,total_tokens,status,kode_error&order=created_at.desc&limit=200', 'GET'),
-        L.panggil('/rest/v1/rpc/developer_gemini_pengaman', 'POST', {})
+        L.panggil('/rest/v1/rpc/developer_gemini_pengaman', 'POST', {}),
+        L.panggil('/rest/v1/gemini_api_key_sekolah?select=id,sekolah_id,sekolah(nama),label,aktif,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_error,terakhir_berhasil&order=sekolah_id.asc,urutan.asc,id.asc', 'GET'),
+        L.panggil('/rest/v1/gemini_pengaman_sekolah?select=sekolah_id,sekolah(nama),model,status_gangguan,gangguan_mulai,next_retry_at,developer_notified_at,sekolah_notified_at,detail_gangguan,ditangani_oleh,ditangani_pada&status_gangguan=neq.normal&order=gangguan_mulai.desc', 'GET'),
+        L.panggil('/rest/v1/pesan_ai_antrean?select=id,sekolah_id,status,jumlah_percobaan,coba_lagi_pada,dibuat&order=dibuat.asc&limit=500', 'GET')
       ]);
       return res.status(200).json({
         ok: true,
         ringkasan: ringkasan || {},
         riwayat: Array.isArray(riwayat) ? riwayat : [],
         pengaman: Array.isArray(pengaman) ? pengaman : [],
+        gemini_keys: Array.isArray(geminiKeys) ? geminiKeys : [],
+        gangguan: Array.isArray(gangguan) ? gangguan : [],
+        antrean: Array.isArray(antrean) ? antrean : [],
         batas_riwayat_hari: 30,
         diperbarui: new Date().toISOString()
       });
+    }
+
+    if (b.aksi === 'tandai_ai_ditangani') {
+      const sekolahId = Number(b.sekolah_id);
+      if (!Number.isInteger(sekolahId) || sekolahId <= 0) throw new Error('Sekolah tidak valid');
+      const rows = await L.panggil(
+        `/rest/v1/gemini_pengaman_sekolah?sekolah_id=eq.${sekolahId}&model=eq.gemini-3.5-flash-lite&select=sekolah_id,status_gangguan`,
+        'GET'
+      );
+      if (!Array.isArray(rows) || !rows.length || rows[0].status_gangguan === 'normal')
+        throw new Error('Tidak ada insiden AI aktif untuk sekolah ini');
+      await L.panggil(
+        `/rest/v1/gemini_pengaman_sekolah?sekolah_id=eq.${sekolahId}&model=eq.gemini-3.5-flash-lite`,
+        'PATCH',
+        { status_gangguan: 'menunggu_uji', ditangani_oleh: user.id, ditangani_pada: new Date().toISOString() },
+        { Prefer: 'return=minimal' }
+      );
+      await L.panggil('/rest/v1/rpc/gemini_jadwalkan_retry', 'POST', {
+        p_sekolah_id: sekolahId, p_delay_menit: 0
+      });
+      await L.catatLog({
+        pelaku: user.id, sekolah_id: sekolahId,
+        aksi: 'gemini_gangguan_ditangani',
+        rincian: 'Developer menandai insiden AI selesai diperbaiki; sistem dijadwalkan untuk uji ulang'
+      });
+      return res.status(200).json({ ok: true, status: 'menunggu_uji' });
     }
 
     if (b.aksi === 'hapus_riwayat_ai') {
