@@ -615,6 +615,74 @@ module.exports = async (req, res) => {
     }
 
     // ---------------------------------------------------------
+    // TANGANI API KEY GEMINI PERMANEN (khusus Developer + AAL2)
+    // Hanya dilakukan setelah Developer memperbaiki konfigurasi key.
+    // Key tidak dianggap pulih sampai probe otomatis benar-benar berhasil.
+    // ---------------------------------------------------------
+    if (b.aksi === 'tangani_ai_key') {
+      const sekolahId = Number(b.sekolah_id), keyId = Number(b.key_id);
+      if (!Number.isInteger(sekolahId) || sekolahId <= 0 || !Number.isInteger(keyId) || keyId <= 0)
+        throw new Error('Sekolah atau API Key tidak valid');
+      const rows = await L.panggil(
+        `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}&select=id,label,error_permanen,aktif`,
+        'GET'
+      );
+      if (!Array.isArray(rows) || !rows.length) throw new Error('API Key tidak ditemukan pada sekolah tersebut');
+      if (!rows[0].aktif) throw new Error('API Key sedang nonaktif. Aktifkan terlebih dahulu di Pengaturan.');
+      if (rows[0].error_permanen !== true) throw new Error('API Key ini tidak berstatus Perlu Perbaikan.');
+      const waktuTangani = new Date().toISOString();
+      await L.panggil(
+        `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}&error_permanen=eq.true`,
+        'PATCH',
+        { error_permanen: false, dev_notified_at: null, ditangani_oleh: user.id, ditangani_pada: waktuTangani },
+        { Prefer: 'return=minimal' }
+      );
+      try {
+        await L.panggil('/rest/v1/rpc/gemini_jadwalkan_retry', 'POST', {
+          p_sekolah_id: sekolahId, p_delay_menit: 0
+        });
+      } catch (e) {
+        await L.panggil(
+          `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}`,
+          'PATCH',
+          { error_permanen: true, ditangani_oleh: null, ditangani_pada: null },
+          { Prefer: 'return=minimal' }
+        ).catch(() => {});
+        throw new Error('Key belum dijadwalkan untuk diuji ulang: ' + e.message);
+      }
+      await L.catatLog({
+        pelaku: user.id, sekolah_id: sekolahId,
+        aksi: 'gemini_api_key_ditangani',
+        rincian: 'Developer memperbaiki konfigurasi dan menjadwalkan uji ulang ' + rows[0].label
+      });
+      return res.status(200).json({ ok: true, key_id: keyId, status: 'menunggu_uji' });
+    }
+
+    // ---------------------------------------------------------
+    // JADWALKAN PROBE PEMULIHAN SEKARANG (tanpa mengubah status insiden)
+    // Pemeriksaan otomatis dan mode manual tetap mengikuti webhook.
+    // ---------------------------------------------------------
+    if (b.aksi === 'jadwalkan_pemulihan_ai') {
+      const sekolahId = Number(b.sekolah_id);
+      if (!Number.isInteger(sekolahId) || sekolahId <= 0) throw new Error('Sekolah tidak valid');
+      const rows = await L.panggil(
+        `/rest/v1/gemini_pengaman_sekolah?sekolah_id=eq.${sekolahId}&model=eq.gemini-3.5-flash-lite&select=status_gangguan`,
+        'GET'
+      );
+      if (!Array.isArray(rows) || !rows.length || rows[0].status_gangguan === 'normal')
+        throw new Error('Tidak ada gangguan AI aktif untuk sekolah ini');
+      await L.panggil('/rest/v1/rpc/gemini_jadwalkan_retry', 'POST', {
+        p_sekolah_id: sekolahId, p_delay_menit: 0
+      });
+      await L.catatLog({
+        pelaku: user.id, sekolah_id: sekolahId,
+        aksi: 'gemini_probe_manual',
+        rincian: 'Developer menjadwalkan pemeriksaan pemulihan AI; status insiden tidak diubah sebelum probe berhasil'
+      });
+      return res.status(200).json({ ok: true, status: 'probe_dijadwalkan' });
+    }
+
+    // ---------------------------------------------------------
     // PEMANTAUAN STORAGE SUPABASE (khusus Developer + AAL2)
     // ---------------------------------------------------------
     if (b.aksi === 'pemantauan_storage') {
