@@ -247,7 +247,11 @@ async function kirimBalasanWali(target, teks, bahasa) {
   let isi = teks;
   if (perluTerjemah(bahasa)) {
     try {
-      isi = await terjemahkanBalasan({ teks, bahasa, kunciAi: await ambilKunciAiRotasi(), catatPemakaian: catatPemakaianAI, pengamanGemini });
+      isi = await terjemahkanBalasan({
+        teks, bahasa, kunciAi: await ambilKunciAiRotasi(),
+        catatPemakaian: catatPemakaianAI, pengamanGemini,
+        onGangguan: x => notifikasiGangguanKeyDeveloper([x], target, 'Terjemahan balasan')
+      });
     } catch (e) {
       console.error(`Terjemahan ke ${bahasa} gagal, balasan dikirim dalam Bahasa Indonesia:`, e.message);
       isi = teks;
