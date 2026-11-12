@@ -459,7 +459,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
             responseMimeType: 'application/json',
             responseSchema,
             maxOutputTokens: 512,
-            abortSignal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(6000) : undefined
+            abortSignal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined
           }
         })
       });
