@@ -507,25 +507,50 @@ module.exports = async (req, res) => {
     if (b.aksi === 'tes_ai') {
       let balasan = '';
       let keyLabel = '';
+      let idKey = null;
+      let tokenReservasi = null;
       try {
         if (b.legacy === true) {
-          const r = await ambil();
-          if (!r.kunci_ai) throw new Error('API Key Gemini lama tidak ditemukan');
-          balasan = await tesGemini(r.kunci_ai);
-          keyLabel = 'API Key lama';
-        } else {
-          const id = Number(b.id);
-          if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Pilih satu API Key Gemini yang valid');
+          throw new Error('API Key lama belum memiliki pengaman reservasi per akun. Tambahkan sebagai akun Gemini terlebih dahulu sebelum diuji.');
+        }
+
+        idKey = Number(b.id);
+        if (!Number.isSafeInteger(idKey) || idKey <= 0) throw new Error('Pilih satu API Key Gemini yang valid');
+
+        const izin = await panggil('/rest/v1/rpc/gemini_key_ambil_izin', 'POST', {
+          p_sekolah_id: sekolahId,
+          p_id: idKey
+        });
+        if (!izin || izin.allowed !== true) {
+          const detik = Math.max(1, Number(izin && izin.retry_after_seconds) || 1);
+          const sebab = izin && izin.reason;
+          if (sebab === 'busy') throw new Error('API Key sedang dipakai permintaan lain. Coba lagi sekitar ' + detik + ' detik.');
+          if (sebab === 'cooldown' || sebab === 'jeda_antar_permintaan' || sebab === 'batas_lokal_per_menit')
+            throw new Error('API Key masih dalam jeda pengaman. Coba lagi sekitar ' + detik + ' detik.');
+          if (sebab === 'key_tidak_aktif') throw new Error('API Key ini nonaktif dan tidak dapat diuji.');
+          throw new Error('API Key belum dapat digunakan untuk tes (' + (sebab || 'izin ditolak') + ').');
+        }
+        tokenReservasi = izin.reservation_token;
+
+        try {
           const k = await panggil('/rest/v1/rpc/gemini_key_ambil_untuk_tes', 'POST', {
             p_sekolah_id: sekolahId,
-            p_id: id
+            p_id: idKey
           });
           if (!k || !k.api_key) throw new Error('API Key tidak ditemukan pada sekolah ini');
+          keyLabel = k.label || ('API Key #' + idKey);
           balasan = await tesGemini(k.api_key);
-          keyLabel = k.label || ('API Key #' + id);
+        } finally {
+          if (tokenReservasi) {
+            await panggil('/rest/v1/rpc/gemini_key_lepas_izin', 'POST', {
+              p_sekolah_id: sekolahId,
+              p_id: idKey,
+              p_reservation_token: tokenReservasi
+            }).catch(() => {});
+          }
         }
       } catch (e) {
-        await catat(user.id, sekolahId, 'tes_ai', 'Gagal ' + (keyLabel || ('API Key #' + (b.id || 'lama'))) + ': ' + e.message);
+        await catat(user.id, sekolahId, 'tes_ai', 'Gagal ' + (keyLabel || ('API Key #' + (b.id || 'tidak diketahui'))) + ': ' + e.message);
         throw e;
       }
 
