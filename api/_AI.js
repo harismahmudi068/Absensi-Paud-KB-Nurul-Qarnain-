@@ -542,4 +542,34 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
   throw buatErrorAI(gagal);
 }
 
-module.exports = { analisisPesan };
+async function ujiKoneksiGemini({ kunci, pengamanGemini }) {
+  if (!kunci || !kunci.api_key || !Number(kunci.id)) {
+    const e = new Error('API Key pemulihan tidak valid');
+    e.code = 'GEMINI_KEY_INVALID';
+    e.permanen = true;
+    throw e;
+  }
+  const ai = new GoogleGenAI({ apiKey: String(kunci.api_key).trim() });
+  const response = await generateContentDenganPengaman({
+    model: AI_MODEL,
+    apiKeyId: Number(kunci.id),
+    pengamanGemini,
+    generate: () => ai.models.generateContent({
+      model: AI_MODEL,
+      contents: 'Balas hanya dengan satu kata: OK',
+      config: {
+        maxOutputTokens: 8,
+        abortSignal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+          ? AbortSignal.timeout(15000) : undefined
+      }
+    })
+  });
+  if (!String(response?.text || '').trim()) {
+    const e = new Error('Respons uji pemulihan Gemini kosong');
+    e.code = 'RESPONSE_INVALID';
+    throw e;
+  }
+  return true;
+}
+
+module.exports = { analisisPesan, ujiKoneksiGemini };
