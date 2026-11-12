@@ -78,13 +78,13 @@ function pilihToken(b, groupId) {
 
 function nomor(value) { return String(value || '').replace(/\D/g, ''); }
 
-async function sb(path, { method = 'GET', body, prefer } = {}) {
+async function sb(path, { method = 'GET', body, prefer, signal } = {}) {
   if (!SB || !KEY) throw new Error('SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum tersedia');
   const headers = { apikey: KEY, 'Content-Type': 'application/json' };
   if (KEY.startsWith('eyJ')) headers.Authorization = 'Bearer ' + KEY;
   if (prefer) headers.Prefer = prefer;
   const r = await fetch(`${SB}/rest/v1/${path}`, {
-    method, headers, body: body ? JSON.stringify(body) : undefined
+    method, headers, body: body ? JSON.stringify(body) : undefined, signal
   });
   const t = await r.text();
   if (!r.ok) throw new Error(`${r.status} ${t}`);
@@ -97,8 +97,10 @@ async function sb(path, { method = 'GET', body, prefer } = {}) {
 async function catatPemakaianAI(data) {
   const sekolahId = Number(K().sekolahId);
   if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) return;
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(1500) : undefined;
   await sb('rpc/catat_pemakaian_ai', {
     method: 'POST',
+    signal,
     body: {
       p_sekolah_id: sekolahId,
       p_layanan: data.layanan,
