@@ -1171,37 +1171,35 @@ async function notifikasiGangguanKeyDeveloper(daftar, pengirim, namaAnak) {
     console.warn('DEV_WA belum diisi/valid: laporan gangguan API Key dilewati');
     return;
   }
+  const bermasalah=(daftar||[]).filter(x=>x&&x.perluNotifikasi);
+  if(!bermasalah.length)return;
   const sk = await sb(`sekolah?id=eq.${K().sekolahId}&select=nama`).catch(() => []);
   const namaSekolah = sk?.[0]?.nama || ('Sekolah ID ' + K().sekolahId);
-  for (const x of daftar || []) {
-    if (!x.perluNotifikasi) continue;
-    const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
-    const teks = [
-      salam(), '',
-      '🚨 *[DEVELOPER] Gangguan API Key Gemini Sekolah*', '',
-      `🏫 *Sekolah:* ${namaSekolah}`,
-      `🔑 *Nama API Key:* ${x.label || 'Tidak diketahui'}`,
-      `🧾 *Kode error:* ${x.kode || '-'} (${x.http_status || '-'})`,
-      `🕒 *Waktu:* ${waktu} WIB`,
-      `👤 *Pengirim:* ${pengirim || '-'}`,
-      `👧 *Anak:* ${namaAnak || '-'}`,
-      `🔧 *Detail:* ${String(x.detail || '').slice(0,500)}`, '',
-      'Sistem akan mengalihkan percobaan ke API Key lain jika tersedia. Mohon periksa akun Gemini tersebut di menu Pemantauan AI.',
-      '', penutup()
-    ].join('\n');
-    const batch = crypto.randomUUID();
-    await Promise.allSettled(NOMOR_DEVELOPER.map(n =>
-      kirimDanCatat(n, teks, { batch, judul: 'Gangguan API Key Gemini', label: x.label || 'API Key', olehDev: true })
-    ));
-  }
+  const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'medium' });
+  const rincian=bermasalah.map((x,i)=>[
+    `${i+1}. *${x.label||'API Key tidak diketahui'}*`,
+    `   Kode: ${x.kode||'-'} (${x.http_status||'-'})`,
+    `   Detail: ${String(x.detail||'').slice(0,300)}`
+  ].join('\\n')).join('\\n');
+  const teks = [
+    salam(), '',
+    '🚨 *[DEVELOPER] Gangguan API Key Gemini Sekolah*', '',
+    `🏫 *Sekolah:* ${namaSekolah}`,
+    `🕒 *Waktu:* ${waktu} WIB`,
+    `👤 *Pengirim:* ${pengirim || '-'}`,
+    `👧 *Anak:* ${namaAnak || '-'}`,
+    '',
+    '*API Key yang perlu diperiksa:*',
+    rincian, '',
+    'Sistem akan mengalihkan percobaan ke API Key lain jika tersedia. Mohon periksa akun-akun tersebut di menu Pemantauan AI.',
+    '', penutup()
+  ].join('\\n');
+  const batch = crypto.randomUUID();
+  await Promise.allSettled(NOMOR_DEVELOPER.map(n =>
+    kirimDanCatat(n, teks, { batch, judul: 'Gangguan API Key Gemini', label: bermasalah.length+' API Key', olehDev: true })
+  ));
 }
 
-// Mengirim notifikasi ragu ke wali kelas dari anak yang dimaksud (hanya jika kelasnya punya wali).
-// Wali harus anggota aktif sekolah ini, profil aktif, dan punya nomor WhatsApp valid.
-// Gagal di sini TIDAK boleh mengganggu alur utama.
-// Kirim satu pesan lewat Fonnte (langsung atau terjadwal) dan catat ke kirim_log supaya statusnya
-// (terjadwal/terkirim/sampai/terbaca/gagal) muncul di menu Pesan WA dan diperbarui status-kirim.js.
-// Gagal mencatat TIDAK boleh menggagalkan pengiriman. Mengembalikan true bila Fonnte menerima pesan.
 async function kirimDanCatat(target, teks, lg) {
   const hasil = await kirimFonnteRinci(target, teks, lg.jadwal);
   try {
