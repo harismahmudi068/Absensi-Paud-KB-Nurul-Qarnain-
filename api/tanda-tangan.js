@@ -44,7 +44,7 @@ async function fileData(path) {
   const type = String(r.headers.get('content-type') || 'image/png').split(';')[0];
   if (!MIME_EXT[type]) throw new Error('Format tanda tangan tidak didukung');
   const buf = Buffer.from(await r.arrayBuffer());
-  if (!buf.length || buf.length > 524288) throw new Error('Ukuran tanda tangan tidak valid');
+  if (!buf.length || buf.length > 1048576) throw new Error('Ukuran tanda tangan tidak valid (maksimal 1 MB)');
   return 'data:' + type + ';base64,' + buf.toString('base64');
 }
 module.exports = async (req, res) => {
@@ -134,7 +134,7 @@ module.exports = async (req, res) => {
       const m = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/.exec(String(b.data || ''));
       if (!m) return res.status(400).json({ error: 'File harus berupa PNG, JPG, atau WEBP' });
       const buf = Buffer.from(m[2], 'base64');
-      if (!buf.length || buf.length > 524288) return res.status(400).json({ error: 'Ukuran file maksimal 512 KB' });
+      if (!buf.length || buf.length > 1048576) return res.status(400).json({ error: 'Ukuran file maksimal 1 MB' });
       const ext = MIME_EXT[m[1]], path = targetId + '/' + Date.now() + '-' + crypto.randomBytes(4).toString('hex') + '.' + ext;
       await storage('POST', path, buf, m[1]);
       try {
@@ -160,3 +160,7 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: (e && e.message) || 'Terjadi kendala saat mengelola tanda tangan' });
   }
 };
+
+
+// Base64 menambah ukuran payload sekitar 33%; izinkan payload hingga 2 MB agar file 1 MB dapat diunggah.
+module.exports.config = { api: { bodyParser: { sizeLimit: '2mb' } } };
