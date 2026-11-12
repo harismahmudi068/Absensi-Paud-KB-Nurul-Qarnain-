@@ -1467,10 +1467,19 @@ async function bacaStatusGangguanAI() {
   return Array.isArray(rows) && rows[0] ? rows[0] : { status_gangguan: 'normal' };
 }
 
+function hanyaGangguanGuardSingkat(error) {
+  const a=Array.isArray(error?.attempts)?error.attempts:[];
+  return a.length>0&&a.every(x=>{
+    const kode=String(x.kode||'');
+    return kode==='GEMINI_GUARD_BATAS_LOKAL_PER_MENIT' ||
+      kode==='GEMINI_GUARD_JEDA_ANTAR_PERMINTAAN' ||
+      (kode==='GEMINI_GUARD_COOLDOWN'&&Number(x.retry_after_seconds||0)<=60);
+  });
+}
+
 async function simpanAntrianAI({ pesan, dari, payload, kunci, error, cobaLagiPada }) {
   const sekolahId = Number(K().sekolahId);
-  const hanyaGuardLokal = Array.isArray(error?.attempts) && error.attempts.length > 0 &&
-    error.attempts.every(x => String(x.kode || '').startsWith('GEMINI_GUARD_'));
+  const hanyaGuardLokal = hanyaGangguanGuardSingkat(error);
   const jedaMenit = hanyaGuardLokal ? 1 : 15;
   const isi = {
     sekolah_id: sekolahId,
@@ -1509,7 +1518,7 @@ async function kirimNotifikasiGangguanSekolah(sementara, detail) {
     'Untuk sementara, pengelola, kepala sekolah, dan wali kelas dimohon melakukan pencatatan absensi secara manual.',
     '',
     sementara
-      ? (Array.isArray(detail?.attempts)&&detail.attempts.length>0&&detail.attempts.every(x=>String(x.kode||'').startsWith('GEMINI_GUARD_'))
+      ? hanyaGangguanGuardSingkat(detail)
           ? 'Sistem sedang membatasi lonjakan permintaan secara otomatis. Percobaan ulang berikutnya dijadwalkan sekitar 1 menit lagi.'
           : 'Gangguan terdeteksi bersifat sementara. Sistem akan mencoba kembali secara otomatis sekitar 15 menit ke depan. Waktu pemulihan dapat berubah mengikuti kondisi layanan Gemini.')
       : 'Gangguan memerlukan pemeriksaan developer. Developer sudah diberi tahu dan sedang menangani. Kami akan mengirim pemberitahuan kembali setelah perbaikan diuji dan layanan normal.',
@@ -1592,7 +1601,7 @@ async function perbaruiStatusGangguanAI(error) {
   await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`,{method:'PATCH',body,prefer:'return=minimal'});
   const baru=statusLama==='normal';
   // Jadwal bersifat satu kali dan dibuat ulang hanya setelah percobaan gagal.
-  const hanyaGuardLokal=Array.isArray(error?.attempts)&&error.attempts.length>0&&error.attempts.every(x=>String(x.kode||'').startsWith('GEMINI_GUARD_'));
+  const hanyaGuardLokal=hanyaGangguanGuardSingkat(error);
   await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:Number(K().sekolahId),p_delay_menit:hanyaGuardLokal?0:15}})
     .catch(e=>console.error('Jadwal uji ulang Gemini gagal:',e.message));
   return {baru,naikKePermanen,permanen};
