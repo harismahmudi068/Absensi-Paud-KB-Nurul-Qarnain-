@@ -224,6 +224,7 @@ async function kirimBalasanWali(target, teks, bahasa) {
     }
   }
   const hasil = await kirimFonnteRinci(target, isi);
+  if (hasil.ok) await tandaiPesanDibalas();
   await catatBalasan(target, hasil);
   return hasil.ok;
 }
@@ -784,7 +785,40 @@ async function buatRencana(status, waktu, anak = []) {
 }
 
 async function catatPesan(dari, isi, hasil, cek) {
-  await sb('pesan_masuk', { method: 'POST', body: { sekolah_id: K().sekolahId, dari_nomor: dari, isi, hasil, perlu_dicek: cek }, prefer: 'return=minimal' });
+  // Simpan ID setiap catatan pesan pada konteks request ini agar balasan Fonnte
+  // dapat memperbarui baris pesan yang tepat (termasuk bila ada catatan tambahan).
+  const rows = await sb('pesan_masuk', {
+    method: 'POST',
+    body: { sekolah_id: K().sekolahId, dari_nomor: dari, isi, hasil, perlu_dicek: cek },
+    prefer: 'return=representation'
+  });
+  const ids = (Array.isArray(rows) ? rows : [])
+    .map(r => Number(r && r.id))
+    .filter(id => Number.isSafeInteger(id) && id > 0);
+  const c = K();
+  if (!Array.isArray(c.pesanMasukIds)) c.pesanMasukIds = [];
+  c.pesanMasukIds.push(...ids);
+  return ids;
+}
+
+async function tandaiPesanDibalas() {
+  const c = K();
+  const ids = [...new Set((c.pesanMasukIds || [])
+    .map(Number)
+    .filter(id => Number.isSafeInteger(id) && id > 0))];
+  if (!ids.length || !c.sekolahId) return;
+
+  try {
+    await sb(`pesan_masuk?id=in.(${ids.join(',')})&sekolah_id=eq.${c.sekolahId}`, {
+      method: 'PATCH',
+      body: { sudah_dibalas: true, dibalas_pada: new Date().toISOString() },
+      prefer: 'return=minimal'
+    });
+    c.pesanMasukIds = (c.pesanMasukIds || []).filter(id => !ids.includes(Number(id)));
+  } catch (e) {
+    // Kegagalan sinkronisasi tidak boleh mengubah status keberhasilan kirim WhatsApp.
+    console.error('Gagal memperbarui status pesan_masuk setelah balasan terkirim:', e.message || e);
+  }
 }
 
 async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []) {
