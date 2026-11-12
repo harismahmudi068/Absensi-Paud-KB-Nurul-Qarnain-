@@ -24,7 +24,7 @@ function parseRetryGemini(error) {
 
 function klasifikasiErrorGemini(error) {
   const status = Number(error?.status || error?.statusCode || error?.response?.status || 0) || null;
-  const kode = String(error?.code || error?.error?.status || '').toUpperCase();
+  const kode = String(error?.code || error?.status || error?.error?.status || '').toUpperCase();
   const pesan = String(error?.message || '').toLowerCase();
   const kuota = status === 429 || kode === 'RESOURCE_EXHAUSTED'
     || /resource_exhausted|too many requests|rate.?limit|quota exceeded/.test(pesan);
