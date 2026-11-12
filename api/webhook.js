@@ -1467,8 +1467,11 @@ async function bacaStatusGangguanAI() {
   return Array.isArray(rows) && rows[0] ? rows[0] : { status_gangguan: 'normal' };
 }
 
-async function simpanAntrianAI({ pesan, dari, payload, kunci, error }) {
+async function simpanAntrianAI({ pesan, dari, payload, kunci, error, cobaLagiPada }) {
   const sekolahId = Number(K().sekolahId);
+  const hanyaGuardLokal = Array.isArray(error?.attempts) && error.attempts.length > 0 &&
+    error.attempts.every(x => String(x.kode || '').startsWith('GEMINI_GUARD_'));
+  const jedaMenit = hanyaGuardLokal ? 1 : 15;
   const isi = {
     sekolah_id: sekolahId,
     kunci_duplikat: String(kunci || kunciDuplikat(dari,pesan)),
@@ -1476,7 +1479,7 @@ async function simpanAntrianAI({ pesan, dari, payload, kunci, error }) {
     dari_nomor: String(dari || ''),
     isi: String(pesan || ''),
     status: 'menunggu',
-    coba_lagi_pada: new Date(Date.now()+15*60000).toISOString(),
+    coba_lagi_pada: cobaLagiPada || new Date(Date.now()+jedaMenit*60000).toISOString(),
     klaim_sampai: null,
     error_terakhir: error ? String(error.message || error).slice(0,1000) : null,
     diperbarui: new Date().toISOString()
@@ -1506,7 +1509,9 @@ async function kirimNotifikasiGangguanSekolah(sementara, detail) {
     'Untuk sementara, pengelola, kepala sekolah, dan wali kelas dimohon melakukan pencatatan absensi secara manual.',
     '',
     sementara
-      ? 'Gangguan terdeteksi bersifat sementara. Sistem akan mencoba kembali secara otomatis sekitar 15 menit ke depan. Waktu pemulihan dapat berubah mengikuti kondisi layanan Gemini.'
+      ? (Array.isArray(detail?.attempts)&&detail.attempts.length>0&&detail.attempts.every(x=>String(x.kode||'').startsWith('GEMINI_GUARD_'))
+          ? 'Sistem sedang membatasi lonjakan permintaan secara otomatis. Percobaan ulang berikutnya dijadwalkan sekitar 1 menit lagi.'
+          : 'Gangguan terdeteksi bersifat sementara. Sistem akan mencoba kembali secara otomatis sekitar 15 menit ke depan. Waktu pemulihan dapat berubah mengikuti kondisi layanan Gemini.')
       : 'Gangguan memerlukan pemeriksaan developer. Developer sudah diberi tahu dan sedang menangani. Kami akan mengirim pemberitahuan kembali setelah perbaikan diuji dan layanan normal.',
     '',
     'Pesan WhatsApp yang masuk tetap disimpan dalam antrean dan akan diproses setelah AI kembali tersedia.',
@@ -1587,7 +1592,8 @@ async function perbaruiStatusGangguanAI(error) {
   await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`,{method:'PATCH',body,prefer:'return=minimal'});
   const baru=statusLama==='normal';
   // Jadwal bersifat satu kali dan dibuat ulang hanya setelah percobaan gagal.
-  await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:Number(K().sekolahId),p_delay_menit:15}})
+  const hanyaGuardLokal=Array.isArray(error?.attempts)&&error.attempts.length>0&&error.attempts.every(x=>String(x.kode||'').startsWith('GEMINI_GUARD_'));
+  await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:Number(K().sekolahId),p_delay_menit:hanyaGuardLokal?0:15}})
     .catch(e=>console.error('Jadwal uji ulang Gemini gagal:',e.message));
   return {baru,naikKePermanen,permanen};
 }
@@ -1614,7 +1620,7 @@ async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
   const statusGangguan = await bacaStatusGangguanAI();
   if (statusGangguan.status_gangguan !== 'normal' &&
       (!statusGangguan.next_retry_at || Date.now() < new Date(statusGangguan.next_retry_at).getTime())) {
-    await simpanAntrianAI({ pesan, dari, payload, kunci });
+    await simpanAntrianAI({ pesan, dari, payload, kunci, cobaLagiPada: statusGangguan.next_retry_at || null });
     return;
   }
 
