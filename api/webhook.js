@@ -1501,6 +1501,29 @@ module.exports = async (req, res) => {
   if (!ctx) return res.status(401).send('Tidak diizinkan');
   if (ctx.nonaktif) return res.status(200).json({ ok: true });
 
+  // Diagnostik sementara payload Fonnte: hanya metadata, tanpa isi pesan/token/nomor lengkap.
+  try {
+    const b = req.body || {};
+    const mask = (v) => {
+      const s = String(v || '');
+      if (!s) return '';
+      if (s.includes('@g.us')) return s.slice(0, 5) + '…' + s.slice(-8);
+      return s.length > 5 ? s.slice(0, 3) + '…' + s.slice(-2) : '[ada]';
+    };
+    console.log('[FONNTE_PAYLOAD_META]', JSON.stringify({
+      fields: Object.keys(b).sort(),
+      sender: mask(b.sender),
+      senderIsGroupId: String(b.sender || '').includes('@g.us'),
+      member: mask(b.member),
+      memberPresent: Boolean(b.member),
+      group_id: mask(b.group_id),
+      groupId: mask(b.groupId),
+      chat_id: mask(b.chat_id),
+      chatId: mask(b.chatId),
+      messagePresent: Boolean(b.message || b.text)
+    }));
+  } catch (e) { console.error('Gagal mencatat metadata payload Fonnte:', e.message); }
+
   try { await konteks.run(ctx, () => proses(req.body || {})); }
   catch (e) { console.error('Webhook error:', e); }
 
