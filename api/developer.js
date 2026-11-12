@@ -667,9 +667,9 @@ module.exports = async (req, res) => {
       await L.catatLog({
         pelaku: user.id, sekolah_id: sekolahId,
         aksi: 'gemini_gangguan_ditangani',
-        rincian: 'Developer menandai insiden AI selesai diperbaiki; sistem dijadwalkan untuk uji ulang'
+        rincian: 'Developer menjadwalkan probe pemulihan AI; status insiden tetap aktif sampai probe berhasil'
       });
-      return res.status(200).json({ ok: true, status: 'menunggu_uji' });
+      return res.status(200).json({ ok: true, status: 'probe_dijadwalkan' });
     }
 
     if (b.aksi === 'hapus_riwayat_ai') {
