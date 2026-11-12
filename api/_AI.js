@@ -369,7 +369,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
   // Hapus karakter penanda kurung, tetapi pertahankan teks di dalamnya agar nama tetap terbaca.
   const pesanUntukAnalisis = String(pesan || '').replace(/[\[\](){}（）［］｛｝【】〔〕]/g, ' ');
   const daftarKunci = Array.isArray(kunciAi)
-    ? kunciAi.filter(x => x && String(x.api_key || '').trim())
+    ? kunciAi.filter(x => x && x.error_permanen !== true && String(x.api_key || '').trim())
     : (String(kunciAi || '').trim() ? [{ id: null, label: 'API Key sekolah', api_key: String(kunciAi).trim() }] : []);
   if (!daftarKunci.length) {
     const e = new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
