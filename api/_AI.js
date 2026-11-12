@@ -329,7 +329,7 @@ function normalisasi(raw, anak, pesan = '') {
 }
 
 
-async function catatPemakaian(catat, response, status, kodeError) {
+async function simpanPemakaianAI(catat, response, status, kodeError) {
   if (typeof catat !== 'function') return;
   const u = response && response.usageMetadata ? response.usageMetadata : {};
   const angka = v => Number.isFinite(Number(v)) && v !== null && v !== undefined ? Math.max(0, Math.trunc(Number(v))) : null;
@@ -432,8 +432,9 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
     anak_wali: daftarAnak(anak)
   };
 
+  let response = null;
   try {
-    const response = await ai.models.generateContent({
+    response = await ai.models.generateContent({
       model: AI_MODEL,
       contents: JSON.stringify(input),
       config: {
@@ -454,8 +455,12 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
       throw new Error(`Respons Gemini bukan JSON valid: ${content.slice(0, 1000)}`);
     }
 
-    return normalisasi(hasil, anak, pesan);
+    const hasilAkhir = normalisasi(hasil, anak, pesan);
+    await simpanPemakaianAI(catatPemakaian, response, 'berhasil', null);
+    return hasilAkhir;
   } catch (e) {
+    const kode = /json valid|bukan JSON/i.test(String(e && e.message)) ? 'RESPONSE_INVALID' : 'AI_REQUEST_FAILED';
+    await simpanPemakaianAI(catatPemakaian, response, 'gagal', kode);
     throw buatErrorAI(e);
   }
 }
