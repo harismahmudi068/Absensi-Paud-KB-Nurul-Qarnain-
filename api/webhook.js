@@ -1886,7 +1886,14 @@ async function prosesAntrianAI() {
     prefer: 'return=minimal'
   }).catch(() => {});
 
-  if (K().aiRetry) await cobaPemulihanGemini().catch(e=>console.error('Recovery probe error:',e.message));
+  if (K().aiRetry) {
+    await cobaPemulihanGemini().catch(e=>console.error('Recovery probe error:',e.message));
+    const statusSetelahProbe=await bacaStatusGangguanAI();
+    if (statusSetelahProbe.status_gangguan==='gangguan_sementara' && statusSetelahProbe.gangguan_mulai &&
+        Date.now()-new Date(statusSetelahProbe.gangguan_mulai).getTime()>=5*60*1000) {
+      await aktifkanModeManualAI({code:'BATAS_GANGGUAN_5_MENIT'}).catch(e=>console.error('Batas 5 menit AI gagal diterapkan:',e.message));
+    }
+  }
   const statusAwal = await bacaStatusGangguanAI();
   if (['perlu_manual','perlu_developer'].includes(statusAwal.status_gangguan)) {
     const tertunda = await sb(`pesan_ai_antrean?sekolah_id=eq.${sekolahId}&status=in.(menunggu,kedaluwarsa)&order=diterima_pada.asc,id.asc&limit=100`);
