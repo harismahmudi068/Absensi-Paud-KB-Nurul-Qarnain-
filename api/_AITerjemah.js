@@ -16,7 +16,7 @@ const { generateContentDenganPengaman, klasifikasiErrorGemini } = require('./_ge
 // Kunci API dibaca per sekolah dan dikirim oleh Webhook lewat parameter kunciAi.
 // Model dipisah dari AI.js agar bisa diganti ke model yang lebih kuat tanpa mengubah yang lain.
 const AI_MODEL_TERJEMAH = 'gemini-3.5-flash-lite';
-const BATAS_WAKTU_MS = 8000;
+const BATAS_WAKTU_MS = 6000;
 
 
 async function simpanPemakaianAI(catat, response, status, kodeError) {
@@ -58,7 +58,7 @@ ATURAN:
 
 async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian, pengamanGemini, onGangguan }) {
   const daftarKunci = Array.isArray(kunciAi)
-    ? kunciAi.filter(x => x && String(x.api_key || '').trim())
+    ? kunciAi.filter(x => x && String(x.api_key || '').trim()).slice(0,2)
     : (String(kunciAi || '').trim() ? [{id:null,label:'API Key sekolah',api_key:String(kunciAi).trim()}] : []);
   const asli = String(teks || '');
   const tujuan = String(bahasa || '').trim();
