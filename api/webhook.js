@@ -158,6 +158,11 @@ async function catatHasilKeyGemini(data) {
     }
   });
 }
+async function tandaiTerakhirKeyGemini(id, model) {
+  return sb('rpc/gemini_key_tandai_terakhir', {
+    method: 'POST', body: { p_sekolah_id: Number(K().sekolahId), p_id: Number(id), p_model: model }
+  });
+}
 async function ambilKunciAiRotasi() {
   const sekolahId = Number(K().sekolahId);
   if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0) return K().kunciAi || '';
@@ -171,7 +176,8 @@ const pengamanGemini = {
   ambilIzin: ambilIzinGemini,
   catatHasil: catatHasilGemini,
   ambilIzinKey: ambilIzinKeyGemini,
-  catatHasilKey: catatHasilKeyGemini
+  catatHasilKey: catatHasilKeyGemini,
+  tandaiTerakhirKey: tandaiTerakhirKeyGemini
 };
 
 async function kirimFonnteRinci(target, teks, jadwal) {
