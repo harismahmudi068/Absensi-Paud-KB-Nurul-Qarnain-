@@ -17,6 +17,27 @@ const { GoogleGenAI } = require('@google/genai');
 const AI_MODEL_TERJEMAH = 'gemini-3.5-flash-lite';
 const BATAS_WAKTU_MS = 8000;
 
+
+async function catatPemakaian(catat, response, status, kodeError) {
+  if (typeof catat !== 'function') return;
+  const u = response && response.usageMetadata ? response.usageMetadata : {};
+  const angka = v => Number.isFinite(Number(v)) && v !== null && v !== undefined ? Math.max(0, Math.trunc(Number(v))) : null;
+  const adaMetadata = u.promptTokenCount != null || u.candidatesTokenCount != null || u.totalTokenCount != null;
+  try {
+    await catat({
+      layanan: 'terjemahan',
+      model: AI_MODEL_TERJEMAH,
+      input_tokens: angka(u.promptTokenCount),
+      output_tokens: angka(u.candidatesTokenCount),
+      total_tokens: angka(u.totalTokenCount),
+      status: status === 'gagal' ? 'gagal' : (adaMetadata ? 'berhasil' : 'metadata_tidak_tersedia'),
+      kode_error: kodeError || null
+    });
+  } catch (e) {
+    console.warn('Pencatatan pemakaian terjemahan dilewati:', e && e.message ? e.message : 'gagal');
+  }
+}
+
 function buatPrompt(bahasa) {
   return `
 Anda adalah penerjemah balasan WhatsApp sekolah PAUD kepada wali murid.
@@ -34,7 +55,7 @@ ATURAN:
 `;
 }
 
-async function terjemahkanBalasan({ teks, bahasa, kunciAi }) {
+async function terjemahkanBalasan({ teks, bahasa, kunciAi, catatPemakaian }) {
   const AI_API_KEY = String(kunciAi || '').trim();
   const asli = String(teks || '');
   const tujuan = String(bahasa || '').trim();
