@@ -5161,8 +5161,8 @@ function devPemantauanAI(){
  const t=semua?(r.total||{}):(sekolah.find(x=>String(x.sekolah_id)===String(S.devAISekolah))||{});
  const filter=arr=>semua?arr:arr.filter(x=>String(x.sekolah_id)===String(S.devAISekolah));
  const keyNama=id=>{const k=keys.find(x=>Number(x.id)===Number(id));return k?k.label:('Key #'+id)};
- const keyRows=filter(keys).map(x=>'<tr><td><b>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.sekolah?.nama)||('Sekolah '+x.sekolah_id))+'</b></td><td><b>'+esc(x.label||('Key '+x.id))+'</b><div class="mu">ID '+aiAngka(x.id)+' · urutan '+aiAngka(x.urutan)+'</div></td><td>'+aiStatusKey(x)+'</td><td>'+aiWaktu(x.terakhir_dicoba)+'</td><td>'+aiWaktu(x.terakhir_berhasil)+'</td><td>'+aiWaktu(x.cooldown_until)+'</td><td>'+aiAngka(x.jumlah_permintaan_window)+'</td><td>'+(x.error_permanen?esc(x.detail_error||x.kode_error_terakhir||'Perlu diperbaiki'):esc(x.kode_error_terakhir||'—'))+'</td></tr>').join('');
- const gangguanRows=filter(gangguan).map(x=>'<tr><td><b>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.sekolah?.nama)||('Sekolah '+x.sekolah_id))+'</b></td><td>'+esc(x.model||'—')+'</td><td>'+aiBadge(x.status_gangguan||'—',x.status_gangguan==='normal'?'Hadir':'Alpa')+'</td><td>'+esc(x.last_key_id?keyNama(x.last_key_id):'—')+'</td><td>'+aiWaktu(x.gangguan_mulai)+'</td><td>'+aiWaktu(x.next_retry_at)+'</td><td>'+esc(x.detail_gangguan||'—')+'</td></tr>').join('');
+ const keyRows=filter(keys).map(x=>'<tr><td><b>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.sekolah?.nama)||('Sekolah '+x.sekolah_id))+'</b></td><td><b>'+esc(x.label||('Key '+x.id))+'</b><div class="mu">ID '+aiAngka(x.id)+' · urutan '+aiAngka(x.urutan)+'</div></td><td>'+aiStatusKey(x)+'</td><td>'+aiWaktu(x.terakhir_dicoba)+'</td><td>'+aiWaktu(x.terakhir_berhasil)+'</td><td>'+aiWaktu(x.cooldown_until)+'</td><td>'+aiAngka(x.jumlah_permintaan_window)+'</td><td>'+(x.error_permanen?esc(x.detail_error||x.kode_error_terakhir||'Perlu diperbaiki'):esc(x.kode_error_terakhir||'—'))+'</td><td>'+(x.error_permanen?'<button class="btn danger sm" onclick="aiTanganiKey('+Number(x.sekolah_id)+','+Number(x.id)+')">Tangani &amp; uji ulang</button>':'—')+'</td></tr>').join('');
+ const gangguanRows=filter(gangguan).map(x=>'<tr><td><b>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.sekolah?.nama)||('Sekolah '+x.sekolah_id))+'</b></td><td>'+esc(x.model||'—')+'</td><td>'+aiBadge(x.status_gangguan||'—',x.status_gangguan==='normal'?'Hadir':'Alpa')+'</td><td>'+esc(x.last_key_id?keyNama(x.last_key_id):'—')+'</td><td>'+aiWaktu(x.gangguan_mulai)+'</td><td>'+aiWaktu(x.next_retry_at)+'</td><td>'+esc(x.detail_gangguan||'—')+'</td><td>'+(x.status_gangguan!=='normal'?'<button class="btn soft sm" onclick="aiCobaPulih('+Number(x.sekolah_id)+')">Coba pulihkan</button>':'—')+'</td></tr>').join('');
  const queueRows=filter(antrean).map(x=>'<tr><td>'+aiAngka(x.id)+'</td><td>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.sekolah?.nama)||('Sekolah '+x.sekolah_id))+'</td><td>'+esc(x.status||'—')+'</td><td>'+aiAngka(x.jumlah_percobaan)+'</td><td>'+esc(x.api_key_id?keyNama(x.api_key_id):'Belum ditetapkan')+'</td><td>'+aiWaktu(x.coba_lagi_pada)+'</td><td>'+aiWaktu(x.dibuat)+'</td></tr>').join('');
  const pengamanRows=filter(pengaman).map(x=>'<tr><td><b>'+esc(x.nama||('Sekolah '+x.sekolah_id))+'</b></td><td>'+esc(x.model||'—')+'</td><td>'+esc(x.status||'Normal')+'</td><td>'+aiAngka(x.permintaan_60_detik)+' / 10</td><td>'+aiAngka(x.consecutive_429)+'</td><td>'+aiWaktu(x.cooldown_until)+'</td><td>'+esc(x.kode_error_terakhir||'—')+'</td></tr>').join('');
  const usageRows=riwayat.map(x=>{const sk=Array.isArray(x.sekolah)?x.sekolah[0]:x.sekolah;return '<tr><td>'+aiWaktu(x.created_at)+'</td><td>'+esc(sk?.nama||('Sekolah '+x.sekolah_id))+'</td><td>'+esc(x.layanan==='analisis'?'Analisis pesan':'Terjemahan')+'</td><td>'+esc(x.model||'—')+'</td><td>'+aiAngka(x.input_tokens)+'</td><td>'+aiAngka(x.output_tokens)+'</td><td><b>'+aiAngka(x.total_tokens)+'</b></td><td>'+(x.status==='berhasil'?aiBadge('Berhasil','Hadir'):x.status==='metadata_tidak_tersedia'?aiBadge('Metadata tidak tersedia','Belum'):aiBadge('Gagal','Alpa'))+(x.kode_error?'<div class="mu">'+esc(x.kode_error)+'</div>':'')+'</td></tr>'}).join('');
@@ -5171,12 +5171,13 @@ function devPemantauanAI(){
  const stat=(n,l)=>'<div class="card stat"><b>'+aiAngka(n)+'</b>'+l+'</div>';
  return '<div class="panel"><div class="ph">🤖 Pemantauan AI <button class="btn soft sm" onclick="muatAI()">↻ Perbarui sekarang</button></div><div class="pb">'+
  '<div class="note">Terakhir diperbarui: '+aiWaktu(d.diperbarui)+'. Tampilan ini hanya membaca status dan statistik. Isi pesan WhatsApp, nama anak, nomor orang tua, dan nilai API key tidak ditampilkan.</div>'+
+ '<div class="note"><b>Penting:</b> Gangguan sementara tetap diperiksa dan dipulihkan otomatis. Tombol <b>Tangani &amp; uji ulang</b> hanya untuk API key berstatus Perlu Perbaikan setelah konfigurasi diperbaiki. Status layanan baru kembali normal setelah probe berhasil; pemeriksaan hanya menguji satu key per siklus.</div>'+
  '<div class="cards">'+stat(t.jumlah_permintaan,'Total permintaan')+stat(t.jumlah_berhasil,'Berhasil')+stat(t.jumlah_gagal,'Gagal')+stat(t.total_tokens,'Total token')+stat(t.input_tokens,'Token masuk')+stat(t.output_tokens,'Token keluar')+stat(antrean.length,'Pesan dalam antrean')+'</div>'+
  '<div class="tb">Filter sekolah: '+pilih+'</div>'+
  '<div class="tbkh">Status setiap API key Gemini</div>'+
- tab(['Sekolah','Akun API','Status','Terakhir dicoba','Terakhir berhasil','Cooldown sampai','Permintaan window','Error terakhir'],keyRows,'Belum ada API key yang tercatat.')+
+ tab(['Sekolah','Akun API','Status','Terakhir dicoba','Terakhir berhasil','Cooldown sampai','Permintaan window','Error terakhir','Tindakan'],keyRows,'Belum ada API key yang tercatat.')+
  '<div class="tbkh">Status gangguan dan pemulihan AI</div>'+
- tab(['Sekolah','Model','Status layanan','Akun terakhir','Gangguan mulai','Percobaan berikutnya','Keterangan'],gangguanRows,'Tidak ada catatan gangguan AI.')+
+ tab(['Sekolah','Model','Status layanan','Akun terakhir','Gangguan mulai','Percobaan berikutnya','Keterangan','Tindakan'],gangguanRows,'Tidak ada catatan gangguan AI.')+
  '<div class="tbkh">Antrean pemrosesan AI · maksimal 500 pesan terbaru</div>'+
  tab(['ID antrean','Sekolah','Status','Percobaan','API key','Coba lagi','Dibuat'],queueRows,'Antrean kosong.')+
  '<div class="tbkh">Pengaman kuota Gemini</div>'+
@@ -5192,6 +5193,24 @@ function devPemantauanAI(){
 }
 function aiPilihSekolah(v){S.devAISekolah=String(v||'*');renderV()}
 async function muatAI(){guard(async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'});renderV()})}
+async function aiTanganiKey(sekolahId,keyId){
+ const k=(S.devAI&&S.devAI.gemini_keys||[]).find(x=>Number(x.id)===Number(keyId)&&Number(x.sekolah_id)===Number(sekolahId));
+ if(!k||!k.error_permanen)return toast('API Key ini tidak lagi berstatus Perlu Perbaikan',false);
+ if(!await konfirmasi('Pastikan konfigurasi API Key '+(k.label||keyId)+' sudah diperbaiki di Pengaturan. Sistem akan mengizinkan satu uji pemulihan terkontrol. Jika masih gagal, key akan kembali ditandai Perlu Perbaikan. Lanjutkan?',{judul:'Tangani API Key',ya:'Tandai diperbaiki & uji ulang'}))return;
+ guard(async()=>{
+  await apiDev({aksi:'tangani_ai_key',sekolah_id:Number(sekolahId),key_id:Number(keyId)});
+  S.devAI=await apiDev({aksi:'pemantauan_ai'});
+  renderV();toast('Uji pemulihan dijadwalkan. Status normal menunggu hasil probe.');
+ });
+}
+async function aiCobaPulih(sekolahId){
+ if(!await konfirmasi('Jadwalkan pemeriksaan pemulihan AI sekarang? Status mode manual tidak akan dinonaktifkan sebelum probe berhasil.',{judul:'Pemeriksaan pemulihan AI',ya:'Jadwalkan pemeriksaan'}))return;
+ guard(async()=>{
+  await apiDev({aksi:'jadwalkan_pemulihan_ai',sekolah_id:Number(sekolahId)});
+  S.devAI=await apiDev({aksi:'pemantauan_ai'});
+  renderV();toast('Pemeriksaan pemulihan dijadwalkan.');
+ });
+}
 
 
 function statusAlpa(x){if(x.status_sekolah!=='aktif')return['off','Non-Aktif','Sekolah nonaktif'];if(!x.alpa_aktif)return['off','Non-Aktif','Alpa otomatis dimatikan di Pengaturan sekolah'];
