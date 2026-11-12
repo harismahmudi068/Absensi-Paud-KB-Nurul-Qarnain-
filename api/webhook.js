@@ -2051,6 +2051,16 @@ module.exports = async (req, res) => {
   if (!ctx) return res.status(401).send('Tidak diizinkan');
   if (ctx.nonaktif) return res.status(200).json({ ok: true });
 
+  if (req.body && req.body.__ai_recovery_confirmed === true) {
+    try {
+      const pulih = await konteks.run(ctx, () => pulihkanStatusGangguanAI());
+      return res.status(200).json({ok:true,ai_recovered:pulih});
+    } catch(e) {
+      console.error('Konfirmasi pemulihan AI gagal:',e);
+      return res.status(200).json({ok:false,ai_recovered:false});
+    }
+  }
+
   if (req.body && req.body.__ai_retry === true) {
     try {
       const hasil = await konteks.run({...ctx,aiRetry:true}, () => prosesAntrianAI());
