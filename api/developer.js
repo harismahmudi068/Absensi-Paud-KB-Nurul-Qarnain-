@@ -596,7 +596,7 @@ module.exports = async (req, res) => {
         L.panggil('/rest/v1/rpc/developer_pemakaian_ai_ringkasan', 'POST', {}),
         L.panggil('/rest/v1/pemakaian_ai_riwayat?select=id,created_at,sekolah_id,sekolah(nama),layanan,model,input_tokens,output_tokens,total_tokens,status,kode_error&order=created_at.desc&limit=200', 'GET'),
         L.panggil('/rest/v1/rpc/developer_gemini_pengaman', 'POST', {}),
-        L.panggil('/rest/v1/gemini_api_key_sekolah?select=id,sekolah_id,sekolah(nama),label,aktif,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_error,terakhir_berhasil&order=sekolah_id.asc,urutan.asc,id.asc', 'GET'),
+        L.panggil('/rest/v1/gemini_api_key_sekolah?select=id,sekolah_id,sekolah(nama),label,aktif,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_error,terakhir_berhasil,cooldown_until,jumlah_permintaan_window,next_allowed_at,consecutive_429&order=sekolah_id.asc,urutan.asc,id.asc', 'GET'),
         L.panggil('/rest/v1/gemini_pengaman_sekolah?select=sekolah_id,sekolah(nama),model,status_gangguan,gangguan_mulai,next_retry_at,developer_notified_at,sekolah_notified_at,detail_gangguan,ditangani_oleh,ditangani_pada&status_gangguan=neq.normal&order=gangguan_mulai.desc', 'GET'),
         L.panggil('/rest/v1/pesan_ai_antrean?select=id,sekolah_id,status,jumlah_percobaan,coba_lagi_pada,dibuat&order=dibuat.asc&limit=500', 'GET')
       ]);
