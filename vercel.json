@@ -1,7 +1,6 @@
 {
   "regions": [
     "sin1"
-  
   ],
   "functions": {
     "api/guru.js": {
@@ -9,6 +8,9 @@
     },
     "api/notif-siswa.js": {
       "maxDuration": 30
+    },
+    "api/webhook.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
