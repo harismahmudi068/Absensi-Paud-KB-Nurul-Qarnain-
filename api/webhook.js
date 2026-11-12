@@ -1563,17 +1563,18 @@ async function perbaruiStatusGangguanAI(error) {
   const statusBaru=permanen?'perlu_developer':'gangguan_sementara';
   const statusLama=sebelum.status_gangguan||'normal';
   const naikKePermanen=statusLama==='gangguan_sementara'&&permanen;
+  const statusSimpan=statusLama==='perlu_developer'?'perlu_developer':statusBaru;
   const body={
-    status_gangguan:(statusLama==='perlu_developer'||statusLama==='menunggu_uji')?statusLama:statusBaru,
+    status_gangguan:statusSimpan,
     gangguan_mulai:sebelum.gangguan_mulai||new Date().toISOString(),
     detail_gangguan:{attempts:error?.attempts||[],kode:error?.code||'AI_REQUEST_FAILED',sementara:!!error?.semuaSementara},
     diperbarui:new Date().toISOString()
   };
   await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`,{method:'PATCH',body,prefer:'return=minimal'});
   const baru=statusLama==='normal';
-  if(baru||naikKePermanen) {
-    await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:Number(K().sekolahId),p_delay_menit:15}}).catch(e=>console.error('Jadwal uji ulang Gemini gagal:',e.message));
-  }
+  // Jadwal bersifat satu kali dan dibuat ulang hanya setelah percobaan gagal.
+  await sb('rpc/gemini_jadwalkan_retry',{method:'POST',body:{p_sekolah_id:Number(K().sekolahId),p_delay_menit:15}})
+    .catch(e=>console.error('Jadwal uji ulang Gemini gagal:',e.message));
   return {baru,naikKePermanen,permanen};
 }
 
@@ -1622,10 +1623,20 @@ async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
         console.error('Gagal memperbarui status gangguan AI:', err.message);
         return { baru: false, permanen: !!e.permanen };
       });
-      const keyBermasalah = (e.attempts || []).filter(x => x.perluNotifikasi);
+      let keyBermasalah = (e.attempts || []).filter(x => x.perluNotifikasi);
+      if (!keyBermasalah.length && !e.semuaSementara) {
+        keyBermasalah = [{
+          label: 'Konfigurasi AI sekolah', kode: e.code || 'AI_CONFIGURATION_ERROR',
+          http_status: null, detail: e.message || 'Konfigurasi seluruh API Key perlu diperiksa',
+          perluNotifikasi: true
+        }];
+      }
       if (keyBermasalah.length) {
         await notifikasiGangguanKeyDeveloper(keyBermasalah, dari, nama)
           .catch(err => console.error('Gagal melaporkan error API Key ke developer:', err.message));
+        await sb(`gemini_pengaman_sekolah?sekolah_id=eq.${K().sekolahId}&model=eq.gemini-3.5-flash-lite`,{
+          method:'PATCH',body:{developer_notified_at:new Date().toISOString()},prefer:'return=minimal'
+        }).catch(()=>{});
       }
       if (status.baru) {
         await kirimNotifikasiGangguanSekolah(!!e.semuaSementara, e)
