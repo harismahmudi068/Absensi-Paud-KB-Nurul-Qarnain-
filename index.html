@@ -4898,6 +4898,7 @@ const DEVSET={
  kirim:async()=>{S.devKirim=await dbq(db.rpc('developer_kirim_log',{p_batas:300,p_sekolah:devKirimSek?Number(devKirimSek):null})).catch(ERR)},
  simpan:async()=>{S.devSimpan=await dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(ERR)},
  storage:async()=>{S.devStorage=await apiDev({aksi:'pemantauan_storage'}).catch(ERR)},
+ ai:async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'}).catch(ERR)},
  alpa:async()=>{S.devAlpa=await dbq(db.rpc('developer_alpa')).catch(ERR)},
  nl:async()=>{S.devNL=await dbq(db.rpc('developer_notif_libur')).catch(ERR)},
  np:async()=>{S.devNP=await dbq(db.rpc('developer_notif_piket')).catch(ERR)},
@@ -4909,7 +4910,7 @@ const DEVSET={
  kal:async()=>{await muatKalNas().catch(()=>{})},
  profil:async()=>{await muatProfilSaya()}
 };
-const DEV_BUTUH={dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
+const DEV_BUTUH={ai:['ai'],dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
 const DEVT={};
 function devButuh(){const t=devTab==='ringkas'?'setuju':devTab;
  const b=view==='developer'?(DEV_BUTUH[t]||[]):view==='dashboard'?DEV_BUTUH.dashboard:view==='profil'?['profil']:[];
@@ -4918,7 +4919,7 @@ const devSegar=k=>{const e=DEVT[k];return !!e&&e.v===cmVer&&Date.now()-e.t<CM_TT
 async function devPastikan(keys,paksa){const perlu=keys.filter(k=>paksa||!devSegar(k));if(!perlu.length)return false;
  const v0=cmVer;await Promise.all(perlu.map(async k=>{await DEVSET[k]();DEVT[k]={t:Date.now(),v:v0}}));return true}
 async function muatDev(){await devPastikan(devButuh(),true)}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','📤 Riwayat Kirim'],['log','📜 Log'],['sistem','🩺 Sistem']];
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','📤 Riwayat Kirim'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
 function devBuka(k){drw(0);kalReset();devTab=k;if(k==='perangkat'){HPF.mode=false;HPF.sel.clear()}if(view==='developer'){const b=devButuh();if(b.every(devSegar)){renderAll();scrollTo(0,0);kedipHalaman()}else guard(async()=>{await devPastikan(b);renderAll();scrollTo(0,0);kedipHalaman()})}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
@@ -4964,7 +4965,7 @@ function ubahLiburNas(t){const r=(S.devKal||[]).find(x=>x.tanggal===t);if(!r)ret
 async function hapusLiburNas(t){if(!await konfirmasi('Hapus libur nasional '+fmt(t)+'?',{judul:'Hapus libur nasional',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.rpc('libur_nasional_hapus',{p_tanggal:t}));await muatKalNas();renderV();toast('Libur nasional dihapus')})}
 function segarDev(){drw(0);guard(async()=>{cmKosong();await muatDev();renderV();toast('Data diperbarui')})}
 V.developer=()=>{if(devTab==='ringkas')devTab='setuju';
- return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,hapus:devHapus,kirim:devKirim,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
+ return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,ai:devPemantauanAI,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,hapus:devHapus,kirim:devKirim,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
 function renderNavDev(){
  const nm=(Array.isArray(S.devPend)?S.devPend:[]).length+(Array.isArray(S.devNomor)?S.devNomor:[]).length,bd=nm?` <span class="badge Belum">${nm}</span>`:'';
  const itm=(on,fn,ic,lb,ex)=>`<button class="${on?'on':''}" onclick="${fn}"><span>${ic}</span>${lb}${ex||''}</button>`,dv=k=>view==='developer'&&devTab===k;
@@ -5137,6 +5138,46 @@ function devPenyimpanan(){const d=S.devSimpan,st=S.devStorage;
  <div class="panel"><div class="ph">🗂 Semua tabel <span class="mu">${tbl.length} tabel</span></div><div class="pb">${tab(['Tabel','Ukuran','Jumlah baris','Disimpan'],tbl.slice().sort((a,b)=>(Number(b.ukuran)||0)-(Number(a.ukuran)||0)).map(x=>{const r=RET_MAP[String(x.nama).replace(/^public\./,'')];return `<tr><td><b>${esc(x.nama)}</b></td><td>${fmtBy(x.ukuran)}</td><td>${x.baris}</td><td>${r?r[1]:(SIMPAN_LAIN[String(x.nama).replace(/^public\./,'')]||'Permanen')}</td></tr>`}).join(''))}<div class="note" style="margin-top:8px">Daftar Disimpan menunjukkan retensi otomatis yang berlaku saat ini. Tabel berlabel Permanen tidak masuk jadwal pembersihan otomatis. Absensi, tabungan, dan setoran hafalan disimpan sampai proses tahun ajaran baru atau tindakan hapus khusus Developer/Kepala Sekolah yang tersedia.</div></div></div>${storagePanel}${storageSekolah}`;
 }
 function perbaruiPemakaian(){guard(async()=>{await dbq(db.rpc('developer_perbarui_pemakaian'));cmKosong();await muatDev();toast('Data database dan Storage diperbarui');renderV()})}
+
+function aiAngka(v){return Number(v||0).toLocaleString('id-ID')}
+function aiStatus(v){return v==='gagal'?'<span class="badge Alpa">Gagal</span>':v==='metadata_tidak_tersedia'?'<span class="badge Belum">Metadata tidak tersedia</span>':'<span class="badge Hadir">Berhasil</span>'}
+function devPemantauanAI(){
+ const d=S.devAI;
+ if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat pemantauan pemakaian AI...</div></div></div>';
+ if(d.error)return `<div class="panel"><div class="ph">🤖 Pemantauan AI</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan migrasi pemantauan_ai sudah diterapkan pada Supabase.</div><button class="btn soft sm" onclick="muatAI()">↻ Coba lagi</button></div></div>`;
+ const r=d.ringkasan||{},t=r.total||{},harian=r.harian||[],bulanan=r.bulanan||[],sekolah=r.per_sekolah||[],riwayat=d.riwayat||[];
+ const stat=(n,l)=>`<div class="card stat"><b>${aiAngka(n)}</b>${l}</div>`;
+ const rows=(ls)=>ls.map(x=>`<tr><td>${esc(String(x.tanggal||x.bulan||'').slice(0,10))}</td><td>${aiAngka(x.jumlah_permintaan)}</td><td>${aiAngka(x.jumlah_berhasil)}</td><td>${aiAngka(x.jumlah_gagal)}</td><td>${aiAngka(x.input_tokens)}</td><td>${aiAngka(x.output_tokens)}</td><td><b>${aiAngka(x.total_tokens)}</b></td></tr>`).join('');
+ const sekolahRows=sekolah.map(x=>`<tr><td><b>${esc(x.nama||('Sekolah '+x.sekolah_id))}</b></td><td>${aiAngka(x.jumlah_permintaan)}</td><td>${aiAngka(x.jumlah_gagal)}</td><td>${aiAngka(x.input_tokens)}</td><td>${aiAngka(x.output_tokens)}</td><td><b>${aiAngka(x.total_tokens)}</b></td></tr>`).join('');
+ const riwayatRows=riwayat.map(x=>{const sk=Array.isArray(x.sekolah)?x.sekolah[0]:x.sekolah;return `<tr><td>${waktuId(x.created_at)}</td><td>${esc(sk&&sk.nama||('Sekolah '+x.sekolah_id))}</td><td>${x.layanan==='analisis'?'Analisis pesan':'Terjemahan'}</td><td>${esc(x.model||'-')}</td><td>${x.input_tokens==null?'—':aiAngka(x.input_tokens)}</td><td>${x.output_tokens==null?'—':aiAngka(x.output_tokens)}</td><td>${x.total_tokens==null?'—':aiAngka(x.total_tokens)}</td><td>${aiStatus(x.status)}${x.kode_error?'<div class="mu">'+esc(x.kode_error)+'</div>':''}</td></tr>`}).join('');
+ return `<div class="panel"><div class="ph">🤖 Pemantauan Pemakaian AI <button class="btn soft sm" onclick="muatAI()">↻ Muat ulang</button></div><div class="pb">
+ <div class="note">Data ini khusus Developer. Yang disimpan hanya jumlah permintaan, model, token, status, dan sekolah. Isi pesan WhatsApp, nama anak, nomor orang tua, serta kunci API tidak disimpan. Riwayat rinci otomatis dihapus setelah 30 hari; ringkasan harian dan bulanan tetap tersimpan sampai dihapus manual.</div>
+ <div class="cards">${stat(t.jumlah_permintaan,'Total permintaan')}${stat(t.jumlah_berhasil,'Berhasil')}${stat(t.jumlah_gagal,'Gagal')}${stat(t.total_tokens,'Total token')}${stat(t.input_tokens,'Token masuk')}${stat(t.output_tokens,'Token keluar')}</div>
+ <div class="tbkh">Ringkasan harian · 31 hari terakhir</div>
+ ${tab(['Tanggal','Permintaan','Berhasil','Gagal','Token masuk','Token keluar','Total token'],rows(harian),'Belum ada ringkasan harian.')}
+ <div class="tbkh">Ringkasan bulanan · disimpan permanen</div>
+ ${tab(['Bulan','Permintaan','Berhasil','Gagal','Token masuk','Token keluar','Total token'],rows(bulanan),'Belum ada ringkasan bulanan.')}
+ <div class="tbkh">Pemakaian per sekolah · sepanjang waktu</div>
+ ${tab(['Sekolah','Permintaan','Gagal','Token masuk','Token keluar','Total token'],sekolahRows,'Belum ada pemakaian AI.')}
+ <div class="tbkh">Riwayat rinci · maksimal 200 catatan terbaru</div>
+ ${tab(['Waktu','Sekolah','Layanan','Model','Token masuk','Token keluar','Total token','Status'],riwayatRows,'Belum ada riwayat pemakaian AI.')}
+ <div class="note">Token ditampilkan sesuai metadata penggunaan yang dikembalikan Gemini. Bila metadata tidak tersedia, nilainya ditandai “—” dan tidak dibuatkan angka perkiraan. Ringkasan bulanan dihitung dari ringkasan harian.</div>
+ </div></div>
+ <div class="panel"><div class="ph">🧹 Pengelolaan data pemantauan</div><div class="pb">
+ <div class="tb" style="flex-wrap:wrap"><button class="btn danger sm" onclick="aiHapusRiwayat()">🗑 Hapus Riwayat</button><button class="btn danger sm" onclick="aiHapusRingkasan()">🗑 Hapus Ringkasan</button></div>
+ <div class="note"><b>Hapus Riwayat</b> hanya menghapus catatan rinci 30 hari; ringkasan harian dan bulanan tetap ada. <b>Hapus Ringkasan</b> hanya menghapus ringkasan harian/bulanan; riwayat rinci tetap ada. Riwayat lama yang sudah tidak memiliki ringkasan tidak dihitung ulang secara otomatis.</div>
+ </div></div>`;
+}
+async function muatAI(){guard(async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'});renderV()})}
+async function aiHapusRiwayat(){
+ if(!await konfirmasi('Hapus seluruh riwayat rinci pemakaian AI? Ringkasan harian dan bulanan tidak akan ikut terhapus.',{judul:'Hapus Riwayat AI',ya:'Hapus Riwayat',bahaya:1}))return;
+ guard(async()=>{const r=await apiDev({aksi:'hapus_riwayat_ai'});S.devAI=await apiDev({aksi:'pemantauan_ai'});toast('Riwayat dihapus: '+aiAngka(r.jumlah)+' catatan. Ringkasan tetap dipertahankan.');renderV()})
+}
+async function aiHapusRingkasan(){
+ if(!await konfirmasi('Hapus seluruh ringkasan harian dan bulanan pemakaian AI? Riwayat rinci tidak akan ikut terhapus. Ringkasan lama tidak dapat dibangun ulang otomatis dari riwayat.',{judul:'Hapus Ringkasan AI',ya:'Hapus Ringkasan',bahaya:1}))return;
+ guard(async()=>{const r=await apiDev({aksi:'hapus_ringkasan_ai'});S.devAI=await apiDev({aksi:'pemantauan_ai'});toast('Ringkasan dihapus: '+aiAngka(r.jumlah)+' baris. Riwayat tetap dipertahankan.');renderV()})
+}
+
 function statusAlpa(x){if(x.status_sekolah!=='aktif')return['off','Non-Aktif','Sekolah nonaktif'];if(!x.alpa_aktif)return['off','Non-Aktif','Alpa otomatis dimatikan di Pengaturan sekolah'];
  if(!x.cron_ada)return['err','Error','Jadwal cron belum terbentuk. Tekan Sinkron ulang jadwal'];if(!x.cron_aktif)return['err','Error','Jadwal cron tidak aktif. Tekan Sinkron ulang jadwal'];
  if(x.terakhir_status==='failed')return['err','Error','Eksekusi terakhir gagal: '+(x.terakhir_pesan||'')];
