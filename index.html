@@ -4895,6 +4895,7 @@ const DEVSET={
  kirim:async()=>{S.devKirim=await dbq(db.rpc('developer_kirim_log',{p_batas:300,p_sekolah:devKirimSek?Number(devKirimSek):null})).catch(ERR)},
  simpan:async()=>{S.devSimpan=await dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(ERR)},
  storage:async()=>{S.devStorage=await apiDev({aksi:'pemantauan_storage'}).catch(ERR)},
+ ai:async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'}).catch(ERR)},
  alpa:async()=>{S.devAlpa=await dbq(db.rpc('developer_alpa')).catch(ERR)},
  nl:async()=>{S.devNL=await dbq(db.rpc('developer_notif_libur')).catch(ERR)},
  np:async()=>{S.devNP=await dbq(db.rpc('developer_notif_piket')).catch(ERR)},
@@ -4906,7 +4907,7 @@ const DEVSET={
  kal:async()=>{await muatKalNas().catch(()=>{})},
  profil:async()=>{await muatProfilSaya()}
 };
-const DEV_BUTUH={dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
+const DEV_BUTUH={ai:['ai'],dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
 const DEVT={};
 function devButuh(){const t=devTab==='ringkas'?'setuju':devTab;
  const b=view==='developer'?(DEV_BUTUH[t]||[]):view==='dashboard'?DEV_BUTUH.dashboard:view==='profil'?['profil']:[];
@@ -4915,7 +4916,7 @@ const devSegar=k=>{const e=DEVT[k];return !!e&&e.v===cmVer&&Date.now()-e.t<CM_TT
 async function devPastikan(keys,paksa){const perlu=keys.filter(k=>paksa||!devSegar(k));if(!perlu.length)return false;
  const v0=cmVer;await Promise.all(perlu.map(async k=>{await DEVSET[k]();DEVT[k]={t:Date.now(),v:v0}}));return true}
 async function muatDev(){await devPastikan(devButuh(),true)}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','📤 Riwayat Kirim'],['log','📜 Log'],['sistem','🩺 Sistem']];
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','📤 Riwayat Kirim'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
 function devBuka(k){drw(0);kalReset();devTab=k;if(k==='perangkat'){HPF.mode=false;HPF.sel.clear()}if(view==='developer'){const b=devButuh();if(b.every(devSegar)){renderAll();scrollTo(0,0);kedipHalaman()}else guard(async()=>{await devPastikan(b);renderAll();scrollTo(0,0);kedipHalaman()})}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
@@ -4961,7 +4962,7 @@ function ubahLiburNas(t){const r=(S.devKal||[]).find(x=>x.tanggal===t);if(!r)ret
 async function hapusLiburNas(t){if(!await konfirmasi('Hapus libur nasional '+fmt(t)+'?',{judul:'Hapus libur nasional',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.rpc('libur_nasional_hapus',{p_tanggal:t}));await muatKalNas();renderV();toast('Libur nasional dihapus')})}
 function segarDev(){drw(0);guard(async()=>{cmKosong();await muatDev();renderV();toast('Data diperbarui')})}
 V.developer=()=>{if(devTab==='ringkas')devTab='setuju';
- return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,hapus:devHapus,kirim:devKirim,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
+ return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,ai:devPemantauanAI,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,hapus:devHapus,kirim:devKirim,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
 function renderNavDev(){
  const nm=(Array.isArray(S.devPend)?S.devPend:[]).length+(Array.isArray(S.devNomor)?S.devNomor:[]).length,bd=nm?` <span class="badge Belum">${nm}</span>`:'';
  const itm=(on,fn,ic,lb,ex)=>`<button class="${on?'on':''}" onclick="${fn}"><span>${ic}</span>${lb}${ex||''}</button>`,dv=k=>view==='developer'&&devTab===k;
@@ -5134,6 +5135,64 @@ function devPenyimpanan(){const d=S.devSimpan,st=S.devStorage;
  <div class="panel"><div class="ph">🗂 Semua tabel <span class="mu">${tbl.length} tabel</span></div><div class="pb">${tab(['Tabel','Ukuran','Jumlah baris','Disimpan'],tbl.slice().sort((a,b)=>(Number(b.ukuran)||0)-(Number(a.ukuran)||0)).map(x=>{const r=RET_MAP[String(x.nama).replace(/^public\./,'')];return `<tr><td><b>${esc(x.nama)}</b></td><td>${fmtBy(x.ukuran)}</td><td>${x.baris}</td><td>${r?r[1]:(SIMPAN_LAIN[String(x.nama).replace(/^public\./,'')]||'Permanen')}</td></tr>`}).join(''))}<div class="note" style="margin-top:8px">Daftar Disimpan menunjukkan retensi otomatis yang berlaku saat ini. Tabel berlabel Permanen tidak masuk jadwal pembersihan otomatis. Absensi, tabungan, dan setoran hafalan disimpan sampai proses tahun ajaran baru atau tindakan hapus khusus Developer/Kepala Sekolah yang tersedia.</div></div></div>${storagePanel}${storageSekolah}`;
 }
 function perbaruiPemakaian(){guard(async()=>{await dbq(db.rpc('developer_perbarui_pemakaian'));cmKosong();await muatDev();toast('Data database dan Storage diperbarui');renderV()})}
+
+function aiAngka(v){return Number(v||0).toLocaleString('id-ID')}
+function aiWaktu(v){return v?new Date(v).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'short',timeStyle:'medium'}):'—'}
+function aiBadge(teks,warna){return '<span class="badge '+warna+'">'+esc(teks)+'</span>'}
+function aiStatusKey(x){
+ const now=Date.now();
+ if(x.error_permanen)return aiBadge('Perlu perbaikan','Alpa');
+ if(!x.aktif)return aiBadge('Nonaktif','Belum');
+ if(x.cooldown_until&&new Date(x.cooldown_until).getTime()>now)return aiBadge('Cooldown kuota','Alpa');
+ if(x.reservasi_sampai&&new Date(x.reservasi_sampai).getTime()>now)return aiBadge('Sedang dipakai','Belum');
+ if(x.status_terakhir==='berhasil')return aiBadge('Normal','Hadir');
+ if(x.kode_error_terakhir)return aiBadge('Gangguan sementara','Belum');
+ return aiBadge('Belum diuji','Belum');
+}
+function devPemantauanAI(){
+ const d=S.devAI;
+ if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat pemantauan AI...</div></div></div>';
+ if(d.error)return '<div class="panel"><div class="ph">🤖 Pemantauan AI</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div><button class="btn soft sm" onclick="muatAI()">↻ Coba lagi</button></div></div>';
+ const r=d.ringkasan||{},t=r.total||{},keys=d.gemini_keys||[],gangguan=d.gangguan||[],antrean=d.antrean||[],pengaman=d.pengaman||[],riwayat=d.riwayat||[],sekolah=r.per_sekolah||[];
+ S.devAISekolah=S.devAISekolah||'*';
+ const opsi=[{value:'*',label:'Semua sekolah'},...sekolah.map(x=>({value:String(x.sekolah_id),label:x.nama||('Sekolah '+x.sekolah_id)}))];
+ const pilih=cpick('aiSekolahPick','sekolah',S.devAISekolah,opsi,'aiPilihSekolah','Pilih sekolah');
+ const semua=S.devAISekolah==='*';
+ const filter=arr=>semua?arr:arr.filter(x=>String(x.sekolah_id)===String(S.devAISekolah));
+ const keyNama=id=>{const k=keys.find(x=>Number(x.id)===Number(id));return k?k.label:('Key #'+id)};
+ const keyRows=filter(keys).map(x=>'<tr><td><b>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.sekolah?.nama)||('Sekolah '+x.sekolah_id))+'</b></td><td><b>'+esc(x.label||('Key '+x.id))+'</b><div class="mu">ID '+aiAngka(x.id)+' · urutan '+aiAngka(x.urutan)+'</div></td><td>'+aiStatusKey(x)+'</td><td>'+aiWaktu(x.terakhir_dicoba)+'</td><td>'+aiWaktu(x.terakhir_berhasil)+'</td><td>'+aiWaktu(x.cooldown_until)+'</td><td>'+(x.error_permanen?esc(x.detail_error||x.kode_error_terakhir||'Perlu diperbaiki'):esc(x.kode_error_terakhir||'—'))+'</td></tr>').join('');
+ const gangguanRows=filter(gangguan).map(x=>'<tr><td><b>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.sekolah?.nama)||('Sekolah '+x.sekolah_id))+'</b></td><td>'+esc(x.model||'—')+'</td><td>'+aiBadge(x.status_gangguan||'—',x.status_gangguan==='normal'?'Hadir':'Alpa')+'</td><td>'+aiWaktu(x.gangguan_mulai)+'</td><td>'+aiWaktu(x.next_retry_at)+'</td><td>'+esc(x.detail_gangguan||'—')+'</td></tr>').join('');
+ const queueRows=filter(antrean).map(x=>'<tr><td>'+aiAngka(x.id)+'</td><td>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.sekolah?.nama)||('Sekolah '+x.sekolah_id))+'</td><td>'+esc(x.status||'—')+'</td><td>'+aiAngka(x.jumlah_percobaan)+'</td><td>'+esc(x.api_key_id?keyNama(x.api_key_id):'Belum ditetapkan')+'</td><td>'+aiWaktu(x.coba_lagi_pada)+'</td><td>'+aiWaktu(x.dibuat)+'</td></tr>').join('');
+ const pengamanRows=filter(pengaman).map(x=>'<tr><td><b>'+esc(x.nama||('Sekolah '+x.sekolah_id))+'</b></td><td>'+esc(x.model||'—')+'</td><td>'+esc(x.status||'Normal')+'</td><td>'+aiAngka(x.permintaan_60_detik)+' / 10</td><td>'+aiAngka(x.consecutive_429)+'</td><td>'+aiWaktu(x.cooldown_until)+'</td><td>'+esc(x.kode_error_terakhir||'—')+'</td></tr>').join('');
+ const usageRows=riwayat.map(x=>{const sk=Array.isArray(x.sekolah)?x.sekolah[0]:x.sekolah;return '<tr><td>'+aiWaktu(x.created_at)+'</td><td>'+esc(sk?.nama||('Sekolah '+x.sekolah_id))+'</td><td>'+esc(x.layanan==='analisis'?'Analisis pesan':'Terjemahan')+'</td><td>'+esc(x.model||'—')+'</td><td>'+aiAngka(x.input_tokens)+'</td><td>'+aiAngka(x.output_tokens)+'</td><td><b>'+aiAngka(x.total_tokens)+'</b></td><td>'+(x.status==='berhasil'?aiBadge('Berhasil','Hadir'):x.status==='metadata_tidak_tersedia'?aiBadge('Metadata tidak tersedia','Belum'):aiBadge('Gagal','Alpa'))+(x.kode_error?'<div class="mu">'+esc(x.kode_error)+'</div>':'')+'</td></tr>'}).join('');
+ const harian=filter(r.harian_per_sekolah||[]),bulanan=filter(r.bulanan_per_sekolah||[]);
+ const periodRows=(arr,k)=>arr.map(x=>'<tr><td>'+esc((Array.isArray(x.sekolah)?x.sekolah[0]?.nama:x.nama)||('Sekolah '+x.sekolah_id))+'</td><td>'+esc(String(x[k]||'').slice(0,10))+'</td><td>'+aiAngka(x.jumlah_permintaan)+'</td><td>'+aiAngka(x.jumlah_berhasil)+'</td><td>'+aiAngka(x.jumlah_gagal)+'</td><td>'+aiAngka(x.input_tokens)+'</td><td>'+aiAngka(x.output_tokens)+'</td><td><b>'+aiAngka(x.total_tokens)+'</b></td></tr>').join('');
+ const stat=(n,l)=>'<div class="card stat"><b>'+aiAngka(n)+'</b>'+l+'</div>';
+ return '<div class="panel"><div class="ph">🤖 Pemantauan AI <button class="btn soft sm" onclick="muatAI()">↻ Perbarui sekarang</button></div><div class="pb">'+
+ '<div class="note">Terakhir diperbarui: '+aiWaktu(d.diperbarui)+'. Tampilan ini hanya membaca status dan statistik. Isi pesan WhatsApp, nama anak, nomor orang tua, dan nilai API key tidak ditampilkan.</div>'+
+ '<div class="cards">'+stat(t.jumlah_permintaan,'Total permintaan')+stat(t.jumlah_berhasil,'Berhasil')+stat(t.jumlah_gagal,'Gagal')+stat(t.total_tokens,'Total token')+stat(t.input_tokens,'Token masuk')+stat(t.output_tokens,'Token keluar')+'</div>'+
+ '<div class="tb">Filter sekolah: '+pilih+'</div>'+
+ '<div class="tbkh">Status setiap API key Gemini</div>'+
+ tab(['Sekolah','Akun API','Status','Terakhir dicoba','Terakhir berhasil','Cooldown sampai','Error terakhir'],keyRows,'Belum ada API key yang tercatat.')+
+ '<div class="tbkh">Status gangguan dan pemulihan AI</div>'+
+ tab(['Sekolah','Model','Status layanan','Gangguan mulai','Percobaan berikutnya','Keterangan'],gangguanRows,'Tidak ada catatan gangguan AI.')+
+ '<div class="tbkh">Antrean pemrosesan AI · maksimal 500 pesan terbaru</div>'+
+ tab(['ID antrean','Sekolah','Status','Percobaan','API key','Coba lagi','Dibuat'],queueRows,'Antrean kosong.')+
+ '<div class="tbkh">Pengaman kuota Gemini</div>'+
+ tab(['Sekolah','Model','Status','Permintaan/menit','429 beruntun','Cooldown sampai','Error terakhir'],pengamanRows,'Belum ada status pengaman kuota.')+
+ '<div class="tbkh">Pemakaian harian · 31 hari terakhir</div>'+
+ tab(['Sekolah','Tanggal','Permintaan','Berhasil','Gagal','Token masuk','Token keluar','Total token'],periodRows(harian,'tanggal'),'Belum ada pemakaian harian.')+
+ '<div class="tbkh">Pemakaian bulanan · seluruh periode tersimpan</div>'+
+ tab(['Sekolah','Bulan','Permintaan','Berhasil','Gagal','Token masuk','Token keluar','Total token'],periodRows(bulanan,'bulan'),'Belum ada pemakaian bulanan.')+
+ '<div class="tbkh">Riwayat pemakaian AI · 200 catatan terbaru</div>'+
+ tab(['Waktu','Sekolah','Layanan','Model','Token masuk','Token keluar','Total token','Status'],usageRows,'Belum ada riwayat pemakaian AI.')+
+ '<div class="note">Riwayat rinci disimpan maksimal 30 hari. Ringkasan harian dan bulanan dipertahankan. Nilai token mengikuti metadata yang dikembalikan penyedia AI; angka yang tidak tersedia tidak diperkirakan.</div>'+
+ '</div></div>';
+}
+function aiPilihSekolah(v){S.devAISekolah=String(v||'*');renderV()}
+async function muatAI(){guard(async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'});renderV()})}
+
+
 function statusAlpa(x){if(x.status_sekolah!=='aktif')return['off','Non-Aktif','Sekolah nonaktif'];if(!x.alpa_aktif)return['off','Non-Aktif','Alpa otomatis dimatikan di Pengaturan sekolah'];
  if(!x.cron_ada)return['err','Error','Jadwal cron belum terbentuk. Tekan Sinkron ulang jadwal'];if(!x.cron_aktif)return['err','Error','Jadwal cron tidak aktif. Tekan Sinkron ulang jadwal'];
  if(x.terakhir_status==='failed')return['err','Error','Eksekusi terakhir gagal: '+(x.terakhir_pesan||'')];
