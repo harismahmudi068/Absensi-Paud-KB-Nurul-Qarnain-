@@ -50,8 +50,13 @@ function klasifikasiErrorGemini(error) {
   const jenisKuota=rpd?'RPD':tpm?'TPM':rpm?'RPM':'';
   const httpStatus=kuota?429:status;
   const kodeFinal=kuota?('RESOURCE_EXHAUSTED'+(jenisKuota?'_'+jenisKuota:'')):(kode&&/^[A-Z0-9_.:-]{1,70}$/.test(kode)?kode:(status?'HTTP_'+status:'AI_REQUEST_FAILED'));
-  const network=/timeout|timed out|aborterror|econnreset|econnrefused|enotfound|eai_again|socket hang up|fetch failed|network/i.test(pesan)
-    || ['ETIMEDOUT','ECONNRESET','ECONNREFUSED','ENOTFOUND','EAI_AGAIN'].includes(String(error?.code||'').toUpperCase());
+  const kodeError=String(error?.code||'').toUpperCase();
+  // AbortSignal.timeout() dapat menghasilkan DOMException code 20 dengan pesan
+  // "This operation was aborted". Ini kegagalan sementara, bukan konfigurasi permanen.
+  const dibatalkan=Number(error?.code)===20 || kodeError==='ABORT_ERR' ||
+    /operation was aborted|the operation was aborted|aborted/i.test(pesan);
+  const network=dibatalkan || /timeout|timed out|aborterror|econnreset|econnrefused|enotfound|eai_again|socket hang up|fetch failed|network/i.test(pesan)
+    || ['ETIMEDOUT','ECONNRESET','ECONNREFUSED','ENOTFOUND','EAI_AGAIN','ABORT_ERR'].includes(kodeError);
   const sementara=network || [408,425,429,500,502,503,504].includes(Number(httpStatus));
   const permanen=!sementara;
   return {httpStatus,kode:kodeFinal,retryAfter:parseRetryGemini(error,details,jenisKuota),sementara,permanen};
