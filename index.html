@@ -1671,7 +1671,24 @@ const CARI_FITUR=[
  {id:'nilai',label:'Penilaian Siswa',path:'Penilaian Siswa → Penilaian',icon:'📝',type:'penilaian'},
  {id:'mapel',label:'Mapel dan KKM',path:'Penilaian Siswa → Mapel & KKM',icon:'📚',type:'penilaian'},
  {id:'kep',label:'Keputusan Akhir',path:'Penilaian Siswa → Keputusan Akhir',icon:'🎓',type:'penilaian'},
- {id:'kirim',label:'Kirim Laporan Raport',path:'Penilaian Siswa → Kirim Laporan',icon:'📤',type:'penilaian'}
+ {id:'kirim',label:'Kirim Laporan Raport',path:'Penilaian Siswa → Kirim Laporan',icon:'📤',type:'penilaian'},
+ /* Tab di dalam menu utama */
+ {id:'pindah',label:'Pindah Kelas',path:'Kelola Siswa → Pindah Kelas',icon:'↔️',type:'tab',parent:'kelola'},
+ {id:'naik',label:'Naik Kelas',path:'Kelola Siswa → Naik Kelas',icon:'⬆️',type:'tab',parent:'kelola'},
+ {id:'tinggal',label:'Tinggal Kelas',path:'Kelola Siswa → Tinggal Kelas',icon:'🔁',type:'tab',parent:'kelola'},
+ {id:'lulus',label:'Kelulusan',path:'Kelola Siswa → Kelulusan',icon:'🎓',type:'tab',parent:'kelola'},
+ {id:'pengesahan',label:'Pengesahan',path:'Kelola Siswa → Pengesahan',icon:'✅',type:'tab',parent:'kelola'},
+ {id:'in',label:'Pemasukan Tabungan',path:'Tabungan → Pemasukan',icon:'⬇️',type:'tab',parent:'tabungan'},
+ {id:'out',label:'Pengeluaran Tabungan',path:'Tabungan → Pengeluaran',icon:'⬆️',type:'tab',parent:'tabungan'},
+ {id:'rek',label:'Rekap dan Laporan Tabungan',path:'Tabungan → Rekap & Laporan',icon:'📊',type:'tab',parent:'tabungan'},
+ {id:'jadwal',label:'Jadwal Piket',path:'Jadwal Piket → Jadwal',icon:'📅',type:'tab',parent:'piket'},
+ {id:'jenis',label:'Jenis Piket',path:'Jadwal Piket → Jenis Piket',icon:'🏷️',type:'tab',parent:'piket'},
+ {id:'setor',label:'Setor Hafalan',path:'Hafalan → Setor',icon:'✍️',type:'tab',parent:'hafalan'},
+ {id:'daftar',label:'Daftar Hafalan',path:'Hafalan → Daftar Hafalan',icon:'📋',type:'tab',parent:'hafalan'},
+ {id:'rekap',label:'Rekap Hafalan',path:'Hafalan → Rekap',icon:'📊',type:'tab',parent:'hafalan'},
+ {id:'jenis',label:'Jenis Hafalan',path:'Hafalan → Jenis',icon:'🏷️',type:'tab',parent:'hafalan'},
+ {id:'masuk',label:'Pesan Masuk',path:'Pesan WA → Pesan Masuk',icon:'💬',type:'tab',parent:'pesan'},
+ {id:'riwayat',label:'Riwayat Status Pesan',path:'Pesan WA → Riwayat Status Pesan',icon:'📋',type:'tab',parent:'pesan'}
 ];
 let cariTerbuka=false,cariHasil=[],cariPilih=0;
 function pencarianToggle(){
@@ -1714,6 +1731,15 @@ async function pencarianBuka(i){
  pencarianTutup();
  if(x.type==='pengaturan')return lompatPengaturan(x.id);
  if(x.type==='penilaian'){await go('penilaian');pnHal(x.id);return}
+ if(x.type==='tab'){
+  await go(x.parent);
+  if(x.parent==='kelola')return klTab(x.id);
+  if(x.parent==='tabungan')return tabHal(x.id);
+  if(x.parent==='piket')return pkHal(x.id);
+  if(x.parent==='hafalan')return hfHal(x.id);
+  if(x.parent==='pesan')return pesHal(x.id);
+  return;
+ }
  return go(x.id);
 }
 document.addEventListener('click',e=>{const p=$('#dashSearchPanel'),b=$('#dashSearchToggle');if(cariTerbuka&&p&&!p.contains(e.target)&&b&&!b.contains(e.target))pencarianTutup()});
