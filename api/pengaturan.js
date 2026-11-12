@@ -496,8 +496,32 @@ module.exports = async (req, res) => {
 
     if (b.aksi === 'tes_ai') {
       const r = await ambil();
-      if (!r.kunci_ai) throw new Error('Kunci API AI belum diisi');
-      const balasan = await tesGemini(r.kunci_ai);
+      const daftarKey = await panggil('/rest/v1/rpc/gemini_key_daftar_rotasi', 'POST', {
+        p_sekolah_id: sekolahId, p_model: AI_MODEL
+      }).catch(() => []);
+      let balasan = '';
+      let keyBerhasil = null;
+      const kegagalan = [];
+      if (Array.isArray(daftarKey) && daftarKey.length) {
+        for (const k of daftarKey) {
+          try {
+            balasan = await tesGemini(k.api_key);
+            keyBerhasil = k;
+            await panggil('/rest/v1/rpc/gemini_key_catat_hasil', 'POST', {
+              p_sekolah_id: sekolahId, p_id: k.id, p_status: 'berhasil',
+              p_http_status: 200, p_kode_error: null, p_detail: null,
+              p_retry_after_seconds: null, p_permanen: false
+            }).catch(() => {});
+            break;
+          } catch (e) {
+            kegagalan.push((k.label || 'Akun Gemini') + ': ' + e.message);
+          }
+        }
+        if (!keyBerhasil) throw new Error('Semua API Key Gemini gagal diuji. ' + kegagalan.join(' | '));
+      } else {
+        if (!r.kunci_ai) throw new Error('Belum ada API Key Gemini yang diisi');
+        balasan = await tesGemini(r.kunci_ai);
+      }
       let tambahan = '';
       const tk = await ambilToken();
       if (tk.length) {
@@ -513,8 +537,8 @@ module.exports = async (req, res) => {
       } else {
         tambahan = ' (Pesan WhatsApp tidak dikirim: belum ada token Fonnte.)';
       }
-      await catat(user.id, sekolahId, 'tes_ai', 'berhasil');
-      return res.status(200).json({ ok: true, pesan: 'API AI berfungsi. Balasan: ' + balasan + '.' + tambahan });
+      await catat(user.id, sekolahId, 'tes_ai', keyBerhasil ? ('berhasil melalui ' + keyBerhasil.label) : 'berhasil menggunakan API Key lama');
+      return res.status(200).json({ ok: true, pesan: 'API AI berfungsi' + (keyBerhasil ? ' melalui ' + keyBerhasil.label : '') + '. Balasan: ' + balasan + '.' + tambahan });
     }
 
     // ---------------------------------------------------------
