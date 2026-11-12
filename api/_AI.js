@@ -59,6 +59,8 @@ ATURAN NAMA:
 - Jangan mengambil nama dari anak_wali jika nama tersebut tidak disebut.
 - Jika tidak ada nama anak dalam pesan, daftar_nama harus kosong.
 - Jangan mengganti nama yang disebut dengan nama anak terdaftar jika tidak cocok.
+- Abaikan penanda kurung yang hanya mengapit nama. Contoh: "[Putra]", "(Putra)", atau "【Putra】" harus dibaca sebagai nama "Putra".
+- Tanda kurung bukan bagian dari nama; baca dan cocokkan kata di dalamnya seperti teks biasa.
 - Penentuan anak yang tidak disebut dalam pesan dilakukan oleh sistem berdasarkan data anak wali.
 
 PESAN:
@@ -363,6 +365,8 @@ function buatErrorAI(error) {
 }
 
 async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian, pengamanGemini }) {
+  // Hapus karakter penanda kurung, tetapi pertahankan teks di dalamnya agar nama tetap terbaca.
+  const pesanUntukAnalisis = String(pesan || '').replace(/[\[\](){}（）［］｛｝【】〔〕]/g, ' ');
   const AI_API_KEY = String(kunciAi || '').trim();
   if (!AI_API_KEY) {
     throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
@@ -432,7 +436,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
 
   const input = {
     tanggal_hari_ini: String(tanggalHariIni || ''),
-    pesan_asli: String(pesan || ''),
+    pesan_asli: pesanUntukAnalisis,
     anak_wali: daftarAnak(anak)
   };
 
@@ -463,7 +467,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
       throw new Error(`Respons Gemini bukan JSON valid: ${content.slice(0, 1000)}`);
     }
 
-    const hasilAkhir = normalisasi(hasil, anak, pesan);
+    const hasilAkhir = normalisasi(hasil, anak, pesanUntukAnalisis);
     await simpanPemakaianAI(catatPemakaian, response, 'berhasil', null);
     return hasilAkhir;
   } catch (e) {
