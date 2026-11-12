@@ -1481,16 +1481,6 @@ async function bacaStatusGangguanAI() {
   return Array.isArray(rows) && rows[0] ? rows[0] : { status_gangguan: 'normal' };
 }
 
-function hanyaGangguanGuardSingkat(error) {
-  const a=Array.isArray(error?.attempts)?error.attempts:[];
-  return a.length>0&&a.every(x=>{
-    const kode=String(x.kode||'');
-    return kode==='GEMINI_GUARD_BATAS_LOKAL_PER_MENIT' ||
-      kode==='GEMINI_GUARD_JEDA_ANTAR_PERMINTAAN' ||
-      (kode==='GEMINI_GUARD_COOLDOWN'&&Number(x.retry_after_seconds||0)<=60);
-  });
-}
-
 async function simpanAntrianAI({ pesan, dari, payload, kunci, error, cobaLagiPada }) {
   const sekolahId = Number(K().sekolahId);
   const isi = {
@@ -1533,9 +1523,7 @@ async function kirimNotifikasiGangguanSekolah(sementara, detail) {
     'Untuk sementara, pengelola, kepala sekolah, dan wali kelas dimohon melakukan pencatatan absensi secara manual.',
     '',
     sementara
-      ? (hanyaGangguanGuardSingkat(detail)
-          ? 'Sistem sedang membatasi lonjakan permintaan secara otomatis. Percobaan ulang berikutnya dijadwalkan sekitar 1 menit lagi.'
-          : 'Gangguan terdeteksi bersifat sementara. Sistem akan mencoba kembali secara otomatis sekitar 15 menit ke depan. Waktu pemulihan dapat berubah mengikuti kondisi layanan Gemini.')
+      ? 'Gangguan terdeteksi bersifat sementara. Untuk sementara, pencatatan absensi dilakukan secara manual. Pesan yang gagal dianalisis tidak akan dicoba ulang otomatis.'
       : 'Gangguan memerlukan pemeriksaan developer. Developer sudah diberi tahu dan sedang menangani. Kami akan mengirim pemberitahuan kembali setelah perbaikan diuji dan layanan normal.',
     '',
     'Pesan yang tidak dapat dianalisis dicatat untuk pemeriksaan manual dan tidak akan diproses otomatis setelah layanan pulih.',
