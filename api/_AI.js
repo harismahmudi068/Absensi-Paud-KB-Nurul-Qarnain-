@@ -504,6 +504,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
         kode: info.kode || 'AI_REQUEST_FAILED',
         detail: String(e?.message || e || 'Kesalahan tidak diketahui').slice(0,500),
         sementara: info.sementara === true,
+        retry_after_seconds: info.retryAfter || null,
         permanen,
         perluNotifikasi
       });
