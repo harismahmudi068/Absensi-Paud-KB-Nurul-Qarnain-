@@ -596,9 +596,9 @@ module.exports = async (req, res) => {
         L.panggil('/rest/v1/rpc/developer_pemakaian_ai_ringkasan', 'POST', {}),
         L.panggil('/rest/v1/pemakaian_ai_riwayat?select=id,created_at,sekolah_id,sekolah(nama),layanan,model,input_tokens,output_tokens,total_tokens,status,kode_error&order=created_at.desc&limit=200', 'GET'),
         L.panggil('/rest/v1/rpc/developer_gemini_pengaman', 'POST', {}),
-        L.panggil('/rest/v1/gemini_api_key_sekolah?select=id,sekolah_id,sekolah(nama),label,aktif,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_error,terakhir_berhasil,cooldown_until,jumlah_permintaan_window,next_allowed_at,consecutive_429,ditangani_oleh,ditangani_pada&order=sekolah_id.asc,urutan.asc,id.asc', 'GET'),
+        L.panggil('/rest/v1/gemini_api_key_sekolah?select=id,sekolah_id,sekolah(nama),label,aktif,urutan,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_dicoba,terakhir_error,terakhir_berhasil,cooldown_until,next_allowed_at,jumlah_permintaan_window,consecutive_429,reservasi_mulai,reservasi_sampai,ditangani_oleh,ditangani_pada&order=sekolah_id.asc,urutan.asc,id.asc', 'GET'),
         L.panggil('/rest/v1/gemini_pengaman_sekolah?select=sekolah_id,sekolah(nama),model,status_gangguan,gangguan_mulai,next_retry_at,developer_notified_at,sekolah_notified_at,detail_gangguan,ditangani_oleh,ditangani_pada&status_gangguan=neq.normal&order=gangguan_mulai.desc', 'GET'),
-        L.panggil('/rest/v1/pesan_ai_antrean?select=id,sekolah_id,status,jumlah_percobaan,coba_lagi_pada,dibuat&order=dibuat.asc&limit=500', 'GET')
+        L.panggil('/rest/v1/pesan_ai_antrean?select=id,sekolah_id,sekolah(nama),status,jumlah_percobaan,coba_lagi_pada,dibuat,api_key_id&order=dibuat.asc&limit=500', 'GET')
       ]);
       return res.status(200).json({
         ok: true,
@@ -622,18 +622,32 @@ module.exports = async (req, res) => {
         'GET'
       );
       if (!Array.isArray(rows) || !rows.length) throw new Error('API Key tidak ditemukan pada sekolah tersebut');
+      if (!rows[0].aktif) throw new Error('API Key sedang nonaktif. Aktifkan terlebih dahulu di Pengaturan.');
+      if (rows[0].error_permanen !== true) throw new Error('API Key ini tidak lagi berstatus Perlu Perbaikan.');
+      const waktuTangani = new Date().toISOString();
       await L.panggil(
-        `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}`,
+        `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}&error_permanen=eq.true`,
         'PATCH',
-        { error_permanen: false, dev_notified_at: null, ditangani_oleh: user.id, ditangani_pada: new Date().toISOString() },
+        { error_permanen: false, dev_notified_at: null, ditangani_oleh: user.id, ditangani_pada: waktuTangani },
         { Prefer: 'return=minimal' }
       );
+      try {
+        await L.panggil('/rest/v1/rpc/gemini_jadwalkan_retry', 'POST', { p_sekolah_id: sekolahId, p_delay_menit: 0 });
+      } catch (e) {
+        await L.panggil(
+          `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}`,
+          'PATCH',
+          { error_permanen: true, ditangani_oleh: null, ditangani_pada: null },
+          { Prefer: 'return=minimal' }
+        ).catch(() => {});
+        throw new Error('Key gagal dijadwalkan untuk diuji ulang: ' + e.message);
+      }
       await L.catatLog({
         pelaku: user.id, sekolah_id: sekolahId,
         aksi: 'gemini_api_key_ditangani',
-        rincian: 'Developer menandai API Key ' + rows[0].label + ' sudah diperiksa'
+        rincian: 'Developer memperbaiki konfigurasi dan menjadwalkan uji ulang ' + rows[0].label
       });
-      return res.status(200).json({ ok: true, key_id: keyId, status: 'ditangani' });
+      return res.status(200).json({ ok: true, key_id: keyId, status: 'menunggu_uji' });
     }
 
     if (b.aksi === 'tandai_ai_ditangani') {
@@ -645,18 +659,8 @@ module.exports = async (req, res) => {
       );
       if (!Array.isArray(rows) || !rows.length || rows[0].status_gangguan === 'normal')
         throw new Error('Tidak ada insiden AI aktif untuk sekolah ini');
-      await L.panggil(
-        `/rest/v1/gemini_pengaman_sekolah?sekolah_id=eq.${sekolahId}&model=eq.gemini-3.5-flash-lite`,
-        'PATCH',
-        { status_gangguan: 'menunggu_uji', ditangani_oleh: user.id, ditangani_pada: new Date().toISOString() },
-        { Prefer: 'return=minimal' }
-      );
-      await L.panggil(
-        `/rest/v1/gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&error_permanen=eq.true`,
-        'PATCH',
-        { dev_notified_at: null, ditangani_oleh: user.id, ditangani_pada: new Date().toISOString() },
-        { Prefer: 'return=minimal' }
-      );
+      // Jangan mengubah status insiden menjadi normal/menunggu_uji di sini.
+      // Webhook tetap menahan pesan pada mode manual sampai probe otomatis berhasil.
       await L.panggil('/rest/v1/rpc/gemini_jadwalkan_retry', 'POST', {
         p_sekolah_id: sekolahId, p_delay_menit: 0
       });
