@@ -618,7 +618,7 @@ module.exports = async (req, res) => {
       if (!Number.isInteger(sekolahId) || sekolahId <= 0 || !Number.isInteger(keyId) || keyId <= 0)
         throw new Error('Sekolah atau API Key tidak valid');
       const rows = await L.panggil(
-        `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}&select=id,label`,
+        `/rest/v1/gemini_api_key_sekolah?id=eq.${keyId}&sekolah_id=eq.${sekolahId}&select=id,label,aktif,error_permanen`,
         'GET'
       );
       if (!Array.isArray(rows) || !rows.length) throw new Error('API Key tidak ditemukan pada sekolah tersebut');
