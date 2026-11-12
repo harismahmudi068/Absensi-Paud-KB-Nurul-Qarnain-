@@ -374,6 +374,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
   if (!daftarKunci.length) {
     const e = new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
     e.code = 'GEMINI_KEY_EMPTY'; e.permanen = true; e.semuaSementara = false;
+    e.isGeminiFailover = true; e.attempts = [{ label: 'Konfigurasi API Key', kode: 'GEMINI_KEY_EMPTY', detail: e.message, permanen: true, sementara: false, perluNotifikasi: true }];
     throw e;
   }
 
