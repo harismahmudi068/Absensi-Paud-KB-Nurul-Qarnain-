@@ -592,14 +592,16 @@ module.exports = async (req, res) => {
     // ---------------------------------------------------------
     if (b.aksi === 'pemantauan_ai') {
       if (!L.SB || !L.KEY) throw new Error('Konfigurasi Supabase belum lengkap');
-      const [ringkasan, riwayat] = await Promise.all([
+      const [ringkasan, riwayat, pengaman] = await Promise.all([
         L.panggil('/rest/v1/rpc/developer_pemakaian_ai_ringkasan', 'POST', {}),
-        L.panggil('/rest/v1/pemakaian_ai_riwayat?select=id,created_at,sekolah_id,sekolah(nama),layanan,model,input_tokens,output_tokens,total_tokens,status,kode_error&order=created_at.desc&limit=200', 'GET')
+        L.panggil('/rest/v1/pemakaian_ai_riwayat?select=id,created_at,sekolah_id,sekolah(nama),layanan,model,input_tokens,output_tokens,total_tokens,status,kode_error&order=created_at.desc&limit=200', 'GET'),
+        L.panggil('/rest/v1/rpc/developer_gemini_pengaman', 'POST', {})
       ]);
       return res.status(200).json({
         ok: true,
         ringkasan: ringkasan || {},
         riwayat: Array.isArray(riwayat) ? riwayat : [],
+        pengaman: Array.isArray(pengaman) ? pengaman : [],
         batas_riwayat_hari: 30,
         diperbarui: new Date().toISOString()
       });
