@@ -536,7 +536,6 @@ module.exports = async (req, res) => {
       let keyLabel = '';
       let idKey = null;
       let tokenReservasi = null;
-      let hasilKeyTercatat = false;
       const catatStatusKeyTes = async (status, error) => {
         await panggil('/rest/v1/rpc/gemini_key_catat_hasil', 'POST', {
           p_sekolah_id: sekolahId,
@@ -588,7 +587,6 @@ module.exports = async (req, res) => {
           } catch (e) {
             try {
               await catatStatusKeyTes('gagal', e);
-              hasilKeyTercatat = true;
             } catch (statusError) {
               console.error('Pencatatan kegagalan tes Gemini gagal:', statusError.message);
               e.message += ' (hasil tes tidak berhasil dicatat ke status API Key)';
@@ -598,7 +596,6 @@ module.exports = async (req, res) => {
 
           try {
             await catatStatusKeyTes('berhasil', null);
-            hasilKeyTercatat = true;
           } catch (statusError) {
             const err = new Error('Gemini sudah memberikan jawaban, tetapi status keberhasilan gagal disimpan: ' + statusError.message);
             err.kodeError = 'GEMINI_STATUS_WRITE_FAILED';
