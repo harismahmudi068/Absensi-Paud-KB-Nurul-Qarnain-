@@ -328,6 +328,27 @@ function normalisasi(raw, anak, pesan = '') {
   };
 }
 
+
+async function catatPemakaian(catat, response, status, kodeError) {
+  if (typeof catat !== 'function') return;
+  const u = response && response.usageMetadata ? response.usageMetadata : {};
+  const angka = v => Number.isFinite(Number(v)) && v !== null && v !== undefined ? Math.max(0, Math.trunc(Number(v))) : null;
+  const adaMetadata = u.promptTokenCount != null || u.candidatesTokenCount != null || u.totalTokenCount != null;
+  try {
+    await catat({
+      layanan: 'analisis',
+      model: AI_MODEL,
+      input_tokens: angka(u.promptTokenCount),
+      output_tokens: angka(u.candidatesTokenCount),
+      total_tokens: angka(u.totalTokenCount),
+      status: status === 'gagal' ? 'gagal' : (adaMetadata ? 'berhasil' : 'metadata_tidak_tersedia'),
+      kode_error: kodeError || null
+    });
+  } catch (e) {
+    console.warn('Pencatatan pemakaian AI dilewati:', e && e.message ? e.message : 'gagal');
+  }
+}
+
 function buatErrorAI(error) {
   if (error?.message) return new Error(error.message);
   try {
@@ -337,7 +358,7 @@ function buatErrorAI(error) {
   }
 }
 
-async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi }) {
+async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian }) {
   const AI_API_KEY = String(kunciAi || '').trim();
   if (!AI_API_KEY) {
     throw new Error('Kunci API AI sekolah belum diisi di menu Pengaturan');
