@@ -672,25 +672,26 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, status: 'probe_dijadwalkan' });
     }
 
-    if (b.aksi === 'hapus_riwayat_ai') {
-      const rows = await L.panggil(
-        '/rest/v1/pemakaian_ai_riwayat?id=not.is.null&select=id',
-        'DELETE',
-        null,
-        { Prefer: 'return=representation' }
+    if (b.aksi === 'hapus_riwayat_ai' || b.aksi === 'hapus_ringkasan_ai') {
+      // Penghapusan wajib dibatasi ke satu sekolah; pilihan "Semua sekolah" ditolak.
+      const sekolahId = Number(b.sekolah_id);
+      if (!Number.isSafeInteger(sekolahId) || sekolahId <= 0)
+        throw new Error('Pilih satu sekolah tertentu sebelum menghapus data AI');
+      const sekolah = await satu(
+        `/rest/v1/sekolah?id=eq.${sekolahId}&select=id,nama`
       );
-      const jumlah = Array.isArray(rows) ? rows.length : 0;
-      await L.catatLog({
-        pelaku: user.id,
-        aksi: 'hapus_riwayat_ai',
-        rincian: 'Riwayat rinci pemakaian AI dihapus (' + jumlah + ' catatan); ringkasan harian/bulanan dipertahankan'
-      });
-      return res.status(200).json({ ok: true, jumlah });
-    }
+      if (!sekolah) throw new Error('Sekolah yang dipilih tidak ditemukan');
 
-    if (b.aksi === 'hapus_ringkasan_ai') {
+      const hapusRingkasan = b.aksi === 'hapus_ringkasan_ai';
+      const tabel = hapusRingkasan
+        ? 'pemakaian_ai_ringkasan_harian'
+        : 'pemakaian_ai_riwayat';
+      const filterTanggal = hapusRingkasan ? '&tanggal=not.is.null' : '';
+      const kolom = hapusRingkasan
+        ? 'tanggal,sekolah_id,layanan,model'
+        : 'id';
       const rows = await L.panggil(
-        '/rest/v1/pemakaian_ai_ringkasan_harian?tanggal=not.is.null&select=tanggal,sekolah_id,layanan,model',
+        `/rest/v1/${tabel}?sekolah_id=eq.${sekolahId}${filterTanggal}&select=${kolom}`,
         'DELETE',
         null,
         { Prefer: 'return=representation' }
@@ -698,10 +699,14 @@ module.exports = async (req, res) => {
       const jumlah = Array.isArray(rows) ? rows.length : 0;
       await L.catatLog({
         pelaku: user.id,
-        aksi: 'hapus_ringkasan_ai',
-        rincian: 'Ringkasan harian dan agregat bulanan pemakaian AI dihapus (' + jumlah + ' baris); riwayat rinci dipertahankan'
+        sekolah_id: sekolahId,
+        aksi: b.aksi,
+        rincian: (hapusRingkasan
+          ? 'Ringkasan harian dan agregat bulanan pemakaian AI'
+          : 'Riwayat rinci pemakaian AI') +
+          ' sekolah ' + sekolah.nama + ' dihapus (' + jumlah + ' baris)'
       });
-      return res.status(200).json({ ok: true, jumlah });
+      return res.status(200).json({ ok: true, jumlah, sekolah_id: sekolahId, nama_sekolah: sekolah.nama });
     }
 
     // ---------------------------------------------------------
