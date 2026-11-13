@@ -365,7 +365,7 @@ function buatErrorAI(error) {
   return hasil;
 }
 
-async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian, pengamanGemini, reservasiGemini }) {
+async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemakaian, pengamanGemini, reservasiGemini, catatPercobaanAI }) {
   // Hapus karakter penanda kurung, tetapi pertahankan teks di dalamnya agar nama tetap terbaca.
   const pesanUntukAnalisis = String(pesan || '').replace(/[\[\](){}（）［］｛｝【】〔〕]/g, ' ');
   const daftarKunci = Array.isArray(kunciAi)
@@ -458,6 +458,9 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
         model: AI_MODEL,
         apiKeyId: kunci.id,
         pengamanGemini: pengamanUntukPesan,
+        beforeGenerate: typeof catatPercobaanAI === 'function'
+          ? () => catatPercobaanAI({ apiKeyId: kunci.id })
+          : undefined,
         generate: () => ai.models.generateContent({
           model: AI_MODEL,
           contents: JSON.stringify(input),
@@ -521,7 +524,7 @@ async function analisisPesan({ pesan, anak, tanggalHariIni, kunciAi, catatPemaka
   }
 
   const semuaMenunggu = percobaan.length > 0 && percobaan.length === daftarKunci.length &&
-    percobaan.every(x => x.guard && /^GEMINI_GUARD_(BUSY|COOLDOWN|JEDA_ANTAR_PERMINTAAN|BATAS_LOKAL_PER_MENIT)$/.test(String(x.kode || '')));
+    percobaan.every(x => x.guard && /^GEMINI_GUARD_(BUSY|COOLDOWN|JEDA_ANTAR_PERMINTAAN|BATAS_LOKAL_PER_MENIT|ATTEMPT_MARKER_FAILED)$/.test(String(x.kode || '')));
   if (semuaMenunggu) {
     const e = new Error('Seluruh API Key Gemini sedang digunakan atau masih dalam jeda pemanggilan.');
     e.code = 'ALL_GEMINI_KEYS_BUSY';
