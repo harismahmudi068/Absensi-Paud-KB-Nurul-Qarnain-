@@ -1481,6 +1481,44 @@ async function bacaStatusGangguanAI() {
   return Array.isArray(rows) && rows[0] ? rows[0] : { status_gangguan: 'normal' };
 }
 
+async function catatPercobaanGeminiUntukAntrian({ apiKeyId }) {
+  const c = K();
+  const id = Number(c.antrianId), sekolahId = Number(c.sekolahId);
+  const token = String(c.reservasiGemini?.token || '');
+  if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(sekolahId) || sekolahId <= 0 || !token) {
+    const e = new Error('Identitas antrean atau reservasi Gemini tidak tersedia untuk mencatat percobaan.');
+    e.code = 'AI_ATTEMPT_MARKER_CONTEXT_MISSING';
+    throw e;
+  }
+  const sekarang = new Date().toISOString();
+  const rows = await sb(
+    `pesan_ai_antrean?id=eq.${id}&sekolah_id=eq.${sekolahId}&status=eq.diproses&reservasi_token=eq.${encodeURIComponent(token)}&select=id`,
+    {
+      method: 'PATCH',
+      body: {
+        ai_percobaan_terakhir_pada: sekarang,
+        api_key_id: Number(apiKeyId) || null,
+        diperbarui: sekarang
+      },
+      prefer: 'return=representation'
+    }
+  );
+  if (!Array.isArray(rows) || !rows.some(row => Number(row?.id) === id)) {
+    const e = new Error('Bukti percobaan Gemini tidak berhasil disimpan pada antrean pesan.');
+    e.code = 'AI_ATTEMPT_MARKER_WRITE_FAILED';
+    throw e;
+  }
+  return true;
+}
+
+async function adaPercobaanGeminiPadaAntrian() {
+  const c = K();
+  const id = Number(c.antrianId), sekolahId = Number(c.sekolahId);
+  if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(sekolahId) || sekolahId <= 0) return false;
+  const rows = await sb(`pesan_ai_antrean?id=eq.${id}&sekolah_id=eq.${sekolahId}&select=ai_percobaan_terakhir_pada`);
+  return Boolean(rows?.[0]?.ai_percobaan_terakhir_pada);
+}
+
 async function simpanAntrianAI({ pesan, dari, payload, kunci, error, cobaLagiPada }) {
   const sekolahId = Number(K().sekolahId);
   const isi = {
@@ -1518,7 +1556,7 @@ async function kirimNotifikasiGangguanSekolah(sementara, detail) {
     salam(), '',
     sementara ? '⚠️ *PEMBERITAHUAN GANGGUAN SEMENTARA AI*' : '🚨 *PEMBERITAHUAN GANGGUAN LAYANAN AI*',
     '',
-    `Layanan AI sekolah *${namaSekolah}* saat ini belum dapat digunakan karena seluruh akun Gemini mengalami kendala.`,
+`Layanan AI sekolah *${namaSekolah}* belum berhasil memproses satu atau beberapa pesan dalam batas waktu yang ditentukan.`,
     '',
     'Untuk sementara, pengelola, kepala sekolah, dan wali kelas dimohon melakukan pencatatan absensi secara manual.',
     '',
@@ -1707,7 +1745,8 @@ async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
       kunciAi: daftarKunciAi,
       catatPemakaian: catatPemakaianAI,
       pengamanGemini,
-      reservasiGemini: K().reservasiGemini || null
+      reservasiGemini: K().reservasiGemini || null,
+      catatPercobaanAI: catatPercobaanGeminiUntukAntrian
     });
     await pulihkanStatusGangguanAI().catch(err=>console.error('Gagal memulihkan status AI:',err.message));
     if (Array.isArray(hasilAI.gangguanApiKeys) && hasilAI.gangguanApiKeys.length) {
@@ -1736,8 +1775,15 @@ async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
       await perbaruiStatusGangguanAI(e).catch(err=>console.error('Gagal mencatat gangguan sementara AI:',err.message));
       const diterima = new Date(K().waktuDiterima || payload?.__ai_received_at || new Date().toISOString()).getTime();
       const sisaMs = Math.max(0, 5 * 60 * 1000 - (Date.now() - diterima));
-      if (K().antrianId && sisaMs > 0) {
-        const tunggu = Math.max(5,Math.min(60,Math.ceil(sisaMs/1000)));
+      const sudahAdaPercobaan = K().antrianId
+        ? await adaPercobaanGeminiPadaAntrian().catch(() => false)
+        : false;
+      // Jangan ubah pesan menjadi manual hanya karena antreannya berumur 5 menit.
+      // Harus ada bukti bahwa permintaan Gemini benar-benar pernah dimulai.
+      if (K().antrianId && (sisaMs > 0 || !sudahAdaPercobaan)) {
+        const tunggu = sisaMs > 0
+          ? Math.max(5,Math.min(60,Math.ceil(sisaMs/1000)))
+          : 60;
         await simpanAntrianAI({
           pesan,dari,payload,kunci,error:e,
           cobaLagiPada:new Date(Date.now()+tunggu*1000).toISOString()
@@ -1888,11 +1934,8 @@ async function prosesAntrianAI() {
 
   if (K().aiRetry) {
     await cobaPemulihanGemini().catch(e=>console.error('Recovery probe error:',e.message));
-    const statusSetelahProbe=await bacaStatusGangguanAI();
-    if (statusSetelahProbe.status_gangguan==='gangguan_sementara' && statusSetelahProbe.gangguan_mulai &&
-        Date.now()-new Date(statusSetelahProbe.gangguan_mulai).getTime()>=5*60*1000) {
-      await aktifkanModeManualAI({code:'BATAS_GANGGUAN_5_MENIT'}).catch(e=>console.error('Batas 5 menit AI gagal diterapkan:',e.message));
-    }
+    // Aktivasi mode manual karena batas 5 menit dilakukan per pesan di bawah,
+    // hanya setelah antrean menyimpan bukti permintaan Gemini benar-benar dimulai.
   }
   const statusAwal = await bacaStatusGangguanAI();
   if (['perlu_manual','perlu_developer'].includes(statusAwal.status_gangguan)) {
@@ -1924,21 +1967,29 @@ async function prosesAntrianAI() {
   const jobs = Array.isArray(hasilBatch?.jobs) ? hasilBatch.jobs : [];
   const kedaluwarsa = Array.isArray(hasilBatch?.expired) ? hasilBatch.expired : [];
 
+  let pesanTerlambatYangSudahDicoba = 0;
   for (const row of kedaluwarsa) {
+    // Validasi tambahan: jangan tulis sebagai manual atau hapus antrean tanpa bukti percobaan.
+    if (!row.ai_percobaan_terakhir_pada) {
+      console.error('Antrean kedaluwarsa tanpa bukti percobaan Gemini; pesan dipertahankan:', row.id);
+      await sb(`pesan_ai_antrean?id=eq.${Number(row.id)}&sekolah_id=eq.${sekolahId}`, {
+        method:'PATCH',
+        body:{status:'menunggu',klaim_sampai:null,coba_lagi_pada:new Date(Date.now()+60000).toISOString(),diperbarui:new Date().toISOString()},
+        prefer:'return=minimal'
+      }).catch(()=>{});
+      continue;
+    }
+    pesanTerlambatYangSudahDicoba++;
     await catatPesan(row.dari_nomor,row.isi,
-      'Batas tunggu antrean AI 5 menit terlampaui; pesan belum dianalisis dan perlu pemeriksaan manual',true)
+      'Batas 5 menit setelah percobaan Gemini terlampaui; perlu pencatatan manual',true)
       .catch(e=>console.error('Gagal mencatat antrean kedaluwarsa:',e.message));
     await sb(`pesan_ai_antrean?id=eq.${Number(row.id)}&sekolah_id=eq.${sekolahId}`,{method:'DELETE',prefer:'return=minimal'}).catch(()=>{});
   }
-  if (kedaluwarsa.length) {
-    const statusGangguan=await bacaStatusGangguanAI();
-    const keyTersedia=await sb(`gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&aktif=eq.true&error_permanen=eq.false&select=id&limit=1`).catch(()=>[]);
-    const sudahLimaMenit=statusGangguan.gangguan_mulai &&
-      Date.now()-new Date(statusGangguan.gangguan_mulai).getTime()>=5*60*1000;
-    if ((statusGangguan.status_gangguan==='gangguan_sementara' && sudahLimaMenit) ||
-        (!Array.isArray(keyTersedia) || keyTersedia.length===0)) {
-      await aktifkanModeManualAI({code:'BATAS_GANGGUAN_5_MENIT'}).catch(e=>console.error('Aktifkan mode manual gagal:',e.message));
-    }
+  if (pesanTerlambatYangSudahDicoba > 0) {
+    await aktifkanModeManualAI({
+      code:'BATAS_PER_PESAN_5_MENIT',
+      jumlah_pesan:pesanTerlambatYangSudahDicoba
+    }).catch(e=>console.error('Aktifkan mode manual karena pesan AI kedaluwarsa gagal:',e.message));
   }
 
   let diproses = 0;
