@@ -5179,6 +5179,11 @@ function devPemantauanAI(){
  '<div class="note"><b>Penting:</b> Gangguan sementara tetap diperiksa dan dipulihkan otomatis. Tombol <b>Tangani &amp; uji ulang</b> hanya untuk API key berstatus Perlu Perbaikan setelah konfigurasi diperbaiki. Status layanan baru kembali normal setelah probe berhasil; pemeriksaan hanya menguji satu key per siklus.</div>'+
  '<div class="cards">'+stat(t.jumlah_permintaan,'Total permintaan')+stat(t.jumlah_berhasil,'Berhasil')+stat(t.jumlah_gagal,'Gagal')+stat(t.total_tokens,'Total token')+stat(t.input_tokens,'Token masuk')+stat(t.output_tokens,'Token keluar')+stat(antrean.length,'Pesan dalam antrean')+'</div>'+
  '<div class="tb">Filter sekolah: '+pilih+'</div>'+
+ '<div class="tb" style="flex-wrap:wrap;align-items:center">'+
+ '<button class="btn danger sm" '+(semua?'disabled':'')+' onclick="aiHapusRingkasan()">Hapus Ringkasan Harian</button>'+
+ '<button class="btn danger sm" '+(semua?'disabled':'')+' onclick="aiHapusRiwayat()">Hapus Riwayat AI</button>'+
+ (semua?'<span class="mu">Pilih satu sekolah untuk mengaktifkan penghapusan.</span>':'<span class="mu">Penghapusan hanya berlaku untuk sekolah yang sedang dipilih.</span>')+
+ '</div>'+
  '<div class="tbkh">Status setiap API key Gemini</div>'+
  tab(['Sekolah','Akun API','Status','Terakhir dicoba','Terakhir berhasil','Cooldown sampai','Permintaan window','Error terakhir','Tindakan'],keyRows,'Belum ada API key yang tercatat.')+
  '<div class="tbkh">Status gangguan dan pemulihan AI</div>'+
@@ -5217,13 +5222,24 @@ async function aiCobaPulih(sekolahId){
  });
 }
 
+function aiSekolahUntukHapus(){
+ const id=Number(S.devAISekolah);
+ if(!Number.isSafeInteger(id)||id<=0)return null;
+ const daftar=S.devAI&&S.devAI.ringkasan&&S.devAI.ringkasan.per_sekolah||[];
+ const sekolah=daftar.find(x=>Number(x.sekolah_id)===id);
+ return sekolah?{id,nama:sekolah.nama||('Sekolah '+id)}:null;
+}
 async function aiHapusRiwayat(){
- if(!await konfirmasi('Hapus seluruh riwayat rinci pemakaian AI? Ringkasan harian dan bulanan tidak akan ikut terhapus.',{judul:'Hapus Riwayat AI',ya:'Hapus Riwayat',bahaya:1}))return;
- guard(async()=>{const r=await apiDev({aksi:'hapus_riwayat_ai'});S.devAI=await apiDev({aksi:'pemantauan_ai'});toast('Riwayat dihapus: '+aiAngka(r.jumlah)+' catatan. Ringkasan tetap dipertahankan.');renderV()})
+ const sekolah=aiSekolahUntukHapus();
+ if(!sekolah)return toast('Pilih satu sekolah tertentu pada Filter sekolah terlebih dahulu.',false);
+ if(!await konfirmasi('Hapus seluruh riwayat rinci pemakaian AI milik sekolah '+sekolah.nama+'? Ringkasan harian dan bulanan sekolah ini tidak akan ikut terhapus.',{judul:'Hapus Riwayat AI',ya:'Hapus Riwayat',bahaya:1}))return;
+ guard(async()=>{const r=await apiDev({aksi:'hapus_riwayat_ai',sekolah_id:sekolah.id});S.devAI=await apiDev({aksi:'pemantauan_ai'});toast('Riwayat AI '+sekolah.nama+' dihapus: '+aiAngka(r.jumlah)+' catatan.');renderV()})
 }
 async function aiHapusRingkasan(){
- if(!await konfirmasi('Hapus seluruh ringkasan harian dan bulanan pemakaian AI? Riwayat rinci tidak akan ikut terhapus. Ringkasan lama tidak dapat dibangun ulang otomatis dari riwayat.',{judul:'Hapus Ringkasan AI',ya:'Hapus Ringkasan',bahaya:1}))return;
- guard(async()=>{const r=await apiDev({aksi:'hapus_ringkasan_ai'});S.devAI=await apiDev({aksi:'pemantauan_ai'});toast('Ringkasan dihapus: '+aiAngka(r.jumlah)+' baris. Riwayat tetap dipertahankan.');renderV()})
+ const sekolah=aiSekolahUntukHapus();
+ if(!sekolah)return toast('Pilih satu sekolah tertentu pada Filter sekolah terlebih dahulu.',false);
+ if(!await konfirmasi('Hapus seluruh ringkasan harian dan agregat bulanan pemakaian AI milik sekolah '+sekolah.nama+'? Riwayat rinci tidak ikut terhapus. Ringkasan lama tidak dapat dibangun ulang otomatis dari riwayat.',{judul:'Hapus Ringkasan AI',ya:'Hapus Ringkasan',bahaya:1}))return;
+ guard(async()=>{const r=await apiDev({aksi:'hapus_ringkasan_ai',sekolah_id:sekolah.id});S.devAI=await apiDev({aksi:'pemantauan_ai'});toast('Ringkasan AI '+sekolah.nama+' dihapus: '+aiAngka(r.jumlah)+' baris.');renderV()})
 }
 
 function statusAlpa(x){if(x.status_sekolah!=='aktif')return['off','Non-Aktif','Sekolah nonaktif'];if(!x.alpa_aktif)return['off','Non-Aktif','Alpa otomatis dimatikan di Pengaturan sekolah'];
