@@ -1727,11 +1727,30 @@ async function prosesPesan({ pesan, dari, target, anak, kunci, payload }) {
       await catatPesan(dari, pesan, 'Pesan AI gagal dimasukkan ke antrean; perlu pemeriksaan manual', true);
       return;
     }
-    await sb('rpc/gemini_jadwalkan_retry', {
-      method: 'POST',
-      body: { p_sekolah_id: Number(K().sekolahId), p_delay_menit: 0 }
-    }).catch(e => console.error('Jadwal antrean AI gagal:', e.message));
-    await prosesAntrianAI();
+    // Picu worker terpisah melalui pg_net. Webhook Fonnte tidak menunggu proses Gemini.
+    // Fungsi SQL ini juga menyiapkan Cron berikutnya sebagai jalur pemulihan jika HTTP worker gagal.
+    let workerTerpicu = false;
+    try {
+      const requestId = await sb('rpc/gemini_retry_trigger', {
+        method: 'POST',
+        body: { p_sekolah_id: Number(K().sekolahId) }
+      });
+      workerTerpicu = requestId !== null && requestId !== undefined;
+      if (!workerTerpicu) {
+        console.error('Pemicu worker AI tidak mengembalikan request id; antrean tetap tersimpan.');
+      }
+    } catch (e) {
+      console.error('Pemicu worker AI gagal; mencoba menyiapkan Cron pemulihan:', e.message);
+    }
+
+    // Jika pg_net tidak berhasil dijadwalkan, tetap siapkan Cron agar antrean tidak bergantung
+    // pada proses serverless webhook yang sedang berjalan.
+    if (!workerTerpicu) {
+      await sb('rpc/gemini_jadwalkan_retry', {
+        method: 'POST',
+        body: { p_sekolah_id: Number(K().sekolahId), p_delay_menit: 0 }
+      }).catch(e => console.error('Cron pemulihan antrean AI gagal:', e.message));
+    }
     return;
   }
 
