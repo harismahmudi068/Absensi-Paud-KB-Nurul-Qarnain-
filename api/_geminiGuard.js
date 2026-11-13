@@ -69,7 +69,7 @@ function errorPengamanGemini(kode,tunggu) {
   const e=new Error(kode==='busy'?'API Key Gemini sedang digunakan oleh permintaan lain.':kode==='cooldown'?'API Key Gemini sedang dijeda sementara karena batas kuota.':kode==='batas_lokal_per_menit'?'Batas aman permintaan AI sekolah per menit tercapai.':kode==='jeda_antar_permintaan'?'API Key Gemini masih dalam jeda 60 detik.':'Pengaman kuota Gemini belum dapat diperiksa.');
   e.isGeminiGuard=true;e.code='GEMINI_GUARD_'+String(kode||'UNAVAILABLE').toUpperCase();e.retryAfterSeconds=Number(tunggu)||null;return e;
 }
-async function generateContentDenganPengaman({model,pengamanGemini,apiKeyId,generate}) {
+async function generateContentDenganPengaman({model,pengamanGemini,apiKeyId,beforeGenerate,generate}) {
   if(!pengamanGemini) throw errorPengamanGemini('unavailable');
   const perKey=Number.isSafeInteger(Number(apiKeyId)) && Number(apiKeyId)>0
     && typeof pengamanGemini.ambilIzinKey==='function'
@@ -88,12 +88,23 @@ async function generateContentDenganPengaman({model,pengamanGemini,apiKeyId,gene
     throw e;
   }
   try {
+    if(typeof beforeGenerate==='function') {
+      try {
+        await beforeGenerate();
+      } catch(_) {
+        const e=errorPengamanGemini('attempt_marker_failed',60);
+        e.isGeminiAttemptMarkerError=true;
+        e.geminiInfo={httpStatus:null,kode:e.code,retryAfter:60,sementara:true,permanen:false,perluNotifikasi:false};
+        throw e;
+      }
+    }
     const hasil=await generate();
     await tandaiTerakhir();
     if(perKey) await pengamanGemini.catatHasilKey({id:Number(apiKeyId),model,status:'berhasil',httpStatus:200,kode:null,detail:null,retryAfter:null,permanen:false}).catch(()=>false);
     else if(typeof pengamanGemini.catatHasil==='function') await pengamanGemini.catatHasil({model,status:'berhasil',httpStatus:200,kode:null,retryAfter:null}).catch(()=>{});
     return hasil;
   } catch(error) {
+    if(error?.isGeminiAttemptMarkerError) throw error;
     const info=klasifikasiErrorGemini(error);
     await tandaiTerakhir();
     let perluNotifikasi=false;
