@@ -108,6 +108,7 @@ body.scan-kunci .usblay{min-height:min(52vh,460px)}
 body.scan-kunci #v .seg2,body.scan-kunci #v .cpick,body.scan-kunci #v .tb-full{pointer-events:none;opacity:.5}
 .kunci-info{display:none;margin:0 0 10px;padding:8px 10px;border-radius:10px;background:#fff6dc;color:#7a5a00;font-size:12px;font-weight:700;text-align:center}
 body.scan-kunci .kunci-info{display:block}
+.scan-prep-overlay{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(8,20,15,.72);backdrop-filter:blur(5px)}.scan-prep-card{width:min(390px,100%);box-sizing:border-box;padding:26px 22px;border-radius:18px;background:var(--bg);color:var(--tx);box-shadow:0 18px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center}.scan-prep-card .spin{width:38px;height:38px}.scan-prep-card b{font-size:18px}.scan-prep-card span,.scan-prep-card small{color:var(--mu);font-size:13px}.scan-prep-track{width:100%;height:7px;background:var(--bd);border-radius:99px;overflow:hidden}.scan-prep-track i{display:block;width:0;height:100%;background:var(--g);transition:width .18s ease}.scan-ready-note{margin:0 0 12px;padding:10px 12px;border-radius:11px;background:rgba(31,138,76,.12);color:var(--g);font-weight:800;text-align:center}.scan-ready-note small{display:block;margin-top:4px;color:var(--mu);font-weight:500}
 .cat-b textarea{width:100%;box-sizing:border-box;border:1px solid var(--bd);border-radius:9px;padding:8px 10px;font:inherit;font-size:12px;background:transparent;color:inherit;resize:vertical}
 .save{position:fixed;left:250px;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid var(--bd);box-shadow:0 -6px 18px rgba(30,60,40,.12);padding:10px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .kc{border:2px solid #159447;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center;background:#fff}.kc b{font-size:17px;display:block}
@@ -2454,7 +2455,7 @@ const USB_RE=/^[A-Z0-9]{8}$/i;
 const IC_CAM='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-2h6l2 2h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',IC_BC='<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="5" width="2" height="14"/><rect x="7" y="5" width="1" height="14"/><rect x="10" y="5" width="3" height="14"/><rect x="15" y="5" width="1" height="14"/><rect x="18" y="5" width="3" height="14"/></svg>';
 const segHTML=()=>`<div class="seg2" role="tablist"><button type="button" role="tab" class="${scanMode==='kamera'?'on':''}" onclick="setScanMode('kamera')">${IC_CAM}<span>Kamera</span></button><button type="button" role="tab" class="${scanMode==='scanner'?'on':''}" onclick="setScanMode('scanner')">${IC_BC}<span>Scanner</span></button></div>`;
 const kameraHTML=()=>`<div class="rw" id="rw"><div id="reader"></div><div class="fb" id="fb"></div><div id="scRes">${scCardHtml||''}</div><button class="flip nobusy" onclick="balikKamera()" title="Balik kamera">🔄</button></div><div class="tb" style="justify-content:center"><button class="btn success" id="bs" style="min-width:180px" onclick="toggleScan()">Mulai scan</button></div><button type="button" class="ujilnk" onclick="unduhUjiScan(this)">Unduh kartu uji</button>`;
-const USB_CAP={idle:'Scanner belum disiapkan.',selesai:'Scan selesai.',cek:'Memeriksa scanner...',uji:'Uji scanner: silakan scan kartu uji (atau satu kartu anak). Hanya untuk uji, tidak dicatat sebagai absensi.',siap:'Scanner sudah siap, silakan tekan tombol Mulai scan',scan:'Silakan scan kartu ID anak'};
+const USB_CAP={idle:'Scanner belum disiapkan.',selesai:'Scan selesai.',cek:'Memeriksa scanner...',prep:'Sedang menyiapkan foto siswa...',uji:'Uji scanner: silakan scan kartu uji (atau satu kartu anak). Hanya untuk uji, tidak dicatat sebagai absensi.',siap:'Scanner sudah siap, silakan tekan tombol Mulai scan',scan:'Silakan scan kartu ID anak'};
 function usbLayIsi(){const ph=usbPh,cap=USB_CAP[ph]||USB_CAP.idle,r=(ph==='scan'||ph==='uji')?usbRes:null;let cls=ph,main;
  if(r&&r.cek)main='<div class="mu">'+esc(r.m)+'</div>';
  else if(r){cls=r.ok?'ok':'no';main=`<div class="usbic ${cls}">${r.ok?CEK:SIL}</div><b style="color:${r.ok?'var(--g)':'var(--rd)'}">${esc(r.t)}</b><div>${esc(r.m)}</div>`}
@@ -2462,7 +2463,7 @@ function usbLayIsi(){const ph=usbPh,cap=USB_CAP[ph]||USB_CAP.idle,r=(ph==='scan'
  return{cls,html:`<div class="usbcap"><span class="dot"></span><span>${cap}</span></div><div class="usbmain">${main}</div><div class="fb" id="fb"></div>`}}
 function usbLayRender(){const L=$('#usbLay');if(!L)return;const o=usbLayIsi();L.className='usblay '+o.cls;L.innerHTML=o.html}
 const usbPanel=()=>{const ph=usbPh,o=usbLayIsi(),
- bt={idle:['Siapkan scanner','usbSiap()','success'],selesai:['Siapkan scanner','usbSiap()','success'],cek:['Memeriksa...','','success'],uji:['Batal','usbBatal()','soft'],siap:['Mulai scan','usbMulai()','success'],scan:['Selesai scan','usbTanyaSelesai()','success']}[ph]||['Siapkan scanner','usbSiap()','success'];
+ bt={idle:['Siapkan scanner','usbSiap()','success'],prep:['Persiapan...','','success'],selesai:['Siapkan scanner','usbSiap()','success'],cek:['Memeriksa...','','success'],uji:['Batal','usbBatal()','soft'],siap:['Mulai scan','usbMulai()','success'],scan:['Selesai scan','usbTanyaSelesai()','success']}[ph]||['Siapkan scanner','usbSiap()','success'];
  return `<div class="usbw${scCardHtml?' tampil':''}"><div class="usblay ${o.cls}" id="usbLay">${o.html}</div><div id="scRes">${scCardHtml||''}</div></div><div class="mu usblbl">Kolom scanner (terisi otomatis)</div><input id="usbIn" class="input usbin" type="text" inputmode="none" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Menunggu scan..." ${usbOn?'':'disabled'} onkeydown="usbKd(event)" oninput="usbMasuk(this)" onblur="usbBlur()"><div class="mu usblbl" id="usbNote">Kode terakhir masuk: belum ada. Tidak perlu menekan Enter.</div><div class="tb" style="justify-content:center"><button class="btn ${bt[2]}" id="usbBs" style="min-width:180px" ${bt[1]?`onclick="${bt[1]}"`:'disabled'}>${bt[0]}</button></div>${ph==='uji'?'<button type="button" class="ujilnk" onclick="usbUjiOtomatis()">Tidak bawa kartu uji? Isi otomatis dengan kartu uji</button>':''}<button type="button" class="ujilnk" onclick="unduhUjiScan(this)">Unduh kartu uji</button>`};
 const usbModal=()=>!!document.querySelector('.mb.show');
 function usbFokus(){const i=$('#usbIn');if(i&&usbOn&&view==='scan'&&!usbModal())i.focus({preventScroll:true})}
@@ -2475,7 +2476,7 @@ async function usbSiap(){unlockAC();if(!scanKelas)return toast(PK,false);await s
  if(view!=='scan'||usbPh!=='cek')return;
  usbPh='uji';usbOn=true;usbQ=[];usbUjiOto=false;usbOtoNext=false;renderV();usbFokus()}
 function usbBatal(){usbStop()}
-function usbMulai(){liburPrompted={};unlockAC();suaraPanas();usbPh='scan';usbOn=true;usbQ=[];lastKode='';lastAt=0;clearTimeout(usbResT);usbRes=null;renderV();usbFokus();scPrefetch();scanSegarkan()}
+async function usbMulai(){liburPrompted={};unlockAC();suaraPanas();usbPh='prep';usbOn=false;usbQ=[];lastKode='';lastAt=0;clearTimeout(usbResT);usbRes=null;if(!await scanFotoPersiapkan())return;usbPh='scan';usbOn=true;renderV();scanPrepLepas();usbFokus();scanSegarkan()}
 async function usbTanyaSelesai(){if(usbPh!=='scan')return;const n=$('#cfn');if(n)n.textContent='Belum';
  let ya=false;try{ya=await konfirmasi('Apakah proses scan sudah selesai?',{judul:'Selesai scan?',ikon:'✅',ya:'Ya, selesai'})}finally{if(n)n.textContent='Batal'}
  if(ya)usbStop(false,'selesai');else usbFokus()}
@@ -2504,7 +2505,7 @@ function usbGlobal(e){if(!usbOn||view!=='scan'||e.ctrlKey||e.altKey||e.metaKey||
  if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||(a&&a.isContentEditable))return;
  if(usbModal())return;const i=$('#usbIn');if(i)i.focus({preventScroll:true})}
 document.addEventListener('keydown',usbGlobal,true);
-async function usbKirim(raw){raw=String(raw||'').trim();if(!raw||!usbOn)return;
+async function usbKirim(raw){raw=String(raw||'').trim();if(!raw||!usbOn||scanPrep&&scanPrep.aktif)return;
  usbQ.push(raw);const nt=$('#usbNote');if(nt)nt.textContent='Kode terakhir masuk: '+raw.slice(0,12)+' (jam '+jamJkt(new Date().toISOString())+')';if(usbRun)return;usbRun=true;
  try{while(usbQ.length&&usbOn){
    const h=hariIni();
@@ -2516,10 +2517,10 @@ const USB_HASIL_MS=5000;
 const getarGagal=()=>{try{if(navigator.vibrate)navigator.vibrate(100)}catch(e){}};
 const usbTampil=(m,ok)=>{clearTimeout(usbResT);usbRes={ok,t:ok?'Berhasil':'Gagal',m};usbLayRender();usbResT=setTimeout(()=>{usbRes=null;usbLayRender()},USB_HASIL_MS)};
 const usbInfo=m=>{const n=$('#usbNote');if(n)n.textContent=m};
-let scanKelas='';
+let scanKelas='',scanPrep=null,scanPrepRun=0;
 const histHTML=()=>{const h=Object.entries(A(TODAY)).filter(e=>e[1].cara==='scan').map(e=>({s:S.siswa.find(x=>x.id==e[0]),r:e[1]})).filter(x=>x.s&&(!scanKelas||scanKelas==='*'||x.s.kelas===scanKelas)).sort((a,b)=>(b.r.jam||'').localeCompare(a.r.jam||''));
  return `<div class="ph">🕘 Riwayat Scan Hari Ini <span class="mu">${fmt(TODAY)} - ${h.length} anak</span></div><div class="pb">${tab(['Jam','Anak','Kelas','Status'],h.map(x=>`<tr><td><b>${esc(x.r.jam||'-')}</b></td><td>${esc(x.s.pan)}<div class="mu">${esc(x.s.nama)}</div></td><td>${esc(x.s.kelas)}</td><td>${badge(x.r.st)}</td></tr>`).join(''))}</div>`};
-V.scan=()=>`<div class="panel"><div class="ph">📷 Scan Kartu</div><div class="pb"><div class="sc-only scclk"><b id="scJam">${scWaktu()[0]}</b><span id="scTgl">${scWaktu()[1]}</span></div>${segHTML()}<div class="tb tb-full" style="justify-content:center">${cpick('scanKelasPick','kelas',scanKelas,[{value:'*',label:'Semua kelas'}].concat(S.kelas.map(k=>({value:k.nama,label:k.nama}))),'setScanKelas','Pilih kelas')}</div>${scanKelas?'':PKH}${scanMode==='scanner'&&usbPh==='scan'?'':suaraPanel()}${scanMode==='kamera'?kameraHTML():usbPanel()}<div id="hasil" style="margin-top:10px;font-weight:700;text-align:center"></div>${aqHtml()}${scDet()}</div></div><div class="panel" id="hist">${histHTML()}</div>`;
+V.scan=()=>`<div class="panel"><div class="ph">📷 Scan Kartu</div><div class="pb">${scanPrep&&scanPrep.aktif?'<div class="scan-prep-overlay" id="scanPrepOverlay"><div class="scan-prep-card"><div class="spin"></div><b id="scanPrepTitle">Sedang persiapan scanner...</b><span id="scanPrepCount">0 / 0 foto disiapkan</span><div class="scan-prep-track"><i id="scanPrepBar"></i></div><small>Mohon tunggu. Foto siswa sedang diperiksa dan disiapkan agar tampil cepat saat kartu dipindai.</small></div></div>':''}${scanPrepCatatan()}<div class="sc-only scclk"><b id="scJam">${scWaktu()[0]}</b><span id="scTgl">${scWaktu()[1]}</span></div>${segHTML()}<div class="tb tb-full" style="justify-content:center">${cpick('scanKelasPick','kelas',scanKelas,[{value:'*',label:'Semua kelas'}].concat(S.kelas.map(k=>({value:k.nama,label:k.nama}))),'setScanKelas','Pilih kelas')}</div>${scanKelas?'':PKH}${scanMode==='scanner'&&usbPh==='scan'?'':suaraPanel()}${scanMode==='kamera'?kameraHTML():usbPanel()}<div id="hasil" style="margin-top:10px;font-weight:700;text-align:center"></div>${aqHtml()}${scDet()}</div></div><div class="panel" id="hist">${histHTML()}</div>`;
 async function setScanKelas(v){document.querySelectorAll('.cpick.open').forEach(x=>x.classList.remove('open'));if((v||'')===scanKelas)return;if(scanKunci())return tolakKunci();await stopScan();usbStop(true);scanKelas=v||'';liburPrompted={};renderV();usbFokus()}
 let AC=null;const unlockAC=()=>{try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}};
 function beep(ok){try{unlockAC();const t=AC.currentTime,nada=(f,m,d,jenis,v,f2)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=jenis;o.frequency.setValueAtTime(f,t+m);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+m+d);g.gain.setValueAtTime(.0001,t+m);g.gain.exponentialRampToValueAtTime(v,t+m+.012);g.gain.exponentialRampToValueAtTime(.0001,t+m+d);o.connect(g);g.connect(AC.destination);o.start(t+m);o.stop(t+m+d+.03)};
@@ -2556,8 +2557,9 @@ async function mulaiScan(){await muatLib('scan');
  if(scanner)await stopScan('restart');
  if(!scanKelas){resetRw();return toast(PK,false)}
  liburPrompted={};if(!await cekLiburSebelumAbsensi(scanKelas,TODAY)){resetRw();toast('Scan tidak dimulai: kelas libur hari ini.',false);return}
- scanner=new Html5Qrcode('reader');
- try{await scanner.start({facingMode:cam==='belakang'?'environment':'user'},{fps:15,qrbox:{width:220,height:220}},onScan,()=>{});$('#bs').textContent='Selesai scan';$('#rw').classList.add('on');$('#rw').style.minHeight='';ovHapus();scPrefetch();scanSegarkan()}catch(e){scanner=null;resetRw();toast('Kamera tidak bisa dibuka. Izinkan akses kamera untuk situs ini.',false)}}
+ try{if(!await scanFotoPersiapkan())return;scanner=new Html5Qrcode('reader');
+  await scanner.start({facingMode:cam==='belakang'?'environment':'user'},{fps:15,qrbox:{width:220,height:220}},onScan,()=>{});$('#bs').textContent='Selesai scan';$('#rw').classList.add('on');$('#rw').style.minHeight='';ovHapus();scanPrepLepas();scanSegarkan()
+ }catch(e){scanner=null;scanPrepLepas();resetRw();toast('Kamera tidak bisa dibuka. Izinkan akses kamera untuk situs ini.',false)}}
 /* ---------- mode scan layar penuh ---------- */
 let scLast=null,scT=null,scOpen=false,scCardHtml=null;
 const scWaktu=()=>{const d=new Date();return[d.toLocaleTimeString('id-ID',{timeZone:'Asia/Jakarta',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/\./g,':'),d.toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta',weekday:'long',day:'numeric',month:'long',year:'numeric'})]};
@@ -2577,8 +2579,12 @@ function scTampil(m,ok){clearTimeout(scT);const L=scLast;scLast=null;
   if(!im&&s.foto_path)fotoSiap(s).then(g=>{const e=$('#scRes .scr[data-id="'+s.id+'"]');if(g&&e&&!e.querySelector('img')){const i=document.createElement('img');i.className='scf';i.src=g.src;i.alt='';e.prepend(i)}})}
  scT=setTimeout(()=>scSet(null),3500)}
 async function scPrefetch(){const l=S.siswa.filter(x=>x.aktif&&x.foto_path&&!fotoMuat(x)&&(scanKelas==='*'||x.kelas===scanKelas)).slice(0,120);let i=0;await Promise.all([0,1,2,3].map(async()=>{while(i<l.length){const s=l[i++];if(!scanKunci())return;await fotoSiap(s)}}))}
+function scanPrepRender(){const e=$('#scanPrepCount'),b=$('#scanPrepBar'),t=$('#scanPrepTitle');if(!scanPrep)return;if(e)e.textContent=scanPrep.selesai+' / '+scanPrep.total+' foto disiapkan';if(b)b.style.width=(scanPrep.total?Math.round(scanPrep.selesai/scanPrep.total*100):100)+'%';if(t)t.textContent=scanPrep.total?'Sedang persiapan scanner...':'Tidak ada foto siswa yang perlu disiapkan'}
+async function scanFotoPersiapkan(){const token=++scanPrepRun,l=S.siswa.filter(x=>x.aktif&&x.foto_path&&(scanKelas==='*'||x.kelas===scanKelas));scanPrep={aktif:true,lock:true,selesai:0,total:l.length,siap:0,gagal:0};renderV();kunciSinkron();let i=0;const pekerja=Array.from({length:6},async()=>{while(i<l.length&&token===scanPrepRun){const s=l[i++];try{const im=await fotoSiap(s);if(im)scanPrep.siap++;else scanPrep.gagal++}catch(e){scanPrep.gagal++}scanPrep.selesai++;scanPrepRender()}});await Promise.all(pekerja);if(token!==scanPrepRun)return false;scanPrep.aktif=false;scanPrep.selesai=true;renderV();kunciSinkron();return true}
+function scanPrepLepas(){if(scanPrep)scanPrep.lock=false;kunciSinkron();const e=$('#scanPrepOverlay');if(e)e.remove()}
+function scanPrepCatatan(){if(!scanPrep||!scanPrep.selesai)return '';return '<div class="scan-ready-note">✓ Scanner sudah siap! Silakan mulai peng-absenan 😊'+(scanPrep.gagal?'<small>'+scanPrep.gagal+' foto belum tersedia; absensi tetap bisa dilakukan.</small>':'')+'</div>'}
 /* ---------- kunci halaman selama scan ---------- */
-const scanKunci=()=>view==='scan'&&(!!scanner||(usbOn&&usbPh==='scan'));
+const scanKunci=()=>view==='scan'&&((!!scanPrep&&!!scanPrep.lock)||!!scanner||(usbOn&&usbPh==='scan'));
 function tolakKunci(){toast('Scan sedang berjalan. Tekan Selesai scan dulu sebelum pindah halaman.',false);return true}
 let _dashT=0;
 let kunciAktif=false;
@@ -2720,7 +2726,7 @@ async function toggleScan(){unlockAC();if(!scanner)suaraPanas();if(!scanner)retu
  let ya=false;try{ya=await konfirmasi('Apakah proses scan sudah selesai?',{judul:'Selesai scan?',ikon:'✅',ya:'Ya, selesai'})}finally{if(n)n.textContent='Batal';tanyaKam=false}
  if(ya&&scanner)await stopScan()}
 function balikKamera(){cam=cam==='belakang'?'depan':'belakang';const l=$('#camlbl');if(l)l.textContent=cam;if(scanner){ovMuat();mulaiScan()}}
-async function onScan(mentah){const cr=cariKode(mentah),kode=cr.s?String(cr.s.kode_scan||'').toUpperCase():cr.k||String(mentah||'').slice(0,40);const now=Date.now();if(busy||(kode===lastKode&&now-lastAt<(usbOn?1500:4000))){if(usbOn&&!busy)usbInfo('Kartu yang sama baru saja dipindai.');return}busy=true;lastKode=kode;lastAt=now;
+async function onScan(mentah){if(scanPrep&&scanPrep.aktif)return;const cr=cariKode(mentah),kode=cr.s?String(cr.s.kode_scan||'').toUpperCase():cr.k||String(mentah||'').slice(0,40);const now=Date.now();if(busy||(kode===lastKode&&now-lastAt<(usbOn?1500:4000))){if(usbOn&&!busy)usbInfo('Kartu yang sama baru saja dipindai.');return}busy=true;lastKode=kode;lastAt=now;
  try{{const h=hariIni();if(h!==TODAY){TODAY=h;liburPrompted={};okL={};try{await muatRange(TODAY,TODAY)}catch(e){peringatan('Absensi hari baru gagal dimuat',e)}}}
   const s=cr.s&&cr.s.aktif?cr.s:null;if(cr.uji)return hasil('Kartu uji terbaca, tidak dicatat sebagai absensi.',true);
   if(cr.lama)return hasil('Kartu lama sudah tidak berlaku. Gunakan kartu baru.',false);
@@ -2823,7 +2829,7 @@ async function fotoSiapAsli(s){const p=s&&s.foto_path;if(!p)return null;if(FC.ha
   FC.set(p,im);FU.set(p,u);return im};
  try{const c=await fotoCsAmbil(p);if(c){try{return await pasang(c)}catch(e){await fotoCsHapus([p])}}}catch(e){}
  if(netMati())return null;
- try{const r=await db.storage.from(FOTO_BUCKET).download(p);if(r.error||!r.data)throw r.error||new Error('kosong');const im=await pasang(r.data);fotoCsSimpan(p,r.data);return im}catch(e){return null}}
+ try{const r=await db.storage.from(FOTO_BUCKET).download(p);if(r.error||!r.data)throw r.error||new Error('kosong');const im=await pasang(r.data);await fotoCsSimpan(p,r.data);return im}catch(e){return null}}
 async function fotoHapusBerkas(ps){ps=(ps||[]).filter(Boolean);if(!ps.length)return;try{await db.storage.from(FOTO_BUCKET).remove(ps)}catch(e){console.warn('Berkas foto belum terhapus dari penyimpanan',e)}ps.forEach(p=>{FC.delete(p);FU.delete(p)});fotoCsHapus(ps)}
 /* pengecilan bertahap supaya hasil tajam */
 function skalaFoto(img,sx,sy,sw,sh,W,H){let cur=img,csx=sx,csy=sy,csw=sw,csh=sh;
