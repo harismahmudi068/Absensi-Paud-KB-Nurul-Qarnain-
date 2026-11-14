@@ -270,7 +270,7 @@ const segar=v=>{const c=C[v];return c&&Date.now()-(CT[v]||0)<MASA&&CD[v]===tglJk
 document.addEventListener('pointerdown',e=>{const el=e.target.closest('.fx');if(!el)return;const r=el.getBoundingClientRect(),d=Math.max(r.width,r.height)*2,s=document.createElement('span');s.className='rp';s.style.cssText='width:'+d+'px;height:'+d+'px;left:'+(e.clientX-r.left-d/2)+'px;top:'+(e.clientY-r.top-d/2)+'px';el.appendChild(s);setTimeout(()=>s.remove(),600)});
 
 /* ---------- menu custom ---------- */
-function bangunMenu(){$('#mlist').innerHTML=MENU.filter(x=>!x[3]||(S.fitur&&S.fitur[x[3]])).map((x,i)=>'<button class="mi fx'+(x[0]===cur?' on':'')+'" style="transition-delay:'+(i*35)+'ms" onclick="go(\\''+x[0]+'\\')"><span class="ic">'+x[1]+'</span>'+x[2]+'</button>').join('');document.querySelectorAll('.bnav button[data-page]').forEach(b=>{const on=b.dataset.page===cur;b.classList.toggle('on',on);b.setAttribute('aria-current',on?'page':'false')})}
+function bangunMenu(){$('#mlist').innerHTML=MENU.filter(x=>!x[3]||(S.fitur&&S.fitur[x[3]])).map((x,i)=>'<button class="mi fx'+(x[0]===cur?' on':'')+'" data-page="'+x[0]+'" style="transition-delay:'+(i*35)+'ms" onclick="go(this.dataset.page)"><span class="ic">'+x[1]+'</span>'+x[2]+'</button>').join('');document.querySelectorAll('.bnav button[data-page]').forEach(b=>{const on=b.dataset.page===cur;b.classList.toggle('on',on);b.setAttribute('aria-current',on?'page':'false')})}
 function mT(e){e.stopPropagation();$('#menu').classList.toggle('open');ddTutup()}
 function mTutup(){$('#menu').classList.remove('open')}
 
