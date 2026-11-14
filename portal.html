@@ -10,7 +10,7 @@
 :root{--g:#159447;--card:rgba(255,255,255,.74);--cbd:rgba(255,255,255,.8);--tx:#16301f;--mu:#3d5a48;--tt:#14683a;--sal:#146a38;--ln:rgba(20,60,35,.12);--c2:rgba(255,255,255,.96);--cell:rgba(255,255,255,.55);--su:#d83d4d;--pb:#efe8fb;--pt:#6840c6;--pu:#7650b8}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{background:#1f5f80}
-body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom,0)}
+body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:calc(78px + env(safe-area-inset-bottom,0))}
 .scene{position:fixed;inset:0;z-index:-1;overflow:hidden}.scene>*{position:absolute}
 .scene .dk{inset:0;background:rgba(0,12,30,.2)}
 .wb{left:0;right:0;height:22px;overflow:hidden}.wb div{width:200%;height:100%;animation:wv 8s linear infinite}
@@ -27,6 +27,11 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .top .nm{font-family:'Pacifico',cursive;font-size:29px;line-height:1.35;margin:2px 0 9px;word-break:break-word}
 .top .gt{display:inline-block;background:rgba(6,40,20,.5);color:#ffe9a0;font-weight:700;border-radius:999px;padding:6px 15px;font-size:13.5px;min-height:28px}
 .wrap{max-width:720px;margin:auto;padding:0 14px 24px}
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0));background:rgba(255,255,255,.94);border-top:1px solid rgba(20,60,35,.14);box-shadow:0 -8px 24px rgba(0,0,0,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.bnav button{border:0;background:transparent;color:#496252;border-radius:12px;padding:7px 3px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:inherit;font-size:11px;font-weight:700;min-width:0;cursor:pointer}
+.bnav button .ni{font-size:20px;line-height:1.2}.bnav button.on{background:#e2f5e9;color:#08783b}.bnav button:active{transform:scale(.96)}
+.kdlspin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;vertical-align:-3px;margin-right:7px;animation:kspin .7s linear infinite}
+@keyframes kspin{to{transform:rotate(360deg)}}
 .clk{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px}
 .pill{background:rgba(8,40,22,.62);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:6px 13px;font-weight:800;color:#4dff8f;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 #jm{font-size:21px}#jm small{font-size:13px}#jm i{font-style:normal;animation:bk 1s steps(1) infinite}#tg{font-size:13px}
@@ -416,7 +421,7 @@ function kartuRender(){const d=S.kd;if(!d)return Promise.resolve();const s=d.sis
   try{$('#kimg').src=kartu('depan');$('#kimg2').src=kartu('belakang')}catch(e){['#kimg','#kimg2','#kunduh'].forEach(q=>{const z=$(q);if(z)z.remove()})}})}
 A.siswa=d=>{S.kd=d;kartuRender();kedipKosong()};
 async function salinLinkAnak(){const t=Kartu.urlPortal(S.siswa.kode_qr);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}ok?toast('Link halaman disalin'):toast('Tidak bisa menyalin, coba lagi','err')}
-async function unduh(){const b=$('#kunduh');if(!b||b.disabled)return;const t=b.innerHTML,dasar='kartu-'+S.siswa.nama.replace(/[^\\w]+/g,'-')+'-'+kartuModePortal,dl=(u,n)=>new Promise((resolve,reject)=>{if(!u||u==='about:blank')return reject(new Error('Gambar kartu belum siap'));const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(resolve,550)});b.disabled=true;b.innerHTML='<span class="kdlspin" aria-hidden="true"></span>Sedang memproses kartu...';try{await dl($('#kimg').src,dasar+'-depan.png');await dl($('#kimg2').src,dasar+'-belakang.png');toast('Kartu depan dan belakang berhasil diunduh')}catch(e){toast('Kartu belum siap. Coba lagi sebentar.','err')}finally{b.disabled=false;b.innerHTML=t}}
+async function unduh(){const b=$('#kunduh');if(!b||b.disabled)return;const t=b.innerHTML,dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-')+'-'+kartuModePortal,dl=(u,n)=>new Promise((resolve,reject)=>{if(!u||u==='about:blank')return reject(new Error('Gambar kartu belum siap'));const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(resolve,550)});b.disabled=true;b.innerHTML='<span class="kdlspin" aria-hidden="true"></span>Sedang memproses kartu...';try{await dl($('#kimg').src,dasar+'-depan.png');await dl($('#kimg2').src,dasar+'-belakang.png');toast('Kartu depan dan belakang berhasil diunduh')}catch(e){toast('Kartu belum siap. Coba lagi sebentar.','err')}finally{b.disabled=false;b.innerHTML=t}}
 
 /* Ubah profil oleh orang tua (kecuali kelas, NISN, tahun masuk) */
 const PF={busy:0},normWA=n=>{let d=String(n||'').replace(/\D/g,'');if(d[0]==='0')d='62'+d.slice(1);else if(d[0]==='8')d='62'+d;return d},waLokal=w=>w?'0'+String(w).replace(/^62/,''):'';
