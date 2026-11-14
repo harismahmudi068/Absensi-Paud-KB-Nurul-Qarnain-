@@ -43,7 +43,7 @@ html[data-tm=n] .bnav button.on{background:rgba(154,127,224,.34);color:#fff}
 .mbtn{width:100%;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--cbd);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:14px;padding:12px 14px;font:inherit;font-weight:800;color:var(--tx);box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer;text-align:left}
 .mbtn .ic{font-size:18px}.mbtn .t{flex:1}.mbtn .ch{color:var(--pu)}
 .menu.open .mbtn{border-color:var(--pu)}
-.mlist{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--c2);border:1px solid var(--cbd);border-radius:16px;box-shadow:0 16px 40px rgba(0,0,0,.3);padding:6px;opacity:0;transform:translateY(-8px) scale(.98);transform-origin:top;pointer-events:none;transition:opacity .2s,transform .2s;overflow:hidden}
+.mlist{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--c2);border:1px solid var(--cbd);border-radius:16px;box-shadow:0 16px 40px rgba(0,0,0,.3);padding:6px;opacity:0;transform:translateY(-8px) scale(.98);transform-origin:top;pointer-events:none;transition:opacity .2s,transform .2s;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
 .menu.open .mlist{opacity:1;transform:none;pointer-events:auto}
 .mi{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;font:inherit;font-weight:700;color:var(--tx);padding:12px;border-radius:11px;cursor:pointer;text-align:left}
 .mi .ic{width:30px;height:30px;border-radius:9px;background:var(--pb);display:grid;place-items:center;font-size:16px}
@@ -274,8 +274,8 @@ document.addEventListener('pointerdown',e=>{const el=e.target.closest('.fx');if(
 
 /* ---------- menu custom ---------- */
 function bangunMenu(){$('#mlist').innerHTML=MENU.filter(x=>!x[3]||(S.fitur&&S.fitur[x[3]])).map((x,i)=>'<button class="mi fx'+(x[0]===cur?' on':'')+'" data-page="'+x[0]+'" style="transition-delay:'+(i*35)+'ms" onclick="go(this.dataset.page)"><span class="ic">'+x[1]+'</span>'+x[2]+'</button>').join('');document.querySelectorAll('.bnav button[data-page]').forEach(b=>{const on=b.dataset.page===cur;b.classList.toggle('on',on);b.setAttribute('aria-current',on?'page':'false')})}
-function mT(e){e.stopPropagation();$('#menu').classList.toggle('open');ddTutup()}
-function mTutup(){$('#menu').classList.remove('open')}
+function mT(e){e.stopPropagation();const menu=$('#menu'),buka=!menu.classList.contains('open'),list=$('#mlist');menu.classList.toggle('open',buka);ddTutup();if(buka){const r=menu.getBoundingClientRect(),nav=$('.bnav'),batas=nav?nav.getBoundingClientRect().top:window.innerHeight;list.style.maxHeight=Math.max(120,batas-r.bottom-16)+'px';list.style.overflowY='auto'}else{list.style.maxHeight='';list.style.overflowY=''}}
+function mTutup(){$('#menu').classList.remove('open');const list=$('#mlist');if(list){list.style.maxHeight='';list.style.overflowY=''}}
 
 /* ---------- dropdown custom ---------- */
 const DD={};
@@ -424,7 +424,7 @@ function kartuRender(){const d=S.kd;if(!d)return Promise.resolve();const s=d.sis
   try{$('#kimg').src=kartu('depan');$('#kimg2').src=kartu('belakang')}catch(e){['#kimg','#kimg2','#kunduh'].forEach(q=>{const z=$(q);if(z)z.remove()})}})}
 A.siswa=d=>{S.kd=d;kartuRender();kedipKosong()};
 async function salinLinkAnak(){const t=Kartu.urlPortal(S.siswa.kode_qr);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}ok?toast('Link halaman disalin'):toast('Tidak bisa menyalin, coba lagi','err')}
-async function unduh(){const b=$('#kunduh');if(!b||b.disabled)return;const t=b.innerHTML,dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-')+'-'+kartuModePortal,dl=(u,n)=>new Promise((resolve,reject)=>{if(!u||u==='about:blank')return reject(new Error('Gambar kartu belum siap'));const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(resolve,550)});b.disabled=true;b.innerHTML='<span class="kdlspin" aria-hidden="true"></span>Sedang memproses kartu...';try{await dl($('#kimg').src,dasar+'-depan.png');await dl($('#kimg2').src,dasar+'-belakang.png');toast('Kartu depan dan belakang berhasil diunduh')}catch(e){toast('Kartu belum siap. Coba lagi sebentar.','err')}finally{b.disabled=false;b.innerHTML=t}}
+async function unduh(){const b=$('#kunduh');if(!b||b.disabled)return;const t=b.innerHTML,dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-')+'-'+kartuModePortal,dl=(u,n)=>new Promise((resolve,reject)=>{if(!u||u==='about:blank')return reject(new Error('Gambar kartu belum siap'));const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(resolve,550)});b.disabled=true;b.innerHTML='<span class="kdlspin" aria-hidden="true"></span>';try{await dl($('#kimg').src,dasar+'-depan.png');await dl($('#kimg2').src,dasar+'-belakang.png')}catch(e){toast('Kartu belum siap. Coba lagi sebentar.','err')}finally{b.disabled=false;b.innerHTML=t}}
 
 /* Ubah profil oleh orang tua (kecuali kelas, NISN, tahun masuk) */
 const PF={busy:0},normWA=n=>{let d=String(n||'').replace(/\D/g,'');if(d[0]==='0')d='62'+d.slice(1);else if(d[0]==='8')d='62'+d;return d},waLokal=w=>w?'0'+String(w).replace(/^62/,''):'';
