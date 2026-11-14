@@ -27,9 +27,12 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .top .nm{font-family:'Pacifico',cursive;font-size:29px;line-height:1.35;margin:2px 0 9px;word-break:break-word}
 .top .gt{display:inline-block;background:rgba(6,40,20,.5);color:#ffe9a0;font-weight:700;border-radius:999px;padding:6px 15px;font-size:13.5px;min-height:28px}
 .wrap{max-width:720px;margin:auto;padding:0 14px 24px}
-.bnav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0));background:rgba(255,255,255,.94);border-top:1px solid rgba(20,60,35,.14);box-shadow:0 -8px 24px rgba(0,0,0,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.bnav button{border:0;background:transparent;color:#496252;border-radius:12px;padding:7px 3px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:inherit;font-size:11px;font-weight:700;min-width:0;cursor:pointer}
-.bnav button .ni{font-size:20px;line-height:1.2}.bnav button.on{background:#e2f5e9;color:#08783b}.bnav button:active{transform:scale(.96)}
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0));background:rgba(239,248,241,.94);border-top:1px solid rgba(20,60,35,.18);box-shadow:0 -8px 24px rgba(0,0,0,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background-color .25s,border-color .25s}
+.bnav button{border:0;background:transparent;color:#405b49;border-radius:12px;padding:7px 3px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:inherit;font-size:11px;font-weight:700;min-width:0;cursor:pointer;transition:background-color .2s,color .2s}
+.bnav button .ni{font-size:20px;line-height:1.2}.bnav button.on{background:#d7ecde;color:#08783b}.bnav button:active{transform:scale(.96)}
+html[data-tm=n] .bnav{background:rgba(14,26,60,.94);border-top-color:rgba(255,255,255,.22)}
+html[data-tm=n] .bnav button{color:#d2dcf5}
+html[data-tm=n] .bnav button.on{background:rgba(154,127,224,.34);color:#fff}
 .kdlspin{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;vertical-align:-3px;margin-right:7px;animation:kspin .7s linear infinite}
 @keyframes kspin{to{transform:rotate(360deg)}}
 .clk{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px}
