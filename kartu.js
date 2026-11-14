@@ -161,5 +161,55 @@ function buatBelakang(s,opt){
  const nm=String(s.nama||'').toUpperCase();c.textAlign='center';c.textBaseline='alphabetic';c.fillStyle='#f2c94c';const _z=fitFont(c,nm,270,23,10,z=>'800 '+z+'px '+F);
  const _t=elips(c,nm,270),_mH=c.measureText('H'),_cap=(_mH&&_mH.actualBoundingBoxAscent>0)?_mH.actualBoundingBoxAscent:_z*0.72;tebal(c,_t,330,398.5+_cap/2,.6);
  c.restore();return cv.toDataURL('image/png')}
-g.Kartu={DOMAIN_PORTAL,isiQR,urlPortal,kodeDariQR,kartuLama,qrObj,buatKartu,buatBelakang,siapkanLogo,tglDMY,jkNama};
+
+/* ---- KARTU PORTRAIT: ukuran visual 420x660, proporsi ID-1 vertikal ---- */
+function kanvasPortrait(opt){const K=opt&&opt.pratinjau?1.5:3,cv=document.createElement('canvas');cv.width=420*K;cv.height=660*K;const c=cv.getContext('2d');c.scale(K,K);return{K,cv,c}}
+function teksFit(c,t,max,start,min,weight){return fitFont(c,t,max,start,min,z=>(weight||'700')+' '+z+'px '+F)}
+function buatKartuPortrait(s,opt){
+ const {cv,c}=kanvasPortrait(opt);let gr;
+ rr(c,0,0,420,660,18);c.save();c.clip();
+ c.fillStyle='#fbf6e6';c.fillRect(0,0,420,660);
+ gr=c.createLinearGradient(0,0,420,0);gr.addColorStop(0,'#0b5b40');gr.addColorStop(1,'#116b4c');c.fillStyle=gr;c.fillRect(0,0,420,86);
+ c.fillStyle='#efc33e';c.fillRect(0,84,420,2);
+ const lg=opt.logo?LG.get(opt.logo):null;let tx=82;
+ if(lg&&lg.width){const r=Math.min(88/lg.width,58/lg.height),w=lg.width*r,h=lg.height*r;tx=Math.max(82,18+w+12);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(lg,18,15+(58-h)/2,w,h)}
+ c.textAlign='left';c.textBaseline='middle';c.fillStyle='#f2c94c';c.font='bold 12px '+F;lsText(c,'KARTU PELAJAR',tx,27,2.1);
+ const sekolah=String(opt.nama||'').toUpperCase();c.fillStyle='#fff';teksFit(c,sekolah,420-tx-16,20,9,'800');tebal(c,elips(c,sekolah,420-tx-16),tx,49,.65);
+ c.fillStyle='#e7f2eb';c.font='13px '+F;const tahun='Tahun Terdaftar : '+String(s.masuk||opt.tahun||opt.hari||'').slice(0,4);fitFont(c,tahun,420-tx-16,13,9,z=>z+'px '+F);c.fillText(tahun,tx,70);
+ /* foto siswa */
+ rr(c,101,101,218,290,16);c.fillStyle='#fff';c.fill();c.lineWidth=4;c.strokeStyle='#16805b';c.stroke();
+ const ft=opt.foto&&opt.foto.width?opt.foto:null;
+ if(ft){c.save();rr(c,108,108,204,276,11);c.clip();const r=Math.max(204/ft.width,276/ft.height),w=ft.width*r,h=ft.height*r;c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(ft,108+(204-w)/2,108+(276-h)/2,w,h);c.restore()}
+ else{c.fillStyle='#e8f3ed';rr(c,108,108,204,276,11);c.fill();c.fillStyle='#a9d3c0';c.beginPath();c.arc(210,205,35,0,7);c.fill();c.beginPath();c.ellipse(210,302,70,72,0,Math.PI,0);c.fill();c.fillStyle='#2b8464';c.font='bold 11px '+F;c.textAlign='center';c.fillText('FOTO SISWA',210,360)}
+ c.fillStyle='#11704f';c.font='italic 800 11px '+F;c.textAlign='center';c.fillText('Aktif selama jadi siswa',210,410);
+ c.textAlign='left';c.fillStyle='#0e5a3d';c.font='bold 13px '+F;lsText(c,'NAMA LENGKAP',18,438,.7);
+ rr(c,18,450,384,43,22);gr=c.createLinearGradient(0,450,0,493);gr.addColorStop(0,'#e4f2e9');gr.addColorStop(1,'#d6ebdf');c.fillStyle=gr;c.fill();c.lineWidth=1.4;c.strokeStyle='#2a8a68';c.stroke();
+ rr(c,18,450,40,43,20);c.fillStyle='#0e6548';c.fill();IK.orang(c,38,471);
+ const nm=String(s.nama||'').toUpperCase();c.fillStyle='#0b4d36';teksFit(c,nm,326,18,9,'800');tebal(c,elips(c,nm,326),70,473,.5);
+ c.fillStyle='#0e5a3d';c.font='bold 13px '+F;lsText(c,'INFORMASI SISWA',18,520,.65);c.strokeStyle='#e9c13a';c.lineWidth=2;c.beginPath();c.moveTo(155,520);c.lineTo(190,520);c.stroke();c.strokeStyle='#1b7a5a';c.lineWidth=1.2;c.beginPath();c.moveTo(198,520);c.lineTo(402,520);c.stroke();
+ const rows=[['Tempat, Tgl Lahir',ttlPanjang(s.tempat,s.tgl)||'-',IK.kalender],['Jenis Kelamin',jkNama(s.jk)||'-',IK.pria],['Alamat',s.alamat||'-',IK.lokasi]];
+ rows.forEach((p,i)=>{const y=535+i*34,cy=y+15.5;rr(c,18,y,384,31,15.5);c.fillStyle='#d9eee2';c.fill();c.lineWidth=1;c.strokeStyle='#32936f';c.stroke();c.beginPath();c.arc(34,cy,14,0,7);c.fillStyle='#0e6548';c.fill();p[2](c,34,cy);c.textBaseline='middle';c.textAlign='left';c.fillStyle='#073b29';teksFit(c,p[0],132,12.5,10,'800');c.fillText(p[0],68,cy);c.fillText(':',178,cy);c.fillStyle='#172c22';teksFit(c,String(p[1]),210,15,10.5,'800');c.fillText(elips(c,String(p[1]),210),190,cy)});
+ gr=c.createLinearGradient(0,0,420,0);gr.addColorStop(0,'#0a5a3f');gr.addColorStop(1,'#0e6a49');c.fillStyle=gr;c.fillRect(0,640,420,20);c.fillStyle='#efc33e';c.fillRect(0,638,420,2);
+ c.restore();return cv.toDataURL('image/png')
+}
+function buatBelakangPortrait(s,opt){
+ const {K,cv,c}=kanvasPortrait(opt);let gr;
+ rr(c,0,0,420,660,18);c.save();c.clip();c.fillStyle='#fbf6e6';c.fillRect(0,0,420,660);
+ gr=c.createLinearGradient(0,0,420,0);gr.addColorStop(0,'#0b5b40');gr.addColorStop(1,'#116b4c');c.fillStyle=gr;c.fillRect(0,0,420,86);c.fillStyle='#efc33e';c.fillRect(0,84,420,2);
+ const lg=opt.logo?LG.get(opt.logo):null;let tx=82;
+ if(lg&&lg.width){const r=Math.min(88/lg.width,58/lg.height),w=lg.width*r,h=lg.height*r;tx=Math.max(82,18+w+12);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(lg,18,15+(58-h)/2,w,h)}
+ c.textAlign='left';c.textBaseline='middle';c.fillStyle='#f2c94c';c.font='bold 12px '+F;lsText(c,'KARTU ID CARD',tx,27,2.1);const sekolah=String(opt.nama||'').toUpperCase();c.fillStyle='#fff';teksFit(c,sekolah,420-tx-16,20,9,'800');tebal(c,elips(c,sekolah,420-tx-16),tx,49,.65);
+ /* QR dibingkai putih */
+ c.save();c.shadowColor='rgba(15,92,63,.2)';c.shadowBlur=12*K;c.shadowOffsetY=3*K;rr(c,104,144,212,212,16);c.fillStyle='#fff';c.fill();c.restore();rr(c,112,152,196,196,16);c.lineWidth=4;c.strokeStyle='#16805b';c.stroke();
+ if(opt.qr){const o=qrObj(opt.qr),n=o.getModuleCount(),cl=Math.floor(146*K/n)/K,sz=cl*n,qx=210-sz/2,qy=250-sz/2;c.fillStyle='#000';for(let r=0;r<n;r++)for(let q=0;q<n;q++)if(o.isDark(r,q))c.fillRect(qx+q*cl,qy+r*cl,cl+.02,cl+.02)}
+ else{c.textAlign='center';c.fillStyle='#b42318';c.font='bold 16px '+F;c.fillText('KODE BELUM ADA',210,238)}
+ const wa=s.wa?('0'+String(s.wa).replace(/\D/g,'').replace(/^62/,'').replace(/^0+/,'' )).replace(/(\d{4})(?=\d)/g,'$1-'):'-';
+ const rows=[['Kelas',s.kelas||'-',IK.topi],['NISN',s.nisn||'-',IK.kartu],['WA Ortu',wa,IK.telepon]];
+ rows.forEach((p,i)=>{const y=421+i*48,cy=y+20;rr(c,18,y,384,40,20);c.fillStyle='#d9eee2';c.fill();c.lineWidth=1.3;c.strokeStyle='#32936f';c.stroke();c.beginPath();c.arc(39,cy,19,0,7);c.fillStyle='#0e6548';c.fill();p[2](c,39,cy);c.textBaseline='middle';c.textAlign='left';c.fillStyle='#073b29';teksFit(c,p[0],106,14,11,'800');c.fillText(p[0],66,cy);c.fillText(':',164,cy);c.fillStyle='#172c22';teksFit(c,String(p[1]),216,19,12,'800');c.fillText(elips(c,String(p[1]),216),178,cy)});
+ gr=c.createLinearGradient(0,0,420,0);gr.addColorStop(0,'#0a5a3f');gr.addColorStop(1,'#0e6a49');c.fillStyle=gr;c.fillRect(0,598,420,62);c.fillStyle='#efc33e';c.fillRect(0,596,420,2);
+ c.textAlign='center';c.fillStyle='#f2c94c';teksFit(c,String(s.nama||'').toUpperCase(),388,24,9,'900');tebal(c,elips(c,String(s.nama||'').toUpperCase(),388),210,629,.8);
+ c.restore();return cv.toDataURL('image/png')
+}
+
+g.Kartu={DOMAIN_PORTAL,isiQR,urlPortal,kodeDariQR,kartuLama,qrObj,buatKartu,buatBelakang,buatKartuPortrait,buatBelakangPortrait,siapkanLogo,tglDMY,jkNama};
 })(window);
