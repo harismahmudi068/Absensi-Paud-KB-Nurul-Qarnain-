@@ -5457,7 +5457,7 @@ function devKirim(){
  if(d.error)return head+'<div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div></div></div>';
  if(devPesTab==='masuk'){
   const data=masuk.map((r,i)=>{
-   const st=r.sudah_dibalas?'<span class="badge Hadir">Sudah dibalas</span>':(r.perlu_dicek?'<span class="badge Terlambat">Perlu diperiksa</span>':'<span class="badge Belum">Belum dibalas</span>'));
+   const st=r.sudah_dibalas?'<span class="badge Hadir">Sudah dibalas</span>':(r.perlu_dicek?'<span class="badge Terlambat">Perlu diperiksa</span>':'<span class="badge Belum">Belum dibalas</span>');
    return '<tr><td>'+(i+1)+'</td><td><b>'+esc(sekolah(r.sekolah_id))+'</b></td><td style="white-space:nowrap">'+esc(rkJam(r.waktu))+'</td><td style="white-space:nowrap">'+esc(fmtNomor(r.dari_nomor)||r.dari_nomor||'-')+'</td><td style="min-width:260px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.isi||'-')+'</td><td style="min-width:180px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.hasil||'-')+'</td><td>'+st+'</td></tr>';
   }).join('');
   const table=tab(['No','Sekolah','Waktu','Nomor Pengirim','Pesan Masuk','Hasil','Status Balasan'],data);
