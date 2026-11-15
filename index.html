@@ -3556,7 +3556,7 @@ function barisGemini(keys,ai){
  if(!keys.length)return ai.ada?'<div class="note">Masih ada API Key lama. Tambahkan akun Gemini baru agar pengelolaan memakai daftar akun.</div>':'<div class="mu">Belum ada akun Gemini yang terdaftar.</div>';
  return keys.map(k=>{const aktif=!!k.aktif, status=k.error_permanen?'Perlu perbaikan':(k.status|| (aktif?'Aktif':'Nonaktif'));return `<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:9px 10px;border:1px solid var(--bd);border-radius:10px;background:var(--card)">
  <div style="min-width:150px;flex:1"><b>${esc(k.label||'Akun Gemini')}</b> <span class="badge ${aktif?'Hadir':'Belum'}">${aktif?'Aktif':'Nonaktif'}</span><div class="mu">Status: ${esc(status)}${k.kode_error?' · Kode: '+esc(k.kode_error):''}</div>${k.terakhir_berhasil?'<div class="mu">Terakhir berhasil: '+esc(new Date(k.terakhir_berhasil).toLocaleString('id-ID'))+'</div>':''}</div>
- <button class="btn sm danger" onclick="hapusGeminiKey(${Number(k.id)},'${esc(k.label||'Akun Gemini')}')">Hapus</button></div>`}).join('');
+ <button class="btn sm danger" onclick="hapusGeminiKey(${Number(k.id)})">Hapus</button></div>`}).join('');
 }
 function tambahGeminiKey(){
  const aktif=((RHS||{}).gemini_keys||[]).filter(x=>x.aktif).length;
@@ -3569,8 +3569,8 @@ function tambahGeminiKey(){
   await segarCfg();toast('Akun Gemini berhasil ditambahkan');
  });
 }
-async function hapusGeminiKey(id,label){
- if(!await konfirmasi('Hapus akun API Key Gemini "'+String(label||'Akun Gemini')+'"? Layanan AI akan memakai akun aktif lainnya.',{judul:'Hapus akun Gemini',ya:'Hapus',bahaya:1}))return;
+async function hapusGeminiKey(id){
+ if(!await konfirmasi('Hapus akun API Key Gemini ini? Layanan AI akan memakai akun aktif lainnya.',{judul:'Hapus akun Gemini',ya:'Hapus',bahaya:1}))return;
  guard(async()=>{await apiPengaturan({aksi:'gemini_key_hapus',id});await segarCfg();toast('Akun Gemini dihapus')});
 }
 function panelKonfigurasi(){return `<div class="panel" id="pnKonfig"><div class="ph">⚙ Konfigurasi</div><div class="pb">${cfgIsi()}</div></div>`}
