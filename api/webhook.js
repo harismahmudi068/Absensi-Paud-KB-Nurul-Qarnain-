@@ -44,9 +44,8 @@ const NOMOR_DEVELOPER = String(process.env.DEV_WA || '')
   .map(x => x.replace(/\D/g, '').replace(/^0/, '62'))
   .filter(x => /^628\d{8,12}$/.test(x));
 
-// Status yang TIDAK boleh ditimpa pesan izin/sakit wali, lalu dibalas "sudah tercatat".
-// Alpa boleh ditimpa. Libur juga tidak ditimpa, tetapi dibalas seperti hari libur biasa (lihat simpan()).
-const STATUS_DILINDUNGI = new Set(['hadir', 'terlambat']);
+// Hadir dan terlambat tidak boleh ditimpa laporan izin/sakit dari wali.
+// Libur juga dilindungi di dalam simpan(); status lain boleh dikoreksi wali.
 const LABEL_STATUS = { hadir: 'Hadir', terlambat: 'Terlambat', izin: 'Izin', sakit: 'Sakit', alpa: 'Alpa' };
 
 // Konteks per permintaan (aman untuk permintaan bersamaan): sekolahId, tokens, grup, tokenFonnte, kunciAi, nomorKepala
@@ -892,18 +891,16 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
     for (const p of aktif) {
       // Hanya tanggal yang memang akan ditulis untuk anak ini yang diperiksa.
       const adaAnak = ada.filter(a => a.siswa_id === p.s.id && p.tanggal.includes(a.tanggal));
-      // Semua absensi yang dicatat manual (cara selain WhatsApp) tidak boleh ditimpa,
-      // termasuk izin/sakit/alpa yang diisi guru saat layanan AI sedang gangguan.
-      const manualDilindungi = adaAnak.filter(a => a.status !== 'libur' && String(a.cara || '').toLowerCase() !== 'whatsapp');
-      const lindung = new Map([
-        ...adaAnak.filter(a => STATUS_DILINDUNGI.has(a.status)),
-        ...manualDilindungi
-      ].map(a => [a.tanggal, a.status]));
-      // Libur yang diisi guru: tidak ditimpa, dibalas seperti hari libur biasa.
+      // Sumber pencatatan tidak membatasi koreksi wali: absensi manual, otomatis,
+      // WhatsApp, dan Portal boleh diperbarui, kecuali status hadir/terlambat/libur.
+      const lindung = new Map(
+        adaAnak.filter(a => a.status === 'hadir' || a.status === 'terlambat')
+          .map(a => [a.tanggal, a.status])
+      );
+      // Status libur selalu dilindungi, apa pun sumber pencatatannya.
       const liburManual = adaAnak.filter(a => a.status === 'libur').map(a => a.tanggal);
       const tidakAktif = [...new Set([...p.tidakAktif, ...liburManual])].sort();
-      let tulis = p.tanggal.filter(d => !lindung.has(d) && !liburManual.includes(d));
-      if (status === 'sakit' && lindung.size) tulis = []; // sakit tidak dicatat bila ada tanggal yang terlindungi
+      const tulis = p.tanggal.filter(d => !lindung.has(d) && !liburManual.includes(d));
       if (!tulis.length) {
         if (lindung.size) sudahTercatat.push({ s: p.s, labels: [...new Set(lindung.values())].map(x => LABEL_STATUS[x] || x) });
         else liburSaja.push({ s: p.s, tidakAktif });
