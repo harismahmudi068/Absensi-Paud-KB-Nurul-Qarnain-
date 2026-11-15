@@ -4957,7 +4957,7 @@ const DEVSET={
  nomor:async()=>{S.devNomor=await dbq(db.rpc('developer_permintaan_nomor'))},
  log:async()=>{S.devLog=await dbq(db.rpc('developer_log',{p_batas:100}))},
  cron:async()=>{S.devCron=await dbq(db.rpc('developer_cron_daftar')).catch(ERR)},
- kirim:async()=>{S.devKirim=await dbq(db.rpc('developer_kirim_log',{p_batas:300,p_sekolah:devKirimSek?Number(devKirimSek):null})).catch(ERR)},
+ kirim:async()=>{const hasil=await dbq(db.rpc('developer_kirim_log',{p_batas:1000,p_sekolah:devKirimSek?Number(devKirimSek):null})).catch(ERR);S.devKirim=hasil;try{let q=_dbFrom('pesan_masuk').select('id,sekolah_id,dari_nomor,isi,hasil,perlu_dicek,waktu,sudah_dibalas,dibalas_pada').order('waktu',{ascending:false});if(devKirimSek)q=q.eq('sekolah_id',Number(devKirimSek));S.devPesanMasuk=await dbq(q.limit(500))||[];S.devPesanMasukErr=''}catch(e){S.devPesanMasuk=[];S.devPesanMasukErr=e.message||String(e)}} ,
  simpan:async()=>{S.devSimpan=await dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(ERR)},
  storage:async()=>{S.devStorage=await apiDev({aksi:'pemantauan_storage'}).catch(ERR)},
  ai:async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'}).catch(ERR)},
@@ -4981,7 +4981,7 @@ const devSegar=k=>{const e=DEVT[k];return !!e&&e.v===cmVer&&Date.now()-e.t<CM_TT
 async function devPastikan(keys,paksa){const perlu=keys.filter(k=>paksa||!devSegar(k));if(!perlu.length)return false;
  const v0=cmVer;await Promise.all(perlu.map(async k=>{await DEVSET[k]();DEVT[k]={t:Date.now(),v:v0}}));return true}
 async function muatDev(){await devPastikan(devButuh(),true)}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','📤 Riwayat Kirim'],['log','📜 Log'],['sistem','🩺 Sistem']];
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','💬 Pesan WA'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
 function devBuka(k){drw(0);kalReset();devTab=k;if(k==='perangkat'){HPF.mode=false;HPF.sel.clear()}if(view==='developer'){const b=devButuh();if(b.every(devSegar)){renderAll();scrollTo(0,0);kedipHalaman()}else guard(async()=>{await devPastikan(b);renderAll();scrollTo(0,0);kedipHalaman()})}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
@@ -5440,27 +5440,32 @@ function hapusTabungan(){form('Hapus seluruh data tabungan',[{k:'kf',l:'Ketik HA
   const kirim=l=>apiDev({aksi:'hapus_tabungan',konfirmasi:v.kf,...bodyBukti(v.sandi),lanjut_tanpa_pemberitahuan:!!l});
   let j;try{j=await kirim(false)}catch(e){
    if(e.message!=='BELUM_ADA_PEMBERITAHUAN')throw e;
-   const ok=await konfirmasi('Anda belum mengirim pemberitahuan tabungan kepada Kepala Sekolah dalam 3 hari terakhir, jadi mereka mungkin belum sempat mengunduh rekap tabungan. Tetap hapus sekarang?',{judul:'Belum ada pemberitahuan',ya:'Tetap hapus',bahaya:1});if(!ok)return;j=await kirim(true)}
-  await muatDev();toast('Data tabungan dihapus ('+j.transaksi+' transaksi)');renderV()});$('#ms').textContent='Hapus semua'}
-let devKirimSek='';
-function devKirimMuat(){guard(async()=>{await devPastikan(['kirim'],true);renderV()})}
-function devKirim(){const d=S.devKirim;
- if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat riwayat kirim...</div></div></div>';
- if(d.error)return `<div class="panel"><div class="ph">📤 Riwayat Kirim</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL langkah-kirim-log.sql versi terbaru sudah dijalankan.</div></div></div>`;
- const rg=d.ringkas||{},rows=d.baris||[],sk=S.devSek||[],tot=Number(rg.total)||0;
- const opt='<option value="">Semua sekolah</option>'+sk.map(x=>`<option value="${x.id}" ${String(x.id)===devKirimSek?'selected':''}>${esc(x.nama)}${x.status!=='aktif'?' (nonaktif)':''}</option>`).join('');
- const m=new Map();rows.forEach(r=>{if(!m.has(r.batch_id))m.set(r.batch_id,[]);m.get(r.batch_id).push(r)});
- let h='',n=0;
- m.forEach(list=>{if(n++>=40)return;
-  const awal=list[list.length-1],chip=(ik,tx,v)=>v?'<span>'+ik+' '+tx+' '+v+'</span>':'';
-  h+='<details class="rk"><summary><b>'+esc(awal.judul||RK_JENIS[awal.jenis]||'Pengiriman')+'</b>'+(list.some(r=>r.oleh_developer)?' <span class="mu">🛠 Oleh Developer</span>':'')+'<span class="mu"> · '+esc(awal.sekolah||'-')+' · '+esc(rkWaktu(awal.dibuat))+' · '+list.length+' pesan</span><div class="rkc">'
-   +rkChips(list)+'</div></summary><div class="rkb">'
-   +list.slice().reverse().map(r=>rkBaris(r,1)).join('')+'</div></details>'});
- const rentang=tot?'Tertua '+waktuId(rg.tertua)+' · terbaru '+waktuId(rg.terbaru):'';
- return `<div class="panel"><div class="ph">📤 Riwayat Kirim WhatsApp <span class="tb" style="margin:0"><button class="btn soft sm" onclick="devKirimMuat()">↻ Perbarui</button><button class="btn danger sm" ${tot?'':'disabled'} onclick="devKirimHapus()">🗑 Hapus riwayat</button></span></div><div class="pb"><label class="l">Tampilkan riwayat dari</label><select class="select" onchange="devKirimSek=this.value;devKirimMuat()">${opt}</select>
-<div class="cards" style="margin-top:10px"><div class="card stat"><b>${tot}</b>Total pesan</div><div class="card stat"><b>${Number(rg.terkirim)||0}</b>Terkirim</div><div class="card stat"><b>${Number(rg.gagal)||0}</b>Gagal</div><div class="card stat"><b>${Number(rg.terjadwal)||0}</b>Terjadwal / belum ada kabar</div></div>
-<div class="note">Riwayat disimpan 7 hari saja dan dibersihkan otomatis tiap hari pukul 02.30 WIB (tugas bersihkan-kirim-log). Tombol Hapus riwayat menghapus ${devKirimSek?'riwayat sekolah yang dipilih':'riwayat SEMUA sekolah'} dan tidak bisa dikembalikan; pesan WhatsApp yang sudah terkirim tidak terpengaruh.${rentang?'<br>'+rentang:''}</div></div></div>
-<div class="panel"><div class="ph">📋 Pengiriman terbaru <span class="mu">${rows.length} pesan dimuat</span></div><div class="pb">${h||'<div class="mu">Belum ada riwayat pengiriman.</div>'}${rows.length?'<div class="mu">Menampilkan sampai 300 pesan dan 40 pengiriman terbaru. Penanda seperti WhatsApp: ✓ terkirim, ✓✓ sampai ke HP, ✓✓ biru terbaca. Jam (WIB) dicatat saat kabar diterima server.</div>':''}</div></div>`}
+   const ok=await konfirmasi('Anda belum mengirim pemberitahuan tabungan kepada Kepala Sekolah dalam 3 hari terakhir, jadi mereka mungkin belum sempat mengunduh rekaplet devPesTab='masuk';
+function devKirimTab(t){devPesTab=t;renderV()}
+function devKirim(){
+ const d=S.devKirim,sk=S.devSek||[],masuk=Array.isArray(S.devPesanMasuk)?S.devPesanMasuk:[],rows=(d&&Array.isArray(d.baris)?d.baris:[]).filter(r=>r.jenis==='balasan');
+ const sekolah=id=>{const x=sk.find(v=>Number(v.id)===Number(id));return x?x.nama:'Sekolah #'+id};
+ const opt='<option value="">Semua sekolah</option>'+sk.map(x=>'<option value="'+x.id+'" '+(String(x.id)===devKirimSek?'selected':'')+'>'+esc(x.nama)+(x.status!=='aktif'?' (nonaktif)':'')+'</option>').join('');
+ const tabs='<div class="utabs">'+[['masuk','💬 Pesan Masuk'],['balasan','↩️ Riwayat Balasan']].map(x=>'<button class="utab'+(devPesTab===x[0]?' on':'')+'" onclick="devKirimTab(\''+x[0]+'\')">'+x[1]+'</button>').join('')+'</div>';
+ const head='<div class="panel"><div class="ph">💬 Pesan WA <button class="btn soft sm" onclick="devKirimMuat()">↻ Perbarui</button></div><div class="pb"><label class="l">Tampilkan pesan dari</label><select class="select" onchange="devKirimSek=this.value;devKirimMuat()">'+opt+'</select>'+tabs;
+ if(!d)return head+'<div class="note">⏳ Memuat data pesan...</div></div></div>';
+ if(d.error)return head+'<div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div></div></div>';
+ if(devPesTab==='masuk'){
+  let isi='';
+  masuk.forEach(r=>{
+   const st=r.sudah_dibalas?'<span class="badge Hadir">Sudah dibalas</span>':(r.perlu_dicek?'<span class="badge Terlambat">Perlu diperiksa</span>':'<span class="badge Belum">Belum dibalas</span>');
+   isi+='<details class="rk"><summary><b>'+esc(sekolah(r.sekolah_id))+'</b><span class="mu"> · '+esc(rkJam(r.waktu))+' · '+esc(fmtNomor(r.dari_nomor)||r.dari_nomor||'-')+'</span><div class="rkc">'+st+'</div></summary><div class="rkb"><div class="rkr"><div><b>Pesan masuk</b><div style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px">'+esc(r.isi||'')+'</div>'+(r.hasil?'<small>Hasil pemrosesan: '+esc(r.hasil)+'</small>':'')+'</div></div>'+(r.dibalas_pada?'<div class="mu">Dibalas pada '+esc(rkJam(r.dibalas_pada))+'</div>':'')+'</div></details>';
+  });
+  return head+'<div class="note">'+masuk.length+' pesan masuk dimuat'+(devKirimSek?' dari sekolah terpilih': ' dari seluruh sekolah')+'. Maksimal 500 pesan terbaru.</div>'+(S.devPesanMasukErr?'<div class="note" style="color:var(--rd)">Pesan masuk gagal dimuat: '+esc(S.devPesanMasukErr)+'</div>':(isi||'<div class="mu">Belum ada pesan masuk.</div>'))+'</div></div>';
+ }
+ let isi='';
+ rows.slice(0,500).forEach(r=>{
+  const tahap=rkTahap(r),lb=rkLabel(tahap);
+  isi+='<details class="rk"><summary><b>'+esc(sekolah(r.sekolah_id))+' · '+esc(r.label||'Balasan pesan wali')+'</b><span class="mu"> · '+esc(rkJam(r.dibuat))+'</span><div class="rkc"><span>'+lb[0]+' '+lb[1]+'</span></div></summary><div class="rkb">'+rkBaris(r,1)+'</div></details>';
+ });
+ return head+'<div class="note">'+rows.length+' catatan balasan dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Maksimal 500 catatan terbaru.</div>'+(isi||'<div class="mu">Belum ada riwayat balasan.</div>')+'<div class="mu" style="margin-top:10px">Catatan: sistem saat ini menyimpan penerima, label, waktu, dan status pengiriman balasan. Isi teks balasan yang dikirim belum disimpan dalam riwayat ini.</div></div></div>';
+}
+<span class="mu">${rows.length} pesan dimuat</span></div><div class="pb">${h||'<div class="mu">Belum ada riwayat pengiriman.</div>'}${rows.length?'<div class="mu">Menampilkan sampai 300 pesan dan 40 pengiriman terbaru. Penanda seperti WhatsApp: ✓ terkirim, ✓✓ sampai ke HP, ✓✓ biru terbaca. Jam (WIB) dicatat saat kabar diterima server.</div>':''}</div></div>`}
 async function devKirimHapus(){const sid=devKirimSek?Number(devKirimSek):null,x=sid?(S.devSek||[]).find(v=>v.id===sid):null,tot=Number(((S.devKirim||{}).ringkas||{}).total)||0;
  if(!tot)return toast('Tidak ada riwayat untuk dihapus',false);
  if(!await konfirmasi('Hapus '+tot+' riwayat kirim '+(x?'milik '+x.nama:'dari SEMUA sekolah')+'?\n\nTidak bisa dikembalikan. Pesan WhatsApp yang sudah terkirim tidak terpengaruh.',{judul:'Hapus riwayat kirim',ya:'Hapus riwayat',bahaya:1}))return;
