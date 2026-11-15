@@ -241,29 +241,40 @@ async function kirimBanyak(token, daftar, lg) {
 
 // Anggota aktif sekolah beserta nomor WhatsApp dari profil.
 async function anggotaAktif(sekolahId, hanyaIds) {
-  let url = `keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id`;
+  let url = `keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role`;
   if (hanyaIds) url += `&profil_id=in.(${hanyaIds.join(',')})`;
   const ang = (await supabase(url)) || [];
+  const roleById = new Map(ang.map((a) => [String(a.profil_id), String(a.role || '').toLowerCase()]));
   const ids = [...new Set(ang.map((a) => a.profil_id).filter((x) => RE_ID.test(String(x))))];
   if (!ids.length) return [];
   const prof = (await supabase(`profil?id=in.(${ids.join(',')})&aktif=eq.true&select=id,nama,no_wa`)) || [];
-  return prof.map((p) => ({ id: p.id, nama: p.nama || '', nomor: bersihNomor(p.no_wa) }));
+  return prof.map((p) => ({ id: p.id, nama: p.nama || '', nomor: bersihNomor(p.no_wa), role: roleById.get(String(p.id)) || '' }));
 }
 
-// LIBUR: semua anggota aktif sekolah (selain nomor kepala yang sudah menerima).
+function sapaanStaf(role) {
+  return ({
+    kepala_sekolah: 'Bapak/Ibu Kepala Sekolah',
+    wakil_kepala: 'Bapak/Ibu Wakil Kepala Sekolah',
+    operator: 'Bapak/Ibu Operator Sekolah',
+    pengelola: 'Bapak/Ibu Pengelola Sekolah',
+    guru: 'Bapak/Ibu Guru'
+  })[String(role || '').toLowerCase()] || 'Bapak/Ibu Staf Sekolah';
+}
+
+// LIBUR: semua anggota aktif sekolah// LIBUR: semua anggota aktif sekolah (selain nomor kepala yang sudah menerima).
 async function kirimStafLibur(token, sekolahId, nomorKepala, teks, lg) {
-  const pesan = teks.replace('Bapak/Ibu Kepala Sekolah', 'Bapak/Ibu');
   const sudah = new Set([nomorKepala]);
   const tujuan = [];
   for (const a of await anggotaAktif(sekolahId)) {
     if (!RE_WA.test(a.nomor) || sudah.has(a.nomor)) continue;
     sudah.add(a.nomor);
+    const pesan = teks.replace('Bapak/Ibu Kepala Sekolah', sapaanStaf(a.role));
     tujuan.push({ nama: a.nama, nomor: a.nomor, teks: pesan });
   }
   return kirimBanyak(token, tujuan, lg);
 }
 
-// LIBUR: kirim satu pesan ke setiap grup yang terhubung dengan kelas yang benar-benar libur.
+// LIBUR: kirim satu pesan ke setiap grup// LIBUR: kirim satu pesan ke setiap grup yang terhubung dengan kelas yang benar-benar libur.
 // Kelas harus memiliki sebab libur yang sama dengan pemeriksaan database dan seluruh siswanya
 // sudah berstatus Libur pada tanggal tersebut.
 async function dataKelasLibur(sekolahId, tanggal) {
@@ -392,34 +403,35 @@ async function kirimGrupLibur(tokenUtama, sekolahId, tanggal, lg) {
 }
 
 // ALPA: pesan khusus wali kelas, memakai kepala dan penutup pesan untuk kepala sekolah.
-function pesanWali(teks, tanggal, daftarKelas) {
+function pesanWali(teks, tanggal, daftarKelas, sapaan) {
   const total = daftarKelas.reduce((n, k) => n + k.siswa.length, 0);
   const iHeader = teks.indexOf('Berikut daftar anak');
   const iFooter = teks.lastIndexOf('Terimakasih');
+  const sapaanFinal = sapaan || 'Bapak/Ibu Wali Kelas';
   let atas;
   if (iHeader > 0) {
     atas = teks
       .slice(0, iHeader)
-      .replace('Bapak/Ibu Kepala Sekolah', 'Bapak/Ibu Wali Kelas')
-      .replace(/Total: \d+ siswa/, `Total: ${total} siswa`);
+      .replace('Bapak/Ibu Kepala Sekolah', sapaanFinal)
+      .replace(/Total: \\d+ siswa/, `Total: ${total} siswa`);
   } else {
     atas =
-      "_Assalamu'alaikum, Bapak/Ibu Wali Kelas_\n\n🔔 NOTIFIKASI ALPA OTOMATIS\n\n" +
-      `📅 Tanggal: ${formatTanggal(tanggal)}\n👥 Total: ${total} siswa\n`;
+      `_Assalamu'alaikum, ${sapaanFinal}_\\n\\n🔔 NOTIFIKASI ALPA OTOMATIS\\n\\n` +
+      `📅 Tanggal: ${formatTanggal(tanggal)}\\n👥 Total: ${total} siswa\\n`;
   }
   const bawah = iFooter >= 0 ? teks.slice(iFooter) : 'Terimakasih 🌹';
-  let daftar = 'Berikut daftar anak yang *DI ALPA* :\n\n';
+  let daftar = 'Berikut daftar anak yang *DI ALPA* :\\n\\n';
   daftarKelas.forEach((k, idx) => {
-    if (idx > 0) daftar += '\n';
-    daftar += `📚 ${k.nama}\n`;
+    if (idx > 0) daftar += '\\n';
+    daftar += `📚 ${k.nama}\\n`;
     k.siswa.forEach((n, i) => {
-      daftar += `${i + 1}. ${n}\n`;
+      daftar += `${i + 1}. ${n}\\n`;
     });
   });
-  return atas + daftar + '\n' + bawah;
+  return atas + daftar + '\\n' + bawah;
 }
 
-async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg) {
+async function kirimWaliAlpaasync function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg) {
   if (!Array.isArray(alpa) || !alpa.length) return { ok: 0, gagal: [] };
 
   // Kelompokkan siswa alpa per kelas
@@ -447,15 +459,34 @@ async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa,
   for (const k of kelas.slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama)))) {
     const w = wali.get(k.wali_profil_id);
     if (!w || !RE_WA.test(w.nomor) || w.nomor === nomorKepala) continue;
-    if (!perNomor.has(w.nomor)) perNomor.set(w.nomor, { nama: w.nama, kelas: [] });
+    if (!perNomor.has(w.nomor)) perNomor.set(w.nomor, { nama: w.nama, role: w.role || '', kelas: [] });
     perNomor.get(w.nomor).kelas.push({ nama: k.nama, siswa: perKelas.get(Number(k.id)) || [] });
   }
 
-  const tujuan = [...perNomor.entries()].map(([nomor, v]) => ({
-    nama: `${v.nama} (wali ${v.kelas.map((k) => k.nama).join(', ')})`,
-    nomor,
-    teks: pesanWali(teks, tanggal, v.kelas)
-  }));
+  // Pengelola menerima notifikasi alpa sekolah meskipun bukan wali kelas.
+  // Jika pengelola juga wali kelas, nomor digabung agar tidak menerima pesan ganda.
+  const pengelola = (await anggotaAktif(sekolahId)).filter(a => a.role === 'pengelola');
+  const semuaKelasAlpa = kelas
+    .filter(k => perKelas.has(Number(k.id)))
+    .sort((a, b) => String(a.nama).localeCompare(String(b.nama)))
+    .map(k => ({ nama: k.nama, siswa: perKelas.get(Number(k.id)) || [] }));
+  for (const p of pengelola) {
+    if (!RE_WA.test(p.nomor) || p.nomor === nomorKepala) continue;
+    if (!perNomor.has(p.nomor)) {
+      perNomor.set(p.nomor, { nama: p.nama, role: p.role, kelas: semuaKelasAlpa });
+    } else {
+      perNomor.get(p.nomor).role = p.role;
+    }
+  }
+
+  const tujuan = [...perNomor.entries()].map(([nomor, v]) => {
+    const sapaan = v.role ? sapaanStaf(v.role) : 'Bapak/Ibu Wali Kelas';
+    return {
+      nama: `${v.nama}${v.kelas.length ? ' (wali ' + v.kelas.map((k) => k.nama).join(', ') + ')' : ' (Pengelola Sekolah)'}`,
+      nomor,
+      teks: pesanWali(teks, tanggal, v.kelas, sapaan)
+    };
+  });
   return kirimBanyak(token, tujuan, lg);
 }
 
