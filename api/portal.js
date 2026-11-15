@@ -237,13 +237,14 @@ async function kirimLaporan(req, res) {
     let hasil = await L.panggil('/rest/v1/absensi?on_conflict=siswa_id,tanggal', 'POST',
       { sekolah_id: sid, siswa_id: id, tanggal: hariIni, ...isi },
       { Prefer: 'resolution=ignore-duplicates,return=representation' });
-    // 2) Sudah ada: hanya alpa/izin/sakit (dan libur usang) yang boleh diganti. Hadir/terlambat tidak.
+    // 2) Koreksi boleh mengganti alpa/izin/sakit, tanpa membedakan sumber pencatatan.
+    // Hadir, terlambat, dan libur tetap dilindungi.
     if (!Array.isArray(hasil) || !hasil.length) {
       hasil = await L.panggil(
-        `/rest/v1/absensi?siswa_id=eq.${id}&sekolah_id=eq.${sid}&tanggal=eq.${hariIni}&status=in.(alpa,izin,sakit,libur)`,
+        `/rest/v1/absensi?siswa_id=eq.${id}&sekolah_id=eq.${sid}&tanggal=eq.${hariIni}&status=in.(alpa,izin,sakit)`,
         'PATCH', isi, { Prefer: 'return=representation' });
       if (!Array.isArray(hasil) || !hasil.length)
-        return res.status(409).json({ error: 'Anak sudah tercatat hadir hari ini, laporan tidak dapat diubah.' });
+        return res.status(409).json({ error: 'Absensi sudah tercatat Hadir, Terlambat, atau Libur sehingga laporan tidak dapat mengubahnya.' });
     }
     await L.catatLog({ pelaku: null, sekolah_id: sid, aksi: 'laporan_dashboard_siswa', rincian: `${status} siswa ${id} ${hariIni}` });
     return res.status(200).json({ ok: true, absen_hari_ini: { tanggal: hariIni, status, jam: null, catatan } });
