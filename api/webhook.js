@@ -730,7 +730,7 @@ async function buatRencana(status, waktu, anak = []) {
   const libur = await ambilLibur(T, tambahHari(T, BATAS_HARI_KE_DEPAN + BATAS_JUMLAH_HARI_IZIN + 15));
 
   if (status === 'sakit') {
-    // Tanggal mulai sakit boleh hari pesan dikirim atau dua hari sekolah aktif berikutnya.
+    // Tanggal mulai sakit boleh hari pesan dikirim atau dalam tiga hari sekolah aktif berikutnya.
     // Jika tanggal yang disebut jatuh pada hari libur, geser ke hari sekolah aktif berikutnya.
     // Hitungan dilakukan per kelas karena libur tertentu dapat berlaku khusus untuk satu kelas.
     const buatRencanaSakit = kelasId => {
@@ -762,7 +762,7 @@ async function buatRencana(status, waktu, anak = []) {
           aktif = tambahHari(aktif, 1);
         }
         if (!hariSekolah(aktif, libur, kelasId) || !batasMulai.includes(aktif)) {
-          return { valid: false, alasan: 'tanggal sakit melewati batas dua hari sekolah aktif' };
+          return { valid: false, alasan: 'tanggal sakit melewati batas tiga hari sekolah aktif' };
         }
         calonMulai.push(aktif);
       }
