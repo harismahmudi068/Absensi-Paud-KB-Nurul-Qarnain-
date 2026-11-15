@@ -187,9 +187,17 @@ module.exports = async (req, res) => {
       const grupIds = [...new Set((relasi || []).map(x => Number(x.grup_wa_id)).filter(Number.isInteger))];
       const [grupRows, anggotaRows] = await Promise.all([
         grupIds.length ? sb(`/rest/v1/grup_wa?sekolah_id=eq.${sekolahId}&id=in.(${grupIds.join(',')})&select=id,grup_id,label,token_id`) : Promise.resolve([]),
-        sb(`/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id`)
+        sb(`/rest/v1/keanggotaan?sekolah_id=eq.${sekolahId}&aktif=eq.true&select=profil_id,role`)
       ]);
       const anggotaIds = [...new Set((anggotaRows || []).map(x => String(x.profil_id)).filter(x => /^[0-9a-f-]{36}$/i.test(x)))];
+      const roleByProfilId = new Map((anggotaRows || []).map(x => [String(x.profil_id), String(x.role || '').toLowerCase()]));
+      const sapaanStaf = role => ({
+        kepala_sekolah: 'Bapak/Ibu Kepala Sekolah',
+        wakil_kepala: 'Bapak/Ibu Wakil Kepala Sekolah',
+        operator: 'Bapak/Ibu Operator Sekolah',
+        pengelola: 'Bapak/Ibu Pengelola Sekolah',
+        guru: 'Bapak/Ibu Guru'
+      }[role] || 'Bapak/Ibu Staf Sekolah');
       const profilRows = anggotaIds.length ? await sb(`/rest/v1/profil?id=in.(${anggotaIds.join(',')})&aktif=eq.true&select=id,nama,no_wa`) : [];
       const tokenById = new Map((tokenRows || []).map(x => [String(x.id), x.token]));
       const grupById = new Map((grupRows || []).map(x => [String(x.id), x]));
@@ -208,12 +216,12 @@ module.exports = async (req, res) => {
       const formatTanggal = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
       const tanggalTeks = formatTanggal.format(new Date(tanggal + 'T00:00:00+07:00'));
       const keterangan = String(b.keterangan || '').replace(/\r/g, '').trim().slice(0, 500);
-      const buatPesan = (daftarKelas, catatan = keterangan) => [
+      const buatPesan = (daftarKelas, catatan = keterangan, sapaan = 'Bapak/Ibu Wali Murid') => [
         '🌸 *INFORMASI LIBUR SEKOLAH*',
         '',
         'Assalamu’alaikum warahmatullahi wabarakatuh.',
         '',
-        'Yth. Bapak/Ibu Wali Murid,',
+        'Yth. ' + sapaan + ',',
         '',
         'Kami informasikan bahwa kegiatan belajar mengajar pada:',
         '',
@@ -254,7 +262,7 @@ module.exports = async (req, res) => {
 
       // Kepala sekolah menerima pemberitahuan untuk kelas baru yang berhasil diklaim.
       try {
-        const hasil = await kirimFonnte(tokenUtama, kepala, buatPesan(namaKelas));
+        const hasil = await kirimFonnte(tokenUtama, kepala, buatPesan(namaKelas, keterangan, 'Bapak/Ibu Kepala Sekolah'));
         logs.push({ sekolah_id: sekolahId, batch_id: batch, jenis: 'libur', judul: 'Notifikasi libur ' + tanggal, label: 'Kepala Sekolah', nomor: kepala, fonnte_id: idFonnte(hasil), state_fonnte: hasil && hasil.detail && hasil.detail.id ? String(hasil.detail.id) : null, status: 'terjadwal', status_fonnte: hasil && hasil.status ? String(hasil.status) : null });
       } catch (e) {
         const alasan = potong(e.message || e, 300);
@@ -267,7 +275,8 @@ module.exports = async (req, res) => {
         const nomor = bersihNomor(a.no_wa);
         if (!RE_NOMOR.test(nomor) || nomorSudah.has(nomor)) continue;
         nomorSudah.add(nomor);
-        await jadwalkan(nomor, buatPesan(namaKelas), tokenUtama, a.nama || 'Staf sekolah');
+        const role = roleByProfilId.get(String(a.id));
+        await jadwalkan(nomor, buatPesan(namaKelas, keterangan, sapaanStaf(role)), tokenUtama, a.nama || 'Staf sekolah');
       }
       for (const item of grupMap.values()) {
         const g = item.grup;
