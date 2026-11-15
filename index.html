@@ -5453,22 +5453,25 @@ function devKirim(){
  const opt='<option value="">Semua sekolah</option>'+sk.map(x=>'<option value="'+x.id+'" '+(String(x.id)===devKirimSek?'selected':'')+'>'+esc(x.nama)+(x.status!=='aktif'?' (nonaktif)':'')+'</option>').join('');
  const tabs='<div class="utabs">'+[['masuk','💬 Pesan Masuk'],['balasan','↩️ Riwayat Balasan']].map(x=>'<button class="utab'+(devPesTab===x[0]?' on':'')+'" onclick="devKirimTab(\''+x[0]+'\')">'+x[1]+'</button>').join('')+'</div>';
  const head='<div class="panel"><div class="ph">💬 Pesan WA <button class="btn soft sm" onclick="devKirimMuat()">↻ Perbarui</button></div><div class="pb"><label class="l">Tampilkan pesan dari</label><select class="select" onchange="devKirimSek=this.value;devKirimMuat()">'+opt+'</select>'+tabs;
+ const grid='display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:10px;';
+ const card='border:1px solid var(--bd);border-radius:14px;padding:13px;background:var(--card,rgba(255,255,255,.72));min-width:0;';
+ const field=(k,v)=>'<div style="min-width:0"><div class="mu" style="font-size:12px;margin-bottom:3px">'+k+'</div><div style="overflow-wrap:anywhere">'+v+'</div></div>';
  if(!d)return head+'<div class="note">⏳ Memuat data pesan...</div></div></div>';
  if(d.error)return head+'<div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div></div></div>';
  if(devPesTab==='masuk'){
   let isi='';
   masuk.forEach(r=>{
    const st=r.sudah_dibalas?'<span class="badge Hadir">Sudah dibalas</span>':(r.perlu_dicek?'<span class="badge Terlambat">Perlu diperiksa</span>':'<span class="badge Belum">Belum dibalas</span>');
-   isi+='<details class="rk"><summary><b>'+esc(sekolah(r.sekolah_id))+'</b><span class="mu"> · '+esc(rkJam(r.waktu))+' · '+esc(fmtNomor(r.dari_nomor)||r.dari_nomor||'-')+'</span><div class="rkc">'+st+'</div></summary><div class="rkb"><div class="rkr"><div><b>Pesan masuk</b><div style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:6px">'+esc(r.isi||'')+'</div>'+(r.hasil?'<small>Hasil pemrosesan: '+esc(r.hasil)+'</small>':'')+'</div></div>'+(r.dibalas_pada?'<div class="mu">Dibalas pada '+esc(rkJam(r.dibalas_pada))+'</div>':'')+'</div></details>';
+   isi+='<article style="'+card+'"><div style="'+grid+'">'+field('Sekolah','<b>'+esc(sekolah(r.sekolah_id))+'</b>')+field('Waktu',esc(rkJam(r.waktu)))+field('Nomor pengirim',esc(fmtNomor(r.dari_nomor)||r.dari_nomor||'-'))+field('Status balasan',st)+'</div><div style="border-top:1px solid var(--bd);margin-top:11px;padding-top:10px">'+field('Pesan masuk','<div style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.isi||'-')+'</div>')+(r.hasil?'<div style="margin-top:9px">'+field('Hasil pemrosesan',esc(r.hasil))+'</div>':'')+(r.dibalas_pada?'<div style="margin-top:9px">'+field('Waktu dibalas',esc(rkJam(r.dibalas_pada)))+'</div>':'')+'</div></article>';
   });
-  return head+'<div class="note">'+masuk.length+' pesan masuk dimuat'+(devKirimSek?' dari sekolah terpilih': ' dari seluruh sekolah')+'. Maksimal 500 pesan terbaru.</div>'+(S.devPesanMasukErr?'<div class="note" style="color:var(--rd)">Pesan masuk gagal dimuat: '+esc(S.devPesanMasukErr)+'</div>':(isi||'<div class="mu">Belum ada pesan masuk.</div>'))+'</div></div>';
+  return head+'<div class="note">'+masuk.length+' pesan masuk dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Maksimal 500 pesan terbaru.</div>'+(S.devPesanMasukErr?'<div class="note" style="color:var(--rd)">Pesan masuk gagal dimuat: '+esc(S.devPesanMasukErr)+'</div>':(isi?'<div style="'+grid+'">'+isi+'</div>':'<div class="mu">Belum ada pesan masuk.</div>'))+'</div></div>';
  }
  let isi='';
  rows.slice(0,500).forEach(r=>{
   const tahap=rkTahap(r),lb=rkLabel(tahap);
-  isi+='<details class="rk"><summary><b>'+esc(sekolah(r.sekolah_id))+' · '+esc(r.label||'Balasan pesan wali')+'</b><span class="mu"> · '+esc(rkJam(r.dibuat))+'</span><div class="rkc"><span>'+lb[0]+' '+lb[1]+'</span></div></summary><div class="rkb">'+rkBaris(r,1)+'</div></details>';
+  isi+='<article style="'+card+'"><div style="'+grid+'">'+field('Sekolah','<b>'+esc(sekolah(r.sekolah_id))+'</b>')+field('Penerima',esc(fmtNomor(r.nomor)||r.nomor||'-'))+field('Jenis pesan',esc(r.label||'Balasan pesan wali'))+field('Waktu',esc(rkJam(r.dibuat)))+field('Status pengiriman','<span>'+lb[0]+' '+lb[1]+'</span>')+'</div><div style="border-top:1px solid var(--bd);margin-top:11px;padding-top:10px">'+rkBaris(r,1)+'</div></article>';
  });
- return head+'<div class="note">'+rows.length+' catatan balasan dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Maksimal 500 catatan terbaru.</div>'+(isi||'<div class="mu">Belum ada riwayat balasan.</div>')+'<div class="mu" style="margin-top:10px">Catatan: sistem saat ini menyimpan penerima, label, waktu, dan status pengiriman balasan. Isi teks balasan yang dikirim belum disimpan dalam riwayat ini.</div></div></div>';
+ return head+'<div class="note">'+rows.length+' catatan balasan dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Maksimal 500 catatan terbaru.</div>'+(isi?'<div style="'+grid+'">'+isi+'</div>':'<div class="mu">Belum ada riwayat balasan.</div>')+'<div class="mu" style="margin-top:10px">Catatan: sistem saat ini menyimpan penerima, label, waktu, dan status pengiriman balasan. Isi teks balasan yang dikirim belum disimpan dalam riwayat ini.</div></div></div>';
 }
 async function devKirimHapus(){const sid=devKirimSek?Number(devKirimSek):null,x=sid?(S.devSek||[]).find(v=>v.id===sid):null,tot=Number(((S.devKirim||{}).ringkas||{}).total)||0;
  if(!tot)return toast('Tidak ada riwayat untuk dihapus',false);
