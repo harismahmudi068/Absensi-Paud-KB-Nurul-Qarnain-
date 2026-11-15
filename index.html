@@ -5448,7 +5448,7 @@ function devKirimMuat(){guard(async()=>{await devPastikan(['kirim'],true);render
 let devPesTab='masuk';
 const devPesPilih=new Set();
 function devKirimTab(t){devPesTab=t;devPesPilih.clear();renderV()}
-function devPesCek(id,on){on?devPesPilih.add(Number(id)):devPesPilih.delete(Number(id));const b=$('#devPesHapusPilih');if(b){b.disabled=!devPesPilih.size;b.textContent='🗑 Hapus terpilih ('+devPesPilih.size+')'}const a=$('#devPesAll');if(a){const ids=(S.devPesanMasuk||[]).map(x=>Number(x.id));a.checked=!!ids.length&&ids.every(x=>devPesPilih.has(x));a.indeterminate=devPesPilih.size>0&&!a.checked}}
+function devPesCek(id,on){on?devPesPilih.add(Number(id)):devPesPilih.delete(Number(id));const b=$('#devPesHapusPilih');if(b){b.disabled=!devPesPilih.size;b.textContent='🗑 Hapus terpilih ('+devPesPilih.size+')'}document.querySelectorAll('.devPesBulk').forEach(x=>x.disabled=!devPesPilih.size);const a=$('#devPesAll');if(a){const ids=(S.devPesanMasuk||[]).map(x=>Number(x.id));a.checked=!!ids.length&&ids.every(x=>devPesPilih.has(x));a.indeterminate=devPesPilih.size>0&&!a.checked}}
 function devPesSemua(on){(S.devPesanMasuk||[]).forEach(x=>on?devPesPilih.add(Number(x.id)):devPesPilih.delete(Number(x.id)));renderV()}
 async function devPesAksi(aksi,ids){
  ids=[...new Set((ids||[]).map(Number).filter(Number.isFinite))];if(!ids.length)return toast('Pilih pesan terlebih dahulu',false);
