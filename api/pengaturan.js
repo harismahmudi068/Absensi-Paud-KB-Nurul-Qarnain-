@@ -385,31 +385,57 @@ module.exports = async (req, res) => {
       if (!Number.isInteger(id) || id <= 0) throw new Error('API Key tidak valid');
       const ada = (await ambilGeminiKeys()).find(x => Number(x.id) === id);
       if (!ada) throw new Error('API Key tidak ditemukan di sekolah ini');
+
+      // Tes manual bersifat observasional: jangan catat ke gemini_key_catat_hasil,
+      // karena RPC tersebut mengubah cooldown/status yang dipakai rotasi produksi.
+      const penerima = await nomorTujuanTes(b.penerima_id);
       const rahasia = await panggil('/rest/v1/rpc/gemini_key_ambil_untuk_tes', 'POST', {
         p_sekolah_id: sekolahId, p_id: id
       });
+
+      let berhasil = false;
+      let balasan = '';
+      let detail = '';
+      let kode = '';
       try {
-        const balasan = await tesGemini(rahasia.api_key);
-        await panggil('/rest/v1/rpc/gemini_key_catat_hasil', 'POST', {
-          p_sekolah_id: sekolahId, p_id: id, p_status: 'berhasil',
-          p_http_status: 200, p_kode_error: null, p_detail: null,
-          p_retry_after_seconds: null, p_permanen: false
-        });
-        await catat(user.id, sekolahId, 'gemini_api_key_tes', ada.label + ': berhasil');
-        return res.status(200).json({ ok: true, berhasil: true, pesan: 'API Key "' + ada.label + '" berfungsi. Balasan: ' + balasan });
+        balasan = await tesGemini(rahasia.api_key);
+        berhasil = true;
       } catch (e) {
+        detail = String(e.message || 'Tes API Key gagal').slice(0, 700);
         const status = Number(e.httpStatus) || null;
-        const permanen = [400, 401, 403].includes(status);
-        const kode = e.apiCode || (status ? 'HTTP_' + status : (e.name === 'AbortError' ? 'TIMEOUT' : 'TEST_FAILED'));
-        const detail = String(e.message || 'Tes API Key gagal').slice(0, 900);
-        await panggil('/rest/v1/rpc/gemini_key_catat_hasil', 'POST', {
-          p_sekolah_id: sekolahId, p_id: id, p_status: 'gagal',
-          p_http_status: status, p_kode_error: kode, p_detail: detail,
-          p_retry_after_seconds: null, p_permanen: permanen
-        }).catch(err => console.error('Gagal mencatat hasil tes Gemini:', err.message));
-        await catat(user.id, sekolahId, 'gemini_api_key_tes', ada.label + ': gagal (' + kode + ')');
-        return res.status(200).json({ ok: true, berhasil: false, pesan: 'API Key "' + ada.label + '" bermasalah: ' + detail });
+        kode = e.apiCode || (status ? 'HTTP_' + status : (/waktu habis/i.test(detail) ? 'TIMEOUT' : 'TEST_FAILED'));
       }
+
+      const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' });
+      const pesanTes = [
+        berhasil ? '✅ *HASIL TES API KEY GEMINI*' : '❌ *HASIL TES API KEY GEMINI*',
+        'Sekolah: ' + await namaSekolah(),
+        'Akun: ' + ada.label,
+        'Penerima: ' + penerima.nama,
+        'Waktu: ' + waktu + ' WIB',
+        '',
+        berhasil ? 'Status: BERHASIL' : 'Status: GAGAL',
+        berhasil ? 'Balasan Gemini: ' + balasan : 'Keterangan: ' + detail,
+        kode ? 'Kode: ' + kode : '',
+        '',
+        'Tes ini tidak mengubah rotasi, cooldown, atau status pemulihan API Key.'
+      ].filter(Boolean).join('\n');
+
+      const tk = await ambilToken();
+      let kirim = { ok: false, alasan: 'Belum ada token Fonnte yang terdaftar' };
+      if (tk.length) kirim = await kirimFonnte(tk[0].token, penerima.nomor, pesanTes);
+
+      const ringkas = ada.label + ': ' + (berhasil ? 'berhasil' : 'gagal (' + (kode || 'error') + ')') +
+        '; WhatsApp: ' + (kirim.ok ? 'terkirim ke ' + penerima.nama : 'gagal - ' + kirim.alasan);
+      await catat(user.id, sekolahId, 'gemini_api_key_tes', ringkas);
+
+      return res.status(200).json({
+        ok: true,
+        berhasil,
+        whatsapp_terkirim: !!kirim.ok,
+        pesan: 'API Key "' + ada.label + '" ' + (berhasil ? 'berfungsi' : 'bermasalah: ' + detail) +
+          (kirim.ok ? '. Hasil tes dikirim ke ' + penerima.nama + '.' : '. Hasil WhatsApp tidak terkirim: ' + kirim.alasan + '.')
+      });
     }
 
     if (b.aksi === 'gemini_key_hapus') {
