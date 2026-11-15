@@ -5446,7 +5446,26 @@ let devKirimSek='';
 function devKirimMuat(){guard(async()=>{await devPastikan(['kirim'],true);renderV()})}
 
 let devPesTab='masuk';
-function devKirimTab(t){devPesTab=t;renderV()}
+const devPesPilih=new Set();
+function devKirimTab(t){devPesTab=t;devPesPilih.clear();renderV()}
+function devPesCek(id,on){on?devPesPilih.add(Number(id)):devPesPilih.delete(Number(id));const b=$('#devPesHapusPilih');if(b){b.disabled=!devPesPilih.size;b.textContent='🗑 Hapus terpilih ('+devPesPilih.size+')'}const a=$('#devPesAll');if(a){const ids=(S.devPesanMasuk||[]).map(x=>Number(x.id));a.checked=!!ids.length&&ids.every(x=>devPesPilih.has(x));a.indeterminate=devPesPilih.size>0&&!a.checked}}
+function devPesSemua(on){(S.devPesanMasuk||[]).forEach(x=>on?devPesPilih.add(Number(x.id)):devPesPilih.delete(Number(x.id)));renderV()}
+async function devPesAksi(aksi,ids){
+ ids=[...new Set((ids||[]).map(Number).filter(Number.isFinite))];if(!ids.length)return toast('Pilih pesan terlebih dahulu',false);
+ const label={selesai:'menandai '+ids.length+' pesan selesai diperiksa',dibalas:'menandai '+ids.length+' pesan sudah dibalas',batal:'membatalkan status balasan '+ids.length+' pesan',hapus:'menghapus '+ids.length+' pesan'}[aksi];
+ if(aksi==='hapus'&&!await konfirmasi('Anda akan menghapus permanen '+ids.length+' pesan masuk. Tindakan ini tidak dapat dibatalkan.',{judul:'Hapus pesan masuk',ya:'Hapus pesan',bahaya:1,ikon:'🗑️'}))return;
+ return guard(async()=>{
+  let q=db.from('pesan_masuk');
+  if(aksi==='hapus')await dbq(q.delete().in('id',ids));
+  else{
+   const patch=aksi==='selesai'?{perlu_dicek:false}:aksi==='dibalas'?{sudah_dibalas:true,dibalas_pada:new Date().toISOString(),perlu_dicek:false}:{sudah_dibalas:false,dibalas_pada:null};
+   await dbq(q.update(patch).in('id',ids));
+  }
+  devPesPilih.clear();await devPastikan(['kirim'],true);renderV();
+  toast('Berhasil '+label)
+ })
+}
+async function devPesSatu(aksi,id){return devPesAksi(aksi,[id])}
 function devKirim(){
  const d=S.devKirim,sk=S.devSek||[],masuk=Array.isArray(S.devPesanMasuk)?S.devPesanMasuk:[],rows=(d&&Array.isArray(d.baris)?d.baris:[]).filter(r=>r.jenis==='balasan');
  const sekolah=id=>{const x=sk.find(v=>Number(v.id)===Number(id));return x?x.nama:'Sekolah #'+id};
@@ -5458,10 +5477,13 @@ function devKirim(){
  if(devPesTab==='masuk'){
   const data=masuk.map((r,i)=>{
    const st=r.sudah_dibalas?'<span class="badge Hadir">Sudah dibalas</span>':(r.perlu_dicek?'<span class="badge Terlambat">Perlu diperiksa</span>':'<span class="badge Belum">Belum dibalas</span>');
-   return '<tr><td>'+(i+1)+'</td><td><b>'+esc(sekolah(r.sekolah_id))+'</b></td><td style="white-space:nowrap">'+esc(rkJam(r.waktu))+'</td><td style="white-space:nowrap">'+esc(fmtNomor(r.dari_nomor)||r.dari_nomor||'-')+'</td><td style="min-width:260px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.isi||'-')+'</td><td style="min-width:180px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.hasil||'-')+'</td><td>'+st+'</td></tr>';
+   const id=Number(r.id),sel=devPesPilih.has(id);
+   const aksi='<div class="tb" style="gap:4px;flex-wrap:wrap;margin:0;min-width:210px">'+(!r.perlu_dicek?'<button class="btn soft sm" disabled>✓ Selesai</button>':'<button class="btn soft sm" onclick="devPesSatu(\'selesai\','+id+')">✓ Tandai selesai</button>')+(r.sudah_dibalas?'<button class="btn orange sm" onclick="devPesSatu(\'batal\','+id+')">↶ Batalkan dibalas</button>':'<button class="btn success sm" onclick="devPesSatu(\'dibalas\','+id+')">↩ Tandai dibalas</button>')+'<button class="btn danger sm" onclick="devPesSatu(\'hapus\','+id+')">🗑 Hapus</button></div>';
+   return '<tr><td><input type="checkbox" '+(sel?'checked':'')+' onchange="devPesCek('+id+',this.checked)"></td><td>'+(i+1)+'</td><td><b>'+esc(sekolah(r.sekolah_id))+'</b></td><td style="white-space:nowrap">'+esc(rkJam(r.waktu))+'</td><td style="white-space:nowrap">'+esc(fmtNomor(r.dari_nomor)||r.dari_nomor||'-')+'</td><td style="min-width:260px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.isi||'-')+'</td><td style="min-width:180px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.hasil||'-')+'</td><td>'+st+'</td><td>'+aksi+'</td></tr>';
   }).join('');
-  const table=tab(['No','Sekolah','Waktu','Nomor Pengirim','Pesan Masuk','Hasil','Status Balasan'],data);
-  return head+'<div class="note">'+masuk.length+' pesan masuk dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Geser tabel ke samping untuk melihat semua kolom. Maksimal 500 pesan terbaru.</div>'+(S.devPesanMasukErr?'<div class="note" style="color:var(--rd)">Pesan masuk gagal dimuat: '+esc(S.devPesanMasukErr)+'</div>':(table||'<div class="mu">Belum ada pesan masuk.</div>'))+'</div></div>';
+  const table=tab(['<input id="devPesAll" type="checkbox" onchange="devPesSemua(this.checked)" aria-label="Pilih semua">','No','Sekolah','Waktu','Nomor Pengirim','Pesan Masuk','Hasil','Status Balasan','Aksi'],data);
+  const kontrol='<div class="tb" style="flex-wrap:wrap"><button id="devPesHapusPilih" class="btn danger sm" '+(devPesPilih.size?'':'disabled')+' onclick="devPesAksi(\'hapus\',[...devPesPilih])">🗑 Hapus terpilih ('+devPesPilih.size+')</button><button class="btn soft sm" onclick="devPesAksi(\'selesai\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>✓ Tandai selesai terpilih</button><button class="btn success sm" onclick="devPesAksi(\'dibalas\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>↩ Tandai dibalas terpilih</button><button class="btn orange sm" onclick="devPesAksi(\'batal\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>↶ Batalkan status terpilih</button></div>';
+  return head+'<div class="note">'+masuk.length+' pesan masuk dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Geser tabel ke samping untuk melihat semua kolom. Maksimal 500 pesan terbaru.</div>'+(S.devPesanMasukErr?'<div class="note" style="color:var(--rd)">Pesan masuk gagal dimuat: '+esc(S.devPesanMasukErr)+'</div>':(kontrol+(table||'<div class="mu">Belum ada pesan masuk.</div>'))+'</div></div>';
  }
  const data=rows.slice(0,500).map((r,i)=>{
   const tahap=rkTahap(r),lb=rkLabel(tahap);
