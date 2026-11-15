@@ -450,10 +450,9 @@ async function kirimWaliAlpaasync function kirimWaliAlpa(token, sekolahId, nomor
       `kelas?sekolah_id=eq.${sekolahId}&id=in.(${[...perKelas.keys()].join(',')})&select=id,nama,wali_profil_id`
     )) || [];
   const waliIds = [...new Set(kelas.map((k) => k.wali_profil_id).filter((x) => x && RE_ID.test(String(x))))];
-  if (!waliIds.length) return { ok: 0, gagal: [] };
-
-  // Wali harus anggota aktif sekolah ini dan punya nomor WhatsApp yang valid
-  const wali = new Map((await anggotaAktif(sekolahId, waliIds)).map((a) => [a.id, a]));
+  // Wali harus anggota aktif sekolah ini dan punya nomor WhatsApp yang valid.
+  // Tetap lanjut meskipun belum ada wali terdaftar agar pengelola tetap menerima notifikasi.
+  const wali = new Map((waliIds.length ? await anggotaAktif(sekolahId, waliIds) : []).map((a) => [a.id, a]));
 
   const perNomor = new Map();
   for (const k of kelas.slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama)))) {
