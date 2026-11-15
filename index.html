@@ -3559,7 +3559,8 @@ function barisGemini(keys,ai){
  <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm soft" onclick="tesGeminiKey(${Number(k.id)})">🧪 Tes</button><button class="btn sm danger" onclick="hapusGeminiKey(${Number(k.id)})">Hapus</button></div></div>`}).join('');
 }
 async function tesGeminiKey(id){
- guard(async()=>{const j=await apiPengaturan({aksi:'gemini_key_tes',id});await segarCfg();toast(j.pesan||(j.berhasil?'API Key berfungsi':'API Key bermasalah'),!!j.berhasil)});
+ if(!penerimaTesId)return toast('Pilih nomor tujuan tes WhatsApp terlebih dahulu',false);
+ guard(async()=>{const j=await apiPengaturan({aksi:'gemini_key_tes',id,penerima_id:penerimaTesId});await segarCfg();toast(j.pesan||(j.berhasil?'API Key berfungsi':'API Key bermasalah'),!!j.berhasil)});
 }
 function tambahGeminiKey(){
  const aktif=((RHS||{}).gemini_keys||[]).filter(x=>x.aktif).length;
