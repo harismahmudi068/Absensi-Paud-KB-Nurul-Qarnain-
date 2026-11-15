@@ -5440,7 +5440,12 @@ function hapusTabungan(){form('Hapus seluruh data tabungan',[{k:'kf',l:'Ketik HA
   const kirim=l=>apiDev({aksi:'hapus_tabungan',konfirmasi:v.kf,...bodyBukti(v.sandi),lanjut_tanpa_pemberitahuan:!!l});
   let j;try{j=await kirim(false)}catch(e){
    if(e.message!=='BELUM_ADA_PEMBERITAHUAN')throw e;
-   const ok=await konfirmasi('Anda belum mengirim pemberitahuan tabungan kepada Kepala Sekolah dalam 3 hari terakhir, jadi mereka mungkin belum sempat mengunduh rekaplet devPesTab='masuk';
+   const ok=await konfirmasi('Anda belum mengirim pemberitahuan tabungan kepada Kepala Sekolah dalam 3 hari terakhir, jadi mereka mungkin belum sempat mengunduh rekap tabungan. Tetap hapus sekarang?',{judul:'Belum ada pemberitahuan',ya:'Tetap hapus',bahaya:1});if(!ok)return;j=await kirim(true)}
+  await muatDev();toast('Data tabungan dihapus ('+j.transaksi+' transaksi)');renderV()});$('#ms').textContent='Hapus semua'}
+let devKirimSek='';
+function devKirimMuat(){guard(async()=>{await devPastikan(['kirim'],true);renderV()})}
+
+let devPesTab='masuk';
 function devKirimTab(t){devPesTab=t;renderV()}
 function devKirim(){
  const d=S.devKirim,sk=S.devSek||[],masuk=Array.isArray(S.devPesanMasuk)?S.devPesanMasuk:[],rows=(d&&Array.isArray(d.baris)?d.baris:[]).filter(r=>r.jenis==='balasan');
@@ -5465,7 +5470,6 @@ function devKirim(){
  });
  return head+'<div class="note">'+rows.length+' catatan balasan dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Maksimal 500 catatan terbaru.</div>'+(isi||'<div class="mu">Belum ada riwayat balasan.</div>')+'<div class="mu" style="margin-top:10px">Catatan: sistem saat ini menyimpan penerima, label, waktu, dan status pengiriman balasan. Isi teks balasan yang dikirim belum disimpan dalam riwayat ini.</div></div></div>';
 }
-<span class="mu">${rows.length} pesan dimuat</span></div><div class="pb">${h||'<div class="mu">Belum ada riwayat pengiriman.</div>'}${rows.length?'<div class="mu">Menampilkan sampai 300 pesan dan 40 pengiriman terbaru. Penanda seperti WhatsApp: ✓ terkirim, ✓✓ sampai ke HP, ✓✓ biru terbaca. Jam (WIB) dicatat saat kabar diterima server.</div>':''}</div></div>`}
 async function devKirimHapus(){const sid=devKirimSek?Number(devKirimSek):null,x=sid?(S.devSek||[]).find(v=>v.id===sid):null,tot=Number(((S.devKirim||{}).ringkas||{}).total)||0;
  if(!tot)return toast('Tidak ada riwayat untuk dihapus',false);
  if(!await konfirmasi('Hapus '+tot+' riwayat kirim '+(x?'milik '+x.nama:'dari SEMUA sekolah')+'?\n\nTidak bisa dikembalikan. Pesan WhatsApp yang sudah terkirim tidak terpengaruh.',{judul:'Hapus riwayat kirim',ya:'Hapus riwayat',bahaya:1}))return;
