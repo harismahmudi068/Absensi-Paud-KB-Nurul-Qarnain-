@@ -290,7 +290,8 @@ module.exports = async (req, res) => {
         kunci_ai: { ada: geminiKeys.some(x => x.aktif) || !!r.kunci_ai, tampil: geminiKeys.length ? (geminiKeys.length + ' akun') : samar(r.kunci_ai), nilai: tampil ? r.kunci_ai || '' : undefined },
         gemini_keys: geminiKeys.map(x => ({
           id: x.id, label: x.label, aktif: x.aktif, status: x.status_terakhir,
-          kode_error: x.kode_error_terakhir, error_permanen: !!x.error_permanen,
+          kode_error: x.kode_error_terakhir, detail_error: x.detail_error,
+          error_permanen: !!x.error_permanen,
           terakhir_error: x.terakhir_error, terakhir_berhasil: x.terakhir_berhasil
         })),
         tokens: tk.map((t) => ({
