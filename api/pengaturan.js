@@ -444,7 +444,7 @@ module.exports = async (req, res) => {
         'Riwayat database: ' + (riwayatTercatat ? 'tercatat' : 'gagal dicatat: ' + gagalCatat),
         '',
         'Hasil tes ini memperbarui status key dan dapat memengaruhi rotasi/cooldown berikutnya.'
-      ].filter(Boolean).join('\\n');
+      ].filter(Boolean).join('\n');
 
       const tk = await ambilToken();
       let kirim = { ok: false, alasan: 'Belum ada token Fonnte yang terdaftar' };
