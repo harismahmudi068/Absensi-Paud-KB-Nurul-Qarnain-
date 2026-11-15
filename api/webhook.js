@@ -735,7 +735,9 @@ async function buatRencana(status, waktu, anak = []) {
     // Hitungan dilakukan per kelas karena libur tertentu dapat berlaku khusus untuk satu kelas.
     const buatRencanaSakit = kelasId => {
       const batasMulai = [];
-      const jumlahBatas = hariSekolah(T, libur, kelasId) ? 3 : 2;
+      // Laporan yang dikirim pada hari libur tetap mendapat batas tiga hari sekolah aktif
+      // untuk menentukan tanggal mulai; hari libur tidak mengurangi jatah tersebut.
+      const jumlahBatas = 3;
       let d = T;
       for (let i = 0; i < 60 && batasMulai.length < jumlahBatas; i++, d = tambahHari(d, 1)) {
         if (hariSekolah(d, libur, kelasId)) batasMulai.push(d);
