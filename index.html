@@ -3548,15 +3548,18 @@ function cfgIsi(){const R=RHS||{},tks=R.tokens||[],grp=R.grup||[],ai=R.kunci_ai|
 <div class="note">Setiap sekolah dapat menyimpan maksimal 5 API Key aktif. Sistem AI akan menggunakan daftar akun ini secara bergantian sesuai mekanisme rotasi dan pemulihan yang sudah berjalan.</div>
 ${barisGemini(R.gemini_keys||[],ai)}
 <button class="btn success sm" style="margin-top:9px" ${(R.gemini_keys||[]).filter(x=>x.aktif).length>=5?'disabled':''} onclick="tambahGeminiKey()">＋ Tambah akun Gemini</button>
-<button class="btn sm soft" style="margin-top:9px" ${ai.ada?'':'disabled'} onclick="tesAI(this)">🧪 Tes layanan AI</button>
+
 </div>
 <div class="fd" style="margin-top:16px"><label class="l">Token Fonnte</label>${barisT}<button id="btnTambahToken" class="btn sm success" onclick="tambahToken()">+ Token Fonnte</button></div>
 <div class="fd" style="margin-top:16px"><label class="l">ID Group WhatsApp</label>${barisG}<button class="btn sm success" ${tks.length?'':'disabled'} onclick="tambahGrup()">+ ID Group</button>${tks.length?'':'<div class="mu">Tambahkan token Fonnte dulu.</div>'}</div>${pemetaanHtml}`}
 function barisGemini(keys,ai){
  if(!keys.length)return ai.ada?'<div class="note">Masih ada API Key lama. Tambahkan akun Gemini baru agar pengelolaan memakai daftar akun.</div>':'<div class="mu">Belum ada akun Gemini yang terdaftar.</div>';
- return keys.map(k=>{const aktif=!!k.aktif, status=k.error_permanen?'Perlu perbaikan':(k.status|| (aktif?'Aktif':'Nonaktif'));return `<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:9px 10px;border:1px solid var(--bd);border-radius:10px;background:var(--card)">
- <div style="min-width:150px;flex:1"><b>${esc(k.label||'Akun Gemini')}</b> <span class="badge ${aktif?'Hadir':'Belum'}">${aktif?'Aktif':'Nonaktif'}</span><div class="mu">Status: ${esc(status)}${k.kode_error?' · Kode: '+esc(k.kode_error):''}</div>${k.terakhir_berhasil?'<div class="mu">Terakhir berhasil: '+esc(new Date(k.terakhir_berhasil).toLocaleString('id-ID'))+'</div>':''}</div>
- <button class="btn sm danger" onclick="hapusGeminiKey(${Number(k.id)})">Hapus</button></div>`}).join('');
+ return keys.map(k=>{const aktif=!!k.aktif, status=k.error_permanen?'Perlu perbaikan':(k.status|| (aktif?'Belum diuji':'Nonaktif'));return `<div class="ci" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0;padding:9px 10px;border:1px solid var(--bd);border-radius:10px;background:var(--card)">
+ <div style="min-width:150px;flex:1"><b>${esc(k.label||'Akun Gemini')}</b> <span class="badge ${aktif?'Hadir':'Belum'}">${aktif?'Aktif':'Nonaktif'}</span><div class="mu">Hasil tes: ${esc(status)}${k.kode_error?' · Kode: '+esc(k.kode_error):''}</div>${k.detail_error?'<div class="mu" style="color:var(--danger)">Keterangan: '+esc(k.detail_error)+'</div>':''}${k.terakhir_berhasil?'<div class="mu">Terakhir berhasil: '+esc(new Date(k.terakhir_berhasil).toLocaleString('id-ID'))+'</div>':''}${k.terakhir_error?'<div class="mu">Terakhir gagal: '+esc(new Date(k.terakhir_error).toLocaleString('id-ID'))+'</div>':''}</div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm soft" onclick="tesGeminiKey(${Number(k.id)})">🧪 Tes</button><button class="btn sm danger" onclick="hapusGeminiKey(${Number(k.id)})">Hapus</button></div></div>`}).join('');
+}
+async function tesGeminiKey(id){
+ guard(async()=>{const j=await apiPengaturan({aksi:'gemini_key_tes',id});await segarCfg();toast(j.pesan||(j.berhasil?'API Key berfungsi':'API Key bermasalah'),!!j.berhasil)});
 }
 function tambahGeminiKey(){
  const aktif=((RHS||{}).gemini_keys||[]).filter(x=>x.aktif).length;
