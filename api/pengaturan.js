@@ -202,7 +202,7 @@ module.exports = async (req, res) => {
 
     const ambilGeminiKeys = async () =>
       (await panggil(
-        `/rest/v1/gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&select=id,label,aktif,urutan,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_error,terakhir_berhasil&order=urutan.asc,id.asc`,
+        `/rest/v1/gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&select=id,label,aktif,urutan,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_dicoba,terakhir_error,terakhir_berhasil&order=urutan.asc,id.asc`,
         'GET'
       )) || [];
     const ambilGrup = async () =>
@@ -292,7 +292,7 @@ module.exports = async (req, res) => {
           id: x.id, label: x.label, aktif: x.aktif, status: x.status_terakhir,
           kode_error: x.kode_error_terakhir, detail_error: x.detail_error,
           error_permanen: !!x.error_permanen,
-          terakhir_error: x.terakhir_error, terakhir_berhasil: x.terakhir_berhasil
+          terakhir_dicoba: x.terakhir_dicoba, terakhir_error: x.terakhir_error, terakhir_berhasil: x.terakhir_berhasil
         })),
         tokens: tk.map((t) => ({
           id: t.id,
@@ -386,8 +386,7 @@ module.exports = async (req, res) => {
       const ada = (await ambilGeminiKeys()).find(x => Number(x.id) === id);
       if (!ada) throw new Error('API Key tidak ditemukan di sekolah ini');
 
-      // Tes manual bersifat observasional: jangan catat ke gemini_key_catat_hasil,
-      // karena RPC tersebut mengubah cooldown/status yang dipakai rotasi produksi.
+      // Hasil tes manual dicatat ke status runtime agar riwayat dan rotasi mencerminkan hasil tes.
       const penerima = await nomorTujuanTes(b.penerima_id);
       const rahasia = await panggil('/rest/v1/rpc/gemini_key_ambil_untuk_tes', 'POST', {
         p_sekolah_id: sekolahId, p_id: id
@@ -397,13 +396,38 @@ module.exports = async (req, res) => {
       let balasan = '';
       let detail = '';
       let kode = '';
+      let httpStatus = 200;
+      let permanen = false;
       try {
         balasan = await tesGemini(rahasia.api_key);
         berhasil = true;
       } catch (e) {
         detail = String(e.message || 'Tes API Key gagal').slice(0, 700);
-        const status = Number(e.httpStatus) || null;
-        kode = e.apiCode || (status ? 'HTTP_' + status : (/waktu habis/i.test(detail) ? 'TIMEOUT' : 'TEST_FAILED'));
+        httpStatus = Number(e.httpStatus) || null;
+        kode = e.apiCode || (httpStatus ? 'HTTP_' + httpStatus : (/waktu habis/i.test(detail) ? 'TIMEOUT' : 'TEST_FAILED'));
+        permanen = [400, 401, 403].includes(httpStatus) ||
+          /API_KEY_INVALID|PERMISSION_DENIED|INVALID_ARGUMENT/i.test(kode);
+      }
+
+      let riwayatTercatat = false;
+      let gagalCatat = '';
+      try {
+        await panggil('/rest/v1/rpc/gemini_key_catat_hasil', 'POST', {
+          p_sekolah_id: sekolahId, p_id: id,
+          p_status: berhasil ? 'berhasil' : 'gagal',
+          p_http_status: berhasil ? 200 : httpStatus,
+          p_kode_error: berhasil ? null : (kode || 'TEST_FAILED'),
+          p_detail: berhasil ? null : detail,
+          p_retry_after_seconds: null,
+          p_permanen: permanen
+        });
+        await panggil('/rest/v1/gemini_api_key_sekolah?id=eq.' + id + '&sekolah_id=eq.' + sekolahId, 'PATCH', {
+          terakhir_dicoba: new Date().toISOString()
+        }, { Prefer: 'return=minimal' });
+        riwayatTercatat = true;
+      } catch (e) {
+        gagalCatat = e.message || 'Gagal menyimpan riwayat tes';
+        console.error('Riwayat tes Gemini gagal dicatat:', gagalCatat);
       }
 
       const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', dateStyle: 'medium', timeStyle: 'short' });
@@ -417,24 +441,26 @@ module.exports = async (req, res) => {
         berhasil ? 'Status: BERHASIL' : 'Status: GAGAL',
         berhasil ? 'Balasan Gemini: ' + balasan : 'Keterangan: ' + detail,
         kode ? 'Kode: ' + kode : '',
+        'Riwayat database: ' + (riwayatTercatat ? 'tercatat' : 'gagal dicatat: ' + gagalCatat),
         '',
-        'Tes ini tidak mengubah rotasi, cooldown, atau status pemulihan API Key.'
-      ].filter(Boolean).join('\n');
+        'Hasil tes ini memperbarui status key dan dapat memengaruhi rotasi/cooldown berikutnya.'
+      ].filter(Boolean).join('\\n');
 
       const tk = await ambilToken();
       let kirim = { ok: false, alasan: 'Belum ada token Fonnte yang terdaftar' };
       if (tk.length) kirim = await kirimFonnte(tk[0].token, penerima.nomor, pesanTes);
 
       const ringkas = ada.label + ': ' + (berhasil ? 'berhasil' : 'gagal (' + (kode || 'error') + ')') +
+        '; riwayat: ' + (riwayatTercatat ? 'tercatat' : 'gagal dicatat') +
         '; WhatsApp: ' + (kirim.ok ? 'terkirim ke ' + penerima.nama : 'gagal - ' + kirim.alasan);
       await catat(user.id, sekolahId, 'gemini_api_key_tes', ringkas);
 
       return res.status(200).json({
-        ok: true,
-        berhasil,
+        ok: true, berhasil, riwayat_tercatat: riwayatTercatat,
         whatsapp_terkirim: !!kirim.ok,
         pesan: 'API Key "' + ada.label + '" ' + (berhasil ? 'berfungsi' : 'bermasalah: ' + detail) +
-          (kirim.ok ? '. Hasil tes dikirim ke ' + penerima.nama + '.' : '. Hasil WhatsApp tidak terkirim: ' + kirim.alasan + '.')
+          (riwayatTercatat ? '. Riwayat berhasil diperbarui.' : '. Riwayat gagal disimpan: ' + gagalCatat + '.') +
+          (kirim.ok ? ' Hasil tes dikirim ke ' + penerima.nama + '.' : ' Hasil WhatsApp tidak terkirim: ' + kirim.alasan + '.')
       });
     }
 
