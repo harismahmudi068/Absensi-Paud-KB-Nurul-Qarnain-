@@ -90,11 +90,19 @@ async function tesGemini(kunci) {
       }
     );
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error((j.error && j.error.message) || 'HTTP ' + r.status);
+    if (!r.ok) {
+      const err = new Error((j.error && j.error.message) || 'HTTP ' + r.status);
+      err.httpStatus = r.status;
+      err.apiCode = (j.error && (j.error.status || j.error.code)) || '';
+      throw err;
+    }
     const bagian = (((j.candidates || [])[0] || {}).content || {}).parts || [];
     return String((bagian[0] && bagian[0].text) || 'OK').trim().slice(0, 60);
   } catch (e) {
-    throw new Error('Tes AI gagal: ' + (e.name === 'AbortError' ? 'waktu habis' : e.message));
+    const err = new Error('Tes AI gagal: ' + (e.name === 'AbortError' ? 'waktu habis' : e.message));
+    if (e.httpStatus) err.httpStatus = e.httpStatus;
+    if (e.apiCode) err.apiCode = e.apiCode;
+    throw err;
   } finally {
     clearTimeout(waktu);
   }
@@ -194,7 +202,7 @@ module.exports = async (req, res) => {
 
     const ambilGeminiKeys = async () =>
       (await panggil(
-        `/rest/v1/gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&select=id,label,aktif,urutan,status_terakhir,kode_error_terakhir,error_permanen,terakhir_error,terakhir_berhasil&order=urutan.asc,id.asc`,
+        `/rest/v1/gemini_api_key_sekolah?sekolah_id=eq.${sekolahId}&select=id,label,aktif,urutan,status_terakhir,kode_error_terakhir,detail_error,error_permanen,terakhir_error,terakhir_berhasil&order=urutan.asc,id.asc`,
         'GET'
       )) || [];
     const ambilGrup = async () =>
@@ -369,6 +377,38 @@ module.exports = async (req, res) => {
       });
       await catat(user.id, sekolahId, 'gemini_api_key_tambah', label);
       return res.status(200).json({ ok: true, key: hasil });
+    }
+
+    if (b.aksi === 'gemini_key_tes') {
+      const id = Number(b.id);
+      if (!Number.isInteger(id) || id <= 0) throw new Error('API Key tidak valid');
+      const ada = (await ambilGeminiKeys()).find(x => Number(x.id) === id);
+      if (!ada) throw new Error('API Key tidak ditemukan di sekolah ini');
+      const rahasia = await panggil('/rest/v1/rpc/gemini_key_ambil_untuk_tes', 'POST', {
+        p_sekolah_id: sekolahId, p_id: id
+      });
+      try {
+        const balasan = await tesGemini(rahasia.api_key);
+        await panggil('/rest/v1/rpc/gemini_key_catat_hasil', 'POST', {
+          p_sekolah_id: sekolahId, p_id: id, p_status: 'berhasil',
+          p_http_status: 200, p_kode_error: null, p_detail: null,
+          p_retry_after_seconds: null, p_permanen: false
+        });
+        await catat(user.id, sekolahId, 'gemini_api_key_tes', ada.label + ': berhasil');
+        return res.status(200).json({ ok: true, berhasil: true, pesan: 'API Key "' + ada.label + '" berfungsi. Balasan: ' + balasan });
+      } catch (e) {
+        const status = Number(e.httpStatus) || null;
+        const permanen = [400, 401, 403].includes(status);
+        const kode = e.apiCode || (status ? 'HTTP_' + status : (e.name === 'AbortError' ? 'TIMEOUT' : 'TEST_FAILED'));
+        const detail = String(e.message || 'Tes API Key gagal').slice(0, 900);
+        await panggil('/rest/v1/rpc/gemini_key_catat_hasil', 'POST', {
+          p_sekolah_id: sekolahId, p_id: id, p_status: 'gagal',
+          p_http_status: status, p_kode_error: kode, p_detail: detail,
+          p_retry_after_seconds: null, p_permanen: permanen
+        }).catch(err => console.error('Gagal mencatat hasil tes Gemini:', err.message));
+        await catat(user.id, sekolahId, 'gemini_api_key_tes', ada.label + ': gagal (' + kode + ')');
+        return res.status(200).json({ ok: true, berhasil: false, pesan: 'API Key "' + ada.label + '" bermasalah: ' + detail });
+      }
     }
 
     if (b.aksi === 'gemini_key_hapus') {
