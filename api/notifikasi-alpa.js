@@ -431,7 +431,7 @@ function pesanWali(teks, tanggal, daftarKelas, sapaan) {
   return atas + daftar + '\\n' + bawah;
 }
 
-async function kirimWaliAlpaasync function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg) {
+async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg) {
   if (!Array.isArray(alpa) || !alpa.length) return { ok: 0, gagal: [] };
 
   // Kelompokkan siswa alpa per kelas
