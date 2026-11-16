@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#166534">
+  <title>Tes Manifest PWA - Absensi 1486</title>
+  <link rel="manifest" href="/manifest-absensi.webmanifest">
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:720px;margin:40px auto;padding:0 20px;line-height:1.6;color:#183323;background:#f6fbf5}
+    main{background:white;border:1px solid #d7e7d8;border-radius:16px;padding:24px}
+    h1{font-size:1.4rem} .status{padding:12px;background:#edf7ee;border-radius:10px;overflow-wrap:anywhere}
+  </style>
+</head>
+<body>
+<main>
+  <h1>Tes Manifest PWA — Absensi 1486</h1>
+  <p>Halaman ini memuat manifest PWA, tetapi tidak memuat skrip aplikasi dan tidak mendaftarkan Service Worker.</p>
+  <p><strong>Silakan periksa menu Chrome (⋮):</strong> apakah pilihan “Instal aplikasi” aktif atau masih abu-abu?</p>
+  <div class="status" id="status">Memeriksa konfigurasi…</div>
+  <p><small>Gunakan alamat deployment Preview yang baru. Jangan gunakan alias Preview lama untuk tes ini.</small></p>
+</main>
+<script>
+(async()=>{
+ const manifest=document.querySelector('link[rel="manifest"]');
+ let manifestStatus='Manifest tertaut: '+(!!manifest?'YA':'TIDAK');
+ let manifestFetch=''; 
+ try{
+   const response=await fetch(manifest.href,{cache:'no-store'});
+   manifestFetch=' | HTTP manifest: '+response.status;
+ }catch(e){manifestFetch=' | HTTP manifest: gagal dibaca';}
+ let sw='Service Worker terdaftar pada origin ini: tidak diketahui';
+ try{
+   if('serviceWorker' in navigator){
+     const regs=await navigator.serviceWorker.getRegistrations();
+     sw='Service Worker terdaftar pada origin ini: '+(regs.length?'YA ('+regs.length+')':'TIDAK');
+   }
+ }catch(e){}
+ document.getElementById('status').textContent=manifestStatus+manifestFetch+' | HTTPS: '+(isSecureContext?'YA':'TIDAK')+' | '+sw;
+})();
+</script>
+</body>
+</html>
