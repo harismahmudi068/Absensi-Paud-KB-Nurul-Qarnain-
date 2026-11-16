@@ -1,5 +1,5 @@
-/* Service worker Halaman Siswa: khusus notifikasi push (pengingat piket, absensi, tabungan).
-   Tidak menyimpan cache dan tidak menangani fetch, jadi tidak mengubah perilaku halaman.
+/* Service worker bersama: meneruskan permintaan jaringan tanpa cache, serta menangani notifikasi push.
+   Fetch diteruskan langsung ke jaringan; tidak mengubah isi respons atau strategi cache.
    - badge : siluet putih transparan di bilah status HP (/ikon-badge.png)
    - icon  : gambar sesuai jenis notifikasi (/notif-<jenis>.png), hanya nama yang dikenal yang dipakai */
 const IKON_DIKENAL = ['piket', 'hadir', 'terlambat', 'alpa', 'sakit', 'izin', 'libur', 'tabungan-masuk', 'tabungan-keluar'];
@@ -9,7 +9,9 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
 // Sinyal kontrol jaringan agar Chrome mengenali Service Worker untuk instalasi PWA.
 // Tidak memanggil respondWith(): seluruh permintaan tetap berjalan normal melalui jaringan.
-self.addEventListener('fetch', () => {});
+self.addEventListener('fetch', (e) => {
+  e.respondWith(fetch(e.request));
+});
 
 self.addEventListener('push', (e) => {
   let d = {};
