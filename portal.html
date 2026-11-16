@@ -338,9 +338,19 @@ const LW={izin:'#1b73e8',sakit:'#e62d4a'};
 function lapBatas(t,n){return new Date(Date.parse(t+'T00:00:00Z')+n*864e5).toISOString().slice(0,10)}
 function lapFmt(t){return t?hari(t)+', '+tgl(t):'Pilih tanggal'}
 function lapBulan(y,m){return BLN[m]+' '+y}
+function lapBatasSakit(today){
+ const khusus=new Set((S.libur||[]).map(x=>x.tanggal)),mingguan=new Set((S.libur_mgg||[]).map(Number)),batal=new Set(S.libur_batal||[]);
+ let t=today,hitung=0;
+ for(let n=0;n<120;n++){
+  const dow=new Date(t+'T00:00:00Z').getUTCDay(),libur=khusus.has(t)||(mingguan.has(dow)&&!batal.has(t));
+  if(!libur&&++hitung===3)return t;
+  t=lapBatas(t,1);
+ }
+ return lapBatas(today,60);
+}
 function lapRentang(field){
  const today=S.hari||tglJkt(),start=LAP.mulai||today;
- return field==='akhir'?{min:start,max:lapBatas(start,29)}:{min:today,max:lapBatas(today,60)};
+ return field==='akhir'?{min:start,max:lapBatas(start,29)}:{min:today,max:LAP.st==='sakit'?lapBatasSakit(today):lapBatas(today,60)};
 }
 function lapTanggalForm(st){
  const today=S.hari||tglJkt(),mulai=LAP.mulai&&LAP.mulai>=today?LAP.mulai:today;
