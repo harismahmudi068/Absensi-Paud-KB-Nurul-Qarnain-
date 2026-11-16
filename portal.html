@@ -340,8 +340,8 @@ function lapTanggalForm(st){
  const mulai=LAP.mulai&&LAP.mulai>=hariIni?LAP.mulai:hariIni;
  const akhir=LAP.akhir&&LAP.akhir>=mulai?LAP.akhir:mulai;
  const maxMulai=new Date(Date.parse(hariIni+'T00:00:00Z')+60*864e5).toISOString().slice(0,10);
- if(st==='sakit')return '<div class="lapdates"><label class="lapdate">Tanggal mulai sakit<input id="lapmulai" type="date" min="'+hariIni+'" max="'+maxMulai+'" value="'+mulai+'" onchange="lapTanggalUbah(\\'mulai\\',this.value)"></label><div class="lapinfo">Sistem otomatis mencatat 3 hari sekolah aktif. Hari libur dilewati. Tanggal mulai mengikuti batas 3 hari sekolah aktif seperti laporan WhatsApp.</div></div>';
- if(st==='izin')return '<div class="lapdates"><label class="lapdate">Tanggal mulai izin<input id="lapmulai" type="date" min="'+hariIni+'" max="'+maxMulai+'" value="'+mulai+'" onchange="lapTanggalUbah(\\'mulai\\',this.value)"></label><label class="lapdate">Tanggal akhir izin<input id="lapakhir" type="date" min="'+mulai+'" value="'+akhir+'" onchange="lapTanggalUbah(\\'akhir\\',this.value)"></label><div class="lapinfo">Maksimal 60 hari ke depan dan 30 hari kalender. Hari libur tidak dibuatkan catatan absensi.</div></div>';
+ if(st==='sakit')return '<div class="lapdates"><label class="lapdate">Tanggal mulai sakit<input id="lapmulai" type="date" min="'+hariIni+'" max="'+maxMulai+'" value="'+mulai+'" onchange="lapTanggalUbah(\'mulai\',this.value)"></label><div class="lapinfo">Sistem otomatis mencatat 3 hari sekolah aktif. Hari libur dilewati. Tanggal mulai mengikuti batas 3 hari sekolah aktif seperti laporan WhatsApp.</div></div>';
+ if(st==='izin')return '<div class="lapdates"><label class="lapdate">Tanggal mulai izin<input id="lapmulai" type="date" min="'+hariIni+'" max="'+maxMulai+'" value="'+mulai+'" onchange="lapTanggalUbah(\'mulai\',this.value)"></label><label class="lapdate">Tanggal akhir izin<input id="lapakhir" type="date" min="'+mulai+'" value="'+akhir+'" onchange="lapTanggalUbah(\'akhir\',this.value)"></label><div class="lapinfo">Maksimal 60 hari ke depan dan 30 hari kalender. Hari libur tidak dibuatkan catatan absensi.</div></div>';
  return '';
 }
 function lapTanggalUbah(jenis,nilai){
@@ -367,7 +367,7 @@ function lapForm(d){const a=d.absen_hari_ini,hariIni=d.hari_ini||S.hari||tglJkt(
  LAP.mulai=hariIni;LAP.akhir=hariIni;
  const ket='';
  return '<div class="lap"><div class="lt">'+(ada?'Buat atau perbarui laporan ketidakhadiran':'Anak tidak masuk sekolah?')+'</div><div class="pil">'+
-  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(\\''+x+'\\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
+  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
   '<div id="lapTanggal">'+lapTanggalForm(LAP.st)+'</div>'+
   '<div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
 function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;
@@ -420,7 +420,7 @@ function ampGagal(o,pesan,ulang){const q=s=>o.querySelector(s);q('.ew').classLis
 function lapTanggalTampil(t){return hari(t)+', '+tgl(t)}
 function lapNotifSukses(st,nm,tanggal){
  const ov=$('#ov'),daftar=(tanggal||[]).map(lapTanggalTampil);
- ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true" aria-labelledby="lapSuksesJudul"><div class="di">✅</div><h3 id="lapSuksesJudul">Laporan berhasil dicatat</h3><p>Laporan '+(st==='sakit'?'sakit':'izin')+' untuk '+esc(nm)+' sudah diterima dan dicatat sekolah.</p><div class="wn" style="text-align:left"><b>Status: '+(st==='sakit'?'Sakit':'Izin')+'</b><span>Tanggal yang berhasil tercatat:</span><span style="margin-top:6px">'+daftar.map(x=>'• '+esc(x)).join('<br>')+'</span></div><div class="da"><button type="button" class="ya fx" id="lapSuksesOke">Oke</button></div></div>';
+ ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true" aria-labelledby="lapSuksesJudul"><div class="di">✅</div><h3 id="lapSuksesJudul">Laporan berhasil dicatat</h3><p>Laporan '+(st==='sakit'?'sakit':'izin')+' untuk '+esc(nm)+' sudah diterima dan dicatat sekolah.</p><div class="wn" style="text-align:left"><b>Status: '+(st==='sakit'?'Sakit':'Izin')+'</b><span>Tanggal yang berhasil tercatat:</span><span style="margin-top:6px;white-space:pre-line">'+daftar.map(x=>'• '+esc(x)).join(String.fromCharCode(10))+'</span></div><div class="da"><button type="button" class="ya fx" id="lapSuksesOke">Oke</button></div></div>';
  ov.onclick=e=>{if(e.target===ov)e.preventDefault()};
  const tutup=()=>{ov.classList.remove('on');ov.onclick=null;setTimeout(()=>{if(!ov.classList.contains('on'))ov.innerHTML=''},220)};
  $('#lapSuksesOke').onclick=tutup;ov.classList.add('on');$('#lapSuksesOke').focus();
