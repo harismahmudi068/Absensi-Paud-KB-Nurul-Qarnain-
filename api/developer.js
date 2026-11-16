@@ -72,11 +72,7 @@ module.exports = async (req, res) => {
       return res.status(403).json({ error: 'Verifikasi 2 langkah diperlukan. Silakan masuk kembali sebagai Developer.' });
 
     const b = req.body || {};
-    const proto = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
-    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '')
-      .split(',')[0]
-      .trim();
-    const alamatAplikasi = `${proto}://${host}`;
+    const alamatAplikasi = 'https://absensi-1486.vercel.app';
 
     // ---------------------------------------------------------
     // SETUJUI SEKOLAH

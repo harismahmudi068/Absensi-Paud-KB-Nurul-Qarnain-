@@ -134,10 +134,7 @@ async function sandiBenar(email, sandi) {
 }
 
 function urlWebhook(req, kunci) {
-  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '')
-    .split(',')[0]
-    .trim();
-  return `https://${host}/api/webhook?key=${kunci}`;
+  return `https://absensi-1486.vercel.app/api/webhook?key=${kunci}`;
 }
 
 module.exports = async (req, res) => {
