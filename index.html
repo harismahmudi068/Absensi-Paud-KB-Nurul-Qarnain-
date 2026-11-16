@@ -3018,8 +3018,8 @@ async function kalUji(btn){await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membu
    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(100);doc.text(pg?'BELAKANG':'DEPAN',x+KW-4,y+KH-4,{align:'right'})}});
  doc.save('lembar-uji-kartu.pdf');toast('Lembar uji dibuat, cetak bolak-balik lalu terawang ke cahaya')}catch(e){toast('Gagal membuat lembar uji: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
 
-/* Tanda potong berada di luar bidang kartu, tidak mengurangi ukuran fisik kartu. */
-function tandaPotongKartu(doc,x,y,w,h){const d=2,l=2.5;doc.setDrawColor(95);doc.setLineWidth(.18);doc.setLineDashPattern([],0);doc.line(x-d-l,y,x-d,y);doc.line(x,y-d-l,x,y-d);doc.line(x+w+d,y,x+w+d+l,y);doc.line(x+w,y-d-l,x+w,y-d);doc.line(x-d-l,y+h,x-d,y+h);doc.line(x,y+h+d,x,y+h+d+l);doc.line(x+w+d,y+h,x+w+d+l,y+h);doc.line(x+w,y+h+d,x+w,y+h+d+l)}
+/* Garis potong putus-putus mengelilingi kartu, offset 1 mm di luar ukuran fisik kartu. */
+function tandaPotongKartu(doc,x,y,w,h){doc.setDrawColor(95);doc.setLineWidth(.15);doc.setLineDashPattern([1,1],0);doc.rect(x-1,y-1,w+2,h+2);doc.setLineDashPattern([],0)}
 async function unduhKartuBerdampingan(list,btn){
  const portrait=ko==='portrait',W=portrait?53.98:85.6,H=portrait?85.6:53.98,G=11,GY=11,perPage=portrait?3:4;
  const doc=new window.jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
