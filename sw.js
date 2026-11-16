@@ -7,6 +7,10 @@ const IKON_DIKENAL = ['piket', 'hadir', 'terlambat', 'alpa', 'sakit', 'izin', 'l
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
+// Sinyal kontrol jaringan agar Chrome mengenali Service Worker untuk instalasi PWA.
+// Tidak memanggil respondWith(): seluruh permintaan tetap berjalan normal melalui jaringan.
+self.addEventListener('fetch', () => {});
+
 self.addEventListener('push', (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { judul: 'Pemberitahuan', isi: e.data ? e.data.text() : '' }; }
