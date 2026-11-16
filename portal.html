@@ -370,7 +370,7 @@ function lapForm(d){const a=d.absen_hari_ini,hariIni=d.hari_ini||S.hari||tglJkt(
   ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
   '<div id="lapTanggal">'+lapTanggalForm(LAP.st)+'</div>'+
   '<div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
-function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;
+function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;if(LAP.st==='izin'&&LAP.akhir<LAP.mulai)LAP.akhir=LAP.mulai;
  document.querySelectorAll('.pil button').forEach(x=>{const on=x.dataset.s===LAP.st;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});
  $('.kr').dataset.s=LAP.st;$('#lapTanggal').innerHTML=lapTanggalForm(LAP.st);b.classList.remove('blink');b.disabled=!LAP.st;if(LAP.st)lapCek()}
 function lapCek(){const b=$('#lapkirim');if(b&&LAP.st&&!b.disabled){b.classList.remove('blink');void b.offsetWidth;b.classList.add('blink')}}
