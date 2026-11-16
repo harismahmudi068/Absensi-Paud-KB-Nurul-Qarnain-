@@ -91,7 +91,7 @@ html[data-tm=n] .bnav button.on{background:rgba(154,127,224,.34);color:#fff}
 .pil button.on.izin{background:#1b73e8;color:#fff;border-color:#1b73e8;box-shadow:0 4px 12px rgba(27,115,232,.5)}.pil button.on.sakit{background:#e62d4a;color:#fff;border-color:#e62d4a;box-shadow:0 4px 12px rgba(230,45,74,.5)}
 .kr[data-s=izin] .btn{background:#1b73e8}.kr[data-s=sakit] .btn{background:#e62d4a}
 .kr{display:flex;gap:8px;align-items:stretch;margin-top:8px}.kr textarea{flex:1;min-width:0;resize:none;border:1.5px solid var(--cbd);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;line-height:1.35;text-align:left;background:var(--c2);color:var(--tx)}
-.kr textarea:focus{outline:none;border-color:var(--pu)}.kr .btn{width:auto;margin:0;padding:0 16px;flex:0 0 auto}.btn[disabled]{opacity:.5;cursor:default}.lapdates{display:grid;grid-template-columns:1fr;gap:9px;margin-top:10px}.lapdate{display:flex;flex-direction:column;gap:5px;text-align:left;font-size:13px;font-weight:800;color:var(--tt)}.lapdate input{width:100%;min-width:0;border:1.5px solid var(--cbd);border-radius:11px;padding:10px 11px;background:var(--c2);color:var(--tx);font:inherit;font-size:16px;min-height:44px}.lapdate input:focus{outline:none;border-color:var(--pu);box-shadow:0 0 0 3px rgba(118,80,184,.12)}.lapinfo{font-size:12px;color:var(--mu);margin-top:3px;line-height:1.45}.lap .kr{margin-top:10px}
+.kr textarea:focus{outline:none;border-color:var(--pu)}.kr .btn{width:auto;margin:0;padding:0 16px;flex:0 0 auto}.btn[disabled]{opacity:.5;cursor:default}.lapdates{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}.lapdate{display:flex;flex-direction:column;gap:6px;text-align:left;font-size:13px;font-weight:800;color:var(--tt);position:relative}.lapdatebtn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--cbd);border-radius:13px;padding:12px;background:linear-gradient(135deg,var(--c2),var(--pb));color:var(--tx);font:inherit;font-size:15px;font-weight:800;min-height:50px;text-align:left;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.05);transition:border-color .18s,transform .18s}.lapdatebtn:active{transform:scale(.99)}.lapdatebtn.open{border-color:var(--pu);box-shadow:0 0 0 3px rgba(118,80,184,.12)}.lapdatebtn .ldicon{font-size:20px}.lapcal{margin-top:7px;padding:12px;border:1px solid var(--cbd);border-radius:16px;background:var(--c2);box-shadow:0 12px 28px rgba(0,0,0,.13);animation:in .18s ease both}.lapcalhead{display:grid;grid-template-columns:38px 1fr 38px;align-items:center;gap:6px;margin-bottom:10px}.lapcalhead button{height:36px;border:0;border-radius:10px;background:var(--pb);color:var(--pt);font-size:22px;font-weight:800;cursor:pointer}.lapcalhead strong{text-align:center;color:var(--tt);font-size:15px}.lapcalweek,.lapcaldays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}.lapcalweek span{font-size:11px;font-weight:800;color:var(--mu);padding:5px 0}.lapcalweek span:last-child{color:#d85b68}.lapcaldays button,.lapcaldays i{aspect-ratio:1;min-width:0;border:0;border-radius:10px;display:grid;place-items:center;font:inherit;font-size:13px;font-weight:700;background:var(--cell);color:var(--tx)}.lapcaldays button{cursor:pointer;transition:background .15s,transform .15s}.lapcaldays button:active{transform:scale(.92)}.lapcaldays button.sel{background:var(--pu);color:#fff;box-shadow:0 3px 9px rgba(118,80,184,.35)}.lapcaldays button.today:not(.sel){outline:1.5px solid var(--pu);outline-offset:-2px}.lapcaldays button:disabled{opacity:.25;cursor:not-allowed;background:transparent}.lapinfo{font-size:12px;color:var(--mu);margin-top:3px;line-height:1.45}.lap .kr{margin-top:10px}
 .ov{position:fixed;inset:0;z-index:90;background:rgba(5,15,30,.55);display:grid;place-items:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}.ov.on{opacity:1;pointer-events:auto}
 .fprev{display:block;margin:10px auto 2px;max-width:150px;max-height:200px;border-radius:12px;border:1.5px solid var(--ln);background:#fff}.fkc{display:block;margin:10px auto 0;width:240px;height:320px;max-width:100%;touch-action:none;border-radius:14px;border:3px solid var(--g);background:#eef6f1;cursor:grab}.fkz{width:100%;margin:12px 0 2px;accent-color:var(--g)}.fthumbrow{display:flex;gap:12px;align-items:center;padding:6px 0 12px;margin-bottom:4px;border-bottom:1px solid var(--ln)}.fthumb{width:60px;height:80px;border-radius:10px;border:2px solid var(--g);background:#eef6f1;display:grid;place-items:center;overflow:hidden;font-size:30px;flex:0 0 auto}.fthumb img{width:100%;height:100%;object-fit:cover;display:block}
 .dlg{width:100%;max-width:340px;background:var(--c2);color:var(--tx);border-radius:20px;padding:20px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.4);text-align:center;transform:translateY(12px) scale(.96);transition:transform .2s}.ov.on .dlg{transform:none}
@@ -333,44 +333,66 @@ R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
 const SAP={hadir:'Selamat beraktivitas 😊',alpa:'Semangat yah sekolahnya 💪',terlambat:'Belajar disiplin lagi yah, semangat terus 🙂',sakit:'Semoga cepat sembuh dan bisa beraktivitas kembali 🤒',izin:'Semoga dilancarkan segala urusannya 🤲',libur:'Selamat menikmati momen bersama keluarga, sampai jumpa kembali 👨‍👩‍👧'};
 function sapa(d){const a=d.absen_hari_ini,k=a?a.status:(d.libur.some(x=>x.tanggal===d.hari_ini)?'libur':'');$('#gt').textContent=SAP[k]||'Semoga harimu menyenangkan 🌤️'}
 
-/* A2. Lapor izin / sakit dengan rentang tanggal */
+/* A2. Lapor izin / sakit dengan kalender khusus */
 const LW={izin:'#1b73e8',sakit:'#e62d4a'};
+function lapBatas(t,n){return new Date(Date.parse(t+'T00:00:00Z')+n*864e5).toISOString().slice(0,10)}
+function lapFmt(t){return t?hari(t)+', '+tgl(t):'Pilih tanggal'}
+function lapBulan(y,m){return BLN[m]+' '+y}
+function lapRentang(field){
+ const today=S.hari||tglJkt(),start=LAP.mulai||today;
+ return field==='akhir'?{min:start,max:lapBatas(start,29)}:{min:today,max:lapBatas(today,60)};
+}
 function lapTanggalForm(st){
- const hariIni=S.hari||tglJkt();
- const mulai=LAP.mulai&&LAP.mulai>=hariIni?LAP.mulai:hariIni;
+ const today=S.hari||tglJkt(),mulai=LAP.mulai&&LAP.mulai>=today?LAP.mulai:today;
  const akhir=LAP.akhir&&LAP.akhir>=mulai?LAP.akhir:mulai;
- const maxMulai=new Date(Date.parse(hariIni+'T00:00:00Z')+60*864e5).toISOString().slice(0,10);
- if(st==='sakit')return '<div class="lapdates"><label class="lapdate">Tanggal mulai sakit<input id="lapmulai" type="date" min="'+hariIni+'" max="'+maxMulai+'" value="'+mulai+'" onchange="lapTanggalUbah(\'mulai\',this.value)"></label><div class="lapinfo">Sistem otomatis mencatat 3 hari sekolah aktif. Hari libur dilewati. Tanggal mulai mengikuti batas 3 hari sekolah aktif seperti laporan WhatsApp.</div></div>';
- if(st==='izin')return '<div class="lapdates"><label class="lapdate">Tanggal mulai izin<input id="lapmulai" type="date" min="'+hariIni+'" max="'+maxMulai+'" value="'+mulai+'" onchange="lapTanggalUbah(\'mulai\',this.value)"></label><label class="lapdate">Tanggal akhir izin<input id="lapakhir" type="date" min="'+mulai+'" value="'+akhir+'" onchange="lapTanggalUbah(\'akhir\',this.value)"></label><div class="lapinfo">Maksimal 60 hari ke depan dan 30 hari kalender. Hari libur tidak dibuatkan catatan absensi.</div></div>';
+ if(st==='sakit')return '<div class="lapdates">'+lapTanggalField('mulai','Tanggal mulai sakit',mulai)+'</div><div class="lapinfo">Sistem otomatis mencatat 3 hari sekolah aktif. Hari libur dilewati. Batas tanggal mengikuti ketentuan WhatsApp.</div>';
+ if(st==='izin')return '<div class="lapdates">'+lapTanggalField('mulai','Tanggal mulai izin',mulai)+lapTanggalField('akhir','Tanggal akhir izin',akhir)+'</div><div class="lapinfo">Maksimal 60 hari ke depan dan 30 hari kalender. Hari libur tidak dibuatkan catatan absensi.</div>';
  return '';
 }
-function lapTanggalUbah(jenis,nilai){
- const hariIni=S.hari||tglJkt();
- if(!nilai||nilai<hariIni)return;
- if(jenis==='mulai'){LAP.mulai=nilai;if(LAP.akhir<nilai)LAP.akhir=nilai;const e=$('#lapakhir');if(e){e.min=nilai;e.value=LAP.akhir}}
- else LAP.akhir=nilai;
+function lapTanggalField(field,label,value){
+ const opened=LAP.cal&&LAP.cal.field===field;
+ return '<div class="lapdate"><span>'+label+'</span><button type="button" class="lapdatebtn'+(opened?' open':'')+'" onclick="lapKalenderToggle(&quot;'+field+'&quot;)"><span>'+lapFmt(value)+'</span><span class="ldicon">📅</span></button>'+(opened?'<div class="lapcal" id="lapcal">'+lapKalenderHtml(field)+'</div>':'')+'</div>';
+}
+function lapKalenderToggle(field){
+ if(LAP.cal&&LAP.cal.field===field)LAP.cal=null;
+ else{const val=field==='akhir'?(LAP.akhir||LAP.mulai):(LAP.mulai||S.hari||tglJkt());LAP.cal={field,y:+val.slice(0,4),m:+val.slice(5,7)-1}}
+ const host=$('#lapTanggal');if(host)host.innerHTML=lapTanggalForm(LAP.st);
+}
+function lapKalenderHtml(field){
+ const cal=LAP.cal,today=S.hari||tglJkt(),lim=lapRentang(field),sel=field==='akhir'?(LAP.akhir||LAP.mulai):(LAP.mulai||today);
+ const first=(new Date(Date.UTC(cal.y,cal.m,1)).getUTCDay()+6)%7,total=new Date(Date.UTC(cal.y,cal.m+1,0)).getUTCDate();
+ let h='<div class="lapcalhead"><button type="button" aria-label="Bulan sebelumnya" '+(cal.y===+lim.min.slice(0,4)&&cal.m<=+lim.min.slice(5,7)-1?'disabled':'')+' onclick="lapKalenderGeser(-1)">‹</button><strong>'+lapBulan(cal.y,cal.m)+'</strong><button type="button" aria-label="Bulan berikutnya" '+(cal.y===+lim.max.slice(0,4)&&cal.m>=+lim.max.slice(5,7)-1?'disabled':'')+' onclick="lapKalenderGeser(1)">›</button></div><div class="lapcalweek">'+['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(x=>'<span>'+x+'</span>').join('')+'</div><div class="lapcaldays">'+'<i></i>'.repeat(first);
+ for(let d=1;d<=total;d++){const key=cal.y+'-'+String(cal.m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),disabled=key<lim.min||key>lim.max;
+  h+='<button type="button" class="'+(key===sel?'sel ':'')+(key===today?'today':'')+'" '+(disabled?'disabled':'')+' onclick="lapKalenderPilih(&quot;'+field+'&quot;,&quot;'+key+'&quot;)">'+d+'</button>'}
+ return h+'</div>';
+}
+function lapKalenderGeser(delta){
+ if(!LAP.cal)return;const lim=lapRentang(LAP.cal.field);let y=LAP.cal.y,m=LAP.cal.m+delta;
+ if(m<0){m=11;y--}else if(m>11){m=0;y++}
+ const minM=+lim.min.slice(0,4)*12+(+lim.min.slice(5,7)-1),maxM=+lim.max.slice(0,4)*12+(+lim.max.slice(5,7)-1),cur=y*12+m;
+ if(cur<minM||cur>maxM)return;LAP.cal.y=y;LAP.cal.m=m;$('#lapcal').innerHTML=lapKalenderHtml(LAP.cal.field);
+}
+function lapKalenderPilih(field,value){
+ const lim=lapRentang(field);if(value<lim.min||value>lim.max)return;
+ if(field==='mulai'){LAP.mulai=value;if(LAP.akhir<value)LAP.akhir=value}else LAP.akhir=value;
+ LAP.cal=null;const host=$('#lapTanggal');if(host)host.innerHTML=lapTanggalForm(LAP.st);
  const b=$('#lapkirim');if(b)b.disabled=!LAP.st||!lapTanggalValidasi(false);
 }
 function lapTanggalValidasi(tampilkan){
- const hariIni=S.hari||tglJkt(),mulai=LAP.mulai||hariIni,akhir=LAP.akhir||mulai;
- let pesan='';
+ const hariIni=S.hari||tglJkt(),mulai=LAP.mulai||hariIni,akhir=LAP.akhir||mulai;let pesan='';
  if(!/^\d{4}-\d{2}-\d{2}$/.test(mulai)||mulai<hariIni)pesan='Tanggal mulai tidak boleh lampau.';
  else if(LAP.st==='izin'){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(akhir)||akhir<mulai)pesan='Tanggal akhir harus sama dengan atau setelah tanggal mulai.';
   else if((Date.parse(akhir+'T00:00:00Z')-Date.parse(mulai+'T00:00:00Z'))/864e5+1>30)pesan='Rentang izin maksimal 30 hari kalender.';
  }
- if(tampilkan&&pesan)toast(pesan,'err');
- return !pesan;
+ if(tampilkan&&pesan)toast(pesan,'err');return !pesan;
 }
-function lapForm(d){const a=d.absen_hari_ini,hariIni=d.hari_ini||S.hari||tglJkt();
- const ada=!!a&&(a.status==='izin'||a.status==='sakit');LAP.st=ada?a.status:'';
- LAP.mulai=hariIni;LAP.akhir=hariIni;
- const ket='';
+function lapForm(d){const a=d.absen_hari_ini,hariIni=d.hari_ini||S.hari||tglJkt(),ada=!!a&&(a.status==='izin'||a.status==='sakit');
+ LAP.st=ada?a.status:'';LAP.mulai=hariIni;LAP.akhir=hariIni;LAP.cal=null;
  return '<div class="lap"><div class="lt">'+(ada?'Buat atau perbarui laporan ketidakhadiran':'Anak tidak masuk sekolah?')+'</div><div class="pil">'+
-  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
-  '<div id="lapTanggal">'+lapTanggalForm(LAP.st)+'</div>'+
-  '<div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
-function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;if(LAP.st==='izin'&&LAP.akhir<LAP.mulai)LAP.akhir=LAP.mulai;
+ ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(&quot;'+x+'&quot;)">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
+ '<div id="lapTanggal">'+lapTanggalForm(LAP.st)+'</div><div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)"></textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
+function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;if(LAP.st==='izin'&&LAP.akhir<LAP.mulai)LAP.akhir=LAP.mulai;LAP.cal=null;
  document.querySelectorAll('.pil button').forEach(x=>{const on=x.dataset.s===LAP.st;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});
  $('.kr').dataset.s=LAP.st;$('#lapTanggal').innerHTML=lapTanggalForm(LAP.st);b.classList.remove('blink');b.disabled=!LAP.st;if(LAP.st)lapCek()}
 function lapCek(){const b=$('#lapkirim');if(b&&LAP.st&&!b.disabled){b.classList.remove('blink');void b.offsetWidth;b.classList.add('blink')}}
