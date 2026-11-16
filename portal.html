@@ -326,7 +326,7 @@ function kedipKosong(){if(!KD)return;KD=0;
 function profilNotif(s){const k=profilKurang(s);if(!k.length)return '';
  return '<div class="panel ct pk" role="alert"><div class="pb" style="padding-top:14px"><div class="pkt">⚠️ Profil anak belum lengkap</div><div class="mu">Belum diisi: '+esc(k.join(', '))+'.</div><button type="button" class="btn fx" onclick="lengkapi()">Lengkapi</button></div></div>'}
 R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
- return profilNotif(s)+(d.push&&d.push.aktif?'<div id="pushBanner"></div>':'')+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
+ return '<div id="portalPwaInstall" class="panel ct" hidden><div class="pb" style="padding:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;text-align:left"><div style="flex:1;min-width:150px"><b>📲 Instal Portal Siswa</b><div class="mu">Buka portal lebih cepat dari layar utama HP.</div></div><button type="button" class="btn fx" style="font-size:12px;padding:8px 12px" onclick="pasangPortalPWA()">Instal Aplikasi</button></div></div>'+profilNotif(s)+(d.push&&d.push.aktif?'<div id="pushBanner"></div>':'')+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
  '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'</div></div>'+
  (tb.aktif?'<div class="panel ct"><div class="ph">💰 Tabungan Hari Ini</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(tb.saldo)+'</div>'+(tb.hari_ini.length?tb.hari_ini.map(trx).join(''):'<div class="mu">Tidak ada transaksi hari ini.</div>')+'</div></div>':'')+
  piketPanel(d)+hafalanPanel(d)+calPanel(d)};
@@ -825,7 +825,7 @@ async function pushPilih(){try{
 async function pushMatikan(){try{const sub=await pushSub();if(sub){await pushPost({aksi:'push_cabut',endpoint:sub.endpoint});try{await sub.unsubscribe()}catch(_){}}localStorage.setItem(PK_OFF,'1');localStorage.removeItem(PK_REG);sessionStorage.removeItem('pk_ok_'+m[1]);await pushRender(S.pd)}catch(e){await pushRender(S.pd,(e&&e.message)||'Gagal mematikan notifikasi')}}
 R.libur=d=>calPanel(d);
 A.libur=()=>calRender(DD.cal.val);
-A.dashboard=d=>{calRender(DD.cal.val);S.pd=d;pushRender(d)};
+A.dashboard=d=>{calRender(DD.cal.val);S.pd=d;pushRender(d);if(window.PortalPWA)PortalPWA.updateButton()};
 R.notifikasi=d=>{if(!d.push||!d.push.aktif)return pesanFitur('🔔','Notifikasi tidak aktif','Sekolah belum mengaktifkan fitur notifikasi.');return '<div id="pushBox"></div>'};
 A.notifikasi=d=>{S.pd=d;pushRender(d)};
 function calRender(ym){const d={libur:S.libur,hari_ini:S.hari},p=ym.split('-'),y=+p[0],mo=+p[1]-1,first=new Date(y,mo,1).getDay(),len=new Date(y,mo+1,0).getDate(),lib={};
