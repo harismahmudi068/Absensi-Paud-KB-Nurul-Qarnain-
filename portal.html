@@ -91,7 +91,7 @@ html[data-tm=n] .bnav button.on{background:rgba(154,127,224,.34);color:#fff}
 .pil button.on.izin{background:#1b73e8;color:#fff;border-color:#1b73e8;box-shadow:0 4px 12px rgba(27,115,232,.5)}.pil button.on.sakit{background:#e62d4a;color:#fff;border-color:#e62d4a;box-shadow:0 4px 12px rgba(230,45,74,.5)}
 .kr[data-s=izin] .btn{background:#1b73e8}.kr[data-s=sakit] .btn{background:#e62d4a}
 .kr{display:flex;gap:8px;align-items:stretch;margin-top:8px}.kr textarea{flex:1;min-width:0;resize:none;border:1.5px solid var(--cbd);border-radius:12px;padding:10px 12px;font:inherit;font-size:16px;line-height:1.35;text-align:left;background:var(--c2);color:var(--tx)}
-.kr textarea:focus{outline:none;border-color:var(--pu)}.kr .btn{width:auto;margin:0;padding:0 16px;flex:0 0 auto}.btn[disabled]{opacity:.5;cursor:default}
+.kr textarea:focus{outline:none;border-color:var(--pu)}.kr .btn{width:auto;margin:0;padding:0 16px;flex:0 0 auto}.btn[disabled]{opacity:.5;cursor:default}.lapdates{display:grid;grid-template-columns:1fr;gap:9px;margin-top:10px}.lapdate{display:flex;flex-direction:column;gap:5px;text-align:left;font-size:13px;font-weight:800;color:var(--tt)}.lapdate input{width:100%;min-width:0;border:1.5px solid var(--cbd);border-radius:11px;padding:10px 11px;background:var(--c2);color:var(--tx);font:inherit;font-size:16px;min-height:44px}.lapdate input:focus{outline:none;border-color:var(--pu);box-shadow:0 0 0 3px rgba(118,80,184,.12)}.lapinfo{font-size:12px;color:var(--mu);margin-top:3px;line-height:1.45}.lap .kr{margin-top:10px}
 .ov{position:fixed;inset:0;z-index:90;background:rgba(5,15,30,.55);display:grid;place-items:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .2s}.ov.on{opacity:1;pointer-events:auto}
 .fprev{display:block;margin:10px auto 2px;max-width:150px;max-height:200px;border-radius:12px;border:1.5px solid var(--ln);background:#fff}.fkc{display:block;margin:10px auto 0;width:240px;height:320px;max-width:100%;touch-action:none;border-radius:14px;border:3px solid var(--g);background:#eef6f1;cursor:grab}.fkz{width:100%;margin:12px 0 2px;accent-color:var(--g)}.fthumbrow{display:flex;gap:12px;align-items:center;padding:6px 0 12px;margin-bottom:4px;border-bottom:1px solid var(--ln)}.fthumb{width:60px;height:80px;border-radius:10px;border:2px solid var(--g);background:#eef6f1;display:grid;place-items:center;overflow:hidden;font-size:30px;flex:0 0 auto}.fthumb img{width:100%;height:100%;object-fit:cover;display:block}
 .dlg{width:100%;max-width:340px;background:var(--c2);color:var(--tx);border-radius:20px;padding:20px 18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.4);text-align:center;transform:translateY(12px) scale(.96);transition:transform .2s}.ov.on .dlg{transform:none}
@@ -263,7 +263,7 @@ const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minu
 const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
 const m=location.pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);
 const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['rapor','📄','Rapor'],['libur','🎉','Kalender Hari Libur'],['notifikasi','🔔','Notifikasi','push']];
-const C={},S={},LAP={st:'',busy:0};let cur='',tok=0;
+const C={},S={},LAP={st:'',busy:0,mulai:'',akhir:''};let cur='',tok=0;
 /* Cache halaman: dianggap basi setelah 3 menit atau bila tanggal (WIB) di perangkat sudah berganti */
 const CT={},CD={},MASA=180000,FD=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'});
 const tglJkt=()=>{const o={};FD.formatToParts(new Date()).forEach(x=>{o[x.type]=x.value});return o.year+'-'+o.month+'-'+o.day};
@@ -333,18 +333,46 @@ R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
 const SAP={hadir:'Selamat beraktivitas 😊',alpa:'Semangat yah sekolahnya 💪',terlambat:'Belajar disiplin lagi yah, semangat terus 🙂',sakit:'Semoga cepat sembuh dan bisa beraktivitas kembali 🤒',izin:'Semoga dilancarkan segala urusannya 🤲',libur:'Selamat menikmati momen bersama keluarga, sampai jumpa kembali 👨‍👩‍👧'};
 function sapa(d){const a=d.absen_hari_ini,k=a?a.status:(d.libur.some(x=>x.tanggal===d.hari_ini)?'libur':'');$('#gt').textContent=SAP[k]||'Semoga harimu menyenangkan 🌤️'}
 
-/* A2. Lapor izin / sakit hari ini */
+/* A2. Lapor izin / sakit dengan rentang tanggal */
 const LW={izin:'#1b73e8',sakit:'#e62d4a'};
-function lapForm(d){const a=d.absen_hari_ini;
- if(d.libur.some(x=>x.tanggal===d.hari_ini)||(a&&(a.status==='hadir'||a.status==='terlambat')))return '';
+function lapTanggalForm(st){
+ const hariIni=S.hari||tglJkt();
+ const mulai=LAP.mulai&&LAP.mulai>=hariIni?LAP.mulai:hariIni;
+ const akhir=LAP.akhir&&LAP.akhir>=mulai?LAP.akhir:mulai;
+ const maxMulai=new Date(Date.parse(hariIni+'T00:00:00Z')+60*864e5).toISOString().slice(0,10);
+ if(st==='sakit')return '<div class="lapdates"><label class="lapdate">Tanggal mulai sakit<input id="lapmulai" type="date" min="'+hariIni+'" max="'+maxMulai+'" value="'+mulai+'" onchange="lapTanggalUbah(\\'mulai\\',this.value)"></label><div class="lapinfo">Sistem otomatis mencatat 3 hari sekolah aktif. Hari libur dilewati. Tanggal mulai mengikuti batas 3 hari sekolah aktif seperti laporan WhatsApp.</div></div>';
+ if(st==='izin')return '<div class="lapdates"><label class="lapdate">Tanggal mulai izin<input id="lapmulai" type="date" min="'+hariIni+'" max="'+maxMulai+'" value="'+mulai+'" onchange="lapTanggalUbah(\\'mulai\\',this.value)"></label><label class="lapdate">Tanggal akhir izin<input id="lapakhir" type="date" min="'+mulai+'" value="'+akhir+'" onchange="lapTanggalUbah(\\'akhir\\',this.value)"></label><div class="lapinfo">Maksimal 60 hari ke depan dan 30 hari kalender. Hari libur tidak dibuatkan catatan absensi.</div></div>';
+ return '';
+}
+function lapTanggalUbah(jenis,nilai){
+ const hariIni=S.hari||tglJkt();
+ if(!nilai||nilai<hariIni)return;
+ if(jenis==='mulai'){LAP.mulai=nilai;if(LAP.akhir<nilai)LAP.akhir=nilai;const e=$('#lapakhir');if(e){e.min=nilai;e.value=LAP.akhir}}
+ else LAP.akhir=nilai;
+ const b=$('#lapkirim');if(b)b.disabled=!LAP.st||!lapTanggalValidasi(false);
+}
+function lapTanggalValidasi(tampilkan){
+ const hariIni=S.hari||tglJkt(),mulai=LAP.mulai||hariIni,akhir=LAP.akhir||mulai;
+ let pesan='';
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(mulai)||mulai<hariIni)pesan='Tanggal mulai tidak boleh lampau.';
+ else if(LAP.st==='izin'){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(akhir)||akhir<mulai)pesan='Tanggal akhir harus sama dengan atau setelah tanggal mulai.';
+  else if((Date.parse(akhir+'T00:00:00Z')-Date.parse(mulai+'T00:00:00Z'))/864e5+1>30)pesan='Rentang izin maksimal 30 hari kalender.';
+ }
+ if(tampilkan&&pesan)toast(pesan,'err');
+ return !pesan;
+}
+function lapForm(d){const a=d.absen_hari_ini,hariIni=d.hari_ini||S.hari||tglJkt();
  const ada=!!a&&(a.status==='izin'||a.status==='sakit');LAP.st=ada?a.status:'';
+ LAP.mulai=hariIni;LAP.akhir=hariIni;
  const ket='';
- return '<div class="lap"><div class="lt">'+(ada?'Ubah laporan hari ini':'Anak tidak masuk hari ini?')+'</div><div class="pil">'+
-  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(\''+x+'\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
+ return '<div class="lap"><div class="lt">'+(ada?'Buat atau perbarui laporan ketidakhadiran':'Anak tidak masuk sekolah?')+'</div><div class="pil">'+
+  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(\\''+x+'\\')">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
+  '<div id="lapTanggal">'+lapTanggalForm(LAP.st)+'</div>'+
   '<div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)">'+esc(ket)+'</textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
 function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;
  document.querySelectorAll('.pil button').forEach(x=>{const on=x.dataset.s===LAP.st;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});
- $('.kr').dataset.s=LAP.st;b.classList.remove('blink');b.disabled=!LAP.st;if(LAP.st)lapCek()}
+ $('.kr').dataset.s=LAP.st;$('#lapTanggal').innerHTML=lapTanggalForm(LAP.st);b.classList.remove('blink');b.disabled=!LAP.st;if(LAP.st)lapCek()}
 function lapCek(){const b=$('#lapkirim');if(b&&LAP.st&&!b.disabled){b.classList.remove('blink');void b.offsetWidth;b.classList.add('blink')}}
 
 /* Notifikasi (toast) dan kotak konfirmasi buatan sendiri */
@@ -355,14 +383,14 @@ function konfirm(o){return new Promise(ok=>{const ov=$('#ov');
  const tutup=v=>{ov.classList.remove('on');document.removeEventListener('keydown',kd);setTimeout(()=>{ov.innerHTML=''},220);ok(v)},kd=e=>{if(e.key==='Escape')tutup(false)};
  ov.onclick=e=>{if(e.target===ov)tutup(false)};ov.querySelector('.bt').onclick=()=>tutup(false);const y=ov.querySelector('.ya');y.onclick=()=>tutup(true);
  document.addEventListener('keydown',kd);ov.classList.add('on');y.focus()})}
-/* Konfirmasi 3 pilihan untuk perubahan yang belum disimpan: simpan / buang / edit lagi (ketuk luar kotak atau Esc = edit lagi, paling aman) */
+/* Konfirmasi 3 pilihan untuk perubahan yang belum disimpan */
 function konfirm3(o){return new Promise(ok=>{const ov=$('#ov');
  ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true"><div class="di">'+o.ikon+'</div><h3>'+esc(o.judul)+'</h3><p>'+esc(o.isi)+'</p><div class="da t3"><button type="button" class="ya fx" data-v="simpan" style="background:'+o.warna+'">Simpan</button><button type="button" class="bt bg fx" data-v="buang">Buang</button><button type="button" class="bt fx" data-v="edit">Edit lagi</button></div></div>';
  const tutup=v=>{ov.classList.remove('on');document.removeEventListener('keydown',kd);setTimeout(()=>{ov.innerHTML=''},220);ok(v)},kd=e=>{if(e.key==='Escape')tutup('edit')};
  ov.onclick=e=>{if(e.target===ov)tutup('edit')};ov.querySelectorAll('button').forEach(b=>{b.onclick=()=>tutup(b.dataset.v)});
  document.addEventListener('keydown',kd);ov.classList.add('on');ov.querySelector('.ya').focus()})}
 
-/* Animasi amplop: terbuka, dokumen masuk, tertutup; sukses jadi pesawat kertas terbang, gagal tetap + tanda X */
+/* Animasi amplop pengiriman laporan */
 const slp=ms=>new Promise(r=>setTimeout(r,ms)),RM=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;
 function ampBuka(st){const o=$('#eo');
  o.style.setProperty('--ec',LW[st]);
@@ -383,31 +411,48 @@ async function ampSukses(o,sub){const q=s=>o.querySelector(s);q('.ew').classList
   q('.epl').classList.add('fold');await slp(480);
   q('.epl').classList.add('fly');await slp(700)}
  else q('.eenv').classList.add('hide');
- q('.eres').classList.add('ok');q('.emsg').textContent='Laporan terkirim';q('.esub').textContent=sub;await slp(1100)}
+ q('.eres').classList.add('ok');q('.emsg').textContent='Laporan terkirim';q('.esub').textContent=sub;await slp(500)}
 function ampGagal(o,pesan,ulang){const q=s=>o.querySelector(s);q('.ew').classList.remove('wob');
  q('.ew').classList.add('bad','shk');q('.eres').classList.add('bad');
  q('.emsg').textContent='Gagal terkirim';q('.esub').textContent=pesan;
  q('.eact').style.display='flex';if(!ulang)q('.ery').style.display='none';
  return new Promise(res=>{q('.ery').onclick=()=>res('ulang');q('.ect').onclick=()=>res('tutup');q('.ect').focus()})}
-
+function lapTanggalTampil(t){return hari(t)+', '+tgl(t)}
+function lapNotifSukses(st,nm,tanggal){
+ const ov=$('#ov'),daftar=(tanggal||[]).map(lapTanggalTampil);
+ ov.innerHTML='<div class="dlg" role="dialog" aria-modal="true" aria-labelledby="lapSuksesJudul"><div class="di">✅</div><h3 id="lapSuksesJudul">Laporan berhasil dicatat</h3><p>Laporan '+(st==='sakit'?'sakit':'izin')+' untuk '+esc(nm)+' sudah diterima dan dicatat sekolah.</p><div class="wn" style="text-align:left"><b>Status: '+(st==='sakit'?'Sakit':'Izin')+'</b><span>Tanggal yang berhasil tercatat:</span><span style="margin-top:6px">'+daftar.map(x=>'• '+esc(x)).join('<br>')+'</span></div><div class="da"><button type="button" class="ya fx" id="lapSuksesOke">Oke</button></div></div>';
+ ov.onclick=e=>{if(e.target===ov)e.preventDefault()};
+ const tutup=()=>{ov.classList.remove('on');ov.onclick=null;setTimeout(()=>{if(!ov.classList.contains('on'))ov.innerHTML=''},220)};
+ $('#lapSuksesOke').onclick=tutup;ov.classList.add('on');$('#lapSuksesOke').focus();
+}
 async function lapKirim(){if(!LAP.st||LAP.busy)return;
  const st=LAP.st,b=$('#lapkirim'),nm=S.siswa.pan||S.siswa.nama;
- if(!await konfirm({ikon:st==='izin'?'📝':'🤒',judul:'Kirim laporan '+st+'?',isi:'Laporan '+st+' hari ini untuk '+nm+' akan dikirim ke sekolah.',ya:'Kirim',warna:LW[st]}))return;
+ if(!lapTanggalValidasi(true))return;
+ const mulai=LAP.mulai||S.hari||tglJkt(),akhir=LAP.akhir||mulai;
+ const rentang=st==='sakit'?'Tanggal mulai sakit: '+lapTanggalTampil(mulai)+'. Sistem akan mencatat 3 hari sekolah aktif.':'Tanggal izin: '+lapTanggalTampil(mulai)+' sampai '+lapTanggalTampil(akhir)+'.';
+ if(!await konfirm({ikon:st==='izin'?'📝':'🤒',judul:'Kirim laporan '+st+'?',isi:'Laporan '+st+' untuk '+nm+'. '+rentang,ya:'Kirim',warna:LW[st]}))return;
  LAP.busy=1;b.disabled=true;
  for(;;){
   const o=ampBuka(st),cat=($('#lapk').value||'').trim();
-  const pr=fetch('/api/portal',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({k:m[1],status:st,catatan:cat})})
+  const pr=fetch('/api/portal',{method:'POST',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify({k:m[1],status:st,mulai,akhir,catatan:cat})})
    .then(async r=>({r,j:await r.json().catch(()=>({}))})).catch(()=>null);
   await ampSiap(o);
   const x=await pr;
-  if(x&&x.r.ok){await ampSukses(o,'Laporan '+st+' untuk '+nm+' sudah diterima sekolah.');ampTutup(o);delete C.dashboard;delete C.absensi;LAP.busy=0;return go('dashboard')}
+  if(x&&x.r.ok){
+   const tersimpan=x.j.tanggal_tercatat||[];
+   await ampSukses(o,'Laporan '+st+' untuk '+nm+' berhasil dicatat.');
+   ampTutup(o);delete C.dashboard;delete C.absensi;LAP.busy=0;
+   await go('dashboard');lapNotifSukses(st,nm,tersimpan);return;
+  }
   const k=!!x&&x.r.status===409;
   const pesan=!x?'Periksa koneksi internet, lalu coba lagi.':(x.j.error||(k?'Laporan tidak dapat diubah.':'Gagal mengirim, coba lagi.'));
   const a=await ampGagal(o,pesan,!k);
   if(a==='ulang')continue;
   ampTutup(o);
   if(k){delete C.dashboard;delete C.absensi;LAP.busy=0;return go('dashboard')}
-  LAP.busy=0;b.disabled=false;return}}
+  LAP.busy=0;b.disabled=false;return
+ }
+}
 
 /* B1. Data Siswa */
 let kartuModePortal='landscape';
