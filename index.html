@@ -1959,18 +1959,18 @@ function bukaDetailStatusDashboard(status,kelasFilter){
  const semua=act().filter(s=>!kelasFilter||s.kelas===kelasFilter),a=A(TODAY),pilih=semua.filter(s=>{const st=dayStat(s,TODAY);return status==='Hadir'?(st==='Hadir'||st==='Terlambat'):st===status});
  const urut=pilih.sort((x,y)=>String(x.kelas||'').localeCompare(String(y.kelas||''),'id')||String(x.nama||'').localeCompare(String(y.nama||''),'id'));
  const judul=(status==='Hadir'?'Hadir (termasuk terlambat)':status==='Belum'?'Belum Absen':status)+(kelasFilter?' · '+kelasFilter:'');
- let html='<div class="mu" style="margin-bottom:10px">'+fmt(TODAY)+' · '+urut.length+' anak'+(status==='Hadir'?' · status Hadir dan Terlambat':'')+'</div>';
+ let html='<div class="mu" style="margin-bottom:8px">'+fmt(TODAY)+' · '+urut.length+' anak'+(status==='Hadir'?' · status Hadir dan Terlambat':'')+'</div>';
  if(!urut.length){html+='<div class="note">Tidak ada anak dengan status '+esc(judul)+' hari ini.</div>'}else{
   let kelas='';
   urut.forEach((s,i)=>{
-   if(s.kelas!==kelas){kelas=s.kelas;html+='<div style="margin:12px 0 6px;padding:8px 10px;border-radius:9px;background:var(--bg);font-weight:800">🏫 '+esc(kelas||'Tanpa kelas')+'</div>'}
-   const r=a[s.id],st=dayStat(s,TODAY),w=r&&r.waktu?jamJkt(r.waktu):'';
-   const meta=r?((r.jam?'Jam datang: <b>'+esc(r.jam)+' WIB</b><br>':'')+'Dicatat/diubah: <b>'+(w?esc(w)+' WIB':'-')+'</b><br>Oleh: <b>'+esc(namaPencatatAbsensi(r))+'</b>'):'Belum ada catatan waktu/pencatat';
-   html+='<div style="display:flex;gap:10px;align-items:flex-start;padding:10px 4px;border-bottom:1px solid var(--bd)"><div style="min-width:25px;color:var(--mu);font-size:12px">'+(i+1)+'.</div><div style="flex:1;min-width:0"><b>'+esc(s.nama)+'</b><div style="margin-top:3px">'+badge(st)+'</div><div class="mu" style="font-size:11px;line-height:1.6;margin-top:4px">'+meta+'</div></div></div>';
+   if(s.kelas!==kelas){kelas=s.kelas;html+='<div style="margin:8px 0 3px;padding:6px 9px;border-radius:8px;background:var(--bg);font-weight:800">'+esc(kelas||'Tanpa kelas')+'</div>'}
+   const r=a[s.id],st=dayStat(s,TODAY),w=r&&r.waktu?jamJkt(r.waktu):'',datang=r&&r.jam?'Datang '+r.jam+' WIB':'',catat=r?((w?w+' WIB':'-')+' · '+namaPencatatAbsensi(r)):'Belum ada catatan waktu/pencatat',ringkas=(datang?datang+' · ':'')+catat;
+   html+='<div style="display:flex;align-items:center;gap:7px;padding:6px 3px;border-bottom:1px solid var(--bd);min-width:0"><span style="flex:0 0 20px;color:var(--mu);font-size:11px">'+(i+1)+'.</span><b style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px" title="'+esc(s.nama)+'">'+esc(s.nama)+'</b><span style="flex:0 0 auto">'+badge(st)+'</span><span class="mu" style="flex:0 1 42%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-size:10px" title="'+esc(ringkas)+'">'+esc(ringkas)+'</span></div>';
   });
  }
  info('📋 '+judul,html);
 }
+
 const rkOpt=()=>'<option value="">- Pilih kelas -</option><option value="*" '+(rkKelas==='*'?'selected':'')+'>Semua kelas</option>'+kopt(rkKelas,0);
 function toggleRekapHari(){rkOpen=!rkOpen;renderV()}
 function rekapHariData(){const z=rkQ.toLowerCase().trim();return act().filter(s=>rkKelas&&(rkKelas==='*'||s.kelas===rkKelas)&&(!z||s.nama.toLowerCase().includes(z)||String(s.pan||'').toLowerCase().includes(z)||String(s.nisn||'').includes(z)||cocokWA(s.wa,z)))}
