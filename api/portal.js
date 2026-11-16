@@ -194,7 +194,8 @@ function endpointAman(u) {
 // Kalender sekolah untuk perencanaan laporan Portal, mengikuti aturan WhatsApp.
 const PORTAL_HARI_SAKIT = 3;
 const PORTAL_BATAS_IZIN = 60;
-const PORTAL_MAKS_IZIN = 30;
+const PORTAL_MAKS_IZIN = 7; // Maksimal hari sekolah aktif untuk izin
+const PORTAL_MAKS_KALENDER_IZIN = 90; // Batas pengaman rentang kalender
 const PORTAL_HARI_NAMA = {
   minggu: 0, ahad: 0, sunday: 0, sun: 0,
   senin: 1, monday: 1, mon: 1,
@@ -327,7 +328,7 @@ async function kirimLaporan(req, res) {
     if (!portalTglValid(mulai) || mulai < hariIni)
       return res.status(400).json({ error: 'Tanggal mulai tidak valid atau sudah lampau.' });
 
-    const batasKalender = portalTambahHari(hariIni, PORTAL_BATAS_IZIN + PORTAL_MAKS_IZIN + 10);
+    const batasKalender = portalTambahHari(hariIni, PORTAL_BATAS_IZIN + PORTAL_MAKS_KALENDER_IZIN + 10);
     const libur = await portalAmbilLibur(sid, hariIni, batasKalender);
     let tanggal = [];
     if (status === 'sakit') {
@@ -340,12 +341,14 @@ async function kirimLaporan(req, res) {
       if (mulai > portalTambahHari(hariIni, PORTAL_BATAS_IZIN))
         return res.status(400).json({ error: 'Tanggal mulai izin maksimal 60 hari ke depan.' });
       const jumlah = Math.round((Date.parse(akhir + 'T00:00:00Z') - Date.parse(mulai + 'T00:00:00Z')) / 864e5) + 1;
-      if (jumlah > PORTAL_MAKS_IZIN)
-        return res.status(400).json({ error: 'Rentang izin maksimal 30 hari kalender.' });
+      if (jumlah > PORTAL_MAKS_KALENDER_IZIN)
+        return res.status(400).json({ error: 'Rentang tanggal izin terlalu panjang.' });
       for (let i = 0; i < jumlah; i++) {
         const t = portalTambahHari(mulai, i);
         if (portalHariSekolah(t, libur, kid)) tanggal.push(t);
       }
+      if (tanggal.length > PORTAL_MAKS_IZIN)
+        return res.status(400).json({ error: 'Lama izin maksimal 7 hari sekolah aktif.' });
     }
     if (!tanggal.length)
       return res.status(409).json({ error: 'Tanggal yang dipilih seluruhnya merupakan hari libur sekolah, sehingga tidak ada absensi yang perlu dicatat.' });
