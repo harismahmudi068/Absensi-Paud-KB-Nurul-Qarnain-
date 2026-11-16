@@ -5485,6 +5485,7 @@ let devKirimSek='';
 function devKirimMuat(){guard(async()=>{await devPastikan(['kirim'],true);renderV()})}
 
 let devPesTab='masuk';
+let devPesStatusFilter='';
 let devPesModePilih=false;
 const devPesPilih=new Set();
 function devKirimTab(t){devPesTab=t;devPesPilih.clear();devPesModePilih=false;renderV()}
@@ -5511,7 +5512,7 @@ function devKirim(){
  const d=S.devKirim,sk=S.devSek||[],masuk=Array.isArray(S.devPesanMasuk)?S.devPesanMasuk:[],rows=(d&&Array.isArray(d.baris)?d.baris:[]).filter(r=>r.jenis==='balasan');
  const sekolah=id=>{const x=sk.find(v=>Number(v.id)===Number(id));return x?x.nama:'Sekolah #'+id};
  const opt='<option value="">Semua sekolah</option>'+sk.map(x=>'<option value="'+x.id+'" '+(String(x.id)===devKirimSek?'selected':'')+'>'+esc(x.nama)+(x.status!=='aktif'?' (nonaktif)':'')+'</option>').join('');
- const tabs='<div class="utabs">'+[['masuk','💬 Pesan Masuk'],['balasan','↩️ Riwayat Balasan']].map(x=>'<button class="utab'+(devPesTab===x[0]?' on':'')+'" onclick="devKirimTab(\''+x[0]+'\')">'+x[1]+'</button>').join('')+'</div>';
+ const tabs='<div class="utabs">'+[['masuk','💬 Pesan Masuk'],['balasan','↩️ Riwayat Balasan'],['status','📋 Riwayat Status Terkirim']].map(x=>'<button class="utab'+(devPesTab===x[0]?' on':'')+'" onclick="devKirimTab(\''+x[0]+'\')">'+x[1]+'</button>').join('')+'</div>';
  const head='<div class="panel"><div class="ph">💬 Pesan WA <button class="btn soft sm" onclick="devKirimMuat()">↻ Perbarui</button></div><div class="pb"><label class="l">Tampilkan pesan dari</label><select class="select" onchange="devKirimSek=this.value;devKirimMuat()">'+opt+'</select>'+tabs;
  if(!d)return head+'<div class="note">⏳ Memuat data pesan...</div></div></div>';
  if(d.error)return head+'<div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div></div></div>';
@@ -5525,6 +5526,20 @@ function devKirim(){
   const table=tab([...(devPesModePilih?['<input id="devPesAll" type="checkbox" onchange="devPesSemua(this.checked)" aria-label="Pilih semua">']:[]),'No','Sekolah','Waktu','Nomor Pengirim','Pesan Masuk','Hasil','Status Balasan','Aksi'],data);
   const kontrol=devPesModePilih?'<div class="tb" style="flex-wrap:wrap"><button id="devPesHapusPilih" class="btn danger sm" '+(devPesPilih.size?'':'disabled')+' onclick="devPesAksi(\'hapus\',[...devPesPilih])">🗑 Hapus terpilih ('+devPesPilih.size+')</button><button class="btn soft sm devPesBulk" onclick="devPesAksi(\'selesai\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>✓ Tandai selesai terpilih</button><button class="btn success sm devPesBulk" onclick="devPesAksi(\'dibalas\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>↩ Tandai dibalas terpilih</button><button class="btn orange sm devPesBulk" onclick="devPesAksi(\'batal\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>↶ Batalkan status terpilih</button><button class="btn soft sm" onclick="devPesMode(false)">Selesai memilih</button></div>':'<div class="tb" style="flex-wrap:wrap"><button class="btn soft sm" onclick="devPesMode(true)">☑ Pilih pesan</button></div>';
   return head+'<div class="note">'+masuk.length+' pesan masuk dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Geser tabel ke samping untuk melihat semua kolom. Maksimal 500 pesan terbaru.</div>'+(S.devPesanMasukErr?'<div class="note" style="color:var(--rd)">Pesan masuk gagal dimuat: '+esc(S.devPesanMasukErr)+'</div>':(kontrol+(table||'<div class="mu">Belum ada pesan masuk.</div>')))+'</div></div>';
+ }
+ if(devPesTab==='status'){
+  const semua=Array.isArray(d.baris)?d.baris:[];
+  const tampil=devPesStatusFilter?semua.filter(r=>rkTahap(r)===devPesStatusFilter):semua;
+  const hitung={};semua.forEach(r=>{const t=rkTahap(r);hitung[t]=(hitung[t]||0)+1});
+  const ringkas=['terjadwal','proses','nokabar','terkirim','sampai','terbaca','gagal'].filter(t=>hitung[t]).map(t=>{const z=rkLabel(t);return '<span style="display:inline-block;padding:5px 9px;margin:3px;border:1px solid var(--bd);border-radius:20px;background:#fff">'+z[0]+' '+z[1]+': <b>'+hitung[t]+'</b></span>'}).join('');
+  const opsi='<option value="">Semua status</option>'+PES_ST.filter(x=>x[0]).map(x=>'<option value="'+x[0]+'" '+(devPesStatusFilter===x[0]?'selected':'')+'>'+x[1]+'</option>').join('');
+  const filter='<div class="tb" style="margin:10px 0"><select class="select" style="min-width:190px" onchange="devPesStatusFilter=this.value;renderV()">'+opsi+'</select><span class="mu">Menampilkan '+tampil.length+' dari '+semua.length+' notifikasi</span></div>';
+  const data=tampil.map((r,i)=>{
+   const tahap=rkTahap(r),lb=rkLabel(tahap);
+   return '<tr><td>'+(i+1)+'</td><td><b>'+esc(sekolah(r.sekolah_id))+'</b></td><td style="white-space:nowrap">'+esc(rkJam(r.dibuat))+'</td><td>'+esc(RK_JENIS[r.jenis]||r.judul||r.jenis||'Notifikasi')+'<div class="mu">'+esc(r.judul||'')+'</div></td><td>'+esc(r.label||'-')+'</td><td style="white-space:nowrap">'+esc(fmtNomor(r.nomor)||r.nomor||'-')+'</td><td style="white-space:nowrap">'+lb[0]+' '+lb[1]+'</td><td>'+rkBaris(r,1)+'</td></tr>';
+  }).join('');
+  const tabel=tab(['No','Sekolah','Waktu','Jenis Notifikasi','Nama / Keterangan','Penerima','Status','Rincian Status'],data);
+  return head+'<div class="note">'+semua.length+' notifikasi dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Data mencakup seluruh jenis pengiriman WhatsApp, bukan hanya balasan pesan wali. Maksimal 1.000 catatan terbaru.</div><div style="margin:8px 0">'+(ringkas||'<span class="mu">Belum ada data status.</span>')+'</div>'+filter+(tabel||'<div class="mu">Belum ada riwayat notifikasi.</div>')+'<div class="mu" style="margin-top:10px">Status diperbarui otomatis melalui webhook Fonnte. ✓ terkirim, ✓✓ sampai, ✓✓ biru terbaca. Riwayat mengikuti masa penyimpanan 7 hari.</div></div></div>';
  }
  const data=rows.slice(0,500).map((r,i)=>{
   const tahap=rkTahap(r),lb=rkLabel(tahap);
