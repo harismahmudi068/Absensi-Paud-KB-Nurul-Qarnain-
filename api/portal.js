@@ -661,18 +661,21 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=3600');
     return res.status(200).send(JSON.stringify({
-      name: 'Halaman Siswa',
-      short_name: 'Halaman Siswa',
+      id: '/p/' + k,
+      name: 'Portal Siswa',
+      short_name: 'Portal Siswa',
+      description: 'Portal informasi dan layanan siswa',
       lang: 'id',
       start_url: '/p/' + k,
       scope: '/p/',
       display: 'standalone',
+      display_override: ['standalone'],
       background_color: '#eaf6ee',
       theme_color: '#14693a',
       icons: [
-        { src: '/ikon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-        { src: '/ikon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-        { src: '/ikon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        { src: '/portal-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: '/portal-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/portal-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
       ]
     }));
   }
