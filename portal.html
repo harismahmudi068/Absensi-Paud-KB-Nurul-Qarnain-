@@ -338,6 +338,16 @@ const LW={izin:'#1b73e8',sakit:'#e62d4a'};
 function lapBatas(t,n){return new Date(Date.parse(t+'T00:00:00Z')+n*864e5).toISOString().slice(0,10)}
 function lapFmt(t){return t?hari(t)+', '+tgl(t):'Pilih tanggal'}
 function lapBulan(y,m){return BLN[m]+' '+y}
+function lapAkhirIzin(mulai,durasi){
+ const khusus=new Set((S.libur||[]).map(x=>x.tanggal)),mingguan=new Set((S.libur_mgg||[]).map(Number)),batal=new Set(S.libur_batal||[]);
+ let t=mulai,hitung=0;
+ for(let n=0;n<180;n++){
+  const dow=new Date(t+'T00:00:00Z').getUTCDay(),libur=khusus.has(t)||(mingguan.has(dow)&&!batal.has(t));
+  if(!libur&&++hitung===durasi)return t;
+  t=lapBatas(t,1);
+ }
+ return lapBatas(mulai,180);
+}
 function lapBatasSakit(today){
  const khusus=new Set((S.libur||[]).map(x=>x.tanggal)),mingguan=new Set((S.libur_mgg||[]).map(Number)),batal=new Set(S.libur_batal||[]);
  let t=today,hitung=0;
@@ -355,11 +365,12 @@ function lapRentang(field){
 }
 function lapTanggalForm(st){
  const min=lapHariMulai(),mulai=LAP.mulai&&LAP.mulai>=min?LAP.mulai:min;
- const akhir=LAP.akhir&&LAP.akhir>=mulai?LAP.akhir:mulai;
+ const akhir=st==='izin'?lapAkhirIzin(mulai,LAP.durasi||1):mulai;
  if(st==='sakit')return '<div class="lapdates">'+lapTanggalField('mulai','Tanggal mulai sakit',mulai)+'</div><div class="lapinfo">Sistem otomatis mencatat 3 hari sekolah aktif. Hari libur dilewati. Batas tanggal mengikuti ketentuan WhatsApp.</div>';
- if(st==='izin')return '<div class="lapdates">'+lapTanggalField('mulai','Tanggal mulai izin',mulai)+lapTanggalField('akhir','Tanggal akhir izin',akhir)+'</div><div class="lapinfo">Maksimal 60 hari ke depan dan 30 hari kalender. Hari libur tidak dibuatkan catatan absensi.</div>';
+ if(st==='izin')return '<div class="lapdates">'+lapTanggalField('mulai','Tanggal mulai izin',mulai)+'<div class="lapdate"><span>Lama izin</span><div class="dd" id="lapDurasi"><button type="button" class="ddb" onclick="this.parentElement.classList.toggle(\'open\')"><span>'+(LAP.durasi||1)+' hari sekolah aktif</span><i>⌄</i></button><div class="ddl">'+Array.from({length:7},(_,i)=>i+1).map(n=>'<div class="ddo'+(n===(LAP.durasi||1)?' on':'')+'" onclick="lapDurasiPilih('+n+')">'+n+' hari</div>').join('')+'</div></div></div></div><div class="lapinfo">Tanggal akhir otomatis dihitung berdasarkan '+(LAP.durasi||1)+' hari sekolah aktif. Sabtu, Minggu, dan hari libur sekolah dilewati. Tanggal akhir: <b>'+lapFmt(akhir)+'</b>.</div>';
  return '';
 }
+function lapDurasiPilih(n){if(!Number.isInteger(n)||n<1||n>7)return;LAP.durasi=n;const host=$('#lapTanggal');if(host)host.innerHTML=lapTanggalForm(LAP.st);const b=$('#lapkirim');if(b)b.disabled=!LAP.st||!lapTanggalValidasi(false)}
 function lapTanggalField(field,label,value){
  const opened=LAP.cal&&LAP.cal.field===field;
  return '<div class="lapdate"><span>'+label+'</span><button type="button" class="lapdatebtn'+(opened?' open':'')+'" onclick="lapKalenderToggle(&quot;'+field+'&quot;)"><span>'+lapFmt(value)+'</span><span class="ldicon">📅</span></button>'+(opened?'<div class="lapcal" id="lapcal">'+lapKalenderHtml(field)+'</div>':'')+'</div>';
@@ -385,7 +396,7 @@ function lapKalenderGeser(delta){
 }
 function lapKalenderPilih(field,value){
  const lim=lapRentang(field);if(value<lim.min||value>lim.max)return;
- if(field==='mulai'){LAP.mulai=value;if(LAP.akhir<value)LAP.akhir=value}else LAP.akhir=value;
+ if(field==='mulai'){LAP.mulai=value;LAP.akhir=lapAkhirIzin(value,LAP.durasi||1)}else LAP.akhir=value;
  LAP.cal=null;const host=$('#lapTanggal');if(host)host.innerHTML=lapTanggalForm(LAP.st);
  const b=$('#lapkirim');if(b)b.disabled=!LAP.st||!lapTanggalValidasi(false);
 }
@@ -393,18 +404,18 @@ function lapTanggalValidasi(tampilkan){
  const min=lapHariMulai(),mulai=LAP.mulai||min,akhir=LAP.akhir||mulai;let pesan='';
  if(!/^\d{4}-\d{2}-\d{2}$/.test(mulai)||mulai<min)pesan=LAP.lindungiHariIni?'Untuk laporan hari berikutnya, tanggal mulai harus besok atau setelahnya.':'Tanggal mulai tidak boleh lampau.';
  else if(LAP.st==='izin'){
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(akhir)||akhir<mulai)pesan='Tanggal akhir harus sama dengan atau setelah tanggal mulai.';
-  else if((Date.parse(akhir+'T00:00:00Z')-Date.parse(mulai+'T00:00:00Z'))/864e5+1>30)pesan='Rentang izin maksimal 30 hari kalender.';
+  if(!Number.isInteger(LAP.durasi)||LAP.durasi<1||LAP.durasi>7)pesan='Pilih lama izin antara 1 sampai 7 hari sekolah aktif.';
+  else if(!/^\d{4}-\d{2}-\d{2}$/.test(akhir)||akhir<mulai)pesan='Tanggal akhir izin tidak valid.';
  }
  if(tampilkan&&pesan)toast(pesan,'err');return !pesan;
 }
 function lapForm(d){const a=d.absen_hari_ini,hariIni=d.hari_ini||S.hari||tglJkt(),ada=!!a&&(a.status==='izin'||a.status==='sakit'),lindungi=!!a&&['hadir','terlambat','libur'].includes(a.status);
- LAP.ada=ada;LAP.lindungiHariIni=lindungi;LAP.st='';LAP.mulai=lindungi?lapBatas(hariIni,1):hariIni;LAP.akhir=LAP.mulai;LAP.cal=null;
+ LAP.ada=ada;LAP.lindungiHariIni=lindungi;LAP.st='';LAP.mulai=lindungi?lapBatas(hariIni,1):hariIni;LAP.durasi=1;LAP.akhir=LAP.mulai;LAP.cal=null;
  const judul=ada?'Buat atau perbarui laporan ketidakhadiran':lindungi?'Pilih salah satu tombol dibawah untuk melaporkan siswa dihari berikutnya':!a?'Anak tidak masuk sekolah hari ini? Pilih salah satu tombol dibawah ini':'Anak tidak masuk sekolah?';
  return '<div class="lap"><div class="lt">'+judul+'</div><div class="pil">'+
  ['izin','sakit'].map(x=>'<button type="button" class="fx '+x+(LAP.st===x?' on':'')+'" data-s="'+x+'" aria-pressed="'+(LAP.st===x)+'" onclick="lapPilih(&quot;'+x+'&quot;)">'+(x==='izin'?'📝 Izin':'🤒 Sakit')+'</button>').join('')+'</div>'+
  '<div id="lapTanggal">'+lapTanggalForm(LAP.st)+'</div><div class="kr" data-s="'+LAP.st+'"><textarea id="lapk" rows="2" maxlength="200" placeholder="Keterangan (opsional)"></textarea><button type="button" class="btn fx" id="lapkirim" onclick="lapKirim()"'+(LAP.st?'':' disabled')+'>'+(ada?'Perbarui':'Kirim')+'</button></div></div>'}
-function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;const min=lapHariMulai();if(!LAP.mulai||LAP.mulai<min)LAP.mulai=min;if(!LAP.akhir||LAP.akhir<LAP.mulai)LAP.akhir=LAP.mulai;LAP.cal=null;
+function lapPilih(s){if(LAP.busy)return;const b=$('#lapkirim');LAP.st=LAP.st===s?'':s;const min=lapHariMulai();if(!LAP.mulai||LAP.mulai<min)LAP.mulai=min;if(!LAP.durasi)LAP.durasi=1;LAP.akhir=LAP.st==='izin'?lapAkhirIzin(LAP.mulai,LAP.durasi):LAP.mulai;LAP.cal=null;
  document.querySelectorAll('.pil button').forEach(x=>{const on=x.dataset.s===LAP.st;x.classList.toggle('on',on);x.setAttribute('aria-pressed',on)});
  $('.kr').dataset.s=LAP.st;$('#lapTanggal').innerHTML=lapTanggalForm(LAP.st);b.textContent=LAP.ada?'Perbarui':'Kirim';b.classList.remove('blink');b.disabled=!LAP.st;if(LAP.st)lapCek()}
 function lapCek(){const b=$('#lapkirim');if(b&&LAP.st&&!b.disabled){b.classList.remove('blink');void b.offsetWidth;b.classList.add('blink')}}
@@ -462,8 +473,8 @@ function lapNotifSukses(st,nm,tanggal){
 async function lapKirim(){if(!LAP.st||LAP.busy)return;
  const st=LAP.st,b=$('#lapkirim'),nm=S.siswa.pan||S.siswa.nama;
  if(!lapTanggalValidasi(true))return;
- const mulai=LAP.mulai||lapHariMulai(),akhir=LAP.akhir||mulai;
- const rentang=st==='sakit'?'Tanggal mulai sakit: '+lapTanggalTampil(mulai)+'. Sistem akan mencatat 3 hari sekolah aktif.':'Tanggal izin: '+lapTanggalTampil(mulai)+' sampai '+lapTanggalTampil(akhir)+'.';
+ const mulai=LAP.mulai||lapHariMulai(),akhir=st==='izin'?lapAkhirIzin(mulai,LAP.durasi||1):mulai;
+ const rentang=st==='sakit'?'Tanggal mulai sakit: '+lapTanggalTampil(mulai)+'. Sistem akan mencatat 3 hari sekolah aktif.':'Lama izin: '+(LAP.durasi||1)+' hari sekolah aktif, dari '+lapTanggalTampil(mulai)+' sampai '+lapTanggalTampil(akhir)+'.';
  if(!await konfirm({ikon:st==='izin'?'📝':'🤒',judul:'Kirim laporan '+st+'?',isi:'Laporan '+st+' untuk '+nm+'. '+rentang,ya:'Kirim',warna:LW[st]}))return;
  LAP.busy=1;b.disabled=true;
  for(;;){
