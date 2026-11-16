@@ -16,7 +16,8 @@
     var box = document.getElementById('portalPwaInstall');
     if (!box) return;
     api.installed = api.isInstalled();
-    box.hidden = api.installed || (!api.promptEvent && !api.isIOS);
+    // Tampilkan tombol di Android/browser lain walau prompt otomatis tidak tersedia.
+    box.hidden = api.installed;
     var btn = box.querySelector('button');
     if (btn) btn.textContent = api.isIOS ? 'Cara Instal' : 'Instal Aplikasi';
   };
@@ -24,17 +25,20 @@
   window.pasangPortalPWA = async function () {
     if (api.isInstalled()) { api.updateButton(); return; }
     if (api.isIOS) {
-      alert('Untuk memasang Portal Siswa di iPhone/iPad:\n1. Ketuk tombol Bagikan di Safari.\n2. Pilih “Tambahkan ke Layar Utama”.\n3. Ketuk Tambahkan.');
+      alert('Untuk memasang Portal Siswa di iPhone/iPad:\n1. Buka melalui Safari.\n2. Ketuk tombol Bagikan.\n3. Pilih “Tambahkan ke Layar Utama”, lalu ketuk Tambahkan.');
       return;
     }
     var ev = api.promptEvent;
-    if (!ev) { api.updateButton(); return; }
-    api.promptEvent = null;
-    try {
-      await ev.prompt();
-      await ev.userChoice;
-    } catch (e) {}
-    api.updateButton();
+    if (ev) {
+      api.promptEvent = null;
+      try {
+        await ev.prompt();
+        await ev.userChoice;
+        api.updateButton();
+        return;
+      } catch (e) {}
+    }
+    alert('Jika jendela instalasi tidak muncul:\n1. Buka menu browser (⋮).\n2. Pilih “Instal aplikasi” atau “Tambahkan ke layar utama”.\n3. Ikuti petunjuk sampai selesai.\n\nJika pilihan belum tersedia, buka alamat ini melalui Chrome dan coba lagi.');
   };
 
   window.addEventListener('beforeinstallprompt', function (event) {
