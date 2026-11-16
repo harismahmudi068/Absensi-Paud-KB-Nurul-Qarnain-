@@ -245,7 +245,7 @@ async function portalAmbilLibur(sid, dari, sampai) {
     }
   } catch (e) { console.error('Portal: libur mingguan tidak terbaca, memakai Sabtu-Minggu:', e.message); }
   try {
-    const rows = await L.panggil('/rest/v1/libur_tanggal?sekolah_id=eq.' + sid + '&select=mulai,sampai,kelas_id,aktif,is_active,active,berlaku', 'GET');
+    const rows = await L.panggil('/rest/v1/libur_tanggal?sekolah_id=eq.' + sid + '&select=*', 'GET');
     for (const r of rows || []) {
       if (portalBarisNonaktif(r)) continue;
       let awal = String(r.mulai || '').slice(0, 10), akhir = String(r.sampai || r.mulai || '').slice(0, 10);
