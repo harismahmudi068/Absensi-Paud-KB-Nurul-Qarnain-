@@ -191,25 +191,118 @@ function endpointAman(u) {
   }
 }
 
-// Apakah hari ini libur untuk kelas anak (mingguan + nasional + tanggal, dikurangi libur_batal)?
-async function liburHariIni(sid, kid, hariIni) {
-  const dow = new Date(hariIni + 'T00:00:00Z').getUTCDay();
-  const [mg, nas, tg, bt] = await Promise.all([
-    L.panggil(`/rest/v1/libur_mingguan?sekolah_id=eq.${sid}&select=hari`, 'GET'),
-    L.panggil(`/rest/v1/libur_nasional?tanggal=eq.${hariIni}&select=tanggal&limit=1`, 'GET'),
-    L.panggil(`/rest/v1/libur_tanggal?sekolah_id=eq.${sid}&mulai=lte.${hariIni}&or=(sampai.gte.${hariIni},sampai.is.null)&select=kelas_id`, 'GET'),
-    L.panggil(`/rest/v1/libur_batal?sekolah_id=eq.${sid}&tanggal=eq.${hariIni}&select=kelas_id`, 'GET')
-  ]);
-  const semuaAtauKelas = (x) => x.kelas_id == null || Number(x.kelas_id) === 0 || Number(x.kelas_id) === kid;
-  if ((bt || []).some(semuaAtauKelas)) return false;
-  return (
-    (mg || []).some((x) => Number(x.hari) === dow) ||
-    (nas || []).length > 0 ||
-    (tg || []).some((x) => x.kelas_id == null || Number(x.kelas_id) === kid)
-  );
+// Kalender sekolah untuk perencanaan laporan Portal, mengikuti aturan WhatsApp.
+const PORTAL_HARI_SAKIT = 3;
+const PORTAL_BATAS_IZIN = 60;
+const PORTAL_MAKS_IZIN = 30;
+const PORTAL_HARI_NAMA = {
+  minggu: 0, ahad: 0, sunday: 0, sun: 0,
+  senin: 1, monday: 1, mon: 1,
+  selasa: 2, tuesday: 2, tue: 2,
+  rabu: 3, wednesday: 3, wed: 3,
+  kamis: 4, thursday: 4, thu: 4,
+  jumat: 5, "jum'at": 5, jumaat: 5, friday: 5, fri: 5,
+  sabtu: 6, saturday: 6, sat: 6
+};
+const portalTambahHari = (t, n) => new Date(Date.parse(t + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const portalTglValid = t => {
+  if (typeof t !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return false;
+  const [y, m, d] = t.split('-').map(Number), x = new Date(Date.UTC(y, m - 1, d));
+  return x.getUTCFullYear() === y && x.getUTCMonth() === m - 1 && x.getUTCDate() === d;
+};
+function portalBarisNonaktif(r) {
+  return ['aktif', 'is_active', 'active', 'berlaku'].some(k => r[k] === false || r[k] === 0 || r[k] === 'false');
+}
+function portalLiburMingguan(rows) {
+  const nilai = [];
+  const abaikan = /(^id$|created|updated|dibuat|diubah|keterangan|catatan|nama|deskripsi|alasan|note)/i;
+  for (const r of rows || []) {
+    if (portalBarisNonaktif(r)) continue;
+    for (const [k, v] of Object.entries(r)) {
+      if (abaikan.test(k) || v == null || typeof v === 'boolean') continue;
+      const t = String(v).trim().toLowerCase();
+      if (t in PORTAL_HARI_NAMA) { nilai.push({ hari: PORTAL_HARI_NAMA[t], nama: true }); break; }
+      if (/^\d+$/.test(t) && Number(t) <= 7) { nilai.push({ angka: Number(t) }); break; }
+    }
+  }
+  const angka = nilai.filter(x => x.angka !== undefined).map(x => x.angka);
+  const iso = angka.includes(7) && !angka.includes(0);
+  const hasil = new Set();
+  for (const x of nilai) hasil.add(x.nama ? x.hari : (iso ? x.angka % 7 : x.angka));
+  return hasil;
+}
+async function portalAmbilLibur(sid, dari, sampai) {
+  let mingguan = new Set([0, 6]);
+  const tanggalUmum = new Set(), tanggalKelas = new Map(), batalSemua = new Set(), batalKelas = new Map();
+  try {
+    const rows = await L.panggil('/rest/v1/libur_mingguan?sekolah_id=eq.' + sid + '&select=*', 'GET');
+    if (Array.isArray(rows)) {
+      if (!rows.length) mingguan = new Set();
+      else {
+        const hasil = portalLiburMingguan(rows);
+        if (hasil.size) mingguan = hasil;
+      }
+    }
+  } catch (e) { console.error('Portal: libur mingguan tidak terbaca, memakai Sabtu-Minggu:', e.message); }
+  try {
+    const rows = await L.panggil('/rest/v1/libur_tanggal?sekolah_id=eq.' + sid + '&select=mulai,sampai,kelas_id,aktif,is_active,active,berlaku', 'GET');
+    for (const r of rows || []) {
+      if (portalBarisNonaktif(r)) continue;
+      let awal = String(r.mulai || '').slice(0, 10), akhir = String(r.sampai || r.mulai || '').slice(0, 10);
+      if (!portalTglValid(awal)) continue;
+      if (!portalTglValid(akhir) || akhir < awal) akhir = awal;
+      let d = awal < dari ? dari : awal;
+      const tujuan = r.kelas_id == null || r.kelas_id === '' ? tanggalUmum :
+        (tanggalKelas.get(String(r.kelas_id)) || tanggalKelas.set(String(r.kelas_id), new Set()).get(String(r.kelas_id)));
+      for (let i = 0; i < 400 && d <= akhir && d <= sampai; i++, d = portalTambahHari(d, 1)) tujuan.add(d);
+    }
+  } catch (e) { console.error('Portal: libur tanggal tidak terbaca:', e.message); }
+  try {
+    const rows = await L.panggil('/rest/v1/libur_nasional?tanggal=gte.' + dari + '&tanggal=lte.' + sampai + '&select=tanggal', 'GET');
+    for (const r of rows || []) { const t = String(r.tanggal || '').slice(0, 10); if (portalTglValid(t)) tanggalUmum.add(t); }
+  } catch (e) { console.error('Portal: libur nasional tidak terbaca:', e.message); }
+  try {
+    const rows = await L.panggil('/rest/v1/libur_batal?sekolah_id=eq.' + sid + '&tanggal=gte.' + dari + '&tanggal=lte.' + sampai + '&select=tanggal,kelas_id', 'GET');
+    for (const r of rows || []) {
+      const t = String(r.tanggal || '').slice(0, 10);
+      if (!portalTglValid(t)) continue;
+      if (r.kelas_id == null || Number(r.kelas_id) === 0) batalSemua.add(t);
+      else {
+        const k = String(r.kelas_id);
+        if (!batalKelas.has(k)) batalKelas.set(k, new Set());
+        batalKelas.get(k).add(t);
+      }
+    }
+  } catch (e) { console.error('Portal: pembatalan libur tidak terbaca:', e.message); }
+  return { mingguan, tanggalUmum, tanggalKelas, batalSemua, batalKelas };
+}
+function portalHariSekolah(t, libur, kid) {
+  if (libur.batalSemua.has(t) || (kid != null && libur.batalKelas.get(String(kid))?.has(t))) return true;
+  if (libur.mingguan.has(dowOf(t)) || libur.tanggalUmum.has(t)) return false;
+  const khusus = kid == null ? null : libur.tanggalKelas.get(String(kid));
+  return !(khusus && khusus.has(t));
+}
+function portalTanggalSakit(mulai, hariIni, libur, kid) {
+  if (!portalTglValid(mulai) || mulai < hariIni) return { error: 'Tanggal mulai sakit tidak boleh lampau.' };
+  const batas = [];
+  let d = hariIni;
+  for (let i = 0; i < 120 && batas.length < PORTAL_HARI_SAKIT; i++, d = portalTambahHari(d, 1)) {
+    if (portalHariSekolah(d, libur, kid)) batas.push(d);
+  }
+  let aktif = mulai;
+  for (let i = 0; i < 120 && !portalHariSekolah(aktif, libur, kid); i++) aktif = portalTambahHari(aktif, 1);
+  if (!portalHariSekolah(aktif, libur, kid) || !batas.includes(aktif))
+    return { error: 'Tanggal mulai sakit harus berada dalam tiga hari sekolah aktif terdekat.' };
+  const tanggal = [];
+  d = aktif;
+  for (let i = 0; i < 120 && tanggal.length < PORTAL_HARI_SAKIT; i++, d = portalTambahHari(d, 1)) {
+    if (portalHariSekolah(d, libur, kid)) tanggal.push(d);
+  }
+  if (tanggal.length !== PORTAL_HARI_SAKIT) return { error: 'Jadwal tiga hari sekolah aktif belum dapat ditentukan.' };
+  return { tanggal };
 }
 
-// Orang tua melaporkan izin/sakit hari ini. Tanggal, sekolah, dan siswa ditentukan server.
+// Orang tua melaporkan izin/sakit. Semua tanggal divalidasi ulang di server.
 async function kirimLaporan(req, res) {
   if (!/^application\/json/i.test(String(req.headers['content-type'] || '')))
     return res.status(415).json({ error: 'Format permintaan tidak didukung' });
@@ -225,31 +318,65 @@ async function kirimLaporan(req, res) {
     const s0 = await cariAktif(k, 'id,sekolah_id,kelas_id,aktif');
     if (!s0) return res.status(404).json(TIDAK_ADA);
     const sid = Number(s0.sekolah_id), id = Number(s0.id);
-    const kid = s0.kelas_id ? Number(s0.kelas_id) : null;
+    const kid = s0.kelas_id == null ? null : Number(s0.kelas_id);
     if (!Number.isInteger(sid) || !Number.isInteger(id)) return res.status(404).json(TIDAK_ADA);
 
     const hariIni = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
-    if (await liburHariIni(sid, kid, hariIni))
-      return res.status(409).json({ error: 'Hari ini libur, tidak perlu mengirim izin atau sakit.' });
+    const mulai = String(b.mulai || hariIni).trim();
+    const akhir = String(b.akhir || mulai).trim();
+    if (!portalTglValid(mulai) || mulai < hariIni)
+      return res.status(400).json({ error: 'Tanggal mulai tidak valid atau sudah lampau.' });
 
-    const isi = { status, cara: CARA, jam_datang: null, catatan: catatan || null, diubah: new Date().toISOString(), diubah_oleh: null };
-    // 1) Belum ada baris hari ini: tambah. Sudah ada: dilewati (tidak menimpa).
-    let hasil = await L.panggil('/rest/v1/absensi?on_conflict=siswa_id,tanggal', 'POST',
-      { sekolah_id: sid, siswa_id: id, tanggal: hariIni, ...isi },
-      { Prefer: 'resolution=ignore-duplicates,return=representation' });
-    // 2) Koreksi boleh mengganti alpa/izin/sakit, tanpa membedakan sumber pencatatan.
-    // Hadir, terlambat, dan libur tetap dilindungi.
-    if (!Array.isArray(hasil) || !hasil.length) {
-      hasil = await L.panggil(
-        `/rest/v1/absensi?siswa_id=eq.${id}&sekolah_id=eq.${sid}&tanggal=eq.${hariIni}&status=in.(alpa,izin,sakit)`,
-        'PATCH', isi, { Prefer: 'return=representation' });
-      if (!Array.isArray(hasil) || !hasil.length)
-        return res.status(409).json({ error: 'Absensi sudah tercatat Hadir, Terlambat, atau Libur sehingga laporan tidak dapat mengubahnya.' });
+    const batasKalender = portalTambahHari(hariIni, PORTAL_BATAS_IZIN + PORTAL_MAKS_IZIN + 10);
+    const libur = await portalAmbilLibur(sid, hariIni, batasKalender);
+    let tanggal = [];
+    if (status === 'sakit') {
+      const rencana = portalTanggalSakit(mulai, hariIni, libur, kid);
+      if (rencana.error) return res.status(400).json({ error: rencana.error });
+      tanggal = rencana.tanggal;
+    } else {
+      if (!portalTglValid(akhir) || akhir < mulai)
+        return res.status(400).json({ error: 'Tanggal akhir harus sama dengan atau setelah tanggal mulai.' });
+      if (mulai > portalTambahHari(hariIni, PORTAL_BATAS_IZIN))
+        return res.status(400).json({ error: 'Tanggal mulai izin maksimal 60 hari ke depan.' });
+      const jumlah = Math.round((Date.parse(akhir + 'T00:00:00Z') - Date.parse(mulai + 'T00:00:00Z')) / 864e5) + 1;
+      if (jumlah > PORTAL_MAKS_IZIN)
+        return res.status(400).json({ error: 'Rentang izin maksimal 30 hari kalender.' });
+      for (let i = 0; i < jumlah; i++) {
+        const t = portalTambahHari(mulai, i);
+        if (portalHariSekolah(t, libur, kid)) tanggal.push(t);
+      }
     }
-    await L.catatLog({ pelaku: null, sekolah_id: sid, aksi: 'laporan_dashboard_siswa', rincian: `${status} siswa ${id} ${hariIni}` });
-    return res.status(200).json({ ok: true, absen_hari_ini: { tanggal: hariIni, status, jam: null, catatan } });
+    if (!tanggal.length)
+      return res.status(409).json({ error: 'Tanggal yang dipilih seluruhnya merupakan hari libur sekolah, sehingga tidak ada absensi yang perlu dicatat.' });
+
+    const isi = { status, cara: CARA, jam_datang: null,
+      catatan: status === 'sakit' ? ((catatan ? catatan + ' | ' : '') + 'sakit otomatis 3 hari sekolah').slice(0, 200) : (catatan || null),
+      diubah: new Date().toISOString(), diubah_oleh: null };
+    const ada = await L.panggil('/rest/v1/absensi?siswa_id=eq.' + id + '&sekolah_id=eq.' + sid + '&tanggal=in.(' + tanggal.join(',') + ')&select=tanggal,status', 'GET');
+    const tercatat = new Set((ada || []).map(x => x.tanggal));
+    const dilindungi = new Set((ada || []).filter(x => ['hadir', 'terlambat', 'libur'].includes(x.status)).map(x => x.tanggal));
+    const bolehUbah = new Set((ada || []).filter(x => ['alpa', 'izin', 'sakit'].includes(x.status)).map(x => x.tanggal));
+    const berhasil = [];
+    for (const t of tanggal) {
+      if (dilindungi.has(t)) continue;
+      if (bolehUbah.has(t)) {
+        const r = await L.panggil('/rest/v1/absensi?siswa_id=eq.' + id + '&sekolah_id=eq.' + sid + '&tanggal=eq.' + t + '&status=in.(alpa,izin,sakit)', 'PATCH', isi, { Prefer: 'return=representation' });
+        if (Array.isArray(r) && r.length) berhasil.push(t);
+      } else if (!tercatat.has(t)) {
+        const r = await L.panggil('/rest/v1/absensi?on_conflict=siswa_id,tanggal', 'POST',
+          { sekolah_id: sid, siswa_id: id, tanggal: t, ...isi },
+          { Prefer: 'resolution=ignore-duplicates,return=representation' });
+        if (Array.isArray(r) && r.length) berhasil.push(t);
+      }
+    }
+    if (!berhasil.length)
+      return res.status(409).json({ error: 'Tidak ada tanggal yang dapat dicatat. Absensi Hadir, Terlambat, dan Libur tetap dilindungi.' });
+    await L.catatLog({ pelaku: null, sekolah_id: sid, aksi: 'laporan_dashboard_siswa',
+      rincian: status + ' siswa ' + id + ' ' + berhasil.join(',') });
+    return res.status(200).json({ ok: true, status, tanggal_diminta: { mulai, akhir: status === 'izin' ? akhir : null }, tanggal_tercatat: berhasil });
   } catch (e) {
-    console.error('portal.js POST', e.message);
+    console.error('portal.js POST laporan:', e.message);
     return res.status(500).json({ error: 'Terjadi kendala, coba lagi beberapa saat' });
   }
 }
