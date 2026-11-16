@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#166534">
+  <title>Tes Instalasi PWA - Absensi 1486</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;padding:24px 18px;font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;background:#f3f7f2;color:#20352a}
+    main{max-width:620px;margin:24px auto;background:#fff;border:1px solid #dce8dc;border-radius:18px;padding:22px;box-shadow:0 8px 28px #183b2010}
+    h1{font-size:22px;margin:0 0 8px;color:#166534}p{margin:10px 0}.tag{display:inline-block;padding:5px 10px;border-radius:99px;background:#fff0cf;color:#805500;font-size:13px;font-weight:700}
+    .info{padding:12px;border-radius:12px;background:#f1f5f1;margin:14px 0;font-size:14px;overflow-wrap:anywhere}
+    button{border:0;border-radius:10px;background:#166534;color:white;padding:11px 16px;font-weight:700;font-size:15px}
+    small{color:#66756a}ul{padding-left:22px}
+  </style>
+</head>
+<body>
+<main>
+  <span class="tag">HALAMAN UJI PREVIEW</span>
+  <h1>Tes Instalasi Absensi 1486</h1>
+  <p>Halaman ini dibuat khusus untuk membandingkan perilaku Chrome pada Preview.</p>
+  <div class="info"><strong>Konfigurasi tes:</strong><br>
+    Tidak memuat manifest PWA, tidak memuat pwa-absensi.js, dan tidak mendaftarkan Service Worker baru.
+  </div>
+  <p><strong>Silakan periksa menu Chrome (⋮).</strong></p>
+  <ul>
+    <li>Apakah muncul pilihan “Instal aplikasi” yang aktif?</li>
+    <li>Atau tetap berwarna abu-abu/tidak bisa ditekan?</li>
+  </ul>
+  <div class="info" id="hasil">Memeriksa kondisi halaman…</div>
+  <button type="button" onclick="periksa()">Periksa ulang</button>
+  <p><small>Catatan: Service Worker lama dengan cakupan / mungkin tetap mengendalikan halaman ini. Halaman ini tidak menghapus atau mengubah pendaftaran tersebut.</small></p>
+</main>
+<script>
+function periksa(){
+  var manifest=document.querySelector('link[rel="manifest"]');
+  var sw='Tidak didukung';
+  if('serviceWorker' in navigator){
+    sw=navigator.serviceWorker.controller?'Dikendalikan Service Worker yang sudah ada':'Tidak dikendalikan Service Worker saat ini';
+  }
+  document.getElementById('hasil').textContent=
+    'Manifest tertaut: '+(manifest?'YA':'TIDAK')+' | '+sw+
+    ' | HTTPS: '+(window.isSecureContext?'YA':'TIDAK');
+}
+periksa();
+</script>
+</body>
+</html>
