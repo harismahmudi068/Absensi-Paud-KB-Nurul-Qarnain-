@@ -1132,7 +1132,7 @@ let PES_ADA_KOL=true;
 const PES_SIARAN=new Set(['laporan','link','tabungan','raport','libur','alpa']);
 const pesNorm=x=>{let d=String(x||'').replace(/\D/g,'');if(d.startsWith('0'))d='62'+d.slice(1);return d};
 /* balasan otomatis: ada pesan keluar (bukan siaran laporan/link/dll) ke nomor yang sama setelah pesan masuk, dan tidak gagal */
-function pesBalasOto(p,kl,rows){const n=pesNorm(p.dari_nomor),t=new Date(p.waktu).getTime();let nx=Infinity;for(const r of rows){if(pesNorm(r.dari_nomor)===n){const w=new Date(r.waktu).getTime();if(w>t&&w<nx)nx=w}}let b='',bt=Infinity;for(const r of kl){if(pesNorm(r.nomor)!==n||PES_SIARAN.has(r.jenis)||r.status==='gagal')continue;const d=new Date(r.dibuat).getTime();if(d>t&&d<=nx&&d<bt){bt=d;b=r.dibuat}}return b}
+function pesBalasOto(p,kl,rows){const n=pesNorm(p.dari_nomor),t=new Date(p.waktu).getTime();let nx=Infinity;for(const r of rows){if(Number(r.id)===Number(p.id))continue;if(pesNorm(r.dari_nomor)===n){const w=new Date(r.waktu).getTime();if(w>t&&w<nx)nx=w}}let b='',bt=Infinity;for(const r of kl){if(r.jenis!=='balasan'||pesNorm(r.nomor)!==n||r.status==='gagal')continue;const d=new Date(r.dibuat).getTime();if(d>t&&d<=nx&&d<bt){bt=d;b=r.dibuat}}return b}
 const muatPesan=async()=>{const rows=await dbq(db.from('pesan_masuk').select('*').order('waktu',{ascending:false}).limit(100));PES_ADA_KOL=!rows.length||('sudah_dibalas' in rows[0]);let kl=[];try{const t0=rows.length?rows.reduce((m,r)=>r.waktu<m?r.waktu:m,rows[0].waktu):null;let q=db.from('kirim_log').select('nomor,jenis,status,dibuat').eq('sekolah_id',SEK).or('jenis.is.null,jenis.not.in.('+[...PES_SIARAN].join(',')+')');if(t0)q=q.gte('dibuat',t0);kl=await dbq(q.order('dibuat',{ascending:false}).limit(1000))||[]}catch(e){}
  S.pesan=rows.map(p=>({id:p.id,waktu:fmt(new Date(p.waktu).toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}))+' '+jamJkt(p.waktu),dari:p.dari_nomor,isi:p.isi,hasil:p.hasil||'',cek:p.perlu_dicek,dibalas:!!p.sudah_dibalas,dibalasPada:p.dibalas_pada||'',auto:pesBalasOto(p,kl,rows)}))};
 const muatGuruData=async()=>{const k=await dbq(db.from('keanggotaan').select('role,aktif,profil(id,nama,username,role,aktif,nip,dibuat)').eq('sekolah_id',SEK));return k.filter(x=>x.profil).map(x=>({...x.profil,role:x.role,aktif:x.aktif})).sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'))};
@@ -3459,8 +3459,8 @@ const PES_ST=[['','Semua status'],['terjadwal','Terjadwal'],['proses','Diproses'
 function pesRkTampil(){const el=$('#rkIsi');if(!el)return;const f=pesRkF?pesRkRows.filter(r=>rkTahap(r)===pesRkF):pesRkRows;
  el.innerHTML=(pesRkF?'<div class="mu" style="margin-bottom:8px">Menampilkan '+f.length+' dari '+pesRkRows.length+' pesan</div>':'')+(pesRkF&&!f.length?'<div class="note">Tidak ada pesan dengan status ini.</div>':rkHtml(f))}
 async function pesRkMuat(){try{const rows=await dbq(db.from('kirim_log').select('batch_id,jenis,judul,label,nomor,status,status_fonnte,state_fonnte,error,jadwal_pada,dibuat,waktu_terkirim,waktu_sampai,waktu_terbaca').eq('sekolah_id',SEK).order('dibuat',{ascending:false}).limit(400));pesRkRows=rows||[];pesRkTampil()}catch(e){const el=$('#rkIsi');if(el)el.innerHTML='<div class="note">Riwayat belum bisa dibaca: '+esc(e.message||String(e))+'</div>'}}
-function pesBalasSel(p){if(p.dibalas)return '<div class="rkt">✅ Sudah dibalas</div><div class="mu">manual'+(p.dibalasPada?' · '+rkJam(p.dibalasPada):'')+'</div>';
- if(p.auto)return '<div class="rkt">✅ Dibalas</div><div class="mu">otomatis · '+rkJam(p.auto)+'</div>';
+function pesBalasSel(p){if(p.auto)return '<div class="rkt">✅ Dibalas</div><div class="mu">otomatis · '+rkJam(p.auto)+'</div>';
+ if(p.dibalas)return '<div class="rkt">✅ Sudah dibalas</div><div class="mu">manual'+(p.dibalasPada?' · '+rkJam(p.dibalasPada):'')+'</div>';
  return '<div class="rkt">⏳ Belum dibalas</div>'+(/^ragu/i.test(p.hasil||'')?'<div class="mu">⚠ Perlu perhatian</div>':'')}
 function tandaiBalas(id,on){if(!PES_ADA_KOL)return toast('Kolom sudah_dibalas belum ada di tabel pesan_masuk. Jalankan SQL penambahan kolom di Supabase dulu.',false);
  guard(async()=>{await dbq(db.from('pesan_masuk').update({sudah_dibalas:on,dibalas_pada:on?new Date().toISOString():null}).eq('id',id));await muatPesan();renderV()})}
@@ -4957,7 +4957,7 @@ const DEVSET={
  nomor:async()=>{S.devNomor=await dbq(db.rpc('developer_permintaan_nomor'))},
  log:async()=>{S.devLog=await dbq(db.rpc('developer_log',{p_batas:100}))},
  cron:async()=>{S.devCron=await dbq(db.rpc('developer_cron_daftar')).catch(ERR)},
- kirim:async()=>{S.devKirim=await dbq(db.rpc('developer_kirim_log',{p_batas:300,p_sekolah:devKirimSek?Number(devKirimSek):null})).catch(ERR)},
+ kirim:async()=>{const hasil=await dbq(db.rpc('developer_kirim_log',{p_batas:1000,p_sekolah:devKirimSek?Number(devKirimSek):null})).catch(ERR);S.devKirim=hasil;try{let q=_dbFrom('pesan_masuk').select('id,sekolah_id,dari_nomor,isi,hasil,perlu_dicek,waktu,sudah_dibalas,dibalas_pada').order('waktu',{ascending:false});if(devKirimSek)q=q.eq('sekolah_id',Number(devKirimSek));S.devPesanMasuk=await dbq(q.limit(500))||[];S.devPesanMasukErr=''}catch(e){S.devPesanMasuk=[];S.devPesanMasukErr=e.message||String(e)}} ,
  simpan:async()=>{S.devSimpan=await dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(ERR)},
  storage:async()=>{S.devStorage=await apiDev({aksi:'pemantauan_storage'}).catch(ERR)},
  ai:async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'}).catch(ERR)},
@@ -4981,7 +4981,7 @@ const devSegar=k=>{const e=DEVT[k];return !!e&&e.v===cmVer&&Date.now()-e.t<CM_TT
 async function devPastikan(keys,paksa){const perlu=keys.filter(k=>paksa||!devSegar(k));if(!perlu.length)return false;
  const v0=cmVer;await Promise.all(perlu.map(async k=>{await DEVSET[k]();DEVT[k]={t:Date.now(),v:v0}}));return true}
 async function muatDev(){await devPastikan(devButuh(),true)}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','📤 Riwayat Kirim'],['log','📜 Log'],['sistem','🩺 Sistem']];
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','💬 Pesan WA'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
 function devBuka(k){drw(0);kalReset();devTab=k;if(k==='perangkat'){HPF.mode=false;HPF.sel.clear()}if(view==='developer'){const b=devButuh();if(b.every(devSegar)){renderAll();scrollTo(0,0);kedipHalaman()}else guard(async()=>{await devPastikan(b);renderAll();scrollTo(0,0);kedipHalaman()})}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
@@ -5444,23 +5444,56 @@ function hapusTabungan(){form('Hapus seluruh data tabungan',[{k:'kf',l:'Ketik HA
   await muatDev();toast('Data tabungan dihapus ('+j.transaksi+' transaksi)');renderV()});$('#ms').textContent='Hapus semua'}
 let devKirimSek='';
 function devKirimMuat(){guard(async()=>{await devPastikan(['kirim'],true);renderV()})}
-function devKirim(){const d=S.devKirim;
- if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat riwayat kirim...</div></div></div>';
- if(d.error)return `<div class="panel"><div class="ph">📤 Riwayat Kirim</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL langkah-kirim-log.sql versi terbaru sudah dijalankan.</div></div></div>`;
- const rg=d.ringkas||{},rows=d.baris||[],sk=S.devSek||[],tot=Number(rg.total)||0;
- const opt='<option value="">Semua sekolah</option>'+sk.map(x=>`<option value="${x.id}" ${String(x.id)===devKirimSek?'selected':''}>${esc(x.nama)}${x.status!=='aktif'?' (nonaktif)':''}</option>`).join('');
- const m=new Map();rows.forEach(r=>{if(!m.has(r.batch_id))m.set(r.batch_id,[]);m.get(r.batch_id).push(r)});
- let h='',n=0;
- m.forEach(list=>{if(n++>=40)return;
-  const awal=list[list.length-1],chip=(ik,tx,v)=>v?'<span>'+ik+' '+tx+' '+v+'</span>':'';
-  h+='<details class="rk"><summary><b>'+esc(awal.judul||RK_JENIS[awal.jenis]||'Pengiriman')+'</b>'+(list.some(r=>r.oleh_developer)?' <span class="mu">🛠 Oleh Developer</span>':'')+'<span class="mu"> · '+esc(awal.sekolah||'-')+' · '+esc(rkWaktu(awal.dibuat))+' · '+list.length+' pesan</span><div class="rkc">'
-   +rkChips(list)+'</div></summary><div class="rkb">'
-   +list.slice().reverse().map(r=>rkBaris(r,1)).join('')+'</div></details>'});
- const rentang=tot?'Tertua '+waktuId(rg.tertua)+' · terbaru '+waktuId(rg.terbaru):'';
- return `<div class="panel"><div class="ph">📤 Riwayat Kirim WhatsApp <span class="tb" style="margin:0"><button class="btn soft sm" onclick="devKirimMuat()">↻ Perbarui</button><button class="btn danger sm" ${tot?'':'disabled'} onclick="devKirimHapus()">🗑 Hapus riwayat</button></span></div><div class="pb"><label class="l">Tampilkan riwayat dari</label><select class="select" onchange="devKirimSek=this.value;devKirimMuat()">${opt}</select>
-<div class="cards" style="margin-top:10px"><div class="card stat"><b>${tot}</b>Total pesan</div><div class="card stat"><b>${Number(rg.terkirim)||0}</b>Terkirim</div><div class="card stat"><b>${Number(rg.gagal)||0}</b>Gagal</div><div class="card stat"><b>${Number(rg.terjadwal)||0}</b>Terjadwal / belum ada kabar</div></div>
-<div class="note">Riwayat disimpan 7 hari saja dan dibersihkan otomatis tiap hari pukul 02.30 WIB (tugas bersihkan-kirim-log). Tombol Hapus riwayat menghapus ${devKirimSek?'riwayat sekolah yang dipilih':'riwayat SEMUA sekolah'} dan tidak bisa dikembalikan; pesan WhatsApp yang sudah terkirim tidak terpengaruh.${rentang?'<br>'+rentang:''}</div></div></div>
-<div class="panel"><div class="ph">📋 Pengiriman terbaru <span class="mu">${rows.length} pesan dimuat</span></div><div class="pb">${h||'<div class="mu">Belum ada riwayat pengiriman.</div>'}${rows.length?'<div class="mu">Menampilkan sampai 300 pesan dan 40 pengiriman terbaru. Penanda seperti WhatsApp: ✓ terkirim, ✓✓ sampai ke HP, ✓✓ biru terbaca. Jam (WIB) dicatat saat kabar diterima server.</div>':''}</div></div>`}
+
+let devPesTab='masuk';
+let devPesModePilih=false;
+const devPesPilih=new Set();
+function devKirimTab(t){devPesTab=t;devPesPilih.clear();devPesModePilih=false;renderV()}
+function devPesMode(t){devPesModePilih=!!t;devPesPilih.clear();renderV()}
+function devPesCek(id,on){on?devPesPilih.add(Number(id)):devPesPilih.delete(Number(id));const b=$('#devPesHapusPilih');if(b){b.disabled=!devPesPilih.size;b.textContent='🗑 Hapus terpilih ('+devPesPilih.size+')'}document.querySelectorAll('.devPesBulk').forEach(x=>x.disabled=!devPesPilih.size);const a=$('#devPesAll');if(a){const ids=(S.devPesanMasuk||[]).map(x=>Number(x.id));a.checked=!!ids.length&&ids.every(x=>devPesPilih.has(x));a.indeterminate=devPesPilih.size>0&&!a.checked}}
+function devPesSemua(on){(S.devPesanMasuk||[]).forEach(x=>on?devPesPilih.add(Number(x.id)):devPesPilih.delete(Number(x.id)));renderV()}
+async function devPesAksi(aksi,ids){
+ ids=[...new Set((ids||[]).map(Number).filter(Number.isFinite))];if(!ids.length)return toast('Pilih pesan terlebih dahulu',false);
+ const label={selesai:'menandai '+ids.length+' pesan selesai diperiksa',dibalas:'menandai '+ids.length+' pesan sudah dibalas',batal:'membatalkan status balasan '+ids.length+' pesan',hapus:'menghapus '+ids.length+' pesan'}[aksi];
+ if(aksi==='hapus'&&!await konfirmasi('Anda akan menghapus permanen '+ids.length+' pesan masuk. Tindakan ini tidak dapat dibatalkan.',{judul:'Hapus pesan masuk',ya:'Hapus pesan',bahaya:1,ikon:'🗑️'}))return;
+ return guard(async()=>{
+  let q=db.from('pesan_masuk');
+  if(aksi==='hapus')await dbq(q.delete().in('id',ids));
+  else{
+   const patch=aksi==='selesai'?{perlu_dicek:false}:aksi==='dibalas'?{sudah_dibalas:true,dibalas_pada:new Date().toISOString(),perlu_dicek:false}:{sudah_dibalas:false,dibalas_pada:null};
+   await dbq(q.update(patch).in('id',ids));
+  }
+  devPesPilih.clear();await devPastikan(['kirim'],true);renderV();
+  toast('Berhasil '+label)
+ })
+}
+async function devPesSatu(aksi,id){return devPesAksi(aksi,[id])}
+function devKirim(){
+ const d=S.devKirim,sk=S.devSek||[],masuk=Array.isArray(S.devPesanMasuk)?S.devPesanMasuk:[],rows=(d&&Array.isArray(d.baris)?d.baris:[]).filter(r=>r.jenis==='balasan');
+ const sekolah=id=>{const x=sk.find(v=>Number(v.id)===Number(id));return x?x.nama:'Sekolah #'+id};
+ const opt='<option value="">Semua sekolah</option>'+sk.map(x=>'<option value="'+x.id+'" '+(String(x.id)===devKirimSek?'selected':'')+'>'+esc(x.nama)+(x.status!=='aktif'?' (nonaktif)':'')+'</option>').join('');
+ const tabs='<div class="utabs">'+[['masuk','💬 Pesan Masuk'],['balasan','↩️ Riwayat Balasan']].map(x=>'<button class="utab'+(devPesTab===x[0]?' on':'')+'" onclick="devKirimTab(\''+x[0]+'\')">'+x[1]+'</button>').join('')+'</div>';
+ const head='<div class="panel"><div class="ph">💬 Pesan WA <button class="btn soft sm" onclick="devKirimMuat()">↻ Perbarui</button></div><div class="pb"><label class="l">Tampilkan pesan dari</label><select class="select" onchange="devKirimSek=this.value;devKirimMuat()">'+opt+'</select>'+tabs;
+ if(!d)return head+'<div class="note">⏳ Memuat data pesan...</div></div></div>';
+ if(d.error)return head+'<div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div></div></div>';
+ if(devPesTab==='masuk'){
+  const data=masuk.map((r,i)=>{
+   const st=r.sudah_dibalas?'<span class="badge Hadir">Sudah dibalas</span>':(r.perlu_dicek?'<span class="badge Terlambat">Perlu diperiksa</span>':'<span class="badge Belum">Belum dibalas</span>');
+   const id=Number(r.id),sel=devPesPilih.has(id);
+   const aksi='<div class="tb" style="gap:4px;flex-wrap:wrap;margin:0;min-width:210px">'+(!r.perlu_dicek?'<button class="btn soft sm" disabled>✓ Selesai</button>':'<button class="btn soft sm" onclick="devPesSatu(\'selesai\','+id+')">✓ Tandai selesai</button>')+(r.sudah_dibalas?'<button class="btn orange sm" onclick="devPesSatu(\'batal\','+id+')">↶ Batalkan dibalas</button>':'<button class="btn success sm" onclick="devPesSatu(\'dibalas\','+id+')">↩ Tandai dibalas</button>')+'<button class="btn danger sm" onclick="devPesSatu(\'hapus\','+id+')">🗑 Hapus</button></div>';
+   return '<tr>'+(devPesModePilih?'<td><input type="checkbox" '+(sel?'checked':'')+' onchange="devPesCek('+id+',this.checked)"></td>':'')+'<td>'+(i+1)+'</td><td><b>'+esc(sekolah(r.sekolah_id))+'</b></td><td style="white-space:nowrap">'+esc(rkJam(r.waktu))+'</td><td style="white-space:nowrap">'+esc(fmtNomor(r.dari_nomor)||r.dari_nomor||'-')+'</td><td style="min-width:260px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.isi||'-')+'</td><td style="min-width:180px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.hasil||'-')+'</td><td>'+st+'</td><td>'+aksi+'</td></tr>';
+  }).join('');
+  const table=tab([...(devPesModePilih?['<input id="devPesAll" type="checkbox" onchange="devPesSemua(this.checked)" aria-label="Pilih semua">']:[]),'No','Sekolah','Waktu','Nomor Pengirim','Pesan Masuk','Hasil','Status Balasan','Aksi'],data);
+  const kontrol=devPesModePilih?'<div class="tb" style="flex-wrap:wrap"><button id="devPesHapusPilih" class="btn danger sm" '+(devPesPilih.size?'':'disabled')+' onclick="devPesAksi(\'hapus\',[...devPesPilih])">🗑 Hapus terpilih ('+devPesPilih.size+')</button><button class="btn soft sm devPesBulk" onclick="devPesAksi(\'selesai\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>✓ Tandai selesai terpilih</button><button class="btn success sm devPesBulk" onclick="devPesAksi(\'dibalas\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>↩ Tandai dibalas terpilih</button><button class="btn orange sm devPesBulk" onclick="devPesAksi(\'batal\',[...devPesPilih])" '+(devPesPilih.size?'':'disabled')+'>↶ Batalkan status terpilih</button><button class="btn soft sm" onclick="devPesMode(false)">Selesai memilih</button></div>':'<div class="tb" style="flex-wrap:wrap"><button class="btn soft sm" onclick="devPesMode(true)">☑ Pilih pesan</button></div>';
+  return head+'<div class="note">'+masuk.length+' pesan masuk dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Geser tabel ke samping untuk melihat semua kolom. Maksimal 500 pesan terbaru.</div>'+(S.devPesanMasukErr?'<div class="note" style="color:var(--rd)">Pesan masuk gagal dimuat: '+esc(S.devPesanMasukErr)+'</div>':(kontrol+(table||'<div class="mu">Belum ada pesan masuk.</div>')))+'</div></div>';
+ }
+ const data=rows.slice(0,500).map((r,i)=>{
+  const tahap=rkTahap(r),lb=rkLabel(tahap);
+  return '<tr><td>'+(i+1)+'</td><td><b>'+esc(sekolah(r.sekolah_id))+'</b></td><td style="white-space:nowrap">'+esc(rkJam(r.dibuat))+'</td><td style="white-space:nowrap">'+esc(fmtNomor(r.nomor)||r.nomor||'-')+'</td><td>'+esc(r.label||'Balasan pesan wali')+'</td><td style="white-space:nowrap">'+lb[0]+' '+lb[1]+'</td><td>'+rkBaris(r,1)+'</td></tr>';
+ }).join('');
+ const table=tab(['No','Sekolah','Waktu','Penerima','Jenis Pesan','Status Pengiriman','Rincian'],data);
+ return head+'<div class="note">'+rows.length+' catatan balasan dimuat'+(devKirimSek?' dari sekolah terpilih':' dari seluruh sekolah')+'. Geser tabel ke samping untuk melihat semua kolom. Maksimal 500 catatan terbaru.</div>'+(table||'<div class="mu">Belum ada riwayat balasan.</div>')+'<div class="mu" style="margin-top:10px">Isi teks balasan belum tersimpan dalam riwayat pengiriman.</div></div></div>';
+}
 async function devKirimHapus(){const sid=devKirimSek?Number(devKirimSek):null,x=sid?(S.devSek||[]).find(v=>v.id===sid):null,tot=Number(((S.devKirim||{}).ringkas||{}).total)||0;
  if(!tot)return toast('Tidak ada riwayat untuk dihapus',false);
  if(!await konfirmasi('Hapus '+tot+' riwayat kirim '+(x?'milik '+x.nama:'dari SEMUA sekolah')+'?\n\nTidak bisa dikembalikan. Pesan WhatsApp yang sudah terkirim tidak terpengaruh.',{judul:'Hapus riwayat kirim',ya:'Hapus riwayat',bahaya:1}))return;
