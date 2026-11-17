@@ -405,30 +405,43 @@ async function kirimGrupLibur(tokenUtama, sekolahId, tanggal, lg) {
 // ALPA: pesan khusus wali kelas, memakai kepala dan penutup pesan untuk kepala sekolah.
 function pesanWali(teks, tanggal, daftarKelas, sapaan) {
   const total = daftarKelas.reduce((n, k) => n + k.siswa.length, 0);
-  const iHeader = teks.indexOf('Berikut daftar anak');
-  const iFooter = teks.lastIndexOf('Terimakasih');
+
+  // Normalisasi pesan sumber: dukung newline asli maupun teks literal "\n".
+  const teksNormal = String(teks || '').replace(/\\n/g, '\n');
+  const iHeader = teksNormal.indexOf('Berikut daftar anak');
+  const iFooter = teksNormal.lastIndexOf('Terimakasih');
   const sapaanFinal = sapaan || 'Bapak/Ibu Wali Kelas';
+
   let atas;
-  if (iHeader > 0) {
-    atas = teks
+  if (iHeader >= 0) {
+    atas = teksNormal
       .slice(0, iHeader)
       .replace('Bapak/Ibu Kepala Sekolah', sapaanFinal)
-      .replace(/Total: \\d+ siswa/, `Total: ${total} siswa`);
+      .replace(/Total:\s*\d+\s+siswa/i, \`Total: \${total} siswa\`)
+      .replace(/\n+$/, '');
   } else {
-    atas =
-      `_Assalamu'alaikum, ${sapaanFinal}_\\n\\n🔔 NOTIFIKASI ALPA OTOMATIS\\n\\n` +
-      `📅 Tanggal: ${formatTanggal(tanggal)}\\n👥 Total: ${total} siswa\\n`;
+    atas = [
+      \`_Assalamu'alaikum, \${sapaanFinal}_\`,
+      '',
+      '🔔 NOTIFIKASI ALPA OTOMATIS',
+      '',
+      \`📅 Tanggal: \${formatTanggal(tanggal)}\`,
+      \`👥 Total: \${total} siswa\`
+    ].join('\n');
   }
-  const bawah = iFooter >= 0 ? teks.slice(iFooter) : 'Terimakasih 🌹';
-  let daftar = 'Berikut daftar anak yang *DI ALPA* :\\n\\n';
+
+  const bawah = iFooter >= 0
+    ? teksNormal.slice(iFooter).replace(/^Terimakasih/, 'Terimakasih')
+    : 'Terimakasih 🌹';
+
+  const barisDaftar = ['Berikut daftar anak yang *ALPA* :', ''];
   daftarKelas.forEach((k, idx) => {
-    if (idx > 0) daftar += '\\n';
-    daftar += `📚 ${k.nama}\\n`;
-    k.siswa.forEach((n, i) => {
-      daftar += `${i + 1}. ${n}\\n`;
-    });
+    if (idx > 0) barisDaftar.push('');
+    barisDaftar.push(\`📚 \${k.nama}\`);
+    k.siswa.forEach((nama, i) => barisDaftar.push(\`\${i + 1}. \${nama}\`));
   });
-  return atas + daftar + '\\n' + bawah;
+
+  return \`\${atas}\n\n\${barisDaftar.join('\n')}\n\n\${bawah}\`;
 }
 
 async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg) {
@@ -458,7 +471,7 @@ async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa,
   for (const k of kelas.slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama)))) {
     const w = wali.get(k.wali_profil_id);
     if (!w || !RE_WA.test(w.nomor) || w.nomor === nomorKepala) continue;
-    if (!perNomor.has(w.nomor)) perNomor.set(w.nomor, { nama: w.nama, role: w.role || '', kelas: [] });
+    if (!perNomor.has(w.nomor)) perNomor.set(w.nomor, { nama: w.nama, role: w.role || '', kelas: [], waliKelas: true });
     perNomor.get(w.nomor).kelas.push({ nama: k.nama, siswa: perKelas.get(Number(k.id)) || [] });
   }
 
@@ -472,14 +485,14 @@ async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa,
   for (const p of pengelola) {
     if (!RE_WA.test(p.nomor) || p.nomor === nomorKepala) continue;
     if (!perNomor.has(p.nomor)) {
-      perNomor.set(p.nomor, { nama: p.nama, role: p.role, kelas: semuaKelasAlpa });
+      perNomor.set(p.nomor, { nama: p.nama, role: p.role, kelas: semuaKelasAlpa, waliKelas: false });
     } else {
       perNomor.get(p.nomor).role = p.role;
     }
   }
 
   const tujuan = [...perNomor.entries()].map(([nomor, v]) => {
-    const sapaan = v.role ? sapaanStaf(v.role) : 'Bapak/Ibu Wali Kelas';
+    const sapaan = v.waliKelas ? 'Bapak/Ibu Wali Kelas' : sapaanStaf(v.role);
     return {
       nama: `${v.nama}${v.kelas.length ? ' (wali ' + v.kelas.map((k) => k.nama).join(', ') + ')' : ' (Pengelola Sekolah)'}`,
       nomor,
