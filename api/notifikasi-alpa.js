@@ -417,16 +417,16 @@ function pesanWali(teks, tanggal, daftarKelas, sapaan) {
     atas = teksNormal
       .slice(0, iHeader)
       .replace('Bapak/Ibu Kepala Sekolah', sapaanFinal)
-      .replace(/Total:\s*\d+\s+siswa/i, \`Total: \${total} siswa\`)
+      .replace(/Total:\s*\d+\s+siswa/i, `Total: ${total} siswa`)
       .replace(/\n+$/, '');
   } else {
     atas = [
-      \`_Assalamu'alaikum, \${sapaanFinal}_\`,
+      `_Assalamu'alaikum, ${sapaanFinal}_`,
       '',
       '🔔 NOTIFIKASI ALPA OTOMATIS',
       '',
-      \`📅 Tanggal: \${formatTanggal(tanggal)}\`,
-      \`👥 Total: \${total} siswa\`
+      `📅 Tanggal: ${formatTanggal(tanggal)}`,
+      `👥 Total: ${total} siswa`
     ].join('\n');
   }
 
@@ -437,11 +437,11 @@ function pesanWali(teks, tanggal, daftarKelas, sapaan) {
   const barisDaftar = ['Berikut daftar anak yang *ALPA* :', ''];
   daftarKelas.forEach((k, idx) => {
     if (idx > 0) barisDaftar.push('');
-    barisDaftar.push(\`📚 \${k.nama}\`);
-    k.siswa.forEach((nama, i) => barisDaftar.push(\`\${i + 1}. \${nama}\`));
+    barisDaftar.push(`📚 ${k.nama}`);
+    k.siswa.forEach((nama, i) => barisDaftar.push(`${i + 1}. ${nama}`));
   });
 
-  return \`\${atas}\n\n\${barisDaftar.join('\n')}\n\n\${bawah}\`;
+  return `${atas}\n\n${barisDaftar.join('\n')}\n\n${bawah}`;
 }
 
 async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg) {
