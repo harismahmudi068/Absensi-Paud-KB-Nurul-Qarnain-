@@ -737,12 +737,13 @@ select.click-fx,.select.click-fx{animation:btnClick .38s ease-out}
 </style>
 <style id="optimasi-animasi-ringan">
 /* Animasi ringan: utamakan perubahan warna dan bayangan, hindari hitung ulang layout */
+/* Tombol biasa tidak bergerak, membesar, atau berubah terang saat ditekan */
 button,.btn{
-  transition:background-color .14s ease,color .14s ease,border-color .14s ease,box-shadow .14s ease,filter .14s ease!important;
+  transition:none!important;
 }
 button:active:not(:disabled){
   transform:none!important;
-  filter:brightness(1.04);
+  filter:none!important;
 }
 /* Efek klik dibuat singkat dan tidak memakai efek gelombang yang mahal */
 button.click-fx,button.click-fx::after{
@@ -5633,15 +5634,7 @@ function devLog(){const l=S.devLog||[];
 function devSistem(){const r=chk?chk.r:null,n=l=>r?r.filter(x=>x[0]===l).length:0;
  return `<div class="panel"><div class="ph">🩺 Pemeriksaan sistem <button class="btn" onclick="jalankanCek()">↻ Periksa Sistem</button></div><div class="pb"><div>${r?`<span class="mu">terakhir ${chk.t}: ${n('ok')} baik, ${n('warn')} perhatian, ${n('err')} masalah</span>`:''}</div>${r?tab(['Hasil','Pemeriksaan','Keterangan'],r.map(x=>`<tr><td><span class="badge ${LV[x[0]][0]}">${LV[x[0]][1]}</span></td><td><b>${x[1]}</b></td><td>${esc(x[2])}</td></tr>`).join('')):'<div class="note" style="margin-top:8px">Ketuk Periksa Sistem untuk memeriksa koneksi, tabel, webhook, kamera, dan kelengkapan data.</div>'}</div></div>`}
 function jalankanCek(){guard(async()=>{toast('Memeriksa...');chk={t:new Date().toTimeString().slice(0,8),r:await (SEK==null?runChecksDev():runChecks())};renderV();toast('Pemeriksaan selesai')})}
-document.addEventListener('click',e=>{
- const b=e.target.closest('button');
- if(!b||b.disabled)return;
- b.classList.remove('click-fx');
- void b.offsetWidth;
- b.classList.add('click-fx');
- clearTimeout(b._clickFxTimer);
- b._clickFxTimer=setTimeout(()=>b.classList.remove('click-fx'),420);
-},true);
+/* Efek klik global tombol dinonaktifkan; animasi khusus menu, dropdown, dan ikon notifikasi tetap terpisah. */
 /* ---------- Menu Raport: daftar raport semua siswa per kelas; hapus satu atau banyak sekaligus (batch) ---------- */
 const RP={k:'',key:'',rows:[],by:new Map(),sis:[],sel:new Set(),ukuran:200,mode:false,full:new Map(),mem:new Map()};
 const rpUrut=(a,b)=>String(b.tahun_ajaran).localeCompare(String(a.tahun_ajaran))||(b.semester-a.semester)||String(b.jenis).localeCompare(String(a.jenis));
