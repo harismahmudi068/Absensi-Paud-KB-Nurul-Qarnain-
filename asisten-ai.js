@@ -398,6 +398,14 @@
     var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
     if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
     if (/^(daftar|tampilkan)\s+kelas(?:\s+semua)?$/.test(q)) return { type: 'kelas', query: '' };
+    var kelasAbsensi = q.match(/^(?:bagaimana|berapa|rekap|ringkasan|cek|lihat|tampilkan)\\s+(?:rekap\\s+)?(?:kehadiran|absensi)(?:\\s+(?:untuk|di|pada|kelas))\\s+(.+?)(?:\\s+hari ini)?$/);
+    if (kelasAbsensi) return { type: 'attendance', query: '', classQuery: kelasAbsensi[1].replace(/^kelas\\s+/, '').trim() };
+    var statusKelas = q.match(/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\\s+(?:yang\\s+)?(.+?)\\s+(?:di|dari|untuk)\\s+kelas\\s+(.+?)(?:\\s+hari ini)?$/);
+    if (statusKelas) {
+      var statusKelasText = statusKelas[1];
+      var statusKelasValue = /belum|belum absen|belum tercatat/.test(statusKelasText) ? 'Belum' : /terlambat|telat|ngaret/.test(statusKelasText) ? 'Terlambat' : /izin|ijin/.test(statusKelasText) ? 'Izin' : /sakit/.test(statusKelasText) ? 'Sakit' : /alpa|tidak masuk|tidak hadir/.test(statusKelasText) ? 'Alpa' : /hadir|datang|masuk/.test(statusKelasText) ? 'Hadir' : null;
+      if (statusKelasValue) return { type: 'attendance', query: '', status: statusKelasValue, classQuery: statusKelas[2].trim() };
+    }
     var statusAbsensi = null;
     if (/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\s+(?:yang\s+)?(?:belum hadir|belum tercatat|belum absen)(?:\s+hari ini)?$/.test(q)) statusAbsensi = 'Belum';
     else if (/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\s+(?:yang\s+)?(?:terlambat)(?:\s+hari ini)?$/.test(q)) statusAbsensi = 'Terlambat';
@@ -566,6 +574,16 @@
       var date = TODAY;
       return muatRange(date, date).then(function () {
         var list = (S.siswa || []).filter(function (s) { return s.aktif; });
+        var kelasDipilih = null;
+        if (task.classQuery) {
+          var qKelas = normAI(task.classQuery).replace(/^kelas\\s+/, '').trim();
+          var cocokKelas = (S.kelas || []).filter(function (k) { return normAI(k.nama) === qKelas; });
+          if (!cocokKelas.length) cocokKelas = (S.kelas || []).filter(function (k) { return normAI(k.nama).indexOf(qKelas) === 0; });
+          if (cocokKelas.length > 1) return 'Ada beberapa kelas yang cocok dengan "' + task.classQuery + '". Mohon sebutkan nama kelas lebih lengkap.';
+          if (!cocokKelas.length) return 'Kelas "' + task.classQuery + '" tidak ditemukan.';
+          kelasDipilih = cocokKelas[0];
+          list = list.filter(function (s) { return s.kelas_id === kelasDipilih.id; });
+        }
         if (task.status) {
           var cocokStatus = list.filter(function (s) {
             var st = dayStat(s, date);
