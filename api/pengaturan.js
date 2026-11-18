@@ -169,7 +169,7 @@ module.exports = async (req, res) => {
 
     // Asisten AI boleh dipakai seluruh anggota sekolah aktif; modul ini hanya mengklasifikasikan maksud.
     // Tindakan tetap dijalankan oleh browser setelah pemeriksaan izin menu.
-    if (b.aksi === 'asisten_ai') return require('./_asistenAi')(req, res);
+    if (b.aksi === 'asisten_ai') return require('../lib/asistenAi')(req, res);
 
     const sekolahId = Number(b.sekolah_id);
     if (!Number.isInteger(sekolahId) || sekolahId <= 0)
