@@ -2618,7 +2618,8 @@ function scSumHTML(){const ab=A(TODAY),pk=new Map();let n=0;(scanKelas==='*'?S.k
 const scDet=()=>`<details id="scDet" class="sc-only"${scOpen?' open':''} ontoggle="scOpen=this.open;if(scOpen)$('#scBody').innerHTML=histHTML()"><summary id="scSum">${scSumHTML()}</summary><div id="scBody">${scOpen?histHTML():''}</div></details>`;
 function scRefresh(){const m=$('#scSum');if(m)m.innerHTML=scSumHTML();if(scOpen){const b=$('#scBody');if(b)b.innerHTML=histHTML()}}
 function scTampil(m,ok){clearTimeout(scT);const L=scLast;scLast=null;
- if(!ok){scSet(`<div class="scr bad"><b>Tidak dicatat</b><small>${esc(m)}</small></div>`);usbInfo('Terakhir dipindai: '+m)}
+ if(!ok&&L&&L.duplikat){const s=L.s,im=fotoMuat(s);scSet(`<div class="scr bad" data-id="${s.id}">${im?`<img class="scf" src="${im.src}" alt="">`:''}<b>${esc(s.pan||s.nama)}</b><small>${esc(m)}</small>${s.nama&&s.nama!==s.pan?`<small>${esc(s.nama)}</small>`:''}</div>`);usbInfo('Terakhir dipindai: '+(s.pan||s.nama)+' (sudah tercatat)');if(!im&&s.foto_path)fotoSiap(s).then(g=>{const e=$('#scRes .scr[data-id="'+s.id+'"]');if(g&&e&&!e.querySelector('img')){const i=document.createElement('img');i.className='scf';i.src=g.src;i.alt='';e.prepend(i)}})}
+ else if(!ok){scSet(`<div class="scr bad"><b>Tidak dicatat</b><small>${esc(m)}</small></div>`);usbInfo('Terakhir dipindai: '+m)}
  else if(!L){scSet(`<div class="scr ok"><b>${esc(m)}</b></div>`);usbInfo('Terakhir dipindai: '+m)}
  else{const s=L.s,im=fotoMuat(s);scSet(`<div class="scr ${L.st==='Hadir'?'ok':'tl'}" data-id="${s.id}">${im?`<img class="scf" src="${im.src}" alt="">`:''}<b>${esc(s.pan||s.nama)}</b><small>${L.st}, ${esc(L.jm)}</small>${s.nama&&s.nama!==s.pan?`<small>${esc(s.nama)}</small>`:''}</div>`);
   usbInfo('Terakhir dipindai: '+(s.pan||s.nama)+' ('+L.st.toLowerCase()+', jam '+L.jm+')');
@@ -2783,7 +2784,7 @@ async function onScan(mentah){if(scanPrep&&scanPrep.aktif)return;const cr=cariKo
   const baris={siswa_id:s.id,tanggal:TODAY,status:low(st),cara:'scan',catatan:null,jam_datang:iso,diubah:iso,diubah_oleh:me};
   /* cek ke cache absensi hari ini di HP (tanpa menunggu server) */
   const lo=A(TODAY)[s.id],ada=lo?{st:lo.st,jam:lo.jam}:null;
-  if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat'))return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false,`${s.pan||s.nama} sudah tercatat`);
+  if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat')){scLast={s,duplikat:true};return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false,`${s.pan||s.nama} sudah tercatat`)}
   const antri=netMati();_mut++;
   /* simpan di HP dulu (permanen), lalu dikirim ke server di belakang layar; suara tidak menunggu server */
   aqTambah(baris,s,{st,jm,lama:ada?ada.st:''});
