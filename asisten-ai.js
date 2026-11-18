@@ -389,6 +389,7 @@
   function parseReadTask(command) {
     var q = normAI(command);
     if (/^(halaman apa|menu apa|saya sedang di mana|sedang di halaman apa|apa yang sedang terbuka|jelaskan halaman ini|apa saja fitur di halaman ini|apa yang bisa dilakukan di sini)/.test(q)) return { type: 'context' };
+    if (/^(?:daftar|list|tampilkan|lihat|perlihatkan)\\s+(?:(?:semua|seluruh)\\s+)?(?:data\\s+)?(?:siswa|anak|murid)(?:\\s+(?:semua|seluruh))?$/.test(q) || /^(?:tampilkan|perlihatkan)\\s+daftar\\s+(?:siswa|anak|murid)$/.test(q)) return { type: 'siswa', query: '' };
     var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
     if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
     if (/^(daftar|tampilkan)\s+kelas(?:\s+semua)?$/.test(q)) return { type: 'kelas', query: '' };
@@ -414,7 +415,19 @@
     if (task.type === 'context') return pageContextText();
     if (task.type === 'siswa') {
       if (!canOpen('siswa')) throw new Error('Akun ini tidak memiliki izin membaca Data Siswa.');
-      if (!task.query) return 'Sebutkan nama siswa yang ingin dicari. Contoh: “cari siswa Ernietha”.';
+      if (!task.query) {
+        var semuaSiswa = (S.siswa || []).slice().sort(function (a, b) {
+          return normAI(a.nama).localeCompare(normAI(b.nama), 'id');
+        });
+        if (!semuaSiswa.length) return 'Belum ada data siswa yang tersedia pada sesi ini. Pastikan menu Data Siswa sudah dimuat.';
+        var batasSiswa = 20;
+        return 'Daftar siswa terdaftar (' + semuaSiswa.length + ' siswa):\\n' +
+          semuaSiswa.slice(0, batasSiswa).map(function (s, i) {
+            return (i + 1) + '. ' + s.nama + ' · Kelas ' + (s.kelas || '-') + ' · ' + (s.aktif ? 'Aktif' : 'Nonaktif');
+          }).join('\\n') +
+          (semuaSiswa.length > batasSiswa ? '\\n… dan ' + (semuaSiswa.length - batasSiswa) + ' siswa lainnya.' : '') +
+          '\\n\\nUntuk menemukan anak berdasarkan nama panggilan, minta saya: “Cari siswa [nama panggilan]”.';
+      }
       var sis = readStudentMatches(task.query);
       if (!sis.length) return 'Tidak ditemukan siswa dengan nama atau nama panggilan “' + task.query + '”.';
       return 'Hasil pencarian siswa (' + sis.length + (sis.length === 8 ? ' atau lebih' : '') + '):\n' + sis.map(function (s, i) {
@@ -530,8 +543,11 @@
         var mapRead = { context: 'context', siswa: 'siswa', guru: 'guru', kelas: 'kelas', attendance: 'attendance' };
         var tipeBaca = mapRead[interpreted.read_type];
         if (tipeBaca) {
+          var queryBaca = safeText(interpreted.query);
+          // Pengaman deterministik: permintaan daftar siswa tidak boleh berubah menjadi pencarian nama literal.
+          if (tipeBaca === 'siswa' && /\\b(daftar|list)\\b.*\\b(siswa|anak|murid)\\b|\\b(tampilkan|perlihatkan|lihat)\\b.*\\b(semua|seluruh|daftar)\\b.*\\b(siswa|anak|murid)\\b|\\b(siswa|anak|murid)\\b.*\\b(semua|seluruh)\\b/.test(normAI(command))) queryBaca = '';
           setActivity('Memeriksa izin baca dan mengambil informasi dari aplikasi...', true);
-          var hasilBaca = await readTaskResult({ type: tipeBaca, query: safeText(interpreted.query) });
+          var hasilBaca = await readTaskResult({ type: tipeBaca, query: queryBaca });
           if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
           else addMessage(hasilBaca, 'ai', 'Sumber data: aplikasi Absensi 1486. Tidak ada data yang diubah.');
           return;
