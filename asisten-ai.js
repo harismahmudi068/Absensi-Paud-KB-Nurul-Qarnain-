@@ -398,6 +398,14 @@
     var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
     if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
     if (/^(daftar|tampilkan)\s+kelas(?:\s+semua)?$/.test(q)) return { type: 'kelas', query: '' };
+    var statusAbsensi = null;
+    if (/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\s+(?:yang\s+)?(?:belum hadir|belum tercatat|belum absen)(?:\s+hari ini)?$/.test(q)) statusAbsensi = 'Belum';
+    else if (/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\s+(?:yang\s+)?(?:terlambat)(?:\s+hari ini)?$/.test(q)) statusAbsensi = 'Terlambat';
+    else if (/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\s+(?:yang\s+)?(?:izin|ijin)(?:\s+hari ini)?$/.test(q)) statusAbsensi = 'Izin';
+    else if (/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\s+(?:yang\s+)?(?:sakit)(?:\s+hari ini)?$/.test(q)) statusAbsensi = 'Sakit';
+    else if (/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\s+(?:yang\s+)?(?:alpa|tidak hadir)(?:\s+hari ini)?$/.test(q)) statusAbsensi = 'Alpa';
+    else if (/^(?:siapa saja|siapa|daftar siswa|tampilkan siswa|lihat siswa)\s+(?:yang\s+)?(?:hadir)(?:\s+hari ini)?$/.test(q)) statusAbsensi = 'Hadir';
+    if (statusAbsensi) return { type: 'attendance', query: '', status: statusAbsensi };
     if (/^(ringkasan|rekap|jumlah)\s+absensi(?:\s+hari ini)?$/.test(q) || /^absensi hari ini$/.test(q)) return { type: 'attendance', query: '' };
     m = q.match(/^(?:cek|lihat|cari)\s+absensi\s+(.+?)\s+hari ini$/);
     if (m) return { type: 'attendance', query: m[1].replace(/[.!?,;:]+$/g, '').trim() };
@@ -558,6 +566,18 @@
       var date = TODAY;
       return muatRange(date, date).then(function () {
         var list = (S.siswa || []).filter(function (s) { return s.aktif; });
+        if (task.status) {
+          var cocokStatus = list.filter(function (s) {
+            var st = dayStat(s, date);
+            return task.status === 'Hadir' ? st === 'Hadir' : st === task.status;
+          }).sort(function (a, b) { return normAI(a.nama).localeCompare(normAI(b.nama), 'id'); });
+          var labelStatus = task.status === 'Belum' ? 'belum tercatat' : task.status.toLowerCase();
+          return 'Daftar siswa dengan status ' + labelStatus + ' hari ini (' + date + '):\\n' +
+            'Jumlah: ' + cocokStatus.length + ' siswa\\n' +
+            (cocokStatus.length ? cocokStatus.map(function (s, i) {
+              return (i + 1) + '. ' + s.nama + ' · Kelas ' + (s.kelas || '-');
+            }).join('\\n') : 'Tidak ada siswa dengan status tersebut.');
+        }
         if (task.query) {
           var found = readStudentMatches(task.query);
           if (!found.length) return 'Tidak ditemukan siswa dengan nama “' + task.query + '”.';
