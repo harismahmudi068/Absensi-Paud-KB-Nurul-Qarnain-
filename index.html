@@ -566,7 +566,7 @@ html[data-tema=gelap] .input:focus,html[data-tema=gelap] .select:focus,html[data
 .tp-d:hover:not(:disabled){background:var(--mint)}.tp-d.m{color:var(--rd)}.tp-d.t{box-shadow:inset 0 0 0 2px var(--g)}
 .tp-d.lb::after{content:'';position:absolute;bottom:4px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:var(--or)}
 .tp-d.s,.tp-d.s:hover{background:var(--g);color:#fff;box-shadow:none}.tp-d:disabled{opacity:.3;cursor:default}
-.tp-gm{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.tp-gm .tp-d{aspect-ratio:auto;padding:13px 4px}
+.tp-gm{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.tp-gm .tp-d{aspect-ratio:auto;padding:13px 4px}.tp-time-minutes{max-height:180px;overflow:auto;overscroll-behavior:contain}
 .tp-f{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}
 .tp-f button{flex:1;border:1px solid var(--bd2);background:var(--mint);color:var(--gd);font:inherit;font-weight:800;font-size:13px;padding:9px 6px;border-radius:12px;cursor:pointer}.tp-f button.x{background:transparent;color:var(--mu)}
 @media(max-width:640px){#tpbd.show{background:rgba(13,38,30,.45)}#tpop{left:0!important;right:0;top:auto!important;bottom:0;width:100%;max-width:none;border-radius:22px 22px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));animation:tpup .18s ease-out}@keyframes tpup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}.tp-d{font-size:15px}}
@@ -931,7 +931,7 @@ function tpHtml(){const T=TP,y=T.y,m=T.m,mn=T.min,mx=T.max;let h='';
  h+='<div class="tp-h"><span class="tp-j">Pilih jam</span></div><div class="tp-gm">';
  for(let i=0;i<24;i++)h+='<button type="button" class="tp-d'+(i===T.hh?' s':'')+'" onclick="tpJam('+i+')">'+tpP(i)+'</button>';
  h+='</div><div class="tp-h"><span class="tp-j">Pilih menit</span></div><div class="tp-gm">';
- for(let i=0;i<60;i+=5)h+='<button type="button" class="tp-d'+(i===T.mm?' s':'')+'" onclick="tpMenit('+i+')">'+tpP(i)+'</button>';
+ for(let i=0;i<60;i++)h+='<button type="button" class="tp-d'+(i===T.mm?' s':'')+'" onclick="tpMenit('+i+')">'+tpP(i)+'</button>';
  h+='</div><div class="tp-f"><button type="button" class="x" onclick="tpPilih(tpP(T.hh)+String.fromCharCode(58)+tpP(T.mm))">Pilih jam</button><button type="button" class="x" onclick="tpTutup()">Tutup</button></div>';return h}
  const nav=(dis1,dis2,judul,vw)=>`<div class="tp-h"><button type="button" class="tp-n" ${dis1?'disabled':''} onclick="tpGeser(-1)" aria-label="Sebelumnya">‹</button><button type="button" class="tp-j" ${vw?`onclick="tpView('${vw}')"`:'disabled'}>${judul}</button><button type="button" class="tp-n" ${dis2?'disabled':''} onclick="tpGeser(1)" aria-label="Berikutnya">›</button></div>`;
  if(T.vw==='d'){
