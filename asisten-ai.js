@@ -65,12 +65,12 @@
   panel.id = 'ai1486-panel';
   panel.setAttribute('aria-label', 'Asisten AI Absensi 1486');
   panel.innerHTML =
-    '<div class="ai1486-head"><div class="ai1486-avatar">✦</div><div class="ai1486-head-main"><b>Asisten Absensi 1486</b><small>Mode uji navigasi · Preview</small></div><button type="button" id="ai1486-close" aria-label="Tutup">×</button></div>' +
+    '<div class="ai1486-head"><div class="ai1486-avatar">✦</div><div class="ai1486-head-main"><b>Asisten Absensi 1486</b><small>Mode terlihat · Baca sesuai izin</small></div><button type="button" id="ai1486-close" aria-label="Tutup">×</button></div>' +
     '<div class="ai1486-context"><span id="ai1486-role">Memeriksa sesi...</span><span>Mode terlihat</span></div>' +
     '<div class="ai1486-feed" id="ai1486-feed" aria-live="polite"></div>' +
     '<div class="ai1486-activity" id="ai1486-activity"></div>' +
     '<div class="ai1486-quick" id="ai1486-quick"></div>' +
-    '<form class="ai1486-compose" id="ai1486-form"><textarea id="ai1486-input" rows="1" maxlength="300" placeholder="Contoh: buka menu absensi" aria-label="Perintah untuk asisten"></textarea><button class="ai1486-send" type="submit">Kirim</button><button class="ai1486-stop" id="ai1486-stop" type="button">Hentikan</button></form>';
+    '<form class="ai1486-compose" id="ai1486-form"><textarea id="ai1486-input" rows="1" maxlength="300" placeholder="Tanya halaman, cari siswa/guru, atau absensi..." aria-label="Perintah untuk asisten"></textarea><button class="ai1486-send" type="submit">Kirim</button><button class="ai1486-stop" id="ai1486-stop" type="button">Hentikan</button></form>';
   document.body.appendChild(launcher);
   document.body.appendChild(panel);
 
