@@ -393,7 +393,7 @@
     if (profil) return { type: 'profil_siswa', query: profil[1].trim() };
     var daftarGuru = /^(?:daftar|list|tampilkan|lihat|perlihatkan)\s+(?:(?:semua|seluruh)\s+)?(?:data\s+)?guru(?:\s+(?:semua|seluruh))?$/.test(q);
     if (daftarGuru) return { type: 'guru', query: '' };
-    if (/^(?:daftar|list|tampilkan|lihat|perlihatkan)\\s+(?:(?:semua|seluruh)\\s+)?(?:data\\s+)?(?:siswa|anak|murid)(?:\\s+(?:semua|seluruh))?$/.test(q) || /^(?:tampilkan|perlihatkan)\\s+daftar\\s+(?:siswa|anak|murid)$/.test(q)) return { type: 'siswa', query: '' };
+    if (/^(?:daftar|list|tampilkan|lihat|perlihatkan)\s+(?:(?:semua|seluruh)\s+)?(?:data\s+)?(?:siswa|anak|murid)(?:\s+(?:semua|seluruh))?$/.test(q) || /^(?:tampilkan|perlihatkan)\s+daftar\s+(?:siswa|anak|murid)$/.test(q)) return { type: 'siswa', query: '' };
     var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
     if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
     if (/^(daftar|tampilkan)\s+kelas(?:\s+semua)?$/.test(q)) return { type: 'kelas', query: '' };
@@ -407,8 +407,8 @@
 
   function bersihkanQueryGuruAI(value) {
     var q = safeText(value).trim();
-    q = q.replace(/^(?:nama(?: lengkap)?(?: guru)?|guru)\\s*[:,-]?\\s*/i, '');
-    q = q.replace(/\\s+(?:dan|lalu|kemudian)\\s+(?:tolong\\s+)?(?:jelaskan|terangkan|uraikan|sebutkan|bacakan|tampilkan|beritahu)\\b[\\s\\S]*$/i, '');
+    q = q.replace(/^(?:nama(?: lengkap)?(?: guru)?|guru)\s*[:,-]?\s*/i, '');
+    q = q.replace(/\s+(?:dan|lalu|kemudian)\s+(?:tolong\s+)?(?:jelaskan|terangkan|uraikan|sebutkan|bacakan|tampilkan|beritahu)\b[\s\S]*$/i, '');
     q = q.replace(/[.!?,;:]+$/g, '').trim();
     return q;
   }
@@ -537,9 +537,9 @@
         : semuaGuru.slice(0, 20);
       if (!gs.length) return 'Tidak ditemukan guru dengan nama “' + queryGuru + '”.';
       var judulGuru = queryGuru ? 'Hasil pencarian guru' : 'Daftar guru terdaftar (' + semuaGuru.length + ' guru)';
-      return judulGuru + ':\\n' + gs.map(function (g, i) {
+      return judulGuru + ':\n' + gs.map(function (g, i) {
         return (i + 1) + '. ' + g.nama + ' · NIP ' + (g.nip || '-') + ' · ' + (LBL[g.role] || g.role || 'Peran tidak diketahui') + ' · ' + (g.aktif ? 'Aktif' : 'Nonaktif');
-      }).join('\\n') + (!queryGuru && semuaGuru.length > 20 ? '\\n… dan ' + (semuaGuru.length - 20) + ' guru lainnya.' : '');
+      }).join('\n') + (!queryGuru && semuaGuru.length > 20 ? '\n… dan ' + (semuaGuru.length - 20) + ' guru lainnya.' : '');
     }
     if (task.type === 'kelas') {
       if (!canOpen('kelasjam')) throw new Error('Akun ini tidak memiliki izin membaca data kelas.');
