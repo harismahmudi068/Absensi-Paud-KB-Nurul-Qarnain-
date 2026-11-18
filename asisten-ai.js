@@ -61,6 +61,9 @@
     '@media(max-width:600px){.ai1486-msg{font-size:15px}.ai1486-context{font-size:11px}.ai1486-head-main b{font-size:14px}.ai1486-compose textarea{font-size:15px!important}}'
   ].join('');
   document.head.appendChild(compactStyle);
+  var resizeLayoutStyle=document.createElement('style');
+  resizeLayoutStyle.textContent='.ai1486-feed{flex:1 1 auto!important;max-height:none!important;min-height:70px}.ai1486-panel{box-sizing:border-box}';
+  document.head.appendChild(resizeLayoutStyle);
 
   var launcher = document.createElement('button');
   launcher.id = 'ai1486-launch';
