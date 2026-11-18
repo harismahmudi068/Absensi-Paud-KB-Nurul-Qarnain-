@@ -283,10 +283,11 @@
   if (app && window.MutationObserver) {
     new MutationObserver(syncVisibility).observe(app, { attributes: true, attributeFilter: ['class'] });
   }
+  var who = document.getElementById('who');
+  if (who && window.MutationObserver) new MutationObserver(syncVisibility).observe(who, { childList: true, subtree: true, characterData: true });
   document.addEventListener('visibilitychange', syncVisibility);
   window.addEventListener('focus', syncVisibility);
   window.addEventListener('resize', renderQuick);
-  window.setInterval(syncVisibility, 1800);
   addMessage('Halo! Saya Asisten Absensi 1486 dalam mode uji navigasi. Saya dapat membuka menu yang memang diizinkan untuk akun yang sedang login. Setiap penekanan tombol akan terlihat. Pada tahap ini Gemini belum dihubungkan, dan saya belum melakukan pencarian atau perubahan data.', 'ai');
   syncVisibility();
 })();
