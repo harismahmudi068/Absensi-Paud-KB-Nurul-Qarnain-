@@ -387,7 +387,7 @@
     return msg;
   }
   function parseReadTask(command) {
-    var q = normAI(command).replace(/^(?:tolong|mohon|silakan|bantu saya)\s+/, '');
+    var q = normAI(command).replace(/[.!?,;:]+$/g, '').trim().replace(/^(?:tolong|mohon|silakan|bantu saya)\s+/, '');
     q = q.replace(/\s+(?:(?:yang\s+)?(?:terdaftar|tercatat|ada)\s+)?(?:di|pada)\s+aplikasi\b.*$/, '');
     if (/^(halaman apa|menu apa|saya sedang di mana|sedang di halaman apa|apa yang sedang terbuka|jelaskan halaman ini|apa saja fitur di halaman ini|apa yang bisa dilakukan di sini)/.test(q)) return { type: 'context' };
     var profil = q.match(/^(?:buka|bukakan|lihat|tampilkan|perlihatkan|cek)\s+(?:profil|detail|data lengkap)\s+(?:siswa|anak|murid)\s+(.+)$/) || q.match(/^(?:profil|detail)\s+(?:siswa|anak|murid)\s+(.+)$/);
