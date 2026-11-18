@@ -389,7 +389,7 @@
   function parseReadTask(command) {
     var q = normAI(command);
     if (/^(halaman apa|menu apa|saya sedang di mana|sedang di halaman apa|apa yang sedang terbuka|jelaskan halaman ini|apa saja fitur di halaman ini|apa yang bisa dilakukan di sini)/.test(q)) return { type: 'context' };
-    var profil = q.match(/^(?:buka|bukakan|lihat|tampilkan|perlihatkan|cek)\\s+(?:profil|detail|data lengkap)\\s+(?:siswa|anak|murid)\\s+(.+)$/) || q.match(/^(?:profil|detail)\\s+(?:siswa|anak|murid)\\s+(.+)$/);
+    var profil = q.match(/^(?:buka|bukakan|lihat|tampilkan|perlihatkan|cek)\s+(?:profil|detail|data lengkap)\s+(?:siswa|anak|murid)\s+(.+)$/) || q.match(/^(?:profil|detail)\s+(?:siswa|anak|murid)\s+(.+)$/);
     if (profil) return { type: 'profil_siswa', query: profil[1].trim() };
     if (/^(?:daftar|list|tampilkan|lihat|perlihatkan)\\s+(?:(?:semua|seluruh)\\s+)?(?:data\\s+)?(?:siswa|anak|murid)(?:\\s+(?:semua|seluruh))?$/.test(q) || /^(?:tampilkan|perlihatkan)\\s+daftar\\s+(?:siswa|anak|murid)$/.test(q)) return { type: 'siswa', query: '' };
     var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
@@ -417,7 +417,7 @@
     if (!root) throw new Error('Halaman Data Siswa tidak ditemukan.');
     var cocok = readStudentMatches(q);
     if (!cocok.length) return 'Tidak ditemukan siswa dengan nama atau nama panggilan "' + q + '".';
-    if (cocok.length > 1) return 'Ada ' + cocok.length + ' siswa yang cocok dengan "' + q + '". Mohon sebutkan nama yang lebih lengkap:\\n' + cocok.map(function(s,i){return (i+1)+'. '+s.nama+' · Kelas '+(s.kelas||'-');}).join('\\n');
+    if (cocok.length > 1) return 'Ada ' + cocok.length + ' siswa yang cocok dengan "' + q + '". Mohon sebutkan nama yang lebih lengkap:\n' + cocok.map(function(s,i){return (i+1)+'. '+s.nama+' · Kelas '+(s.kelas||'-');}).join('\n');
     var siswa = cocok[0];
     var pilihKelas = root.querySelector('select.select');
     if (pilihKelas) {
@@ -453,11 +453,10 @@
       var label=field.querySelector('.l,label'),control=field.querySelector('input,select,textarea');
       if(!label||!control)return;
       var value=control.tagName.toLowerCase()==='select'?(control.options[control.selectedIndex]?control.options[control.selectedIndex].textContent:control.value):control.value;
-      details.push(label.textContent.replace(/\\s+/g,' ').trim()+': '+(String(value||'').trim()||'-'));
+      details.push(label.textContent.replace(/\s+/g,' ').trim()+': '+(String(value||'').trim()||'-'));
     });
-    return 'Profil siswa berhasil dibuka dan dibaca (tanpa perubahan):\\nNama: '+siswa.nama+'\\nKelas: '+(siswa.kelas||'-')+'\\nStatus: '+(siswa.aktif?'Aktif':'Nonaktif')+(details.length?'\\n'+details.join('\\n'):'')+'\\n\\nPopup profil tetap terbuka. Tidak ada kolom yang diubah dan tombol Simpan tidak ditekan.';
+    return 'Profil siswa berhasil dibuka dan dibaca (tanpa perubahan):\nNama: '+siswa.nama+'\nKelas: '+(siswa.kelas||'-')+'\nStatus: '+(siswa.aktif?'Aktif':'Nonaktif')+(details.length?'\n'+details.join('\n'):'')+'\n\nPopup profil tetap terbuka. Tidak ada kolom yang diubah dan tombol Simpan tidak ditekan.';
   }
-
   function readStudentMatches(query) {
     var q = normAI(query);
     if (!q) return [];
