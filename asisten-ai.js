@@ -152,8 +152,12 @@
       item.appendChild(sm);
     }
     feed.appendChild(item);
-    chatHistory.push({ role: who === 'user' ? 'user' : 'assistant', content: content.slice(0, 1000) });
-    if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
+    // Hanya pesan pengguna yang dikirim kembali sebagai konteks; hasil data siswa/absensi
+    // dari aplikasi tidak ikut dikirim ke Gemini pada percakapan berikutnya.
+    if (who === 'user') {
+      chatHistory.push({ role: 'user', content: content.slice(0, 1000) });
+      if (chatHistory.length > 8) chatHistory = chatHistory.slice(-8);
+    }
     feed.scrollTop = feed.scrollHeight;
   }
   function setActivity(text, on) {
