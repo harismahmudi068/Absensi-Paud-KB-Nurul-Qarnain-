@@ -23,11 +23,12 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .top.day{background:linear-gradient(180deg,#1f9150 0%,#3db06a 50%,#6fcf92 100%);padding-bottom:96px}
 .top .hd{position:absolute;inset:0;pointer-events:none}
 .top .as,.top .nm,.top .gt{position:relative;z-index:1}
+.dash-alert-toggle{position:fixed;z-index:150;right:14px;top:calc(12px + env(safe-area-inset-top,0));width:44px;height:44px;border:1px solid rgba(255,255,255,.32);border-radius:50%;background:rgba(255,255,255,.10);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.14);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}.dash-alert-toggle .dash-alert-emoji{display:block;font-family:system-ui,sans-serif;font-size:25px;line-height:1;transform-origin:50% 12%;filter:drop-shadow(0 1px 2px rgba(0,0,0,.18))}.dash-alert-toggle.has-alert .dash-alert-emoji{animation:bellShake .9s ease-in-out infinite}@keyframes bellShake{0%,100%{transform:rotate(0)}10%,30%,50%,70%,90%{transform:rotate(12deg)}20%,40%,60%,80%{transform:rotate(-12deg)}}@media(prefers-reduced-motion:reduce){.dash-alert-toggle.has-alert .dash-alert-emoji{animation:none}}.pwa-install{display:flex;align-items:center;gap:9px;padding:9px 11px!important;text-align:left!important}.pwa-install .pwa-copy{flex:1;min-width:0}.pwa-install .pwa-title{font-size:13px;font-weight:800;color:var(--tt)}.pwa-install .pwa-desc{font-size:11.5px;line-height:1.35;color:var(--mu)}.pwa-install .pwa-icon{width:32px;height:32px;flex:0 0 32px;border-radius:10px;background:var(--pb);display:grid;place-items:center;font-size:17px}.pwa-install .pwa-btn{width:auto;flex:0 0 auto;margin:0!important;padding:7px 10px!important;font-size:11px!important;border-radius:9px}.dash-alert-toggle[hidden]{display:none}.dash-alert-toggle.has-alert{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.45);color:#fff}.dash-alert-count{position:absolute;right:-5px;top:-5px;min-width:18px;height:18px;padding:0 3px;border-radius:999px;background:transparent;color:#ff9f1c;border:0;font:900 13px/18px system-ui;display:grid;place-items:center;text-shadow:0 1px 3px rgba(0,0,0,.55);animation:alertPulse .9s ease-in-out infinite}@keyframes alertPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.18)}}.dash-alert-panel{position:fixed;z-index:149;top:calc(64px + env(safe-area-inset-top,0));right:12px;width:min(350px,calc(100vw - 24px));max-height:min(65vh,520px);overflow:auto;margin:0;border-radius:16px;box-shadow:0 14px 36px rgba(0,0,0,.25)}.dash-alert-panel[hidden]{display:none}.dash-alert-panel .panel{margin:0}.dash-alert-item{padding:12px 14px;border-bottom:1px solid var(--ln);text-align:left}.dash-alert-item:last-child{border-bottom:0}.dash-alert-item b{display:block;color:var(--tt);margin-bottom:3px}.dash-alert-item .btn{margin-top:8px}
 .top .as{font-size:15px;letter-spacing:.5px;color:#eafff0;font-style:italic}
 .top .nm{font-family:'Pacifico',cursive;font-size:29px;line-height:1.35;margin:2px 0 9px;word-break:break-word}
 .top .gt{display:inline-block;background:rgba(6,40,20,.5);color:#ffe9a0;font-weight:700;border-radius:999px;padding:6px 15px;font-size:13.5px;min-height:28px}
 .wrap{max-width:720px;margin:auto;padding:0 14px 24px}
-.bnav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0));background:rgba(239,248,241,.94);border-top:1px solid rgba(20,60,35,.18);box-shadow:0 -8px 24px rgba(0,0,0,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background-color .25s,border-color .25s}
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0));background:rgba(239,248,241,.94);border-top:1px solid rgba(20,60,35,.18);box-shadow:0 -8px 24px rgba(0,0,0,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background-color .25s,border-color .25s}
 .bnav button{border:0;background:transparent;color:#405b49;border-radius:12px;padding:7px 3px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:inherit;font-size:11px;font-weight:700;min-width:0;cursor:pointer;transition:background-color .2s,color .2s}
 .bnav button .ni{font-size:20px;line-height:1.2}.bnav button.on{background:#d7ecde;color:#08783b}.bnav button:active{transform:scale(.96)}
 html[data-tm=n] .bnav{background:rgba(14,26,60,.94);border-top-color:rgba(255,255,255,.22)}
@@ -243,6 +244,7 @@ html.rg .pill{background:rgba(8,40,22,.88)}
 <script defer src="/rapor.js?v=20261107a"></script>
 </head><body>
 <div class="scene" id="scene"></div>
+<button type="button" id="dashAlertToggle" class="dash-alert-toggle" aria-label="Lihat notifikasi" aria-expanded="false" onclick="dashAlertToggle()"><span class="dash-alert-emoji" aria-hidden="true">🔔</span></button><div id="dashAlertPanel" class="dash-alert-panel" hidden></div>
 <div class="top"><div class="hd" id="hd"></div><div class="as">Assalamualaikum</div><div class="nm" id="nm">&nbsp;</div><div class="gt" id="gt">&nbsp;</div></div>
 <div class="wrap">
  <div class="clk"><div class="pill" id="jm">--<i>:</i>-- <small>WIB</small></div><div class="pill" id="tg">&nbsp;</div></div>
@@ -252,7 +254,7 @@ html.rg .pill{background:rgba(8,40,22,.88)}
  </div></div>
  <div id="isi"></div>
 </div>
-<nav class="bnav" aria-label="Navigasi utama"><button type="button" data-page="dashboard" onclick="go('dashboard')"><span class="ni">🏠</span>Beranda</button><button type="button" data-page="siswa" onclick="go('siswa')"><span class="ni">🪪</span>Kartu</button><button type="button" data-page="rapor" onclick="go('rapor')"><span class="ni">📄</span>Raport</button><button type="button" onclick="mT(event);scrollTo({top:0,behavior:'smooth'})"><span class="ni">☰</span>Lainnya</button></nav>
+<nav class="bnav" aria-label="Navigasi utama"><button type="button" data-page="dashboard" onclick="go('dashboard')"><span class="ni">🏠</span>Beranda</button><button type="button" data-page="kartu" onclick="go('kartu')"><span class="ni">🪪</span>Kartu</button><button type="button" data-page="profil" onclick="go('profil')"><span class="ni">👤</span>Profil</button><button type="button" data-page="rapor" onclick="go('rapor')"><span class="ni">📄</span>Raport</button><button type="button" onclick="mT(event);scrollTo({top:0,behavior:'smooth'})"><span class="ni">☰</span>Lainnya</button></nav>
 <div class="ov" id="ov"></div><div class="ov" id="fk"></div><input type="file" id="fotoF" accept="image/*" hidden onchange="fotoDipilih(this)"><div class="eo" id="eo" role="dialog" aria-modal="true" aria-live="polite"></div><div class="fo" id="fo"></div><div class="po" id="po" role="dialog" aria-modal="true" aria-live="polite"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -262,7 +264,7 @@ const tgl=d=>{const p=String(d).split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]
 const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jakarta'}):'';
 const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
 const m=location.pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);
-const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['rapor','📄','Rapor'],['libur','🎉','Kalender Hari Libur'],['notifikasi','🔔','Notifikasi','push']];
+const MENU=[['dashboard','🏠','Dashboard'],['kartu','🪪','Kartu'],['profil','👤','Profil'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['rapor','📄','Rapor'],['libur','🎉','Kalender Hari Libur'],['notifikasi','🔔','Notifikasi','push']];
 const C={},S={},LAP={st:'',busy:0,mulai:'',akhir:''};let cur='',tok=0;
 /* Cache halaman: dianggap basi setelah 3 menit atau bila tanggal (WIB) di perangkat sudah berganti */
 const CT={},CD={},MASA=180000,FD=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'});
@@ -297,14 +299,14 @@ function liburUrai(d){const th=+d.hari_ini.slice(0,4),h=new Set(d.libur_mgg),b=n
 async function ambil(v){
  if(segar(v))return C[v];
  if(v==='notifikasi'){const d=await ambil('dashboard');C.notifikasi=d;CT.notifikasi=CT.dashboard;CD.notifikasi=CD.dashboard;return d}
- const r=await fetch('/api/portal?k='+m[1]+'&v='+v,{cache:'no-store'});
+ const apiV=(v==='kartu'||v==='profil')?'siswa':v;const r=await fetch('/api/portal?k='+m[1]+'&v='+apiV,{cache:'no-store'});
  if(r.status===404){const e=new Error('404');e.nf=1;throw e}
  if(!r.ok)throw 0;const d=await r.json();if(d.libur_mgg)d.libur=liburUrai(d);C[v]=d;CT[v]=Date.now();CD[v]=tglJkt();S.siswa=d.siswa;S.sekolah=d.sekolah;S.hari=d.hari_ini;if(d.fitur)S.fitur=d.fitur;if(d.push&&d.push.vapid)S.vapid=d.push.vapid;if(d.libur)S.libur=d.libur;
  $('#nm').textContent=d.siswa.nama||'';if(d.v==='dashboard')sapa(d);document.title=(d.sekolah.nama?d.sekolah.nama+' - ':'')+'Halaman Siswa';return d}
 async function go(v){
  mTutup();ddTutup();
  if(!m)return pesan('🔎',['Kartu tidak ditemukan','Minta link terbaru ke pihak sekolah.']);
- const t=++tok;cur=v;const mi=MENU.find(x=>x[0]===v);$('#mic').textContent=mi[1];$('#mt').textContent=mi[2];bangunMenu();
+ const t=++tok;cur=v;dashAlertOpen=false;const ap=$('#dashAlertPanel');if(ap)ap.hidden=true;const alertBtn=$('#dashAlertToggle');if(alertBtn)alertBtn.setAttribute('aria-expanded','false');const mi=MENU.find(x=>x[0]===v);$('#mic').textContent=mi[1];$('#mt').textContent=mi[2];bangunMenu();
  if(!segar(v))loading();scrollTo({top:0,behavior:'smooth'});
  try{const d=await ambil(v);if(t!==tok)return;bangunMenu();$('#isi').innerHTML='<div class="pg">'+R[v](d)+'</div>';if(A[v])A[v](d)}
  catch(e){if(t!==tok)return;e&&e.nf?pesan('🔎',['Kartu tidak ditemukan','Kartu tidak aktif atau QR tidak dikenal. Hubungi pihak sekolah.']):pesan('⚠️',['Gagal memuat','Periksa koneksi internet lalu muat ulang halaman.'])}}
@@ -319,14 +321,21 @@ function profilKurang(s){return PKOL.filter(x=>!s[x[0]]).map(x=>x[1])}
 function profilKosong(s){return PKOL.filter(x=>!s[x[0]]).map(x=>x[0])}
 /* Tombol Lengkapi: buka Data Siswa, gulir ke kolom kosong, kotak berkedip 5 detik */
 let KD=0;
-function lengkapi(){KD=1;go('siswa')}
+function lengkapi(){KD=1;go('profil')}
 function kedipKosong(){if(!KD)return;KD=0;
  const rows=profilKosong(S.siswa).map(k=>$('.row[data-f="'+k+'"]')).filter(Boolean);if(!rows.length)return;
  setTimeout(()=>{rows[0].scrollIntoView({behavior:'smooth',block:'center'});rows.forEach(r=>r.classList.add('kd'));setTimeout(()=>rows.forEach(r=>r.classList.remove('kd')),5000)},380)}
 function profilNotif(s){const k=profilKurang(s);if(!k.length)return '';
  return '<div class="panel ct pk" role="alert"><div class="pb" style="padding-top:14px"><div class="pkt">⚠️ Profil anak belum lengkap</div><div class="mu">Belum diisi: '+esc(k.join(', '))+'.</div><button type="button" class="btn fx" onclick="lengkapi()">Lengkapi</button></div></div>'}
+let dashAlertOpen=false;
+function dashAlertToggle(){dashAlertOpen=!dashAlertOpen;const p=$('#dashAlertPanel'),b=$('#dashAlertToggle');if(p)p.hidden=!dashAlertOpen;if(b)b.setAttribute('aria-expanded',dashAlertOpen?'true':'false')}
+function dashAlertRender(d,st,daftar,galat){const b=$('#dashAlertToggle'),p=$('#dashAlertPanel');if(!b||!p)return;const items=[],kurang=profilKurang((d&&d.siswa)||{});
+ if(kurang.length)items.push('<div class="dash-alert-item"><b>⚠️ Profil anak belum lengkap</b><div class="mu">Belum diisi: '+esc(kurang.join(', '))+'.</div><button type="button" class="btn fx" onclick="lengkapi()">Lengkapi profil</button></div>');
+ if(d&&d.push&&d.push.aktif&&st!=='aktif'){let t=st==='denied'?'Izin notifikasi diblokir di browser. Izinkan notifikasi melalui pengaturan situs.':st==='ios'?'Notifikasi di iPhone perlu dibuka dari aplikasi yang ditambahkan ke Layar Utama.':st==='nosupport'?'Browser ini belum mendukung notifikasi otomatis.':'Aktifkan notifikasi agar kabar '+esc(daftar||'dari sekolah')+' dapat diterima di HP ini.';items.push('<div class="dash-alert-item"><b>🔔 Notifikasi belum aktif</b><div class="mu">'+t+'</div><button type="button" class="btn fx" onclick="go(\'notifikasi\')">Lihat pengaturan</button></div>')}
+ if(galat){items.push('<div class="dash-alert-item"><b>⚠️ Kendala notifikasi</b><div class="mu">'+esc(galat)+'</div><button type="button" class="btn fx" onclick="go(\'notifikasi\')">Periksa notifikasi</button></div>')}
+ const n=items.length;b.classList.toggle('has-alert',n>0);b.innerHTML='<span class="dash-alert-emoji" aria-hidden="true">🔔</span>'+(n?'<span class="dash-alert-count">'+n+'</span>':'');b.setAttribute('aria-label',n?n+' notifikasi perlu diperhatikan':'Tidak ada notifikasi yang perlu diperhatikan');if(!n){dashAlertOpen=false;b.setAttribute('aria-expanded','false')}p.innerHTML=n?'<div class="panel">'+items.join('')+'</div>':'';p.hidden=!n||!dashAlertOpen}
 R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
- return '<div id="portalPwaInstall" class="panel ct" hidden><div class="pb" style="padding:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;text-align:left"><div style="flex:1;min-width:150px"><b>📲 Instal Portal Siswa</b><div class="mu">Buka portal lebih cepat dari layar utama HP.</div></div><button type="button" class="btn fx" style="font-size:12px;padding:8px 12px" onclick="pasangPortalPWA()">Instal Aplikasi</button></div></div>'+profilNotif(s)+(d.push&&d.push.aktif?'<div id="pushBanner"></div>':'')+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
+ return '<div id="portalPwaInstall" class="panel pwa-install" hidden><div class="pwa-icon" aria-hidden="true">📲</div><div class="pwa-copy"><div class="pwa-title">Instal Portal Siswa</div><div class="pwa-desc">Akses lebih cepat dari layar utama HP.</div></div><button type="button" class="btn fx pwa-btn" onclick="pasangPortalPWA()">Instal</button></div>'+profilNotif(s)+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
  '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'</div></div>'+
  (tb.aktif?'<div class="panel ct"><div class="ph">💰 Tabungan Hari Ini</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(tb.saldo)+'</div>'+(tb.hari_ini.length?tb.hari_ini.map(trx).join(''):'<div class="mu">Tidak ada transaksi hari ini.</div>')+'</div></div>':'')+
  piketPanel(d)+hafalanPanel(d)+calPanel(d)};
@@ -512,20 +521,24 @@ async function lapKirim(){if(!LAP.st||LAP.busy)return;
 
 /* B1. Data Siswa */
 let kartuModePortal='landscape';
-function kartu(sisi){const s=S.kd.siswa,k=S.kd.sekolah||{},portrait=kartuModePortal==='portrait',buat=sisi==='belakang'?(portrait?Kartu.buatBelakangPortrait:Kartu.buatBelakang):(portrait?Kartu.buatKartuPortrait:Kartu.buatKartu);return buat({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tempat:s.tempat,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.isiQR(s.kode_scan),logo:k.logo||null,foto:S.fotoImg||null})}
-function kartuMode(v){if(v!=='landscape'&&v!=='portrait')return;if(kartuModePortal===v)return;kartuModePortal=v;['landscape','portrait'].forEach(m=>{const b=$('#kmode-'+m);if(b){b.classList.toggle('on',m===v);b.setAttribute('aria-pressed',m===v?'true':'false')}});kartuRender()}
-R.siswa=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
+function kartu(sisi,mode){const s=S.kd.siswa,k=S.kd.sekolah||{},portrait=(mode||kartuModePortal)==='portrait',buat=sisi==='belakang'?(portrait?Kartu.buatBelakangPortrait:Kartu.buatBelakang):(portrait?Kartu.buatKartuPortrait:Kartu.buatKartu);return buat({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tempat:s.tempat,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.isiQR(s.kode_scan),logo:k.logo||null,foto:S.fotoImg||null})}
+function kartuMode(v){if(v!=='landscape'&&v!=='portrait')return;if(kartuModePortal===v)return;kartuModePortal=v;['landscape','portrait'].forEach(m=>{const b=$('#kmode-'+m);if(b){b.classList.toggle('on',m===v);b.setAttribute('aria-pressed',m===v?'true':'false')}});S.kartuSiap=kartuRender()}
+R.kartu=d=>{const s=d.siswa;
+ const blok=(mode,label)=>'<section class="kpreview" style="margin-bottom:22px"><h3 style="margin:0 0 10px;font-size:16px">'+label+'</h3><div class="mu" style="margin-bottom:8px">Bagian depan</div><img class="kimg" id="kimg-'+mode+'-depan" alt="Kartu '+label+', sisi depan"><div class="mu" style="margin:12px 0 8px">Bagian belakang</div><img class="kimg" id="kimg-'+mode+'-belakang" alt="Kartu '+label+', sisi belakang"><button class="btn fx" id="kunduh-'+mode+'" onclick="unduh(\''+mode+'\')">⬇ Unduh kartu '+mode+' (depan &amp; belakang)</button></section>';
  return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
- '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><div class="kmodebar" role="group" aria-label="Pilih orientasi kartu"><button type="button" class="kmode'+(kartuModePortal==='landscape'?' on':'')+'" id="kmode-landscape" aria-pressed="'+(kartuModePortal==='landscape'?'true':'false')+'" onclick="kartuMode(\'landscape\')">▰ Landscape</button><button type="button" class="kmode'+(kartuModePortal==='portrait'?' on':'')+'" id="kmode-portrait" aria-pressed="'+(kartuModePortal==='portrait'?'true':'false')+'" onclick="kartuMode(\'portrait\')">▯ Portrait</button></div><img class="kimg" id="kimg" alt="Kartu anak, sisi depan"><img class="kimg" id="kimg2" alt="Kartu anak, sisi belakang" style="margin-top:10px"><button class="btn fx" id="kunduh" onclick="unduh()">⬇ Unduh kartu (depan &amp; belakang)</button>'+(d.sekolah&&d.sekolah.izin_foto===false?'<div class="mu" style="margin-top:10px;text-align:center">Foto anak diatur oleh sekolah.</div>':'<button type="button" class="btn fx" id="kfoto" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button>')+'<button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'+
+ '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb">'+blok('landscape','Landscape')+'<div style="border-top:1px solid var(--line);margin:18px 0"></div>'+blok('portrait','Portrait')+(d.sekolah&&d.sekolah.izin_foto===false?'<div class="mu" style="margin-top:10px;text-align:center">Foto anak diatur oleh sekolah.</div>':'<button type="button" class="btn fx" id="kfoto" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button>')+'<button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'};
+R.profil=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
+ return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
  '<div class="panel"><div class="ph">👤 Profil</div><div class="pb">'+
  [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-','pan'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tempat, tanggal lahir',ttlTampil(s.tempat,s.tgl),'tgl'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-','jk'],['Alamat',s.alamat||'-','alamat'],['WA orang tua',wa,'wa'],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"'+(x[2]?' data-f="'+x[2]+'"':'')+'><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
  '<div class="panel"><div class="pb" style="padding-top:14px"><button type="button" class="btn fx" style="margin-top:0" onclick="profilBuka()">✏️ Ubah profil</button><div class="mu" style="margin-top:8px;text-align:center">Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</div></div></div>'};
 function kartuRender(){const d=S.kd;if(!d)return Promise.resolve();const s=d.siswa,k=d.sekolah||{};
  return Promise.all([Kartu.siapkanLogo(k.logo||null).catch(()=>null),Kartu.siapkanLogo(s.foto||null).catch(()=>null)]).then(r=>{S.fotoImg=r[1];
-  try{$('#kimg').src=kartu('depan');$('#kimg2').src=kartu('belakang')}catch(e){['#kimg','#kimg2','#kunduh'].forEach(q=>{const z=$(q);if(z)z.remove()})}})}
-A.siswa=d=>{S.kd=d;kartuRender();kedipKosong()};
+  try{['landscape','portrait'].forEach(mode=>['depan','belakang'].forEach(sisi=>{const el=$('#kimg-'+mode+'-'+sisi);if(el)el.src=kartu(sisi,mode)}))}catch(e){console.error('Gagal menyiapkan pratinjau kartu',e);toast('Pratinjau kartu belum dapat dimuat','err')}})}
+A.kartu=d=>{S.kd=d;S.kartuSiap=kartuRender()};
+A.profil=d=>{S.kd=d;kedipKosong()};
 async function salinLinkAnak(){const t=Kartu.urlPortal(S.siswa.kode_qr);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}ok?toast('Link halaman disalin'):toast('Tidak bisa menyalin, coba lagi','err')}
-async function unduh(){const b=$('#kunduh');if(!b||b.disabled)return;const t=b.innerHTML,dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-')+'-'+kartuModePortal,dl=(u,n)=>new Promise((resolve,reject)=>{if(!u||u==='about:blank')return reject(new Error('Gambar kartu belum siap'));const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(resolve,550)});b.disabled=true;b.innerHTML='<span class="kdlspin" aria-hidden="true"></span>';try{await dl($('#kimg').src,dasar+'-depan.png');await dl($('#kimg2').src,dasar+'-belakang.png')}catch(e){toast('Kartu belum siap. Coba lagi sebentar.','err')}finally{b.disabled=false;b.innerHTML=t}}
+async function unduh(mode){if(mode!=='landscape'&&mode!=='portrait')return;const b=$('#kunduh-'+mode);if(!b||b.disabled||!S.kd)return;const t=b.innerHTML,dasar='kartu-'+String(S.siswa.nama||'siswa').replace(/[^\w]+/g,'-')+'-'+mode,dl=(u,n)=>new Promise((resolve,reject)=>{if(!u||u==='about:blank')return reject(new Error('Gambar kartu belum siap'));const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(resolve,550)});b.disabled=true;b.innerHTML='<span class="kdlspin" aria-hidden="true"></span>';try{if(S.kartuSiap)await S.kartuSiap;await dl(kartu('depan',mode),dasar+'-depan.png');await dl(kartu('belakang',mode),dasar+'-belakang.png')}catch(e){toast('Kartu belum siap. Coba lagi sebentar.','err')}finally{b.disabled=false;b.innerHTML=t}}
 
 /* Ubah profil oleh orang tua (kecuali kelas, NISN, tahun masuk) */
 const PF={busy:0},normWA=n=>{let d=String(n||'').replace(/\D/g,'');if(d[0]==='0')d='62'+d.slice(1);else if(d[0]==='8')d='62'+d;return d},waLokal=w=>w?'0'+String(w).replace(/^62/,''):'';
@@ -669,7 +682,7 @@ async function profilSimpan(lewat){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'
   await slp(1200);const x=await pr;
   if(x&&x.r.ok){Object.assign(S.siswa,x.j.siswa);Object.keys(C).forEach(k=>delete C[k]);
    pc.classList.add('ok');q('.pm').textContent='Data berhasil disimpan dan diperbarui';q('.ps').textContent='Profil '+(S.siswa.pan||S.siswa.nama)+' sudah yang terbaru.';
-   await slp(RM?1400:2000);poTutup(o);profilTutup();go('siswa');return}
+   await slp(RM?1400:2000);poTutup(o);profilTutup();go('profil');return}
   const pesan=!x?'Periksa koneksi internet, lalu coba lagi.':(x.j.error||'Gagal menyimpan, coba lagi.');
   pc.classList.add('bad','shk');q('.pm').textContent='Gagal menyimpan';q('.ps').textContent=pesan;
   const a=await new Promise(res=>{q('.pry').onclick=()=>res(1);q('.pct').onclick=()=>res(0);q('.pct').focus()});
@@ -783,14 +796,14 @@ function pushBanner(st,daftar,galat){if(st==='aktif'||st==='nosupport'||st==='de
  else if(st==='denied'){t='Izin notifikasi diblokir di browser, jadi kabar dari sekolah belum bisa masuk ke HP ini.';b=lihat}
  else{t='Di iPhone, notifikasi hanya bisa diaktifkan dari aplikasi di Layar Utama.';b=lihat}
  return '<div class="panel ct pk" role="alert"><div class="pb" style="padding-top:14px"><div class="pkt">🔔 Notifikasi belum aktif</div><div class="mu">'+t+'</div>'+b+(galat?'<div class="mu" style="color:#c0342b">'+esc(galat)+'</div>':'')+'</div></div>'}
-async function pushRender(d,galat){if(!d||!d.push||!d.push.aktif)return;
- const jn=pkJenis(d),daftar=jn.map(k=>PK_NAMA[k].toLowerCase().replace(/ \(.*\)/,'')).join(', ');let st;
- if(!pushDidukung())st=iosBelumPasang()?'ios':'nosupport';
- else if(Notification.permission==='denied')st='denied';
- else{const sub=await pushSub().catch(()=>null);st=(sub&&Notification.permission==='granted'&&localStorage.getItem(PK_OFF)!=='1')?'aktif':'mati';
-  if(st==='aktif'){try{await pushDaftar(sub,pkPilihan(),false)}catch(e){galat=e.message}}}
- const ban=$('#pushBanner'),box=$('#pushBox');
- if(ban)ban.innerHTML=pushBanner(st,daftar,galat);
+async function pushRender(d,galat){if(!d)return;
+ const jn=pkJenis(d),daftar=jn.map(k=>PK_NAMA[k].toLowerCase().replace(/ \(.*\)/,'')).join(', ');let st='nonaktif';
+ if(d.push&&d.push.aktif){if(!pushDidukung())st=iosBelumPasang()?'ios':'nosupport';
+  else if(Notification.permission==='denied')st='denied';
+  else{const sub=await pushSub().catch(()=>null);st=(sub&&Notification.permission==='granted'&&localStorage.getItem(PK_OFF)!=='1')?'aktif':'mati';
+   if(st==='aktif'){try{await pushDaftar(sub,pkPilihan(),false)}catch(e){galat=e.message}}}}
+ dashAlertRender(d,st,daftar,galat);
+ const box=$('#pushBox');if(!d.push||!d.push.aktif){if(box)box.innerHTML='';return}
  if(!box)return;let h='';
  if(st==='nosupport')h='<div class="mu">Browser ini belum mendukung notifikasi. Gunakan Chrome di Android, atau pasang ke Layar Utama di iPhone.</div>';
  else if(st==='ios')h='<div class="mu">Di iPhone, notifikasi hanya bisa diaktifkan dari aplikasi di Layar Utama. Ketuk tombol Bagikan, pilih <b>Tambahkan ke Layar Utama</b>, buka Halaman Siswa dari ikon itu, lalu aktifkan notifikasi di sini.</div>';
