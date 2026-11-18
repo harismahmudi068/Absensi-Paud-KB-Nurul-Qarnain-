@@ -27,7 +27,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .top .nm{font-family:'Pacifico',cursive;font-size:29px;line-height:1.35;margin:2px 0 9px;word-break:break-word}
 .top .gt{display:inline-block;background:rgba(6,40,20,.5);color:#ffe9a0;font-weight:700;border-radius:999px;padding:6px 15px;font-size:13.5px;min-height:28px}
 .wrap{max-width:720px;margin:auto;padding:0 14px 24px}
-.bnav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0));background:rgba(239,248,241,.94);border-top:1px solid rgba(20,60,35,.18);box-shadow:0 -8px 24px rgba(0,0,0,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background-color .25s,border-color .25s}
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:8px 10px calc(8px + env(safe-area-inset-bottom,0));background:rgba(239,248,241,.94);border-top:1px solid rgba(20,60,35,.18);box-shadow:0 -8px 24px rgba(0,0,0,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:background-color .25s,border-color .25s}
 .bnav button{border:0;background:transparent;color:#405b49;border-radius:12px;padding:7px 3px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:inherit;font-size:11px;font-weight:700;min-width:0;cursor:pointer;transition:background-color .2s,color .2s}
 .bnav button .ni{font-size:20px;line-height:1.2}.bnav button.on{background:#d7ecde;color:#08783b}.bnav button:active{transform:scale(.96)}
 html[data-tm=n] .bnav{background:rgba(14,26,60,.94);border-top-color:rgba(255,255,255,.22)}
@@ -252,7 +252,7 @@ html.rg .pill{background:rgba(8,40,22,.88)}
  </div></div>
  <div id="isi"></div>
 </div>
-<nav class="bnav" aria-label="Navigasi utama"><button type="button" data-page="dashboard" onclick="go('dashboard')"><span class="ni">🏠</span>Beranda</button><button type="button" data-page="siswa" onclick="go('siswa')"><span class="ni">🪪</span>Kartu</button><button type="button" data-page="rapor" onclick="go('rapor')"><span class="ni">📄</span>Raport</button><button type="button" onclick="mT(event);scrollTo({top:0,behavior:'smooth'})"><span class="ni">☰</span>Lainnya</button></nav>
+<nav class="bnav" aria-label="Navigasi utama"><button type="button" data-page="dashboard" onclick="go('dashboard')"><span class="ni">🏠</span>Beranda</button><button type="button" data-page="kartu" onclick="go('kartu')"><span class="ni">🪪</span>Kartu</button><button type="button" data-page="profil" onclick="go('profil')"><span class="ni">👤</span>Profil</button><button type="button" data-page="rapor" onclick="go('rapor')"><span class="ni">📄</span>Raport</button><button type="button" onclick="mT(event);scrollTo({top:0,behavior:'smooth'})"><span class="ni">☰</span>Lainnya</button></nav>
 <div class="ov" id="ov"></div><div class="ov" id="fk"></div><input type="file" id="fotoF" accept="image/*" hidden onchange="fotoDipilih(this)"><div class="eo" id="eo" role="dialog" aria-modal="true" aria-live="polite"></div><div class="fo" id="fo"></div><div class="po" id="po" role="dialog" aria-modal="true" aria-live="polite"></div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -262,7 +262,7 @@ const tgl=d=>{const p=String(d).split('-');return +p[2]+' '+BLN[p[1]-1]+' '+p[0]
 const jam=iso=>iso?new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jakarta'}):'';
 const rp=n=>'Rp '+Number(n).toLocaleString('id-ID');
 const m=location.pathname.match(/^\/p\/([0-9a-f-]{36})\/?$/i);
-const MENU=[['dashboard','🏠','Dashboard'],['siswa','👤','Data Siswa'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['rapor','📄','Rapor'],['libur','🎉','Kalender Hari Libur'],['notifikasi','🔔','Notifikasi','push']];
+const MENU=[['dashboard','🏠','Dashboard'],['kartu','🪪','Kartu'],['profil','👤','Profil'],['absensi','📅','Rekap Absensi'],['tabungan','💰','Tabungan'],['piket','🧹','Jadwal Piket','piket'],['hafalan','📖','Hafalan','hafalan'],['rapor','📄','Rapor'],['libur','🎉','Kalender Hari Libur'],['notifikasi','🔔','Notifikasi','push']];
 const C={},S={},LAP={st:'',busy:0,mulai:'',akhir:''};let cur='',tok=0;
 /* Cache halaman: dianggap basi setelah 3 menit atau bila tanggal (WIB) di perangkat sudah berganti */
 const CT={},CD={},MASA=180000,FD=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'});
@@ -297,7 +297,7 @@ function liburUrai(d){const th=+d.hari_ini.slice(0,4),h=new Set(d.libur_mgg),b=n
 async function ambil(v){
  if(segar(v))return C[v];
  if(v==='notifikasi'){const d=await ambil('dashboard');C.notifikasi=d;CT.notifikasi=CT.dashboard;CD.notifikasi=CD.dashboard;return d}
- const r=await fetch('/api/portal?k='+m[1]+'&v='+v,{cache:'no-store'});
+ const apiV=(v==='kartu'||v==='profil')?'siswa':v;const r=await fetch('/api/portal?k='+m[1]+'&v='+apiV,{cache:'no-store'});
  if(r.status===404){const e=new Error('404');e.nf=1;throw e}
  if(!r.ok)throw 0;const d=await r.json();if(d.libur_mgg)d.libur=liburUrai(d);C[v]=d;CT[v]=Date.now();CD[v]=tglJkt();S.siswa=d.siswa;S.sekolah=d.sekolah;S.hari=d.hari_ini;if(d.fitur)S.fitur=d.fitur;if(d.push&&d.push.vapid)S.vapid=d.push.vapid;if(d.libur)S.libur=d.libur;
  $('#nm').textContent=d.siswa.nama||'';if(d.v==='dashboard')sapa(d);document.title=(d.sekolah.nama?d.sekolah.nama+' - ':'')+'Halaman Siswa';return d}
@@ -319,7 +319,7 @@ function profilKurang(s){return PKOL.filter(x=>!s[x[0]]).map(x=>x[1])}
 function profilKosong(s){return PKOL.filter(x=>!s[x[0]]).map(x=>x[0])}
 /* Tombol Lengkapi: buka Data Siswa, gulir ke kolom kosong, kotak berkedip 5 detik */
 let KD=0;
-function lengkapi(){KD=1;go('siswa')}
+function lengkapi(){KD=1;go('profil')}
 function kedipKosong(){if(!KD)return;KD=0;
  const rows=profilKosong(S.siswa).map(k=>$('.row[data-f="'+k+'"]')).filter(Boolean);if(!rows.length)return;
  setTimeout(()=>{rows[0].scrollIntoView({behavior:'smooth',block:'center'});rows.forEach(r=>r.classList.add('kd'));setTimeout(()=>rows.forEach(r=>r.classList.remove('kd')),5000)},380)}
@@ -512,20 +512,23 @@ async function lapKirim(){if(!LAP.st||LAP.busy)return;
 
 /* B1. Data Siswa */
 let kartuModePortal='landscape';
-function kartu(sisi){const s=S.kd.siswa,k=S.kd.sekolah||{},portrait=kartuModePortal==='portrait',buat=sisi==='belakang'?(portrait?Kartu.buatBelakangPortrait:Kartu.buatBelakang):(portrait?Kartu.buatKartuPortrait:Kartu.buatKartu);return buat({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tempat:s.tempat,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.isiQR(s.kode_scan),logo:k.logo||null,foto:S.fotoImg||null})}
+function kartu(sisi,mode){const s=S.kd.siswa,k=S.kd.sekolah||{},portrait=(mode||kartuModePortal)==='portrait',buat=sisi==='belakang'?(portrait?Kartu.buatBelakangPortrait:Kartu.buatBelakang):(portrait?Kartu.buatKartuPortrait:Kartu.buatKartu);return buat({nama:s.nama,nisn:s.nisn,kelas:s.kelas,tempat:s.tempat,tgl:s.tgl,jk:s.jk,alamat:s.alamat,wa:s.wa,masuk:s.masuk},{nama:k.nama,tahun:k.tahun_ajaran,hari:S.hari,qr:Kartu.isiQR(s.kode_scan),logo:k.logo||null,foto:S.fotoImg||null})}
 function kartuMode(v){if(v!=='landscape'&&v!=='portrait')return;if(kartuModePortal===v)return;kartuModePortal=v;['landscape','portrait'].forEach(m=>{const b=$('#kmode-'+m);if(b){b.classList.toggle('on',m===v);b.setAttribute('aria-pressed',m===v?'true':'false')}});kartuRender()}
-R.siswa=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
+R.kartu=d=>{const s=d.siswa;
  return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
- '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><div class="kmodebar" role="group" aria-label="Pilih orientasi kartu"><button type="button" class="kmode'+(kartuModePortal==='landscape'?' on':'')+'" id="kmode-landscape" aria-pressed="'+(kartuModePortal==='landscape'?'true':'false')+'" onclick="kartuMode(\'landscape\')">▰ Landscape</button><button type="button" class="kmode'+(kartuModePortal==='portrait'?' on':'')+'" id="kmode-portrait" aria-pressed="'+(kartuModePortal==='portrait'?'true':'false')+'" onclick="kartuMode(\'portrait\')">▯ Portrait</button></div><img class="kimg" id="kimg" alt="Kartu anak, sisi depan"><img class="kimg" id="kimg2" alt="Kartu anak, sisi belakang" style="margin-top:10px"><button class="btn fx" id="kunduh" onclick="unduh()">⬇ Unduh kartu (depan &amp; belakang)</button>'+(d.sekolah&&d.sekolah.izin_foto===false?'<div class="mu" style="margin-top:10px;text-align:center">Foto anak diatur oleh sekolah.</div>':'<button type="button" class="btn fx" id="kfoto" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button>')+'<button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'+
+ '<div class="panel"><div class="ph">🪪 Kartu Anak</div><div class="pb"><div class="kmodebar" role="group" aria-label="Pilih orientasi kartu"><button type="button" class="kmode'+(kartuModePortal==='landscape'?' on':'')+'" id="kmode-landscape" aria-pressed="'+(kartuModePortal==='landscape'?'true':'false')+'" onclick="kartuMode(\'landscape\')">▰ Landscape</button><button type="button" class="kmode'+(kartuModePortal==='portrait'?' on':'')+'" id="kmode-portrait" aria-pressed="'+(kartuModePortal==='portrait'?'true':'false')+'" onclick="kartuMode(\'portrait\')">▯ Portrait</button></div><img class="kimg" id="kimg" alt="Kartu anak, sisi depan"><img class="kimg" id="kimg2" alt="Kartu anak, sisi belakang" style="margin-top:10px"><div class="mu" style="text-align:center;margin-top:8px">Unduh kartu sesuai orientasi yang diinginkan.</div><button class="btn fx" id="kunduh-landscape" onclick="unduh(\'landscape\')">⬇ Unduh kartu landscape (depan &amp; belakang)</button><button class="btn fx" id="kunduh-portrait" onclick="unduh(\'portrait\')">⬇ Unduh kartu portrait (depan &amp; belakang)</button>'+(d.sekolah&&d.sekolah.izin_foto===false?'<div class="mu" style="margin-top:10px;text-align:center">Foto anak diatur oleh sekolah.</div>':'<button type="button" class="btn fx" id="kfoto" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="fotoMulai()">📷 '+(s.foto?'Ubah foto':'Upload foto')+'</button>')+'<button type="button" class="btn fx" style="background:transparent;color:var(--g);border:2px solid var(--g)" onclick="salinLinkAnak()">🔗 Salin link</button></div></div>'};
+R.profil=d=>{const s=d.siswa,wa=s.wa?'0'+String(s.wa).replace(/^62/,''):'-';
+ return '<div class="panel"><div class="hero c"><h2>'+esc(s.nama)+'</h2>'+(s.kelas?'<p>'+esc(s.kelas)+'</p>':'')+'</div></div>'+
  '<div class="panel"><div class="ph">👤 Profil</div><div class="pb">'+
  [['Nama lengkap',s.nama],['Nama panggilan',s.pan||'-','pan'],['Kelas',s.kelas||'-'],['NISN',s.nisn||'-'],['Tempat, tanggal lahir',ttlTampil(s.tempat,s.tgl),'tgl'],['Jenis kelamin',s.jk==='L'?'Laki-laki':s.jk==='P'?'Perempuan':'-','jk'],['Alamat',s.alamat||'-','alamat'],['WA orang tua',wa,'wa'],['Tahun masuk',s.masuk||'-']].map(x=>'<div class="row"'+(x[2]?' data-f="'+x[2]+'"':'')+'><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div></div>'+
  '<div class="panel"><div class="pb" style="padding-top:14px"><button type="button" class="btn fx" style="margin-top:0" onclick="profilBuka()">✏️ Ubah profil</button><div class="mu" style="margin-top:8px;text-align:center">Kelas, NISN, dan tahun masuk hanya dapat diubah oleh sekolah.</div></div></div>'};
 function kartuRender(){const d=S.kd;if(!d)return Promise.resolve();const s=d.siswa,k=d.sekolah||{};
  return Promise.all([Kartu.siapkanLogo(k.logo||null).catch(()=>null),Kartu.siapkanLogo(s.foto||null).catch(()=>null)]).then(r=>{S.fotoImg=r[1];
   try{$('#kimg').src=kartu('depan');$('#kimg2').src=kartu('belakang')}catch(e){['#kimg','#kimg2','#kunduh'].forEach(q=>{const z=$(q);if(z)z.remove()})}})}
-A.siswa=d=>{S.kd=d;kartuRender();kedipKosong()};
+A.kartu=d=>{S.kd=d;kartuRender()};
+A.profil=d=>{S.kd=d;kedipKosong()};
 async function salinLinkAnak(){const t=Kartu.urlPortal(S.siswa.kode_qr);let ok=false;try{await navigator.clipboard.writeText(t);ok=true}catch(e){try{const a=document.createElement('textarea');a.value=t;a.style.cssText='position:fixed;opacity:0;top:0;left:0';document.body.appendChild(a);a.select();ok=document.execCommand('copy');a.remove()}catch(x){}}ok?toast('Link halaman disalin'):toast('Tidak bisa menyalin, coba lagi','err')}
-async function unduh(){const b=$('#kunduh');if(!b||b.disabled)return;const t=b.innerHTML,dasar='kartu-'+S.siswa.nama.replace(/[^\w]+/g,'-')+'-'+kartuModePortal,dl=(u,n)=>new Promise((resolve,reject)=>{if(!u||u==='about:blank')return reject(new Error('Gambar kartu belum siap'));const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(resolve,550)});b.disabled=true;b.innerHTML='<span class="kdlspin" aria-hidden="true"></span>';try{await dl($('#kimg').src,dasar+'-depan.png');await dl($('#kimg2').src,dasar+'-belakang.png')}catch(e){toast('Kartu belum siap. Coba lagi sebentar.','err')}finally{b.disabled=false;b.innerHTML=t}}
+async function unduh(mode){if(mode!=='landscape'&&mode!=='portrait')return;const b=$('#kunduh-'+mode);if(!b||b.disabled||!S.kd)return;const t=b.innerHTML,dasar='kartu-'+String(S.siswa.nama||'siswa').replace(/[^\w]+/g,'-')+'-'+mode,dl=(u,n)=>new Promise((resolve,reject)=>{if(!u||u==='about:blank')return reject(new Error('Gambar kartu belum siap'));const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(resolve,550)});b.disabled=true;b.innerHTML='<span class="kdlspin" aria-hidden="true"></span>';try{await dl(kartu('depan',mode),dasar+'-depan.png');await dl(kartu('belakang',mode),dasar+'-belakang.png')}catch(e){toast('Kartu belum siap. Coba lagi sebentar.','err')}finally{b.disabled=false;b.innerHTML=t}}
 
 /* Ubah profil oleh orang tua (kecuali kelas, NISN, tahun masuk) */
 const PF={busy:0},normWA=n=>{let d=String(n||'').replace(/\D/g,'');if(d[0]==='0')d='62'+d.slice(1);else if(d[0]==='8')d='62'+d;return d},waLokal=w=>w?'0'+String(w).replace(/^62/,''):'';
@@ -669,7 +672,7 @@ async function profilSimpan(lewat){if(PF.busy)return;const s=S.siswa,fe=$('#ffe'
   await slp(1200);const x=await pr;
   if(x&&x.r.ok){Object.assign(S.siswa,x.j.siswa);Object.keys(C).forEach(k=>delete C[k]);
    pc.classList.add('ok');q('.pm').textContent='Data berhasil disimpan dan diperbarui';q('.ps').textContent='Profil '+(S.siswa.pan||S.siswa.nama)+' sudah yang terbaru.';
-   await slp(RM?1400:2000);poTutup(o);profilTutup();go('siswa');return}
+   await slp(RM?1400:2000);poTutup(o);profilTutup();go('profil');return}
   const pesan=!x?'Periksa koneksi internet, lalu coba lagi.':(x.j.error||'Gagal menyimpan, coba lagi.');
   pc.classList.add('bad','shk');q('.pm').textContent='Gagal menyimpan';q('.ps').textContent=pesan;
   const a=await new Promise(res=>{q('.pry').onclick=()=>res(1);q('.pct').onclick=()=>res(0);q('.pct').focus()});
