@@ -387,13 +387,13 @@
     return msg;
   }
   function parseReadTask(command) {
-    var q = normAI(command);
+    var q = normAI(command).replace(/^(?:tolong|mohon|silakan|bantu saya)\s+/, '');
     if (/^(halaman apa|menu apa|saya sedang di mana|sedang di halaman apa|apa yang sedang terbuka|jelaskan halaman ini|apa saja fitur di halaman ini|apa yang bisa dilakukan di sini)/.test(q)) return { type: 'context' };
     var profil = q.match(/^(?:buka|bukakan|lihat|tampilkan|perlihatkan|cek)\s+(?:profil|detail|data lengkap)\s+(?:siswa|anak|murid)\s+(.+)$/) || q.match(/^(?:profil|detail)\s+(?:siswa|anak|murid)\s+(.+)$/);
     if (profil) return { type: 'profil_siswa', query: profil[1].trim() };
-    var daftarGuru = /^(?:daftar|list|tampilkan|lihat|perlihatkan)\s+(?:(?:semua|seluruh)\s+)?(?:data\s+)?guru(?:\s+(?:semua|seluruh))?$/.test(q);
+    var daftarGuru = /^(?:(?:daftar|list)\s+(?:(?:semua|seluruh)\s+)?(?:data\s+)?guru|(?:tampilkan|lihat|perlihatkan)\s+(?:daftar\s+)?(?:(?:semua|seluruh)\s+)?(?:data\s+)?guru)(?:\s+(?:semua|seluruh))?$/.test(q);
     if (daftarGuru) return { type: 'guru', query: '' };
-    if (/^(?:daftar|list|tampilkan|lihat|perlihatkan)\s+(?:(?:semua|seluruh)\s+)?(?:data\s+)?(?:siswa|anak|murid)(?:\s+(?:semua|seluruh))?$/.test(q) || /^(?:tampilkan|perlihatkan)\s+daftar\s+(?:siswa|anak|murid)$/.test(q)) return { type: 'siswa', query: '' };
+    if (/^(?:(?:daftar|list)\s+(?:(?:semua|seluruh)\s+)?(?:data\s+)?(?:siswa|anak|murid)|(?:tampilkan|lihat|perlihatkan)\s+(?:daftar\s+)?(?:(?:semua|seluruh)\s+)?(?:data\s+)?(?:siswa|anak|murid))(?:\s+(?:semua|seluruh))?$/.test(q)) return { type: 'siswa', query: '' };
     var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
     if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
     if (/^(daftar|tampilkan)\s+kelas(?:\s+semua)?$/.test(q)) return { type: 'kelas', query: '' };
@@ -583,6 +583,41 @@
     launcher.textContent = '✦ AI · Memahami…';
     launcher.setAttribute('aria-label', 'Hentikan proses Asisten AI');
     try {
+      // Jalur cepat untuk perintah tegas: tidak perlu menunggu pemahaman Gemini.
+      // Semua pemeriksaan sesi dan izin tetap dilakukan oleh fungsi pelaksana.
+      var popupAwal = document.getElementById('md');
+      var popupSedangTerbuka = !!(popupAwal && popupAwal.classList.contains('show'));
+      var isiLokal = parseFillTask(command);
+      if (popupSedangTerbuka && isiLokal) {
+        setActivity('Mengisi kolom yang cocok pada popup (tanpa menyimpan)...', true);
+        var hasilIsiLokal = fillVisibleForm(isiLokal);
+        if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+        else addMessage(hasilIsiLokal, 'ai', 'Jalur cepat lokal. Tidak ada penyimpanan data.');
+        return;
+      }
+      if (!popupSedangTerbuka) {
+        var bacaLokalCepat = parseReadTask(command);
+        if (bacaLokalCepat) {
+          setActivity('Mengambil informasi langsung dari aplikasi...', true);
+          var hasilBacaCepat = await readTaskResult(bacaLokalCepat);
+          if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+          else addMessage(hasilBacaCepat, 'ai', 'Jalur cepat lokal · Sumber data aplikasi · Tidak ada data yang diubah.');
+          return;
+        }
+        var permintaanNavigasiJelas = /^(?:(?:tolong|mohon|silakan|bisa|bantu saya)\s+)?(?:buka(?:kan)?|masuk ke|pergi ke|pindah ke|tampilkan menu)\b/i.test(command);
+        if (permintaanNavigasiJelas) {
+          var menuLokalCepat = resolveMenu(command);
+          if (menuLokalCepat) {
+            setActivity('Memeriksa hak akses dan membuka menu...', true);
+            var suksesNavigasiCepat = await visibleNavigationClick(menuLokalCepat);
+            if (stopRequested || !suksesNavigasiCepat) addMessage('Perintah dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+            else addMessage('Berhasil membuka menu ' + menuLabel(menuLokalCepat) + '.', 'ai', 'Jalur cepat lokal · Navigasi melalui tombol aplikasi dan halaman aktif telah diverifikasi.');
+            return;
+          }
+        }
+      }
+
+      // Gemini tetap menangani bahasa bebas, konteks percakapan, dan maksud ambigu.
       var interpreted = null, aiError = null;
       setActivity('Memahami maksud perintah dengan Gemini...', true);
       try {
