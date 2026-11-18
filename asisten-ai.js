@@ -1,5 +1,5 @@
-/* Asisten AI Absensi 1486 — Preview Tahap 1 (navigasi terlihat)
- * Belum terhubung ke Gemini dan tidak membaca/menulis data.
+/* Asisten AI Absensi 1486 — Preview bertahap
+ * Navigasi terlihat, pembacaan terbatas, dan pengisian formulir tanpa menyimpan.
  * Semua navigasi memakai tombol menu aplikasi yang sudah ada.
  */
 (function () {
@@ -51,7 +51,14 @@
     '.ai1486-context{padding:5px 9px;font-size:10px}.ai1486-feed{flex:0 1 auto;min-height:0;max-height:100px;padding:8px;gap:6px}.ai1486-msg{padding:7px 9px;font-size:12px}',
     '.ai1486-quick{display:none!important}.ai1486-compose{grid-template-columns:minmax(0,1fr) auto;width:100%;padding:7px 8px calc(8px + env(safe-area-inset-bottom));gap:6px}.ai1486-compose textarea{width:100%;min-width:0;min-height:36px;max-height:70px;padding:8px;font-size:12px}.ai1486-send,.ai1486-stop{min-width:58px;min-height:36px;padding:7px 9px;font-size:12px}',
     '.ai1486-activity{display:none!important}',
-    '@media(max-width:600px){#ai1486-launch{top:calc(env(safe-area-inset-top) + 68px);right:9px;padding:6px 9px}#ai1486-panel{top:calc(env(safe-area-inset-top) + 105px);right:7px;width:calc(100vw - 14px);max-height:38dvh;min-height:0;border-radius:13px}}'
+    '@media(max-width:600px){#ai1486-launch{top:calc(env(safe-area-inset-top) + 68px);right:9px;padding:6px 9px}#ai1486-panel{top:calc(env(safe-area-inset-top) + 105px);right:7px;width:calc(100vw - 14px);max-height:38dvh;min-height:0;border-radius:13px}}',
+    '#ai1486-panel{resize:none}',
+    '.ai1486-msg{font-size:15px;line-height:1.55}.ai1486-msg small{font-size:11px}',
+    '.ai1486-compose textarea{font-size:15px!important;line-height:1.45;min-height:48px!important}',
+    '.ai1486-send,.ai1486-stop{font-size:14px!important;min-height:46px!important}',
+    '.ai1486-resize{height:22px;flex:0 0 22px;display:flex;align-items:center;justify-content:center;background:#fff;border-top:1px solid #edf2ee;touch-action:none;cursor:ns-resize;user-select:none}',
+    '.ai1486-resize:after{content:"";width:54px;height:5px;border-radius:8px;background:#b7c7bb}',
+    '@media(max-width:600px){.ai1486-msg{font-size:15px}.ai1486-context{font-size:11px}.ai1486-head-main b{font-size:14px}.ai1486-compose textarea{font-size:15px!important}}'
   ].join('');
   document.head.appendChild(compactStyle);
 
@@ -71,6 +78,12 @@
     '<div class="ai1486-activity" id="ai1486-activity"></div>' +
     '<div class="ai1486-quick" id="ai1486-quick"></div>' +
     '<form class="ai1486-compose" id="ai1486-form"><textarea id="ai1486-input" rows="1" maxlength="300" placeholder="Tanya halaman, cari siswa/guru, atau absensi..." aria-label="Perintah untuk asisten"></textarea><button class="ai1486-send" type="submit">Kirim</button><button class="ai1486-stop" id="ai1486-stop" type="button">Hentikan</button></form>';
+  var resizeHandle = document.createElement('div');
+  resizeHandle.className = 'ai1486-resize';
+  resizeHandle.setAttribute('role','separator');
+  resizeHandle.setAttribute('aria-label','Geser untuk mengubah tinggi obrolan AI');
+  resizeHandle.setAttribute('title','Geser untuk memperpanjang atau memendekkan obrolan');
+  panel.appendChild(resizeHandle);
   document.body.appendChild(launcher);
   document.body.appendChild(panel);
 
@@ -81,6 +94,24 @@
   var quick = document.getElementById('ai1486-quick');
   var busy = false;
   var stopRequested = false;
+  var resizeStartY = 0, resizeStartH = 0, resizing = false;
+  resizeHandle.addEventListener('pointerdown', function (e) {
+    resizing = true; resizeStartY = e.clientY;
+    resizeStartH = panel.getBoundingClientRect().height;
+    try { resizeHandle.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault();
+  });
+  resizeHandle.addEventListener('pointermove', function (e) {
+    if (!resizing) return;
+    var maxH = Math.max(220, window.innerHeight - panel.getBoundingClientRect().top - 12);
+    var next = Math.max(220, Math.min(maxH, resizeStartH + (e.clientY - resizeStartY)));
+    panel.style.height = next + 'px';
+    panel.style.maxHeight = maxH + 'px';
+  });
+  function endResize() { resizing = false; }
+  resizeHandle.addEventListener('pointerup', endResize);
+  resizeHandle.addEventListener('pointercancel', endResize);
+
 
   function loggedIn() {
     var app = document.getElementById('ap');
@@ -240,6 +271,67 @@
       'Tombol yang terlihat: ' + (actions.join('; ') || 'Belum ada tombol yang terdeteksi') + '.\n' +
       'Menu yang diizinkan untuk akun ini: ' + (available.join(', ') || 'Tidak ada') + '.';
   }
+
+  function parseFillTask(command) {
+    var q = safeText(command).trim();
+    var m = q.match(/^(?:isi|isikan|bantu isi|lengkapi)\s+(?:formulir|form|kolom)(?:\s+ini)?\s*(?:dengan|:)\s*(.+)$/i);
+    if (!m) return null;
+    var pairs = m[1].split(/[;\n,]+/).map(function (part) {
+      var p = part.match(/^\s*([^:=]+?)\s*[:=]\s*(.*?)\s*$/);
+      return p && p[1].trim() && p[2].trim() ? { label:p[1].trim(), value:p[2].trim() } : null;
+    }).filter(Boolean);
+    return pairs.length ? {type:'fill',pairs:pairs} : null;
+  }
+  function fillVisibleForm(task) {
+    if (!loggedIn()) throw new Error('Sesi sekolah tidak aktif.');
+    var root = document.getElementById('v');
+    if (!root || !root.getClientRects().length) throw new Error('Halaman formulir tidak ditemukan.');
+    var controls = Array.prototype.slice.call(root.querySelectorAll('input,textarea,select'))
+      .filter(function (el) {
+        var type = (el.type || '').toLowerCase();
+        return el.getClientRects().length && !el.disabled && !el.readOnly &&
+          ['hidden','submit','button','reset','password','file'].indexOf(type) < 0;
+      });
+    var done=[], missing=[];
+    task.pairs.forEach(function (pair) {
+      var wanted=normAI(pair.label), el=null;
+      for(var i=0;i<controls.length;i++){
+        var c=controls[i], labels=[];
+        if(c.id){ var lab=root.querySelector('label[for="'+CSS.escape(c.id)+'"]'); if(lab) labels.push(lab.textContent); }
+        var parent=c.closest('label'); if(parent) labels.push(parent.textContent);
+        labels.push(c.getAttribute('aria-label'),c.getAttribute('placeholder'),c.getAttribute('name'),c.id);
+        var candidates=labels.filter(Boolean).map(normAI);
+        if(candidates.some(function(x){return x===wanted || x.indexOf(wanted)>=0 || wanted.indexOf(x)>=0;})){el=c;break;}
+      }
+      if(!el){missing.push(pair.label);return;}
+      var tag=el.tagName.toLowerCase(), type=(el.type||'').toLowerCase(), value=pair.value;
+      if(tag==='select'){
+        var option=Array.prototype.slice.call(el.options).find(function(o){return normAI(o.textContent)===normAI(value)||normAI(o.value)===normAI(value);});
+        if(!option){missing.push(pair.label+' (pilihan '+value+' tidak tersedia)');return;}
+        el.value=option.value;
+      } else if(type==='checkbox'){
+        var yes=/^(ya|yes|benar|aktif|centang|true|1)$/i.test(value);
+        var no=/^(tidak|no|salah|nonaktif|hapus centang|false|0)$/i.test(value);
+        if(!yes&&!no){missing.push(pair.label+' (isi ya/tidak)');return;}
+        el.checked=yes;
+      } else if(type==='radio'){
+        var group=controls.filter(function(c){return c.type==='radio'&&c.name===el.name;});
+        var radio=group.find(function(c){return normAI(c.value)===normAI(value)||normAI((root.querySelector('label[for="'+CSS.escape(c.id)+'"]')||{}).textContent)===normAI(value);});
+        if(!radio){missing.push(pair.label+' (opsi tidak tersedia)');return;}
+        radio.checked=true;el=radio;
+      } else {
+        var setter=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),'value');
+        if(setter&&setter.set)setter.set.call(el,value);else el.value=value;
+      }
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+      done.push(pair.label+': '+pair.value);
+    });
+    var msg=done.length?'Formulir berhasil diisi pada '+done.length+' kolom (belum disimpan):\n'+done.map(function(x){return '• '+x;}).join('\n'):'Tidak ada kolom yang berhasil diisi.';
+    if(missing.length)msg+='\n\nKolom yang belum cocok:\n'+missing.map(function(x){return '• '+x;}).join('\n');
+    msg+='\n\nTidak ada tombol Simpan/Kirim yang ditekan.';
+    return msg;
+  }
   function parseReadTask(command) {
     var q = normAI(command);
     if (/^(halaman apa|menu apa|saya sedang di mana|sedang di halaman apa|apa yang sedang terbuka|jelaskan halaman ini|apa saja fitur di halaman ini|apa yang bisa dilakukan di sini)/.test(q)) return { type: 'context' };
@@ -328,12 +420,12 @@
     launcher.textContent = '✦ AI · Proses…';
     launcher.setAttribute('aria-label', 'Hentikan proses Asisten AI');
     try {
-      var task = parseReadTask(command);
+      var task = parseFillTask(command) || parseReadTask(command);
       if (task) {
-        setActivity('Memeriksa izin baca dan menyiapkan informasi...', true);
-        var result = await readTaskResult(task);
+        setActivity(task.type === 'fill' ? 'Mencocokkan kolom formulir yang terlihat...' : 'Memeriksa izin baca dan menyiapkan informasi...', true);
+        var result = task.type === 'fill' ? fillVisibleForm(task) : await readTaskResult(task);
         if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
-        else addMessage(result, 'ai', 'Sumber: halaman dan data yang tersedia pada sesi sekolah aktif. Hanya membaca; tidak ada perubahan data.');
+        else addMessage(result, 'ai', 'Sumber: halaman aktif dan kontrol formulir yang terlihat. Tidak ada penyimpanan data.');
       } else {
         var id = resolveMenu(command);
         if (!id) {
