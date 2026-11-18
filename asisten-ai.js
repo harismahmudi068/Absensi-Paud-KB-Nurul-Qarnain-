@@ -399,10 +399,12 @@
     if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
     if (/^(daftar|tampilkan)\s+kelas(?:\s+semua)?$/.test(q)) return { type: 'kelas', query: '' };
     if (/^(ringkasan|rekap|jumlah)\s+absensi(?:\s+hari ini)?$/.test(q) || /^absensi hari ini$/.test(q)) return { type: 'attendance', query: '' };
-    m = q.match(/^(?:cek|lihat|cari)\s+absensi\s+(.+?)(?:\s+hari ini)?$/);
-    if (m) return { type: 'attendance', query: m[1] };
+    m = q.match(/^(?:cek|lihat|cari)\s+absensi\s+(.+?)\s+hari ini$/);
+    if (m) return { type: 'attendance', query: m[1].replace(/[.!?,;:]+$/g, '').trim() };
+    m = q.match(/^(?:cek|lihat|cari)\s+absensi\s+(.+)$/);
+    if (m) return { type: 'attendance', query: m[1].replace(/[.!?,;:]+$/g, '').trim() };
     m = q.match(/^absensi\s+(.+?)\s+hari ini$/);
-    if (m) return { type: 'attendance', query: m[1] };
+    if (m) return { type: 'attendance', query: m[1].replace(/[.!?,;:]+$/g, '').trim() };
     return null;
   }
 
