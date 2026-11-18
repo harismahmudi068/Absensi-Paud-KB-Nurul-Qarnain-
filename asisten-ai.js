@@ -41,6 +41,20 @@
   style.textContent = css;
   document.head.appendChild(style);
 
+  /* Posisi ringkas: tombol tepat di bawah header, panel hanya seperlunya. */
+  var compactStyle = document.createElement('style');
+  compactStyle.textContent = [
+    '#ai1486-launch{top:calc(env(safe-area-inset-top) + 70px);bottom:auto;right:12px;z-index:30;padding:7px 11px;gap:7px;font-size:12px;box-shadow:0 3px 12px rgba(24,74,47,.2)}',
+    '#ai1486-launch .ai1486-orb{width:23px;height:23px;font-size:14px}',
+    '#ai1486-panel{top:calc(env(safe-area-inset-top) + 112px);bottom:auto;right:10px;width:min(340px,calc(100vw - 20px));height:auto;max-height:min(42dvh,330px);min-height:0;border-radius:14px;box-shadow:0 8px 28px rgba(15,40,25,.18)}',
+    '.ai1486-head{padding:8px 10px}.ai1486-avatar{width:29px;height:29px;flex-basis:29px;border-radius:10px;font-size:16px}.ai1486-head-main b{font-size:13px}.ai1486-head-main small{font-size:10px}',
+    '.ai1486-context{padding:5px 9px;font-size:10px}.ai1486-feed{flex:0 1 auto;min-height:0;max-height:100px;padding:8px;gap:6px}.ai1486-msg{padding:7px 9px;font-size:12px}',
+    '.ai1486-quick{display:none!important}.ai1486-compose{padding:7px 8px calc(8px + env(safe-area-inset-bottom));gap:6px}.ai1486-compose textarea{min-height:36px;max-height:70px;padding:8px;font-size:12px}.ai1486-send,.ai1486-stop{min-height:36px;padding:7px 10px;font-size:12px}',
+    '.ai1486-activity{display:none!important}',
+    '@media(max-width:600px){#ai1486-launch{top:calc(env(safe-area-inset-top) + 68px);right:9px;padding:6px 9px}#ai1486-panel{top:calc(env(safe-area-inset-top) + 105px);right:7px;width:calc(100vw - 14px);max-height:38dvh;min-height:0;border-radius:13px}}'
+  ].join('');
+  document.head.appendChild(compactStyle);
+
   var launcher = document.createElement('button');
   launcher.id = 'ai1486-launch';
   launcher.type = 'button';
@@ -204,32 +218,37 @@
   async function handleCommand(raw) {
     var command = safeText(raw).trim();
     if (!command || busy) return;
-    addMessage(command, 'user');
     input.value = '';
+    feed.innerHTML = '';
+    panel.classList.remove('ai1486-open');
     var id = resolveMenu(command);
     if (!id) {
-      addMessage('Untuk tahap preview ini, saya sedang diuji untuk membuka menu melalui tombol aplikasi. Coba perintah seperti "buka absensi", "buka data siswa", atau "buka profil saya". Saya belum terhubung ke Gemini dan belum membaca atau mengubah data.');
+      addMessage('Perintah belum dikenali. Coba: "buka absensi", "buka data siswa", atau "buka profil saya". Tahap preview ini hanya mendukung navigasi; Gemini dan akses data belum diaktifkan.');
       return;
     }
     busy = true;
     stopRequested = false;
+    launcher.textContent = '✦ AI · Proses…';
+    launcher.setAttribute('aria-label', 'Hentikan proses Asisten AI');
     setActivity('Memeriksa hak akses ' + currentRole() + '...', true);
     try {
       if (!canOpen(id)) {
-        addMessage('Saya tidak dapat membuka ' + menuLabel(id) + '. Menu ini tidak tersedia untuk role ' + currentRole() + ' atau fiturnya sedang nonaktif.');
+        addMessage('Menu ' + menuLabel(id) + ' tidak dapat dibuka untuk role ' + currentRole() + ' atau fiturnya sedang nonaktif.');
         return;
       }
       var ok = await visibleNavigationClick(id);
       if (stopRequested || !ok) {
-        addMessage('Proses dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+        addMessage('Perintah dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
       } else {
-        addMessage('Menu ' + menuLabel(id) + ' berhasil dibuka. Saya menggunakan tombol navigasi aplikasi yang tersedia untuk akun ' + currentRole() + '.', 'ai', 'Navigasi terverifikasi dari halaman aktif.');
+        addMessage('Berhasil membuka menu ' + menuLabel(id) + '.', 'ai', 'Navigasi selesai dan halaman aktif telah diverifikasi.');
       }
     } catch (e) {
-      addMessage('Saya belum dapat menyelesaikan tindakan: ' + (e && e.message ? e.message : String(e)));
+      addMessage('Belum berhasil: ' + (e && e.message ? e.message : String(e)));
     } finally {
       busy = false;
       stopRequested = false;
+      launcher.innerHTML = '<span class="ai1486-orb">✦</span><span>Asisten AI</span>';
+      launcher.setAttribute('aria-label', 'Buka Asisten AI');
       setActivity('', false);
       syncContext();
     }
@@ -247,6 +266,12 @@
   }
 
   launcher.addEventListener('click', function () {
+    if (busy) {
+      stopRequested = true;
+      launcher.textContent = 'Menghentikan…';
+      launcher.setAttribute('aria-label', 'Menghentikan perintah');
+      return;
+    }
     panel.classList.toggle('ai1486-open');
     if (panel.classList.contains('ai1486-open')) {
       syncContext();
@@ -288,6 +313,5 @@
   document.addEventListener('visibilitychange', syncVisibility);
   window.addEventListener('focus', syncVisibility);
   window.addEventListener('resize', renderQuick);
-  addMessage('Halo! Saya Asisten Absensi 1486 dalam mode uji navigasi. Saya dapat membuka menu yang memang diizinkan untuk akun yang sedang login. Setiap penekanan tombol akan terlihat. Pada tahap ini Gemini belum dihubungkan, dan saya belum melakukan pencarian atau perubahan data.', 'ai');
   syncVisibility();
 })();
