@@ -23,6 +23,7 @@ body{margin:0;color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",
 .top.day{background:linear-gradient(180deg,#1f9150 0%,#3db06a 50%,#6fcf92 100%);padding-bottom:96px}
 .top .hd{position:absolute;inset:0;pointer-events:none}
 .top .as,.top .nm,.top .gt{position:relative;z-index:1}
+.dash-alert-toggle{position:absolute;z-index:5;right:14px;top:calc(10px + env(safe-area-inset-top,0));width:42px;height:42px;border:1px solid rgba(255,255,255,.55);border-radius:50%;background:rgba(255,255,255,.2);color:#fff;font-size:23px;font-weight:900;display:grid;place-items:center;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.16);backdrop-filter:blur(8px)}.dash-alert-toggle[hidden]{display:none}.dash-alert-toggle.has-alert{background:#d83d4d;border-color:#fff;color:#fff}.dash-alert-count{position:absolute;right:-5px;top:-5px;min-width:19px;height:19px;padding:0 4px;border-radius:999px;background:#d71932;color:#fff;border:2px solid #fff;font:800 11px/15px system-ui;display:grid;place-items:center}.dash-alert-panel{margin:10px 0 12px}.dash-alert-panel[hidden]{display:none}.dash-alert-item{padding:12px 14px;border-bottom:1px solid var(--ln);text-align:left}.dash-alert-item:last-child{border-bottom:0}.dash-alert-item b{display:block;color:var(--tt);margin-bottom:3px}.dash-alert-item .btn{margin-top:8px}
 .top .as{font-size:15px;letter-spacing:.5px;color:#eafff0;font-style:italic}
 .top .nm{font-family:'Pacifico',cursive;font-size:29px;line-height:1.35;margin:2px 0 9px;word-break:break-word}
 .top .gt{display:inline-block;background:rgba(6,40,20,.5);color:#ffe9a0;font-weight:700;border-radius:999px;padding:6px 15px;font-size:13.5px;min-height:28px}
@@ -243,7 +244,7 @@ html.rg .pill{background:rgba(8,40,22,.88)}
 <script defer src="/rapor.js?v=20261107a"></script>
 </head><body>
 <div class="scene" id="scene"></div>
-<div class="top"><div class="hd" id="hd"></div><div class="as">Assalamualaikum</div><div class="nm" id="nm">&nbsp;</div><div class="gt" id="gt">&nbsp;</div></div>
+<div class="top"><div class="hd" id="hd"></div><button type="button" id="dashAlertToggle" class="dash-alert-toggle" hidden aria-label="Lihat notifikasi" aria-expanded="false" onclick="dashAlertToggle()">✓</button><div class="as">Assalamualaikum</div><div class="nm" id="nm">&nbsp;</div><div class="gt" id="gt">&nbsp;</div></div>
 <div class="wrap">
  <div class="clk"><div class="pill" id="jm">--<i>:</i>-- <small>WIB</small></div><div class="pill" id="tg">&nbsp;</div></div>
  <div class="bar"><div class="menu" id="menu">
@@ -304,7 +305,7 @@ async function ambil(v){
 async function go(v){
  mTutup();ddTutup();
  if(!m)return pesan('🔎',['Kartu tidak ditemukan','Minta link terbaru ke pihak sekolah.']);
- const t=++tok;cur=v;const mi=MENU.find(x=>x[0]===v);$('#mic').textContent=mi[1];$('#mt').textContent=mi[2];bangunMenu();
+ const t=++tok;cur=v;const alertBtn=$('#dashAlertToggle');if(alertBtn){alertBtn.hidden=v!=='dashboard';if(v!=='dashboard'){dashAlertOpen=false;alertBtn.setAttribute('aria-expanded','false');const ap=$('#dashAlertPanel');if(ap)ap.hidden=true}}const mi=MENU.find(x=>x[0]===v);$('#mic').textContent=mi[1];$('#mt').textContent=mi[2];bangunMenu();
  if(!segar(v))loading();scrollTo({top:0,behavior:'smooth'});
  try{const d=await ambil(v);if(t!==tok)return;bangunMenu();$('#isi').innerHTML='<div class="pg">'+R[v](d)+'</div>';if(A[v])A[v](d)}
  catch(e){if(t!==tok)return;e&&e.nf?pesan('🔎',['Kartu tidak ditemukan','Kartu tidak aktif atau QR tidak dikenal. Hubungi pihak sekolah.']):pesan('⚠️',['Gagal memuat','Periksa koneksi internet lalu muat ulang halaman.'])}}
@@ -325,8 +326,15 @@ function kedipKosong(){if(!KD)return;KD=0;
  setTimeout(()=>{rows[0].scrollIntoView({behavior:'smooth',block:'center'});rows.forEach(r=>r.classList.add('kd'));setTimeout(()=>rows.forEach(r=>r.classList.remove('kd')),5000)},380)}
 function profilNotif(s){const k=profilKurang(s);if(!k.length)return '';
  return '<div class="panel ct pk" role="alert"><div class="pb" style="padding-top:14px"><div class="pkt">⚠️ Profil anak belum lengkap</div><div class="mu">Belum diisi: '+esc(k.join(', '))+'.</div><button type="button" class="btn fx" onclick="lengkapi()">Lengkapi</button></div></div>'}
+let dashAlertOpen=false;
+function dashAlertToggle(){dashAlertOpen=!dashAlertOpen;const p=$('#dashAlertPanel'),b=$('#dashAlertToggle');if(p)p.hidden=!dashAlertOpen;if(b)b.setAttribute('aria-expanded',dashAlertOpen?'true':'false')}
+function dashAlertRender(d,st,daftar,galat){const b=$('#dashAlertToggle'),p=$('#dashAlertPanel');if(!b||!p||cur!=='dashboard')return;const items=[],kurang=profilKurang((d&&d.siswa)||{});
+ if(kurang.length)items.push('<div class="dash-alert-item"><b>⚠️ Profil anak belum lengkap</b><div class="mu">Belum diisi: '+esc(kurang.join(', '))+'.</div><button type="button" class="btn fx" onclick="lengkapi()">Lengkapi profil</button></div>');
+ if(d&&d.push&&d.push.aktif&&st!=='aktif'){let t=st==='denied'?'Izin notifikasi diblokir di browser. Izinkan notifikasi melalui pengaturan situs.':st==='ios'?'Notifikasi di iPhone perlu dibuka dari aplikasi yang ditambahkan ke Layar Utama.':st==='nosupport'?'Browser ini belum mendukung notifikasi otomatis.':'Aktifkan notifikasi agar kabar '+esc(daftar||'dari sekolah')+' dapat diterima di HP ini.';items.push('<div class="dash-alert-item"><b>🔔 Notifikasi belum aktif</b><div class="mu">'+t+'</div><button type="button" class="btn fx" onclick="go(\'notifikasi\')">Lihat pengaturan</button></div>')}
+ if(galat){items.push('<div class="dash-alert-item"><b>⚠️ Kendala notifikasi</b><div class="mu">'+esc(galat)+'</div><button type="button" class="btn fx" onclick="go(\'notifikasi\')">Periksa notifikasi</button></div>')}
+ const n=items.length;b.classList.toggle('has-alert',n>0);b.innerHTML='✓'+(n?'<span class="dash-alert-count">'+n+'</span>':'');b.setAttribute('aria-label',n?n+' notifikasi perlu diperhatikan':'Tidak ada notifikasi yang perlu diperhatikan');if(!n){dashAlertOpen=false;b.setAttribute('aria-expanded','false')}p.innerHTML=n?'<div class="panel">'+items.join('')+'</div>':'';p.hidden=!n||!dashAlertOpen}
 R.dashboard=d=>{const s=d.siswa,k=d.sekolah,a=d.absen_hari_ini,tb=d.tabungan;
- return '<div id="portalPwaInstall" class="panel ct" hidden><div class="pb" style="padding:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;text-align:left"><div style="flex:1;min-width:150px"><b>📲 Instal Portal Siswa</b><div class="mu">Buka portal lebih cepat dari layar utama HP.</div></div><button type="button" class="btn fx" style="font-size:12px;padding:8px 12px" onclick="pasangPortalPWA()">Instal Aplikasi</button></div></div>'+profilNotif(s)+(d.push&&d.push.aktif?'<div id="pushBanner"></div>':'')+'<div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
+ return '<div id="portalPwaInstall" class="panel ct" hidden><div class="pb" style="padding:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;text-align:left"><div style="flex:1;min-width:150px"><b>📲 Instal Portal Siswa</b><div class="mu">Buka portal lebih cepat dari layar utama HP.</div></div><button type="button" class="btn fx" style="font-size:12px;padding:8px 12px" onclick="pasangPortalPWA()">Instal Aplikasi</button></div></div>'+profilNotif(s)+'<div id="dashAlertPanel" class="dash-alert-panel" hidden></div><div class="panel ct"><div class="pb" style="padding-top:14px"><div class="sch">'+esc(k.nama)+'</div><div class="mu">'+(s.kelas?'Kelas '+esc(s.kelas):'&nbsp;')+'</div></div></div>'+
  '<div class="panel ct"><div class="ph">📅 Absensi Hari Ini</div><div class="pb">'+(a?'<div class="big">'+badge(a)+'<div class="mu">'+(jam(a.jam)?'Jam '+jam(a.jam):'')+(a.catatan?(jam(a.jam)?' · ':'')+esc(a.catatan):'')+'</div></div>':'<div class="mu">Belum ada data absensi hari ini.</div>')+lapForm(d)+'</div></div>'+
  (tb.aktif?'<div class="panel ct"><div class="ph">💰 Tabungan Hari Ini</div><div class="pb"><div class="mu">Saldo saat ini</div><div class="saldo">'+rp(tb.saldo)+'</div>'+(tb.hari_ini.length?tb.hari_ini.map(trx).join(''):'<div class="mu">Tidak ada transaksi hari ini.</div>')+'</div></div>':'')+
  piketPanel(d)+hafalanPanel(d)+calPanel(d)};
@@ -787,14 +795,14 @@ function pushBanner(st,daftar,galat){if(st==='aktif'||st==='nosupport'||st==='de
  else if(st==='denied'){t='Izin notifikasi diblokir di browser, jadi kabar dari sekolah belum bisa masuk ke HP ini.';b=lihat}
  else{t='Di iPhone, notifikasi hanya bisa diaktifkan dari aplikasi di Layar Utama.';b=lihat}
  return '<div class="panel ct pk" role="alert"><div class="pb" style="padding-top:14px"><div class="pkt">🔔 Notifikasi belum aktif</div><div class="mu">'+t+'</div>'+b+(galat?'<div class="mu" style="color:#c0342b">'+esc(galat)+'</div>':'')+'</div></div>'}
-async function pushRender(d,galat){if(!d||!d.push||!d.push.aktif)return;
- const jn=pkJenis(d),daftar=jn.map(k=>PK_NAMA[k].toLowerCase().replace(/ \(.*\)/,'')).join(', ');let st;
- if(!pushDidukung())st=iosBelumPasang()?'ios':'nosupport';
- else if(Notification.permission==='denied')st='denied';
- else{const sub=await pushSub().catch(()=>null);st=(sub&&Notification.permission==='granted'&&localStorage.getItem(PK_OFF)!=='1')?'aktif':'mati';
-  if(st==='aktif'){try{await pushDaftar(sub,pkPilihan(),false)}catch(e){galat=e.message}}}
- const ban=$('#pushBanner'),box=$('#pushBox');
- if(ban)ban.innerHTML=pushBanner(st,daftar,galat);
+async function pushRender(d,galat){if(!d)return;
+ const jn=pkJenis(d),daftar=jn.map(k=>PK_NAMA[k].toLowerCase().replace(/ \(.*\)/,'')).join(', ');let st='nonaktif';
+ if(d.push&&d.push.aktif){if(!pushDidukung())st=iosBelumPasang()?'ios':'nosupport';
+  else if(Notification.permission==='denied')st='denied';
+  else{const sub=await pushSub().catch(()=>null);st=(sub&&Notification.permission==='granted'&&localStorage.getItem(PK_OFF)!=='1')?'aktif':'mati';
+   if(st==='aktif'){try{await pushDaftar(sub,pkPilihan(),false)}catch(e){galat=e.message}}}}
+ dashAlertRender(d,st,daftar,galat);
+ const box=$('#pushBox');if(!d.push||!d.push.aktif){if(box)box.innerHTML='';return}
  if(!box)return;let h='';
  if(st==='nosupport')h='<div class="mu">Browser ini belum mendukung notifikasi. Gunakan Chrome di Android, atau pasang ke Layar Utama di iPhone.</div>';
  else if(st==='ios')h='<div class="mu">Di iPhone, notifikasi hanya bisa diaktifkan dari aplikasi di Layar Utama. Ketuk tombol Bagikan, pilih <b>Tambahkan ke Layar Utama</b>, buka Halaman Siswa dari ikon itu, lalu aktifkan notifikasi di sini.</div>';
