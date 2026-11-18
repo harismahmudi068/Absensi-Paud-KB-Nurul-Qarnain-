@@ -391,6 +391,8 @@
     if (/^(halaman apa|menu apa|saya sedang di mana|sedang di halaman apa|apa yang sedang terbuka|jelaskan halaman ini|apa saja fitur di halaman ini|apa yang bisa dilakukan di sini)/.test(q)) return { type: 'context' };
     var profil = q.match(/^(?:buka|bukakan|lihat|tampilkan|perlihatkan|cek)\s+(?:profil|detail|data lengkap)\s+(?:siswa|anak|murid)\s+(.+)$/) || q.match(/^(?:profil|detail)\s+(?:siswa|anak|murid)\s+(.+)$/);
     if (profil) return { type: 'profil_siswa', query: profil[1].trim() };
+    var daftarGuru = /^(?:daftar|list|tampilkan|lihat|perlihatkan)\s+(?:(?:semua|seluruh)\s+)?(?:data\s+)?guru(?:\s+(?:semua|seluruh))?$/.test(q);
+    if (daftarGuru) return { type: 'guru', query: '' };
     if (/^(?:daftar|list|tampilkan|lihat|perlihatkan)\\s+(?:(?:semua|seluruh)\\s+)?(?:data\\s+)?(?:siswa|anak|murid)(?:\\s+(?:semua|seluruh))?$/.test(q) || /^(?:tampilkan|perlihatkan)\\s+daftar\\s+(?:siswa|anak|murid)$/.test(q)) return { type: 'siswa', query: '' };
     var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
     if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
@@ -401,6 +403,14 @@
     m = q.match(/^absensi\s+(.+?)\s+hari ini$/);
     if (m) return { type: 'attendance', query: m[1] };
     return null;
+  }
+
+  function bersihkanQueryGuruAI(value) {
+    var q = safeText(value).trim();
+    q = q.replace(/^(?:nama(?: lengkap)?(?: guru)?|guru)\\s*[:,-]?\\s*/i, '');
+    q = q.replace(/\\s+(?:dan|lalu|kemudian)\\s+(?:tolong\\s+)?(?:jelaskan|terangkan|uraikan|sebutkan|bacakan|tampilkan|beritahu)\\b[\\s\\S]*$/i, '');
+    q = q.replace(/[.!?,;:]+$/g, '').trim();
+    return q;
   }
 
   function bersihkanQueryProfilAI(value) {
@@ -518,14 +528,18 @@
     }
     if (task.type === 'guru') {
       if (!canOpen('guru')) throw new Error('Akun ini tidak memiliki izin membaca Data Guru.');
-      if (!task.query) return 'Sebutkan nama guru yang ingin dicari. Contoh: “cari guru Ernietha”.';
-      var gs = (S.guru || []).filter(function (g) {
-        return normAI(g.nama).indexOf(normAI(task.query)) >= 0;
-      }).sort(function (a, b) { return normAI(a.nama).localeCompare(normAI(b.nama), 'id'); }).slice(0, 8);
-      if (!gs.length) return 'Tidak ditemukan guru dengan nama “' + task.query + '”.';
-      return 'Hasil pencarian guru:\n' + gs.map(function (g, i) {
-        return (i + 1) + '. ' + g.nama + ' · ' + (LBL[g.role] || g.role || 'Peran tidak diketahui') + ' · ' + (g.aktif ? 'Aktif' : 'Nonaktif');
-      }).join('\n');
+      var queryGuru = normAI(bersihkanQueryGuruAI(task.query || ''));
+      var semuaGuru = (S.guru || []).slice().sort(function (a, b) {
+        return normAI(a.nama).localeCompare(normAI(b.nama), 'id');
+      });
+      var gs = queryGuru
+        ? semuaGuru.filter(function (g) { return normAI(g.nama).indexOf(queryGuru) >= 0; }).slice(0, 8)
+        : semuaGuru.slice(0, 20);
+      if (!gs.length) return 'Tidak ditemukan guru dengan nama “' + queryGuru + '”.';
+      var judulGuru = queryGuru ? 'Hasil pencarian guru' : 'Daftar guru terdaftar (' + semuaGuru.length + ' guru)';
+      return judulGuru + ':\\n' + gs.map(function (g, i) {
+        return (i + 1) + '. ' + g.nama + ' · NIP ' + (g.nip || '-') + ' · ' + (LBL[g.role] || g.role || 'Peran tidak diketahui') + ' · ' + (g.aktif ? 'Aktif' : 'Nonaktif');
+      }).join('\\n') + (!queryGuru && semuaGuru.length > 20 ? '\\n… dan ' + (semuaGuru.length - 20) + ' guru lainnya.' : '');
     }
     if (task.type === 'kelas') {
       if (!canOpen('kelasjam')) throw new Error('Akun ini tidak memiliki izin membaca data kelas.');
