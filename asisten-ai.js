@@ -124,7 +124,7 @@
   }
   function syncContext() {
     var el = document.getElementById('ai1486-role');
-    if (el) el.textContent = loggedIn() ? currentRole() + ' · Sekolah aktif' : 'Belum masuk';
+    if (el) el.textContent = loggedIn() ? currentRole() + ' · ' + (menuLabel(currentView()) || 'Sekolah aktif') : 'Belum masuk';
   }
   function menuLabel(id) {
     var m = menus().find(function (x) { return x[0] === id; });
@@ -215,32 +215,139 @@
     }
     return true;
   }
+
+  function normAI(s) {
+    return safeText(s).toLocaleLowerCase('id').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  function pageContextText() {
+    var id = currentView(), title = menuLabel(id);
+    var root = document.getElementById('v');
+    var headings = [], actions = [];
+    if (root) {
+      root.querySelectorAll('.ph,h1,h2,h3').forEach(function (el) {
+        var t = safeText(el.textContent).replace(/\s+/g, ' ').trim();
+        if (t && headings.indexOf(t) < 0 && headings.length < 5) headings.push(t.slice(0, 90));
+      });
+      root.querySelectorAll('button').forEach(function (el) {
+        if (actions.length >= 10 || el.disabled || !el.getClientRects().length) return;
+        var t = safeText(el.innerText || el.textContent).replace(/\s+/g, ' ').trim();
+        if (t && t.length <= 55 && actions.indexOf(t) < 0) actions.push(t);
+      });
+    }
+    var available = menus().filter(function (m) { return canOpen(m[0]); }).map(function (m) { return m[1]; });
+    return 'Halaman aktif: ' + (title || 'Tidak diketahui') + '.\n' +
+      'Judul/bagian yang terlihat: ' + (headings.join('; ') || 'Belum ada judul yang terdeteksi') + '.\n' +
+      'Tombol yang terlihat: ' + (actions.join('; ') || 'Belum ada tombol yang terdeteksi') + '.\n' +
+      'Menu yang diizinkan untuk akun ini: ' + (available.join(', ') || 'Tidak ada') + '.';
+  }
+  function parseReadTask(command) {
+    var q = normAI(command);
+    if (/^(halaman apa|menu apa|saya sedang di mana|sedang di halaman apa|apa yang sedang terbuka|jelaskan halaman ini|apa saja fitur di halaman ini|apa yang bisa dilakukan di sini)/.test(q)) return { type: 'context' };
+    var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
+    if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
+    if (/^(daftar|tampilkan)\s+kelas(?:\s+semua)?$/.test(q)) return { type: 'kelas', query: '' };
+    if (/^(ringkasan|rekap|jumlah)\s+absensi(?:\s+hari ini)?$/.test(q) || /^absensi hari ini$/.test(q)) return { type: 'attendance', query: '' };
+    m = q.match(/^(?:cek|lihat|cari)\s+absensi\s+(.+?)(?:\s+hari ini)?$/);
+    if (m) return { type: 'attendance', query: m[1] };
+    m = q.match(/^absensi\s+(.+?)\s+hari ini$/);
+    if (m) return { type: 'attendance', query: m[1] };
+    return null;
+  }
+  function readStudentMatches(query) {
+    var q = normAI(query);
+    if (!q) return [];
+    return (S.siswa || []).filter(function (s) {
+      return normAI(s.nama).indexOf(q) >= 0 || normAI(s.pan).indexOf(q) >= 0;
+    }).sort(function (a, b) {
+      var aa = normAI(a.nama), bb = normAI(b.nama);
+      return (aa.indexOf(q) === 0 ? 0 : 1) - (bb.indexOf(q) === 0 ? 0 : 1) || aa.localeCompare(bb, 'id');
+    }).slice(0, 8);
+  }
+  function readTaskResult(task) {
+    if (!loggedIn()) throw new Error('Sesi sekolah tidak aktif. Silakan masuk kembali.');
+    if (task.type === 'context') return pageContextText();
+    if (task.type === 'siswa') {
+      if (!canOpen('siswa')) throw new Error('Akun ini tidak memiliki izin membaca Data Siswa.');
+      if (!task.query) return 'Sebutkan nama siswa yang ingin dicari. Contoh: “cari siswa Ernietha”.';
+      var sis = readStudentMatches(task.query);
+      if (!sis.length) return 'Tidak ditemukan siswa dengan nama atau nama panggilan “' + task.query + '”.';
+      return 'Hasil pencarian siswa (' + sis.length + (sis.length === 8 ? ' atau lebih' : '') + '):\n' + sis.map(function (s, i) {
+        return (i + 1) + '. ' + s.nama + ' · Kelas ' + (s.kelas || '-') + ' · ' + (s.aktif ? 'Aktif' : 'Nonaktif');
+      }).join('\n');
+    }
+    if (task.type === 'guru') {
+      if (!canOpen('guru')) throw new Error('Akun ini tidak memiliki izin membaca Data Guru.');
+      if (!task.query) return 'Sebutkan nama guru yang ingin dicari. Contoh: “cari guru Ernietha”.';
+      var gs = (S.guru || []).filter(function (g) {
+        return normAI(g.nama).indexOf(normAI(task.query)) >= 0;
+      }).sort(function (a, b) { return normAI(a.nama).localeCompare(normAI(b.nama), 'id'); }).slice(0, 8);
+      if (!gs.length) return 'Tidak ditemukan guru dengan nama “' + task.query + '”.';
+      return 'Hasil pencarian guru:\n' + gs.map(function (g, i) {
+        return (i + 1) + '. ' + g.nama + ' · ' + (LBL[g.role] || g.role || 'Peran tidak diketahui') + ' · ' + (g.aktif ? 'Aktif' : 'Nonaktif');
+      }).join('\n');
+    }
+    if (task.type === 'kelas') {
+      if (!canOpen('kelasjam')) throw new Error('Akun ini tidak memiliki izin membaca data kelas.');
+      var ks = (S.kelas || []).filter(function (k) { return !task.query || normAI(k.nama).indexOf(normAI(task.query)) >= 0; });
+      if (!ks.length) return 'Kelas yang diminta tidak ditemukan.';
+      return 'Data kelas:\n' + ks.map(function (k) {
+        var n = (S.siswa || []).filter(function (s) { return s.aktif && s.kelas_id === k.id; }).length;
+        return '• ' + k.nama + ' · ' + n + ' siswa aktif · Jam masuk ' + (k.jam || '-');
+      }).join('\n');
+    }
+    if (task.type === 'attendance') {
+      if (!canOpen('absensi')) throw new Error('Akun ini tidak memiliki izin membaca Absensi.');
+      var date = TODAY;
+      return muatRange(date, date).then(function () {
+        var list = (S.siswa || []).filter(function (s) { return s.aktif; });
+        if (task.query) {
+          var found = readStudentMatches(task.query);
+          if (!found.length) return 'Tidak ditemukan siswa dengan nama “' + task.query + '”.';
+          return 'Status absensi ' + date + ':\n' + found.map(function (s) {
+            return '• ' + s.nama + ' · Kelas ' + (s.kelas || '-') + ' · ' + dayStat(s, date);
+          }).join('\n');
+        }
+        var counts = { Hadir: 0, Terlambat: 0, Izin: 0, Sakit: 0, Alpa: 0, Libur: 0, Belum: 0 };
+        list.forEach(function (s) { var st = dayStat(s, date); counts[st] = (counts[st] || 0) + 1; });
+        return 'Ringkasan absensi hari ini (' + date + '):\n' +
+          'Total siswa aktif: ' + list.length + '\n' +
+          Object.keys(counts).map(function (k) { return '• ' + k + ': ' + counts[k]; }).join('\n');
+      });
+    }
+    throw new Error('Jenis pencarian belum didukung.');
+  }
+
   async function handleCommand(raw) {
     var command = safeText(raw).trim();
     if (!command || busy) return;
     input.value = '';
     feed.innerHTML = '';
     panel.classList.remove('ai1486-open');
-    var id = resolveMenu(command);
-    if (!id) {
-      addMessage('Perintah belum dikenali. Coba: "buka absensi", "buka data siswa", atau "buka profil saya". Tahap preview ini hanya mendukung navigasi; Gemini dan akses data belum diaktifkan.');
-      return;
-    }
     busy = true;
     stopRequested = false;
     launcher.textContent = '✦ AI · Proses…';
     launcher.setAttribute('aria-label', 'Hentikan proses Asisten AI');
-    setActivity('Memeriksa hak akses ' + currentRole() + '...', true);
     try {
-      if (!canOpen(id)) {
-        addMessage('Menu ' + menuLabel(id) + ' tidak dapat dibuka untuk role ' + currentRole() + ' atau fiturnya sedang nonaktif.');
-        return;
-      }
-      var ok = await visibleNavigationClick(id);
-      if (stopRequested || !ok) {
-        addMessage('Perintah dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+      var task = parseReadTask(command);
+      if (task) {
+        setActivity('Memeriksa izin baca dan menyiapkan informasi...', true);
+        var result = await readTaskResult(task);
+        if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+        else addMessage(result, 'ai', 'Sumber: halaman dan data yang tersedia pada sesi sekolah aktif. Hanya membaca; tidak ada perubahan data.');
       } else {
-        addMessage('Berhasil membuka menu ' + menuLabel(id) + '.', 'ai', 'Navigasi selesai dan halaman aktif telah diverifikasi.');
+        var id = resolveMenu(command);
+        if (!id) {
+          addMessage('Perintah belum dikenali. Anda bisa bertanya “halaman apa ini?”, “cari siswa Ernietha”, “cari guru [nama]”, “daftar kelas”, atau “ringkasan absensi hari ini”.');
+          return;
+        }
+        setActivity('Memeriksa hak akses ' + currentRole() + '...', true);
+        if (!canOpen(id)) {
+          addMessage('Menu ' + menuLabel(id) + ' tidak dapat dibuka untuk role ' + currentRole() + ' atau fiturnya sedang nonaktif.');
+          return;
+        }
+        var ok = await visibleNavigationClick(id);
+        if (stopRequested || !ok) addMessage('Perintah dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+        else addMessage('Berhasil membuka menu ' + menuLabel(id) + '.', 'ai', 'Navigasi selesai dan halaman aktif telah diverifikasi.');
       }
     } catch (e) {
       addMessage('Belum berhasil: ' + (e && e.message ? e.message : String(e)));
@@ -251,7 +358,6 @@
       launcher.setAttribute('aria-label', 'Buka Asisten AI');
       setActivity('', false);
       syncContext();
-      /* Setelah proses selesai, buka kembali percakapan agar laporan hasil langsung terlihat. */
       panel.classList.add('ai1486-open');
       feed.scrollTop = feed.scrollHeight;
     }
