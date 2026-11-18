@@ -25,10 +25,10 @@
     '.ai1486-msg small{display:block;margin-top:5px;color:#718276;font-size:10px}',
     '.ai1486-quick{display:flex;gap:7px;flex-wrap:wrap;padding:9px 12px;border-top:1px solid #edf2ee;background:#fff}',
     '.ai1486-quick button{border:1px solid #d9e8dc;background:#f7fbf7;color:#315b40;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:750}',
-    '.ai1486-compose{display:flex;align-items:flex-end;gap:8px;padding:10px 11px calc(11px + env(safe-area-inset-bottom));border-top:1px solid #e8efe9;background:#fff}',
-    '.ai1486-compose textarea{flex:1;min-width:0;max-height:100px;min-height:42px;resize:none;border:1px solid #d6e4d9;border-radius:12px;padding:10px 11px;font:inherit;outline:none;color:#20352a}',
+    '.ai1486-compose{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:7px;padding:10px 11px calc(11px + env(safe-area-inset-bottom));border-top:1px solid #e8efe9;background:#fff;box-sizing:border-box;width:100%;min-width:0}',
+    '.ai1486-compose textarea{display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;max-height:100px;min-height:42px;resize:none;border:1px solid #d6e4d9;border-radius:12px;padding:10px 11px;font:inherit;outline:none;color:#20352a}',
     '.ai1486-compose textarea:focus{border-color:#7650b8;box-shadow:0 0 0 3px rgba(118,80,184,.1)}',
-    '.ai1486-send,.ai1486-stop{border:0;border-radius:11px;padding:10px 12px;min-height:42px;font-weight:800;color:#fff;background:#168b47}',
+    '.ai1486-send,.ai1486-stop{display:block;box-sizing:border-box;flex:none;min-width:58px;white-space:nowrap;border:0;border-radius:11px;padding:10px 12px;min-height:42px;font-weight:800;color:#fff;background:#168b47}',
     '.ai1486-stop{display:none;background:#c43b48}.ai1486-stop.on{display:block}',
     '.ai1486-activity{padding:8px 12px;background:#fff8e8;border-top:1px solid #f0e4c6;color:#805d1b;font-size:11px;display:none}',
     '.ai1486-activity.on{display:block}',
@@ -49,7 +49,7 @@
     '#ai1486-panel{top:calc(env(safe-area-inset-top) + 112px);bottom:auto;right:10px;width:min(340px,calc(100vw - 20px));height:auto;max-height:min(42dvh,330px);min-height:0;border-radius:14px;box-shadow:0 8px 28px rgba(15,40,25,.18)}',
     '.ai1486-head{padding:8px 10px}.ai1486-avatar{width:29px;height:29px;flex-basis:29px;border-radius:10px;font-size:16px}.ai1486-head-main b{font-size:13px}.ai1486-head-main small{font-size:10px}',
     '.ai1486-context{padding:5px 9px;font-size:10px}.ai1486-feed{flex:0 1 auto;min-height:0;max-height:100px;padding:8px;gap:6px}.ai1486-msg{padding:7px 9px;font-size:12px}',
-    '.ai1486-quick{display:none!important}.ai1486-compose{padding:7px 8px calc(8px + env(safe-area-inset-bottom));gap:6px}.ai1486-compose textarea{min-height:36px;max-height:70px;padding:8px;font-size:12px}.ai1486-send,.ai1486-stop{min-height:36px;padding:7px 10px;font-size:12px}',
+    '.ai1486-quick{display:none!important}.ai1486-compose{grid-template-columns:minmax(0,1fr) auto;width:100%;padding:7px 8px calc(8px + env(safe-area-inset-bottom));gap:6px}.ai1486-compose textarea{width:100%;min-width:0;min-height:36px;max-height:70px;padding:8px;font-size:12px}.ai1486-send,.ai1486-stop{min-width:58px;min-height:36px;padding:7px 9px;font-size:12px}',
     '.ai1486-activity{display:none!important}',
     '@media(max-width:600px){#ai1486-launch{top:calc(env(safe-area-inset-top) + 68px);right:9px;padding:6px 9px}#ai1486-panel{top:calc(env(safe-area-inset-top) + 105px);right:7px;width:calc(100vw - 14px);max-height:38dvh;min-height:0;border-radius:13px}}'
   ].join('');
@@ -251,6 +251,9 @@
       launcher.setAttribute('aria-label', 'Buka Asisten AI');
       setActivity('', false);
       syncContext();
+      /* Setelah proses selesai, buka kembali percakapan agar laporan hasil langsung terlihat. */
+      panel.classList.add('ai1486-open');
+      feed.scrollTop = feed.scrollHeight;
     }
   }
   function renderQuick() {
