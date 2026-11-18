@@ -389,6 +389,8 @@
   function parseReadTask(command) {
     var q = normAI(command);
     if (/^(halaman apa|menu apa|saya sedang di mana|sedang di halaman apa|apa yang sedang terbuka|jelaskan halaman ini|apa saja fitur di halaman ini|apa yang bisa dilakukan di sini)/.test(q)) return { type: 'context' };
+    var profil = q.match(/^(?:buka|bukakan|lihat|tampilkan|perlihatkan|cek)\\s+(?:profil|detail|data lengkap)\\s+(?:siswa|anak|murid)\\s+(.+)$/) || q.match(/^(?:profil|detail)\\s+(?:siswa|anak|murid)\\s+(.+)$/);
+    if (profil) return { type: 'profil_siswa', query: profil[1].trim() };
     if (/^(?:daftar|list|tampilkan|lihat|perlihatkan)\\s+(?:(?:semua|seluruh)\\s+)?(?:data\\s+)?(?:siswa|anak|murid)(?:\\s+(?:semua|seluruh))?$/.test(q) || /^(?:tampilkan|perlihatkan)\\s+daftar\\s+(?:siswa|anak|murid)$/.test(q)) return { type: 'siswa', query: '' };
     var m = q.match(/^(?:cari|temukan|carikan|tampilkan data|data)\s+(?:data\s+)?(siswa|anak|murid|guru|kelas)\s*(.*)$/);
     if (m) return { type: m[1] === 'anak' || m[1] === 'murid' ? 'siswa' : m[1], query: (m[2] || '').replace(/^(?:bernama|yang bernama|atas nama)\s+/, '').trim() };
@@ -400,6 +402,62 @@
     if (m) return { type: 'attendance', query: m[1] };
     return null;
   }
+
+  async function bukaBacaProfilSiswa(query) {
+    if (!loggedIn()) throw new Error('Sesi sekolah tidak aktif. Silakan masuk kembali.');
+    if (!canOpen('siswa')) throw new Error('Akun ini tidak memiliki izin membaca Data Siswa.');
+    var q = safeText(query).trim();
+    if (!q) return 'Sebutkan nama lengkap atau nama panggilan siswa yang ingin dibuka profilnya.';
+    if (currentView() !== 'siswa') {
+      setActivity('Membuka menu Data Siswa melalui tombol aplikasi...', true);
+      var pindah = await visibleNavigationClick('siswa');
+      if (!pindah || stopRequested) return 'Pembukaan profil dihentikan.';
+    }
+    var root = document.getElementById('v');
+    if (!root) throw new Error('Halaman Data Siswa tidak ditemukan.');
+    var cocok = readStudentMatches(q);
+    if (!cocok.length) return 'Tidak ditemukan siswa dengan nama atau nama panggilan "' + q + '".';
+    if (cocok.length > 1) return 'Ada ' + cocok.length + ' siswa yang cocok dengan "' + q + '". Mohon sebutkan nama yang lebih lengkap:\\n' + cocok.map(function(s,i){return (i+1)+'. '+s.nama+' · Kelas '+(s.kelas||'-');}).join('\\n');
+    var siswa = cocok[0];
+    var pilihKelas = root.querySelector('select.select');
+    if (pilihKelas) {
+      var semua = Array.prototype.slice.call(pilihKelas.options).find(function(o){return normAI(o.textContent).replace(/[^a-z0-9 ]/g,'').trim()==='semua kelas';});
+      if (semua && pilihKelas.value !== semua.value) {
+        pilihKelas.classList.add('ai1486-focus');
+        setActivity('Memilih Semua kelas pada filter Data Siswa...', true);
+        pilihKelas.value = semua.value;
+        pilihKelas.dispatchEvent(new Event('change',{bubbles:true}));
+        await wait(220);
+        pilihKelas.classList.remove('ai1486-focus');
+      }
+    }
+    root = document.getElementById('v');
+    var cari = root && root.querySelector('#q');
+    if (cari) { cari.value = siswa.nama; cari.dispatchEvent(new Event('input',{bubbles:true})); await wait(100); }
+    if (stopRequested) return 'Pembukaan profil dihentikan.';
+    root = document.getElementById('v');
+    var rows = root ? Array.prototype.slice.call(root.querySelectorAll('#sb tr')) : [];
+    var target = rows.find(function(tr){return Array.prototype.some.call(tr.querySelectorAll('td'),function(td){return normAI(td.textContent).indexOf(normAI(siswa.nama))>=0;});});
+    if (!target) return 'Data ' + siswa.nama + ' ditemukan, tetapi barisnya belum tampil pada tabel. Periksa filter kelas lalu coba lagi.';
+    target.classList.add('ai1486-focus');
+    setActivity('Membuka baris ' + siswa.nama + ' untuk melihat profil...', true);
+    await wait(120);
+    if (stopRequested) { target.classList.remove('ai1486-focus'); return 'Pembukaan profil dihentikan.'; }
+    target.click();
+    await wait(260);
+    target.classList.remove('ai1486-focus');
+    var modal=document.getElementById('md'),title=document.getElementById('mt');
+    if(!modal||!modal.classList.contains('show')||!title||normAI(title.textContent)!=='ubah siswa') throw new Error('Popup profil siswa tidak berhasil dibuka melalui baris yang terlihat.');
+    var body=document.getElementById('mbd'),details=[];
+    Array.prototype.slice.call(body.querySelectorAll('.fd')).forEach(function(field){
+      var label=field.querySelector('.l,label'),control=field.querySelector('input,select,textarea');
+      if(!label||!control)return;
+      var value=control.tagName.toLowerCase()==='select'?(control.options[control.selectedIndex]?control.options[control.selectedIndex].textContent:control.value):control.value;
+      details.push(label.textContent.replace(/\\s+/g,' ').trim()+': '+(String(value||'').trim()||'-'));
+    });
+    return 'Profil siswa berhasil dibuka dan dibaca (tanpa perubahan):\\nNama: '+siswa.nama+'\\nKelas: '+(siswa.kelas||'-')+'\\nStatus: '+(siswa.aktif?'Aktif':'Nonaktif')+(details.length?'\\n'+details.join('\\n'):'')+'\\n\\nPopup profil tetap terbuka. Tidak ada kolom yang diubah dan tombol Simpan tidak ditekan.';
+  }
+
   function readStudentMatches(query) {
     var q = normAI(query);
     if (!q) return [];
@@ -413,6 +471,7 @@
   function readTaskResult(task) {
     if (!loggedIn()) throw new Error('Sesi sekolah tidak aktif. Silakan masuk kembali.');
     if (task.type === 'context') return pageContextText();
+    if (task.type === 'profil_siswa') return bukaBacaProfilSiswa(task.query);
     if (task.type === 'siswa') {
       if (!canOpen('siswa')) throw new Error('Akun ini tidak memiliki izin membaca Data Siswa.');
       if (!task.query) {
@@ -540,7 +599,7 @@
       }
 
       if (interpreted && interpreted.intent === 'read') {
-        var mapRead = { context: 'context', siswa: 'siswa', guru: 'guru', kelas: 'kelas', attendance: 'attendance' };
+        var mapRead = { context: 'context', siswa: 'siswa', profil_siswa: 'profil_siswa', guru: 'guru', kelas: 'kelas', attendance: 'attendance' };
         var tipeBaca = mapRead[interpreted.read_type];
         if (tipeBaca) {
           var queryBaca = safeText(interpreted.query);
