@@ -126,7 +126,7 @@ module.exports = async (req, res) => {
       return res.status(503).json({ error: 'Layanan asisten belum dikonfigurasi.' });
     }
 
-    const token = String(req.headers.authorization || '').replace(/^Bearer\\s+/i, '');
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
     if (!token) return res.status(401).json({ error: 'Sesi login tidak ditemukan. Silakan masuk kembali.' });
 
     const user = await panggil('/auth/v1/user', 'GET', null, { Authorization: 'Bearer ' + token });
