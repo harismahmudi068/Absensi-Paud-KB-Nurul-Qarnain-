@@ -287,7 +287,7 @@
     if (!root) return [];
     return Array.prototype.slice.call(root.querySelectorAll('.fd')).map(function (field) {
       var label = field.querySelector('.l,label');
-      return label ? safeText(label.textContent).replace(/\\s+/g, ' ').trim().slice(0, 100) : '';
+      return label ? safeText(label.textContent).replace(/\s+/g, ' ').trim().slice(0, 100) : '';
     }).filter(Boolean).slice(0, 40);
   }
   async function interpretWithGemini(command) {
