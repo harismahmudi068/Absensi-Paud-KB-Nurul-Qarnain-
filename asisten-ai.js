@@ -139,16 +139,21 @@
     catch (e) { return []; }
   }
   function safeText(s) { return String(s == null ? '' : s); }
+  var chatHistory = [];
+  var activeRequestController = null;
   function addMessage(text, who, meta) {
+    var content = safeText(text);
     var item = document.createElement('div');
     item.className = 'ai1486-msg ' + (who === 'user' ? 'user' : 'ai');
-    item.textContent = safeText(text);
+    item.textContent = content;
     if (meta) {
       var sm = document.createElement('small');
       sm.textContent = meta;
       item.appendChild(sm);
     }
     feed.appendChild(item);
+    chatHistory.push({ role: who === 'user' ? 'user' : 'assistant', content: content.slice(0, 1000) });
+    if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
     feed.scrollTop = feed.scrollHeight;
   }
   function setActivity(text, on) {
@@ -273,6 +278,47 @@
       'Judul/bagian yang terlihat: ' + (headings.join('; ') || 'Belum ada judul yang terdeteksi') + '.\n' +
       'Tombol yang terlihat: ' + (actions.join('; ') || 'Belum ada tombol yang terdeteksi') + '.\n' +
       'Menu yang diizinkan untuk akun ini: ' + (available.join(', ') || 'Tidak ada') + '.';
+  }
+
+  function visibleFormLabels() {
+    var modal = document.getElementById('md');
+    var open = !!(modal && modal.classList.contains('show'));
+    var root = open ? document.getElementById('mbd') : document.getElementById('v');
+    if (!root) return [];
+    return Array.prototype.slice.call(root.querySelectorAll('.fd')).map(function (field) {
+      var label = field.querySelector('.l,label');
+      return label ? safeText(label.textContent).replace(/\\s+/g, ' ').trim().slice(0, 100) : '';
+    }).filter(Boolean).slice(0, 40);
+  }
+  async function interpretWithGemini(command) {
+    if (typeof db === 'undefined' || !db || !db.auth) throw new Error('Sesi aplikasi tidak tersedia.');
+    var sessionResult = await db.auth.getSession();
+    var session = sessionResult && sessionResult.data && sessionResult.data.session;
+    if (!session) throw new Error('Sesi login sudah berakhir. Silakan masuk kembali.');
+    activeRequestController = new AbortController();
+    var headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token };
+    try { if (typeof hBT === 'function') Object.assign(headers, hBT()); } catch (_) {}
+    var modal = document.getElementById('md');
+    var popupOpen = !!(modal && modal.classList.contains('show'));
+    var response = await fetch('/api/asisten-ai', {
+      method: 'POST',
+      headers: headers,
+      signal: activeRequestController.signal,
+      body: JSON.stringify({
+        sekolah_id: Number(SEK),
+        pesan: command,
+        riwayat: chatHistory.slice(-8),
+        halaman_aktif: currentView(),
+        konteks_halaman: pageContextText(),
+        menu_tersedia: menus().filter(function (m) { return canOpen(m[0]); }).map(function (m) { return { id: m[0], nama: m[1] }; }),
+        popup_terbuka: popupOpen,
+        form_fields: popupOpen ? visibleFormLabels() : []
+      })
+    });
+    var data = await response.json().catch(function () { return {}; });
+    if (!response.ok) throw new Error(data.error || ('Layanan Gemini gagal (' + response.status + ').'));
+    if (!data || !data.ok || !data.result) throw new Error('Respons Gemini tidak lengkap.');
+    return data.result;
   }
 
   function parseFillTask(command) {
@@ -428,43 +474,114 @@
   async function handleCommand(raw) {
     var command = safeText(raw).trim();
     if (!command || busy) return;
-    var fillTask = parseFillTask(command);
-    var popupActive = !!(document.getElementById('md') && document.getElementById('md').classList.contains('show'));
-    if (popupActive && !fillTask) {
-      addMessage('Popup formulir masih terbuka. Saya tidak akan menjalankan navigasi atau perintah lain yang dapat meninggalkan halaman ini. Silakan isi kolom popup terlebih dahulu, atau tutup popup secara manual jika ingin berpindah menu.', 'ai');
-      return;
-    }
     input.value = '';
+    addMessage(command, 'user');
     panel.classList.remove('ai1486-open');
     busy = true;
     stopRequested = false;
-    launcher.textContent = '✦ AI · Proses…';
+    launcher.textContent = '✦ AI · Memahami…';
     launcher.setAttribute('aria-label', 'Hentikan proses Asisten AI');
     try {
-      var task = fillTask || parseReadTask(command);
-      if (task) {
-        setActivity(task.type === 'fill' ? 'Mencocokkan kolom formulir yang terlihat...' : 'Memeriksa izin baca dan menyiapkan informasi...', true);
-        var result = task.type === 'fill' ? fillVisibleForm(task) : await readTaskResult(task);
+      var interpreted = null, aiError = null;
+      setActivity('Memahami maksud perintah dengan Gemini...', true);
+      try {
+        interpreted = await interpretWithGemini(command);
+      } catch (e) {
+        aiError = e;
+      }
+      if (stopRequested) {
+        addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+        return;
+      }
+
+      var popup = document.getElementById('md');
+      var popupActive = !!(popup && popup.classList.contains('show'));
+      var fillTask = parseFillTask(command);
+      if (!fillTask && interpreted && interpreted.intent === 'fill_form' && Array.isArray(interpreted.fields) && interpreted.fields.length) {
+        fillTask = {
+          type: 'fill',
+          pairs: interpreted.fields.map(function (x) { return { label: safeText(x.label), value: safeText(x.value) }; })
+            .filter(function (x) { return x.label.trim() && x.value.trim(); })
+        };
+      }
+      if (popupActive && !fillTask) {
+        addMessage('Popup formulir masih terbuka. Saya hanya akan mengisi kolom yang terlihat agar halaman tidak berpindah tanpa sengaja. Tutup popup secara manual jika ingin menjalankan perintah lain.');
+        return;
+      }
+
+      if (fillTask) {
+        setActivity('Mencocokkan kolom formulir yang terlihat...', true);
+        var hasilIsi = fillVisibleForm(fillTask);
         if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
-        else addMessage(result, 'ai', 'Sumber: halaman aktif dan kontrol formulir yang terlihat. Tidak ada penyimpanan data.');
-      } else {
-        var id = resolveMenu(command);
-        if (!id) {
-          addMessage('Perintah belum dikenali. Anda bisa bertanya “halaman apa ini?”, “cari siswa Ernietha”, “cari guru [nama]”, “daftar kelas”, atau “ringkasan absensi hari ini”.');
+        else addMessage(hasilIsi, 'ai', 'Dipahami dengan Gemini atau pola perintah lokal. Tidak ada penyimpanan data.');
+        return;
+      }
+
+      if (interpreted && interpreted.intent === 'navigate') {
+        var idAI = safeText(interpreted.menu_id).trim() || resolveMenu(command);
+        if (!idAI || !menus().some(function (m) { return m[0] === idAI; })) {
+          addMessage(interpreted.reply || 'Saya belum dapat memastikan menu yang Anda maksud. Menu apa yang ingin dibuka?');
           return;
         }
         setActivity('Memeriksa hak akses ' + currentRole() + '...', true);
-        if (!canOpen(id)) {
-          addMessage('Menu ' + menuLabel(id) + ' tidak dapat dibuka untuk role ' + currentRole() + ' atau fiturnya sedang nonaktif.');
+        if (!canOpen(idAI)) {
+          addMessage('Menu ' + menuLabel(idAI) + ' tidak tersedia untuk role ' + currentRole() + ' atau fiturnya sedang nonaktif.');
           return;
         }
-        var ok = await visibleNavigationClick(id);
-        if (stopRequested || !ok) addMessage('Perintah dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
-        else addMessage('Berhasil membuka menu ' + menuLabel(id) + '.', 'ai', 'Navigasi selesai dan halaman aktif telah diverifikasi.');
+        var okAI = await visibleNavigationClick(idAI);
+        if (stopRequested || !okAI) addMessage('Perintah dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+        else addMessage('Berhasil membuka menu ' + menuLabel(idAI) + '.', 'ai', 'Navigasi melalui tombol aplikasi dan halaman aktif telah diverifikasi.');
+        return;
+      }
+
+      if (interpreted && interpreted.intent === 'read') {
+        var mapRead = { context: 'context', siswa: 'siswa', guru: 'guru', kelas: 'kelas', attendance: 'attendance' };
+        var tipeBaca = mapRead[interpreted.read_type];
+        if (tipeBaca) {
+          setActivity('Memeriksa izin baca dan mengambil informasi dari aplikasi...', true);
+          var hasilBaca = await readTaskResult({ type: tipeBaca, query: safeText(interpreted.query) });
+          if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+          else addMessage(hasilBaca, 'ai', 'Sumber data: aplikasi Absensi 1486. Tidak ada data yang diubah.');
+          return;
+        }
+      }
+
+      if (interpreted && (interpreted.intent === 'answer' || interpreted.intent === 'clarify' || interpreted.intent === 'unknown')) {
+        addMessage(interpreted.reply || 'Bisa dijelaskan sedikit lagi maksud permintaan Anda?');
+        return;
+      }
+
+      // Cadangan deterministik: perintah lama tetap dapat digunakan bila Gemini sedang tidak tersedia.
+      var taskLokal = parseReadTask(command);
+      if (taskLokal) {
+        setActivity('Mengambil informasi dari aplikasi...', true);
+        var hasilLokal = await readTaskResult(taskLokal);
+        if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+        else addMessage(hasilLokal, 'ai', 'Mode cadangan lokal. Tidak ada data yang diubah.');
+        return;
+      }
+      var idLokal = resolveMenu(command);
+      if (idLokal) {
+        setActivity('Memeriksa hak akses ' + currentRole() + '...', true);
+        if (!canOpen(idLokal)) {
+          addMessage('Menu ' + menuLabel(idLokal) + ' tidak tersedia untuk role ' + currentRole() + ' atau fiturnya sedang nonaktif.');
+          return;
+        }
+        var okLokal = await visibleNavigationClick(idLokal);
+        if (stopRequested || !okLokal) addMessage('Perintah dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+        else addMessage('Berhasil membuka menu ' + menuLabel(idLokal) + '.', 'ai', 'Mode cadangan lokal. Navigasi diverifikasi.');
+        return;
+      }
+      if (aiError) {
+        addMessage('Gemini belum dapat dihubungi: ' + (aiError.message || 'terjadi kendala') + ' Perintah sederhana yang sudah dikenal masih dapat dijalankan dengan mode cadangan.');
+      } else {
+        addMessage('Saya belum yakin maksud permintaan tersebut. Bisa dijelaskan dengan kalimat lain?');
       }
     } catch (e) {
-      addMessage('Belum berhasil: ' + (e && e.message ? e.message : String(e)));
+      if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
+      else addMessage('Belum berhasil: ' + (e && e.message ? e.message : String(e)));
     } finally {
+      activeRequestController = null;
       busy = false;
       stopRequested = false;
       launcher.innerHTML = '<span class="ai1486-orb">✦</span><span>Asisten AI</span>';
@@ -490,6 +607,7 @@
   launcher.addEventListener('click', function () {
     if (busy) {
       stopRequested = true;
+      if (activeRequestController) activeRequestController.abort();
       launcher.textContent = 'Menghentikan…';
       launcher.setAttribute('aria-label', 'Menghentikan perintah');
       return;
@@ -516,6 +634,7 @@
   stopButton.addEventListener('click', function () {
     if (!busy) return;
     stopRequested = true;
+    if (activeRequestController) activeRequestController.abort();
     setActivity('Permintaan berhenti diterima. Tidak ada tindakan berikutnya yang akan dijalankan.', true);
   });
 
