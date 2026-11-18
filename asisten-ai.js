@@ -701,7 +701,7 @@
           // Pengaman deterministik: permintaan daftar siswa tidak boleh berubah menjadi pencarian nama literal.
           if (tipeBaca === 'siswa' && /\\b(daftar|list)\\b.*\\b(siswa|anak|murid)\\b|\\b(tampilkan|perlihatkan|lihat)\\b.*\\b(semua|seluruh|daftar)\\b.*\\b(siswa|anak|murid)\\b|\\b(siswa|anak|murid)\\b.*\\b(semua|seluruh)\\b/.test(normAI(command))) queryBaca = '';
           setActivity('Memeriksa izin baca dan mengambil informasi dari aplikasi...', true);
-          var hasilBaca = await readTaskResult({ type: tipeBaca, query: queryBaca });
+          var hasilBaca = await readTaskResult({ type: tipeBaca, query: queryBaca, status: ['Hadir','Terlambat','Izin','Sakit','Alpa','Belum'].includes(interpreted.status) ? interpreted.status : null });
           if (stopRequested) addMessage('Permintaan dihentikan. Tidak ada tindakan lanjutan yang dijalankan.');
           else addMessage(hasilBaca, 'ai', 'Sumber data: aplikasi Absensi 1486. Tidak ada data yang diubah.');
           return;
