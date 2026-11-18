@@ -1965,7 +1965,8 @@ V.dashboard=()=>{if(role==='Developer')return devDashboard();const a=A(TODAY),l=
  <div class="panel"><div class="ph rk-h" onclick="toggleRekapHari()"><span>📋 Rekap Hari Ini</span><span class="mu">${fmt(TODAY)} <span class="rk-arrow">${rkOpen?'▲':'▼'}</span></span></div>${rkOpen?`<div class="pb"><div class="rekap-filter"><input id="rkq" class="input" placeholder="Cari nama anak..." value="${esc(rkQ)}" oninput="cariRekapHari(this)"><select class="select" onchange="rkKelas=this.value;renderV()">${rkOpt()}</select></div><div id="rkTab" style="margin-top:10px">${rekapHariTabel()}</div></div>`:''}</div>`};
 function bukaDetailStatusDashboard(status,kelasFilter){
  const semua=act().filter(s=>!kelasFilter||s.kelas===kelasFilter),a=A(TODAY),pilih=semua.filter(s=>{const st=dayStat(s,TODAY);return status==='Hadir'?(st==='Hadir'||st==='Terlambat'):st===status});
- const urut=pilih.sort((x,y)=>String(x.kelas||'').localeCompare(String(y.kelas||''),'id')||String(x.nama||'').localeCompare(String(y.nama||''),'id'));
+ const waktuUrut=s=>{const r=a[s.id];const t=r&&(r.iso||r.waktu);if(!t)return Number.POSITIVE_INFINITY;const n=Date.parse(t);return Number.isFinite(n)?n:Number.POSITIVE_INFINITY};
+ const urut=pilih.sort((x,y)=>String(x.kelas||'').localeCompare(String(y.kelas||''),'id')||waktuUrut(x)-waktuUrut(y)||String(x.nama||'').localeCompare(String(y.nama||''),'id'));
  const judul=(status==='Hadir'?'Hadir (termasuk terlambat)':status==='Belum'?'Belum Absen':status)+(kelasFilter?' · '+kelasFilter:'');
  let html='<div class="mu" style="margin-bottom:8px">'+fmt(TODAY)+' · '+urut.length+' anak'+(status==='Hadir'?' · status Hadir dan Terlambat':'')+'</div>';
  if(!urut.length){html+='<div class="note">Tidak ada anak dengan status '+esc(judul)+' hari ini.</div>'}else{
