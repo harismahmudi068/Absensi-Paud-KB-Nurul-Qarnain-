@@ -291,32 +291,20 @@
     }).filter(Boolean).slice(0, 40);
   }
   async function interpretWithGemini(command) {
-    if (typeof db === 'undefined' || !db || !db.auth) throw new Error('Sesi aplikasi tidak tersedia.');
-    var sessionResult = await db.auth.getSession();
-    var session = sessionResult && sessionResult.data && sessionResult.data.session;
-    if (!session) throw new Error('Sesi login sudah berakhir. Silakan masuk kembali.');
-    activeRequestController = new AbortController();
-    var headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token };
-    try { if (typeof hBT === 'function') Object.assign(headers, hBT()); } catch (_) {}
+    if (typeof apiPengaturan !== 'function') throw new Error('Jalur API pengaturan tidak tersedia.');
     var modal = document.getElementById('md');
     var popupOpen = !!(modal && modal.classList.contains('show'));
-    var response = await fetch('/api/asisten-ai', {
-      method: 'POST',
-      headers: headers,
-      signal: activeRequestController.signal,
-      body: JSON.stringify({
-        sekolah_id: Number(SEK),
-        pesan: command,
-        riwayat: chatHistory.slice(-8),
-        halaman_aktif: currentView(),
-        konteks_halaman: pageContextText(),
-        menu_tersedia: menus().filter(function (m) { return canOpen(m[0]); }).map(function (m) { return { id: m[0], nama: m[1] }; }),
-        popup_terbuka: popupOpen,
-        form_fields: popupOpen ? visibleFormLabels() : []
-      })
+    var data = await apiPengaturan({
+      aksi: 'asisten_ai',
+      sekolah_id: Number(SEK),
+      pesan: command,
+      riwayat: chatHistory.slice(-8),
+      halaman_aktif: currentView(),
+      konteks_halaman: pageContextText(),
+      menu_tersedia: menus().filter(function (m) { return canOpen(m[0]); }).map(function (m) { return { id: m[0], nama: m[1] }; }),
+      popup_terbuka: popupOpen,
+      form_fields: popupOpen ? visibleFormLabels() : []
     });
-    var data = await response.json().catch(function () { return {}; });
-    if (!response.ok) throw new Error(data.error || ('Layanan Gemini gagal (' + response.status + ').'));
     if (!data || !data.ok || !data.result) throw new Error('Respons Gemini tidak lengkap.');
     return data.result;
   }
