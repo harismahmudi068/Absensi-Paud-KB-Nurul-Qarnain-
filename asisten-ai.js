@@ -590,7 +590,7 @@
             return task.status === 'Hadir' ? st === 'Hadir' : st === task.status;
           }).sort(function (a, b) { return normAI(a.nama).localeCompare(normAI(b.nama), 'id'); });
           var labelStatus = task.status === 'Belum' ? 'belum tercatat' : task.status.toLowerCase();
-          return 'Daftar siswa dengan status ' + labelStatus + ' hari ini (' + date + '):\n' +
+          return 'Daftar siswa ' + (kelasDipilih ? 'kelas ' + kelasDipilih.nama + ' ' : '') + 'dengan status ' + labelStatus + ' hari ini (' + date + '):\n' +
             'Jumlah: ' + cocokStatus.length + ' siswa\n' +
             (cocokStatus.length ? cocokStatus.map(function (s, i) {
               return (i + 1) + '. ' + s.nama + ' · Kelas ' + (s.kelas || '-');
