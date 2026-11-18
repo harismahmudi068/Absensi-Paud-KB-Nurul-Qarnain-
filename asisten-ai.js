@@ -287,24 +287,36 @@
   }
   function fillVisibleForm(task) {
     if (!loggedIn()) throw new Error('Sesi sekolah tidak aktif.');
-    var root = document.getElementById('v');
-    if (!root || !root.getClientRects().length) throw new Error('Halaman formulir tidak ditemukan.');
+    var modal = document.getElementById('md');
+    var modalOpen = !!(modal && modal.classList.contains('show'));
+    var root = modalOpen ? document.getElementById('mbd') : document.getElementById('v');
+    if (!root || !root.getClientRects().length) throw new Error('Area formulir tidak ditemukan.');
     var controls = Array.prototype.slice.call(root.querySelectorAll('input,textarea,select'))
       .filter(function (el) {
         var type = (el.type || '').toLowerCase();
-        return el.getClientRects().length && !el.disabled && !el.readOnly &&
-          ['hidden','submit','button','reset','password','file'].indexOf(type) < 0;
+        if (el.disabled || el.readOnly || ['hidden','submit','button','reset','password','file'].indexOf(type) >= 0) return false;
+        // Select native pada popup dapat disembunyikan oleh dropdown kustom, tetapi tetap menjadi sumber nilai formulir.
+        return el.tagName.toLowerCase() === 'select' || el.getClientRects().length;
       });
     var done=[], missing=[];
     task.pairs.forEach(function (pair) {
       var wanted=normAI(pair.label), el=null;
       for(var i=0;i<controls.length;i++){
         var c=controls[i], labels=[];
-        if(c.id){ var lab=root.querySelector('label[for="'+CSS.escape(c.id)+'"]'); if(lab) labels.push(lab.textContent); }
+        var field=c.closest('.fd');
+        if(field){
+          var label=field.querySelector('.l,label');
+          if(label) labels.push(label.textContent);
+        }
+        if(c.id){
+          var lab=root.querySelector('label[for="'+CSS.escape(c.id)+'"]');
+          if(lab) labels.push(lab.textContent);
+          labels.push(c.id.replace(/^f_/, '').replace(/[_-]+/g,' '));
+        }
         var parent=c.closest('label'); if(parent) labels.push(parent.textContent);
-        labels.push(c.getAttribute('aria-label'),c.getAttribute('placeholder'),c.getAttribute('name'),c.id);
+        labels.push(c.getAttribute('aria-label'),c.getAttribute('placeholder'),c.getAttribute('name'));
         var candidates=labels.filter(Boolean).map(normAI);
-        if(candidates.some(function(x){return x===wanted || x.indexOf(wanted)>=0 || wanted.indexOf(x)>=0;})){el=c;break;}
+        if(candidates.some(function(x){return x===wanted;})){el=c;break;}
       }
       if(!el){missing.push(pair.label);return;}
       var tag=el.tagName.toLowerCase(), type=(el.type||'').toLowerCase(), value=pair.value;
@@ -312,6 +324,7 @@
         var option=Array.prototype.slice.call(el.options).find(function(o){return normAI(o.textContent)===normAI(value)||normAI(o.value)===normAI(value);});
         if(!option){missing.push(pair.label+' (pilihan '+value+' tidak tersedia)');return;}
         el.value=option.value;
+        el.dispatchEvent(new Event('change',{bubbles:true}));
       } else if(type==='checkbox'){
         var yes=/^(ya|yes|benar|aktif|centang|true|1)$/i.test(value);
         var no=/^(tidak|no|salah|nonaktif|hapus centang|false|0)$/i.test(value);
@@ -319,20 +332,20 @@
         el.checked=yes;
       } else if(type==='radio'){
         var group=controls.filter(function(c){return c.type==='radio'&&c.name===el.name;});
-        var radio=group.find(function(c){return normAI(c.value)===normAI(value)||normAI((root.querySelector('label[for="'+CSS.escape(c.id)+'"]')||{}).textContent)===normAI(value);});
+        var radio=group.find(function(c){return normAI(c.value)===normAI(value);});
         if(!radio){missing.push(pair.label+' (opsi tidak tersedia)');return;}
         radio.checked=true;el=radio;
       } else {
+        // Form() aplikasi membaca nilai DOM saat tombol Simpan ditekan.
+        // Tidak kirim event input/change untuk mencegah handler halaman berjalan atau merender ulang daftar.
         var setter=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),'value');
         if(setter&&setter.set)setter.set.call(el,value);else el.value=value;
       }
-      el.dispatchEvent(new Event('input',{bubbles:true}));
-      el.dispatchEvent(new Event('change',{bubbles:true}));
       done.push(pair.label+': '+pair.value);
     });
-    var msg=done.length?'Formulir berhasil diisi pada '+done.length+' kolom (belum disimpan):\n'+done.map(function(x){return '• '+x;}).join('\n'):'Tidak ada kolom yang berhasil diisi.';
-    if(missing.length)msg+='\n\nKolom yang belum cocok:\n'+missing.map(function(x){return '• '+x;}).join('\n');
-    msg+='\n\nTidak ada tombol Simpan/Kirim yang ditekan.';
+    var msg=done.length?'Formulir popup berhasil diisi pada '+done.length+' kolom (belum disimpan):\\n'+done.map(function(x){return '• '+x;}).join('\\n'):'Tidak ada kolom yang berhasil diisi.';
+    if(missing.length)msg+='\\n\\nKolom yang belum cocok:\\n'+missing.map(function(x){return '• '+x;}).join('\\n');
+    msg+='\\n\\nPopup tetap terbuka. Tidak ada tombol Simpan/Kirim yang ditekan.';
     return msg;
   }
   function parseReadTask(command) {
@@ -415,15 +428,20 @@
   async function handleCommand(raw) {
     var command = safeText(raw).trim();
     if (!command || busy) return;
+    var fillTask = parseFillTask(command);
+    var popupActive = !!(document.getElementById('md') && document.getElementById('md').classList.contains('show'));
+    if (popupActive && !fillTask) {
+      addMessage('Popup formulir masih terbuka. Saya tidak akan menjalankan navigasi atau perintah lain yang dapat meninggalkan halaman ini. Silakan isi kolom popup terlebih dahulu, atau tutup popup secara manual jika ingin berpindah menu.', 'ai');
+      return;
+    }
     input.value = '';
-    feed.innerHTML = '';
     panel.classList.remove('ai1486-open');
     busy = true;
     stopRequested = false;
     launcher.textContent = '✦ AI · Proses…';
     launcher.setAttribute('aria-label', 'Hentikan proses Asisten AI');
     try {
-      var task = parseFillTask(command) || parseReadTask(command);
+      var task = fillTask || parseReadTask(command);
       if (task) {
         setActivity(task.type === 'fill' ? 'Mencocokkan kolom formulir yang terlihat...' : 'Memeriksa izin baca dan menyiapkan informasi...', true);
         var result = task.type === 'fill' ? fillVisibleForm(task) : await readTaskResult(task);
