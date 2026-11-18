@@ -44,7 +44,7 @@
   /* Posisi ringkas: tombol tepat di bawah header, panel hanya seperlunya. */
   var compactStyle = document.createElement('style');
   compactStyle.textContent = [
-    '#ai1486-launch{top:calc(env(safe-area-inset-top) + 70px);bottom:auto;right:12px;z-index:30;padding:7px 11px;gap:7px;font-size:12px;box-shadow:0 3px 12px rgba(24,74,47,.2)}',
+    '#ai1486-launch{top:calc(env(safe-area-inset-top) + 70px);bottom:auto;right:12px;z-index:160;padding:7px 11px;gap:7px;font-size:12px;box-shadow:0 3px 12px rgba(24,74,47,.2)}',
     '#ai1486-launch .ai1486-orb{width:23px;height:23px;font-size:14px}',
     '#ai1486-panel{top:calc(env(safe-area-inset-top) + 112px);bottom:auto;right:10px;width:min(340px,calc(100vw - 20px));height:auto;max-height:min(42dvh,330px);min-height:0;border-radius:14px;box-shadow:0 8px 28px rgba(15,40,25,.18)}',
     '.ai1486-head{padding:8px 10px}.ai1486-avatar{width:29px;height:29px;flex-basis:29px;border-radius:10px;font-size:16px}.ai1486-head-main b{font-size:13px}.ai1486-head-main small{font-size:10px}',
