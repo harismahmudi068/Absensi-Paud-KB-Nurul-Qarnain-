@@ -403,10 +403,19 @@
     return null;
   }
 
+  function bersihkanQueryProfilAI(value) {
+    var q = safeText(value).trim();
+    q = q.replace(/^(?:nama(?: lengkap)?(?: siswa)?|siswa|anak|murid)\s*[:,-]?\s*/i,'');
+    q = q.replace(/\s+(?:dan|lalu|kemudian)\s+(?:tolong\s+)?(?:jelaskan|terangkan|uraikan|sebutkan|bacakan|tampilkan|beritahu)\b[\s\S]*$/i,'');
+    q = q.replace(/\s+(?:serta|beserta)\s+(?:jelaskan|terangkan|uraikan)\b[\s\S]*$/i,'');
+    q = q.replace(/\s+(?:dengan|beserta)\s+(?:seluruh|semua|lengkap)\s+(?:detail|data|informasi)\b[\s\S]*$/i,'');
+    q = q.replace(/[.!?,;:]+$/g,'').trim();
+    return q;
+  }
   async function bukaBacaProfilSiswa(query) {
     if (!loggedIn()) throw new Error('Sesi sekolah tidak aktif. Silakan masuk kembali.');
     if (!canOpen('siswa')) throw new Error('Akun ini tidak memiliki izin membaca Data Siswa.');
-    var q = safeText(query).trim();
+    var q = bersihkanQueryProfilAI(query);
     if (!q) return 'Sebutkan nama lengkap atau nama panggilan siswa yang ingin dibuka profilnya.';
     if (currentView() !== 'siswa') {
       setActivity('Membuka menu Data Siswa melalui tombol aplikasi...', true);
@@ -419,40 +428,55 @@
     if (!cocok.length) return 'Tidak ditemukan siswa dengan nama atau nama panggilan "' + q + '".';
     if (cocok.length > 1) return 'Ada ' + cocok.length + ' siswa yang cocok dengan "' + q + '". Mohon sebutkan nama yang lebih lengkap:\n' + cocok.map(function(s,i){return (i+1)+'. '+s.nama+' · Kelas '+(s.kelas||'-');}).join('\n');
     var siswa = cocok[0];
-    var pilihKelas = root.querySelector('select.select');
-    if (pilihKelas) {
-      var semua = Array.prototype.slice.call(pilihKelas.options).find(function(o){return normAI(o.textContent).replace(/[^a-z0-9 ]/g,'').trim()==='semua kelas';});
-      if (semua && pilihKelas.value !== semua.value) {
-        pilihKelas.classList.add('ai1486-focus');
-        setActivity('Memilih Semua kelas pada filter Data Siswa...', true);
-        pilihKelas.value = semua.value;
-        pilihKelas.dispatchEvent(new Event('change',{bubbles:true}));
-        await wait(220);
-        pilihKelas.classList.remove('ai1486-focus');
-      }
+    // Filter kelas menggunakan select asli aplikasi; onchange-nya mengatur sk dan merender ulang tabel.
+    var pilihKelas = Array.prototype.slice.call(root.querySelectorAll('select')).find(function(sel){
+      return Array.prototype.some.call(sel.options,function(o){return normAI(o.textContent).trim()==='semua kelas';});
+    });
+    if (pilihKelas && pilihKelas.value !== '*') {
+      var semua = Array.prototype.slice.call(pilihKelas.options).find(function(o){return normAI(o.textContent).trim()==='semua kelas';});
+      if (!semua) return 'Pilihan Semua kelas tidak tersedia pada filter Data Siswa.';
+      pilihKelas.classList.add('ai1486-focus');
+      setActivity('Memilih Semua kelas pada filter Data Siswa...', true);
+      pilihKelas.value = semua.value;
+      pilihKelas.dispatchEvent(new Event('change',{bubbles:true}));
+      await wait(350);
+      pilihKelas.classList.remove('ai1486-focus');
     }
+    if (stopRequested) return 'Pembukaan profil dihentikan.';
     root = document.getElementById('v');
     var cari = root && root.querySelector('#q');
-    if (cari) { cari.value = siswa.nama; cari.dispatchEvent(new Event('input',{bubbles:true})); await wait(100); }
+    if (cari) {
+      cari.value = siswa.nama;
+      cari.dispatchEvent(new Event('input',{bubbles:true}));
+      await wait(120);
+    }
     if (stopRequested) return 'Pembukaan profil dihentikan.';
     root = document.getElementById('v');
     var rows = root ? Array.prototype.slice.call(root.querySelectorAll('#sb tr')) : [];
-    var target = rows.find(function(tr){return Array.prototype.some.call(tr.querySelectorAll('td'),function(td){return normAI(td.textContent).indexOf(normAI(siswa.nama))>=0;});});
-    if (!target) return 'Data ' + siswa.nama + ' ditemukan, tetapi barisnya belum tampil pada tabel. Periksa filter kelas lalu coba lagi.';
+    var target = rows.find(function(tr){
+      return Array.prototype.some.call(tr.querySelectorAll('td'),function(td){
+        return normAI(td.textContent).indexOf(normAI(siswa.nama)) >= 0;
+      });
+    });
+    if (!target) return 'Data ' + siswa.nama + ' ditemukan pada data aplikasi, tetapi belum muncul di tabel. Pastikan filter kelas sudah menjadi Semua kelas lalu coba lagi.';
     target.classList.add('ai1486-focus');
     setActivity('Membuka baris ' + siswa.nama + ' untuk melihat profil...', true);
     await wait(120);
     if (stopRequested) { target.classList.remove('ai1486-focus'); return 'Pembukaan profil dihentikan.'; }
     target.click();
-    await wait(260);
+    await wait(350);
     target.classList.remove('ai1486-focus');
-    var modal=document.getElementById('md'),title=document.getElementById('mt');
-    if(!modal||!modal.classList.contains('show')||!title||normAI(title.textContent)!=='ubah siswa') throw new Error('Popup profil siswa tidak berhasil dibuka melalui baris yang terlihat.');
-    var body=document.getElementById('mbd'),details=[];
+    var modal = document.getElementById('md'), title = document.getElementById('mt');
+    if (!modal || !modal.classList.contains('show') || !title || normAI(title.textContent) !== 'ubah siswa') {
+      throw new Error('Baris siswa sudah dipilih, tetapi popup Ubah Siswa belum terdeteksi terbuka.');
+    }
+    var body = document.getElementById('mbd'), details = [];
     Array.prototype.slice.call(body.querySelectorAll('.fd')).forEach(function(field){
-      var label=field.querySelector('.l,label'),control=field.querySelector('input,select,textarea');
-      if(!label||!control)return;
-      var value=control.tagName.toLowerCase()==='select'?(control.options[control.selectedIndex]?control.options[control.selectedIndex].textContent:control.value):control.value;
+      var label = field.querySelector('.l,label'), control = field.querySelector('input,select,textarea');
+      if (!label || !control) return;
+      var value = control.tagName.toLowerCase()==='select'
+        ? (control.options[control.selectedIndex] ? control.options[control.selectedIndex].textContent : control.value)
+        : control.value;
       details.push(label.textContent.replace(/\s+/g,' ').trim()+': '+(String(value||'').trim()||'-'));
     });
     return 'Profil siswa berhasil dibuka dan dibaca (tanpa perubahan):\nNama: '+siswa.nama+'\nKelas: '+(siswa.kelas||'-')+'\nStatus: '+(siswa.aktif?'Aktif':'Nonaktif')+(details.length?'\n'+details.join('\n'):'')+'\n\nPopup profil tetap terbuka. Tidak ada kolom yang diubah dan tombol Simpan tidak ditekan.';
