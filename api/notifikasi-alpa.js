@@ -403,7 +403,7 @@ async function kirimGrupLibur(tokenUtama, sekolahId, tanggal, lg) {
 }
 
 // Rekap staf memakai satu format baku; perbedaan hanya sapaan dan cakupan kelas.
-function pesanWaliRekap(tanggal, daftarKelas, sapaan, namaSekolah, waktuProses) {
+function pesanWaliRekap(tanggal, daftarKelas, sapaan, namaSekolah, waktuProses, waliKelas = true) {
   const kategori = [['alpa', 'ALPA'], ['sakit', 'SAKIT'], ['izin', 'IZIN']];
   const total = daftarKelas.reduce((n, k) => n + kategori.reduce((m, [key]) => m + (k[key] || []).length, 0), 0);
   const baris = [
@@ -414,7 +414,7 @@ function pesanWaliRekap(tanggal, daftarKelas, sapaan, namaSekolah, waktuProses) 
     `🏫 ${namaSekolah || 'Sekolah'}`,
     `📅 Tanggal: ${formatTanggal(tanggal)}`,
     `⏰ Waktu proses: ${waktuProses || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB'}`,
-    `👥 Total: ${total} siswa${daftarKelas.length ? ' (Khusus ' + (daftarKelas.length === 1 ? 'Kelas ' : 'Kelas ') + daftarKelas.map(k => k.nama).join(', ') + ')' : ''}`,
+    `👥 Total: ${total} siswa${daftarKelas.length ? (waliKelas ? ' (Khusus Kelas ' + daftarKelas.map(k => k.nama).join(', ') + ')' : ' (Khusus Semua Kelas)') : ''}`,
     ''
   ];
   for (const [key, label] of kategori) {
@@ -490,7 +490,8 @@ async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa,
       v.kelas,
       v.waliKelas ? 'Bapak/Ibu Wali Kelas' : sapaanStaf(v.role),
       pengaturanSekolah.nama_sekolah,
-      waktuProses
+      waktuProses,
+      v.waliKelas
     )
   }));
   return kirimBanyak(token, tujuan, lg);
