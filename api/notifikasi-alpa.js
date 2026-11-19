@@ -480,7 +480,7 @@ async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa,
   const pengaturanSekolah = (await supabase(
     `pengaturan?sekolah_id=eq.${sekolahId}&select=nama_sekolah&limit=1`
   ) || [])[0] || {};
-  const cocokWaktu = String(teks || '').match(/⏰\\s*Waktu proses:\\s*([^\\r\\n]+)/i);
+  const cocokWaktu = String(teks || '').match(/⏰\s*Waktu proses:\s*([^\r\n]+)/i);
   const waktuProses = cocokWaktu ? cocokWaktu[1].trim() : '';
   const tujuan = [...perNomor.entries()].map(([nomor, v]) => ({
     nama: `${v.nama}${v.kelas.length ? ' (' + (v.waliKelas ? 'wali ' : '') + v.kelas.map(k => k.nama).join(', ') + ')' : ' (Pengelola Sekolah)'}`,
