@@ -383,6 +383,221 @@ async function ubahUsernameAkun(userId, usernameLama, usernameBaru) {
   }
 }
 
+// ------------------------------------------------------------
+// Notifikasi laporan izin/sakit ke orang tua, kepala sekolah, dan wali kelas.
+// Tidak memakai RPC/fungsi database; seluruh operasi memakai REST API yang sudah ada.
+// Di deployment Preview, PAUD AN-NAJAH (ID 10) sengaja dikecualikan dari pengiriman.
+// ------------------------------------------------------------
+async function kirimNotifikasiLaporan({ sekolahId, siswaIds, status, tanggal, catatan, nomorOrtu, sumber = 'Portal Wali Murid', kirimKeOrtu = true }) {
+  const sid = Number(sekolahId);
+  const ids = [...new Set((siswaIds || []).map(Number).filter(x => Number.isSafeInteger(x) && x > 0))];
+  if (!sid || !ids.length || !['izin', 'sakit'].includes(status)) return { dilewati: true };
+  if (process.env.VERCEL_ENV === 'preview' && sid === 10) {
+    console.log('Notifikasi laporan Preview dilewati untuk PAUD AN-NAJAH (sekolah_id=10).');
+    return { dilewati: true, alasan: 'sekolah_produksi' };
+  }
+
+  const [siswa, rahasia, tokenRows] = await Promise.all([
+    panggil(`/rest/v1/siswa?sekolah_id=eq.${sid}&id=in.(${ids.join(',')})&select=id,nama,kelas_id`, 'GET'),
+    panggil(`/rest/v1/pengaturan_rahasia?sekolah_id=eq.${sid}&select=nomor_kepala,token_fonnte&limit=1`, 'GET'),
+    panggil(`/rest/v1/fonnte_token?sekolah_id=eq.${sid}&select=token&limit=1`, 'GET')
+  ]);
+  const daftar = Array.isArray(siswa) ? siswa : [];
+  const konfigurasi = rahasia?.[0] || {};
+  const token = String(tokenRows?.[0]?.token || konfigurasi.token_fonnte || process.env.FONNTE_TOKEN || '').trim();
+  if (!token) throw new Error('Token Fonnte sekolah tidak ditemukan untuk notifikasi laporan.');
+
+  const kelasIds = [...new Set(daftar.map(x => Number(x.kelas_id)).filter(x => Number.isSafeInteger(x) && x > 0))];
+  const kelas = kelasIds.length
+    ? await panggil(`/rest/v1/kelas?sekolah_id=eq.${sid}&id=in.(${kelasIds.join(',')})&select=id,nama,wali_profil_id`, 'GET')
+    : [];
+  const keanggotaan = await panggil(`/rest/v1/keanggotaan?sekolah_id=eq.${sid}&aktif=eq.true&select=profil_id,role`, 'GET');
+  const roleById = new Map((keanggotaan || []).map(x => [String(x.profil_id), String(x.role || '').toLowerCase()]));
+  const waliIds = [...new Set((kelas || []).map(x => x.wali_profil_id).filter(x => x && roleById.has(String(x))))];
+  const kepalaIds = (keanggotaan || []).filter(x => String(x.role || '').toLowerCase() === 'kepala_sekolah').map(x => x.profil_id);
+  const profilIds = [...new Set([...waliIds, ...kepalaIds].filter(Boolean))];
+  const profil = profilIds.length
+    ? await panggil(`/rest/v1/profil?id=in.(${profilIds.join(',')})&aktif=eq.true&select=id,nama,no_wa`, 'GET')
+    : [];
+  const profilById = new Map((profil || []).map(x => [String(x.id), x]));
+  const namaStatus = status === 'sakit' ? 'SAKIT' : 'IZIN';
+  const tgl = (tanggal || []).filter(Boolean);
+  const formatTgl = t => new Date(t + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'Asia/Jakarta' });
+  const detail = daftar.map(x => {
+    const k = (kelas || []).find(y => Number(y.id) === Number(x.kelas_id));
+    return { nama: x.nama || 'Siswa', kelas: k?.nama || 'Kelas' };
+  });
+  const labelStatus = status === 'sakit' ? 'sakit' : 'izin';
+  const durasi = tgl.length;
+  const teksDurasi = durasi + ' hari';
+  const daftarTanggal = tgl.map(formatTgl).join(' • ');
+  const buatIsi = (daftarAnak, sapaan) => [
+    "🌹 Assalamu'alaikum warahmatullahi wabarakatuh.",
+    '',
+    sapaan,
+    `Kami ingin menyampaikan bahwa orang tua dari ananda ${daftarAnak} telah menginformasikan bahwa ananda tercatat *${labelStatus}* tidak masuk sekolah selama *${teksDurasi}*.`,
+    '',
+    ...(catatan ? [`📝 Keterangan orang tua: ${String(catatan).slice(0, 200)}.`, ''] : []),
+    `📅 Tanggal ${labelStatus}: • ${tgl.map(formatTgl).join(' • ')}.`,
+    '',
+    `📌 Sumber laporan: ${sumber}.`,
+    '',
+    'Terima kasih atas perhatian dan kerja sama Bapak/Ibu. 🙏',
+    '',
+    "Wassalamu'alaikum warahmatullahi wabarakatuh."
+  ].join('\n');
+  const isi = buatIsi(
+    detail.map(x => `*${x.nama}* (Kelas ${x.kelas})`).join(', '),
+    'Yth. Bapak/Ibu.'
+  );
+
+  const tujuan = new Map();
+  const tambah = (nomor, pesan, label) => {
+    const n = normWA(nomor);
+    if (!/^628\d{8,12}$/.test(n)) return;
+    if (!tujuan.has(n)) tujuan.set(n, { nomor: n, pesan, label });
+  };
+
+  // Orang tua diberi notifikasi langsung untuk laporan dari Portal.
+  // Pada jalur WhatsApp, balasan otomatis webhook sudah menjadi konfirmasi orang tua,
+  // sehingga pesan laporan terpisah tidak dikirim dua kali.
+  if (kirimKeOrtu) {
+    const relasi = await panggil(`/rest/v1/siswa_wali?siswa_id=in.(${ids.join(',')})&select=siswa_id,wali_id`, 'GET');
+    const waliData = relasi?.length
+      ? await panggil(`/rest/v1/wali?sekolah_id=eq.${sid}&id=in.(${[...new Set(relasi.map(x => Number(x.wali_id)).filter(Number.isSafeInteger))].join(',')})&select=id,no_wa`, 'GET')
+      : [];
+    for (const w of waliData || []) tambah(w.no_wa, isi, 'Orang tua');
+    if (nomorOrtu) tambah(nomorOrtu, isi, 'Orang tua');
+  }
+
+  // Kepala sekolah menerima seluruh laporan sekolah.
+  const profilKepala = (profil || []).find(x => roleById.get(String(x.id)) === 'kepala_sekolah');
+  const nomorKepala = normWA(konfigurasi.nomor_kepala || profilKepala?.no_wa);
+  if (nomorKepala) tambah(nomorKepala, isi, 'Kepala sekolah');
+
+  // Wali kelas hanya menerima siswa dari kelas yang menjadi tanggung jawabnya.
+  for (const k of kelas || []) {
+    const p = profilById.get(String(k.wali_profil_id));
+    if (!p) continue;
+    const anakKelas = detail.filter((x, i) => Number(daftar[i]?.kelas_id) === Number(k.id));
+    if (!anakKelas.length) continue;
+    const pesanWali = buatIsi(
+      anakKelas.map(x => `*${x.nama}* (Kelas ${k.nama})`).join(', '),
+      'Yth. Bapak/Ibu Wali Kelas,'
+    );
+    tambah(p.no_wa, pesanWali, 'Wali kelas ' + k.nama);
+  }
+
+  // Pola penjadwalan meniru kirimBanyak() pada api/notifikasi-alpa.js:
+  // semua timestamp ditentukan lebih dahulu, lalu didaftarkan ke Fonnte per kelompok.
+  // Jeda tetap 30 detik sesuai alur laporan: kepala sekolah lalu wali kelas.
+  const semuaTujuan = [...tujuan.values()];
+  const orangTua = semuaTujuan.filter(x => x.label === 'Orang tua');
+  const sekolah = semuaTujuan.filter(x => x.label !== 'Orang tua');
+  const gagal = [];
+  const logs = [];
+  const batchId = crypto.randomUUID();
+  const judulLog = 'Laporan ' + (status === 'sakit' ? 'Sakit' : 'Izin') + ' dari Orang Tua';
+  let terkirim = 0;
+
+  const catatHasil = (x, hasil, error, jadwal) => {
+    const fonnte = hasil || {};
+    const id = Array.isArray(fonnte.id) ? fonnte.id[0] : fonnte.id;
+    return {
+      sekolah_id: sid,
+      oleh_developer: false,
+      batch_id: batchId,
+      jenis: 'laporan',
+      judul: judulLog,
+      label: String(x.label || 'Penerima').slice(0, 120),
+      nomor: String(x.nomor || '').slice(0, 20) || '-',
+      fonnte_id: id == null || id === '' ? null : String(id),
+      state_fonnte: fonnte.detail && fonnte.detail.id ? String(fonnte.detail.id) : null,
+      status: error ? 'gagal' : 'terjadwal',
+      status_fonnte: !error && fonnte.status != null ? String(fonnte.status) : null,
+      error: error ? String(error).slice(0, 300) : null,
+      jadwal_pada: !error && jadwal ? new Date(jadwal * 1000).toISOString() : null,
+      siswa_ids: ids.slice(0, 10)
+    };
+  };
+
+  const kirimSatu = async (x, jadwal) => {
+    const isiKirim = { target: x.nomor, message: x.pesan };
+    if (jadwal) isiKirim.schedule = Math.floor(Number(jadwal));
+    const response = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: { Authorization: token, 'Content-Type': 'application/json' },
+      body: JSON.stringify(isiKirim)
+    });
+    const hasil = await response.json().catch(() => ({}));
+    if (!response.ok || hasil.status === false) {
+      throw new Error(hasil.reason || hasil.message || 'Fonnte menolak pengiriman pesan');
+    }
+    return hasil;
+  };
+
+  // Portal: kirim pemberitahuan kepada orang tua sekarang, dan tunggu Fonnte menerima.
+  // Webhook: orang tua sudah menerima balasan otomatis sebelum fungsi ini dipanggil.
+  const hasilOrtu = await Promise.allSettled(orangTua.map(x => kirimSatu(x)));
+  hasilOrtu.forEach((h, i) => {
+    const x = orangTua[i];
+    if (h.status === 'fulfilled') {
+      terkirim++;
+      logs.push(catatHasil(x, h.value, null, null));
+    } else {
+      const alasan = String(h.reason?.message || h.reason);
+      gagal.push(alasan);
+      logs.push(catatHasil(x, null, alasan, null));
+    }
+  });
+
+  // Jadwal staf dihitung SETELAH pesan langsung orang tua selesai diproses.
+  // Ini mengikuti pola stabil: hitung jadwal berurutan, lalu daftarkan per batch (maks. 5).
+  let waktu = Math.floor(Date.now() / 1000);
+  const berjadwal = sekolah.map(x => {
+    waktu += 30;
+    return { ...x, waktu };
+  });
+  for (let i = 0; i < berjadwal.length; i += 5) {
+    const bagian = berjadwal.slice(i, i + 5);
+    const hasil = await Promise.allSettled(bagian.map(x => kirimSatu(x, x.waktu)));
+    hasil.forEach((h, j) => {
+      const x = bagian[j];
+      const infoJadwal = {
+        penerima: x.label,
+        nomor_akhir: String(x.nomor).slice(-4),
+        jadwal_unix: x.waktu,
+        jadwal_iso: new Date(x.waktu * 1000).toISOString(),
+        detail_fonnte: h.status === 'fulfilled' ? (h.value.detail || null) : null,
+        fonnte_id: h.status === 'fulfilled' ? (h.value.id || null) : null
+      };
+      if (h.status === 'fulfilled') {
+        terkirim++;
+        logs.push(catatHasil(x, h.value, null, x.waktu));
+        console.log('Notifikasi laporan berhasil didaftarkan ke jadwal Fonnte:', JSON.stringify(infoJadwal));
+      } else {
+        const alasan = String(h.reason?.message || h.reason);
+        gagal.push((x.label || 'Penerima sekolah') + ': ' + alasan);
+        logs.push(catatHasil(x, null, alasan, null));
+        console.error('Gagal mendaftarkan jadwal notifikasi laporan:', JSON.stringify({ ...infoJadwal, error: alasan }));
+      }
+    });
+  }
+
+  if (logs.length) {
+    try {
+      // Samakan key seluruh baris agar bulk insert PostgREST konsisten.
+      await panggil('/rest/v1/kirim_log', 'POST', logs, { Prefer: 'return=minimal' });
+    } catch (e) {
+      console.error('Riwayat notifikasi laporan gagal dicatat:', e && e.message);
+      gagal.push('Riwayat status pesan gagal disimpan ke database');
+    }
+  }
+
+  if (gagal.length) console.error('Sebagian notifikasi laporan gagal dikirim:', gagal);
+  return { terkirim, gagal, batch_id: batchId };
+}
+
 module.exports = {
   bantuanBuat,
   bantuanCek,
@@ -406,5 +621,6 @@ module.exports = {
   kirimDev,
   kabariDeveloper,
   kirimOtp,
-  cekOtp
+  cekOtp,
+  kirimNotifikasiLaporan
 };
