@@ -964,7 +964,17 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
   // Satu salam pembuka dan satu salam penutup untuk seluruh balasan.
   // Bagian tambahan (mis. nama yang ditolak) ikut dalam pesan yang sama.
   bagian.push(...tambahan);
-  return { balasan: bungkusBalasan(bagian) };
+  return {
+    balasan: bungkusBalasan(bagian),
+    notifikasi: ubah.length && semuaDicatat.length ? {
+      sekolahId: K().sekolahId,
+      siswaIds: [...new Set(ubah.map(x => Number(x.id)).filter(Number.isSafeInteger))],
+      status,
+      tanggal: semuaDicatat,
+      catatan,
+      sumber: 'WhatsApp Wali Murid'
+    } : null
+  };
 }
 
 // Menghitung tanggal, mencatat, lalu membalas. Waktu yang tidak jelas -> ragu ke kepala sekolah.
@@ -1010,7 +1020,22 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
   }
   const hasil = await simpan(dari, pesan, anak, status, catatan, rencana, bagianNama('sebagian'));
   await catatNama();
+
+  // Balasan konfirmasi kepada orang tua harus dikirim lebih dahulu.
   if (hasil.balasan) await kirimBalasanWali(target, hasil.balasan, bahasa);
+
+  // Setelah balasan orang tua diproses, jadwalkan kepala sekolah lalu wali kelas.
+  // Orang tua tidak dikirimi pesan laporan kedua karena sudah menerima balasan otomatis.
+  if (hasil.notifikasi) {
+    try {
+      await require('./_lib').kirimNotifikasiLaporan({
+        ...hasil.notifikasi,
+        kirimKeOrtu: false
+      });
+    } catch (e) {
+      console.error('Notifikasi laporan WhatsApp gagal:', e && e.message);
+    }
+  }
 }
 
 function getGroupId(b) {
