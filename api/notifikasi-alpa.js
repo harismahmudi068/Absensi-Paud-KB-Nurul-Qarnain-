@@ -402,103 +402,84 @@ async function kirimGrupLibur(tokenUtama, sekolahId, tanggal, lg) {
   return { ok, gagal };
 }
 
-// ALPA: pesan khusus wali kelas, memakai kepala dan penutup pesan untuk kepala sekolah.
-function pesanWali(teks, tanggal, daftarKelas, sapaan) {
-  const total = daftarKelas.reduce((n, k) => n + k.siswa.length, 0);
-
-  // Normalisasi pesan sumber: dukung newline asli maupun teks literal "\n".
-  const teksNormal = String(teks || '').replace(/\\n/g, '\n');
-  const iHeader = teksNormal.indexOf('Berikut daftar anak');
-  const iFooter = teksNormal.lastIndexOf('Terimakasih');
-  const sapaanFinal = sapaan || 'Bapak/Ibu Wali Kelas';
-
-  let atas;
-  if (iHeader >= 0) {
-    atas = teksNormal
-      .slice(0, iHeader)
-      .replace('Bapak/Ibu Kepala Sekolah', sapaanFinal)
-      .replace(/Total:\s*\d+\s+siswa/i, `Total: ${total} siswa`)
-      .replace(/\n+$/, '');
-  } else {
-    atas = [
-      `_Assalamu'alaikum, ${sapaanFinal}_`,
-      '',
-      '🔔 NOTIFIKASI ALPA OTOMATIS',
-      '',
-      `📅 Tanggal: ${formatTanggal(tanggal)}`,
-      `👥 Total: ${total} siswa`
-    ].join('\n');
+// Rekap per wali kelas hanya memuat siswa dari kelas yang menjadi tanggung jawabnya.
+function pesanWaliRekap(tanggal, daftarKelas, sapaan) {
+  const kategori = [['alpa', 'ALPA'], ['sakit', 'SAKIT'], ['izin', 'IZIN']];
+  const total = daftarKelas.reduce((n, k) => n + kategori.reduce((m, [key]) => m + (k[key] || []).length, 0), 0);
+  const baris = [
+    `_Assalamu'alaikum, ${sapaan || 'Bapak/Ibu Wali Kelas'}_`,
+    '',
+    '🔔 REKAP ABSENSI HARIAN',
+    '',
+    `📅 Tanggal: ${formatTanggal(tanggal)}`,
+    `👥 Total: ${total} siswa`,
+    ''
+  ];
+  for (const [key, label] of kategori) {
+    if (!daftarKelas.some(k => (k[key] || []).length)) continue;
+    baris.push(`*Daftar ${label}:*`);
+    for (const k of daftarKelas) {
+      const nama = k[key] || [];
+      if (!nama.length) continue;
+      baris.push(`📚 ${k.nama}`);
+      nama.forEach((n, i) => baris.push(`${i + 1}. ${n}`));
+    }
+    baris.push('');
   }
-
-  const bawah = iFooter >= 0
-    ? teksNormal.slice(iFooter).replace(/^Terimakasih/, 'Terimakasih')
-    : 'Terimakasih 🌹';
-
-  const barisDaftar = ['Berikut daftar anak yang *ALPA* :', ''];
-  daftarKelas.forEach((k, idx) => {
-    if (idx > 0) barisDaftar.push('');
-    barisDaftar.push(`📚 ${k.nama}`);
-    k.siswa.forEach((nama, i) => barisDaftar.push(`${i + 1}. ${nama}`));
-  });
-
-  return `${atas}\n\n${barisDaftar.join('\n')}\n\n${bawah}`;
+  baris.push('Terimakasih 🌹', '_Wassalamu’alaikum warahmatullahi wabarakatuh_ 🙏🏻');
+  return baris.join('\n');
 }
 
-async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg) {
-  if (!Array.isArray(alpa) || !alpa.length) return { ok: 0, gagal: [] };
+async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa, lg, rekap) {
+  // Payload rekap baru; fallback ke payload alpa lama agar pemanggil terdahulu tetap kompatibel.
+  const sumber = Array.isArray(rekap) && rekap.length
+    ? rekap
+    : (Array.isArray(alpa) ? alpa.map(x => ({ ...x, status: 'alpa' })) : []);
+  if (!sumber.length) return { ok: 0, gagal: [] };
 
-  // Kelompokkan siswa alpa per kelas
   const perKelas = new Map();
-  for (const x of alpa) {
+  for (const x of sumber) {
     const kid = Number(x && x.kelas_id);
-    if (!Number.isInteger(kid) || kid <= 0) continue;
-    if (!perKelas.has(kid)) perKelas.set(kid, []);
-    perKelas.get(kid).push(String(x.nama || '').trim());
+    const status = String(x && x.status || 'alpa').toLowerCase();
+    if (!Number.isInteger(kid) || kid <= 0 || !['alpa', 'sakit', 'izin'].includes(status)) continue;
+    if (!perKelas.has(kid)) perKelas.set(kid, { alpa: [], sakit: [], izin: [] });
+    const nama = String(x.nama || '').trim();
+    if (nama) perKelas.get(kid)[status].push(nama);
+  }
+  for (const v of perKelas.values()) {
+    for (const key of ['alpa', 'sakit', 'izin']) v[key].sort((a, b) => a.localeCompare(b, 'id'));
   }
   if (!perKelas.size) return { ok: 0, gagal: [] };
 
-  // Kelas harus milik sekolah ini; ambil wali kelasnya
-  const kelas =
-    (await supabase(
-      `kelas?sekolah_id=eq.${sekolahId}&id=in.(${[...perKelas.keys()].join(',')})&select=id,nama,wali_profil_id`
-    )) || [];
-  const waliIds = [...new Set(kelas.map((k) => k.wali_profil_id).filter((x) => x && RE_ID.test(String(x))))];
-  // Wali harus anggota aktif sekolah ini dan punya nomor WhatsApp yang valid.
-  // Tetap lanjut meskipun belum ada wali terdaftar agar pengelola tetap menerima notifikasi.
-  const wali = new Map((waliIds.length ? await anggotaAktif(sekolahId, waliIds) : []).map((a) => [a.id, a]));
-
+  const kelas = (await supabase(
+    `kelas?sekolah_id=eq.${sekolahId}&id=in.(${[...perKelas.keys()].join(',')})&select=id,nama,wali_profil_id`
+  )) || [];
+  const waliIds = [...new Set(kelas.map(k => k.wali_profil_id).filter(x => x && RE_ID.test(String(x))))];
+  const wali = new Map((waliIds.length ? await anggotaAktif(sekolahId, waliIds) : []).map(a => [a.id, a]));
   const perNomor = new Map();
+  const susunKelas = k => ({ nama: k.nama, ...(perKelas.get(Number(k.id)) || { alpa: [], sakit: [], izin: [] }) });
+
   for (const k of kelas.slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama)))) {
     const w = wali.get(k.wali_profil_id);
     if (!w || !RE_WA.test(w.nomor) || w.nomor === nomorKepala) continue;
     if (!perNomor.has(w.nomor)) perNomor.set(w.nomor, { nama: w.nama, role: w.role || '', kelas: [], waliKelas: true });
-    perNomor.get(w.nomor).kelas.push({ nama: k.nama, siswa: perKelas.get(Number(k.id)) || [] });
+    perNomor.get(w.nomor).kelas.push(susunKelas(k));
   }
 
-  // Pengelola menerima notifikasi alpa sekolah meskipun bukan wali kelas.
-  // Jika pengelola juga wali kelas, nomor digabung agar tidak menerima pesan ganda.
+  // Pertahankan perilaku lama: pengelola menerima rekap seluruh sekolah; nomor ganda digabung.
   const pengelola = (await anggotaAktif(sekolahId)).filter(a => a.role === 'pengelola');
-  const semuaKelasAlpa = kelas
-    .filter(k => perKelas.has(Number(k.id)))
-    .sort((a, b) => String(a.nama).localeCompare(String(b.nama)))
-    .map(k => ({ nama: k.nama, siswa: perKelas.get(Number(k.id)) || [] }));
+  const semuaKelas = kelas.slice().sort((a, b) => String(a.nama).localeCompare(String(b.nama))).map(susunKelas);
   for (const p of pengelola) {
     if (!RE_WA.test(p.nomor) || p.nomor === nomorKepala) continue;
-    if (!perNomor.has(p.nomor)) {
-      perNomor.set(p.nomor, { nama: p.nama, role: p.role, kelas: semuaKelasAlpa, waliKelas: false });
-    } else {
-      perNomor.get(p.nomor).role = p.role;
-    }
+    if (!perNomor.has(p.nomor)) perNomor.set(p.nomor, { nama: p.nama, role: p.role, kelas: semuaKelas, waliKelas: false });
+    else perNomor.get(p.nomor).role = p.role;
   }
 
-  const tujuan = [...perNomor.entries()].map(([nomor, v]) => {
-    const sapaan = v.waliKelas ? 'Bapak/Ibu Wali Kelas' : sapaanStaf(v.role);
-    return {
-      nama: `${v.nama}${v.kelas.length ? ' (wali ' + v.kelas.map((k) => k.nama).join(', ') + ')' : ' (Pengelola Sekolah)'}`,
-      nomor,
-      teks: pesanWali(teks, tanggal, v.kelas, sapaan)
-    };
-  });
+  const tujuan = [...perNomor.entries()].map(([nomor, v]) => ({
+    nama: `${v.nama}${v.kelas.length ? ' (' + (v.waliKelas ? 'wali ' : '') + v.kelas.map(k => k.nama).join(', ') + ')' : ' (Pengelola Sekolah)'}`,
+    nomor,
+    teks: pesanWaliRekap(tanggal, v.kelas, v.waliKelas ? 'Bapak/Ibu Wali Kelas' : sapaanStaf(v.role))
+  }));
   return kirimBanyak(token, tujuan, lg);
 }
 
@@ -689,14 +670,20 @@ module.exports = async (req, res) => {
     const lg = {
       sekolahId,
       jenis: jenisNotif,
-      judul: 'Notifikasi ' + jenisNotif + (tanggal ? ' ' + tanggal : ''),
+      judul: (Array.isArray(body.rekap) ? 'Rekap Absensi Harian' : 'Notifikasi ' + jenisNotif) + (tanggal ? ' ' + tanggal : ''),
       batch: tabel === 'notifikasi_libur' ? `libur-auto-${sekolahId}-${tanggal}-${id}` : crypto.randomUUID(),
       // 'uji' hanya dikirim fungsi database developer_uji_notif_libur (dilindungi X-Alpa-Secret)
       olehDev: body.uji === true
     };
 
-    const balasanKepala = await kirimFonnte(token, nomorTujuan, teks);
-    await catatLog([barisLog(lg, 'Kepala Sekolah', nomorTujuan, 'terjadwal', balasanKepala, null, null)]);
+    let balasanKepala;
+    try {
+      balasanKepala = await kirimFonnte(token, nomorTujuan, teks);
+      await catatLog([barisLog(lg, 'Kepala Sekolah', nomorTujuan, 'terjadwal', balasanKepala, null, null)]);
+    } catch (e) {
+      await catatLog([barisLog(lg, 'Kepala Sekolah', nomorTujuan, 'gagal', null, e.message || e, null)]);
+      throw e;
+    }
 
 
     // --------------------------------------------------------
@@ -732,7 +719,7 @@ module.exports = async (req, res) => {
         }
         tambahan = { ok: staf.ok + grup.ok, gagal: [...staf.gagal, ...grup.gagal] };
       } else {
-        tambahan = await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa, lg);
+        tambahan = await kirimWaliAlpa(token, sekolahId, nomorTujuan, teks, tanggal, body.alpa, lg, body.rekap);
       }
 
       if (tambahan.gagal.length) {
