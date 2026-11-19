@@ -693,7 +693,7 @@ module.exports = async (req, res) => {
     // Kepala sekolah menerima cakupan seluruh kelas yang tercantum dalam rekap sekolah.
     // Hanya menambahkan keterangan cakupan pada baris Total; format pesan lainnya tetap.
     const teksKepala = Array.isArray(body.rekap)
-      ? teks.replace(/(👥\\s*Total:\\s*\\d+\\s*siswa)(?!\\s*\\()/i, '$1 (Khusus Semua Kelas)')
+      ? teks.replace(/(👥\s*Total:\s*\d+\s*siswa)(?!\s*\()/i, '$1 (Khusus Semua Kelas)')
       : teks;
 
     let balasanKepala;
