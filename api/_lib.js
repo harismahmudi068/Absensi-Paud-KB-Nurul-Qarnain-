@@ -420,36 +420,44 @@ async function kirimNotifikasiLaporan({ sekolahId, siswaIds, status, tanggal, ca
     ? await panggil(`/rest/v1/profil?id=in.(${profilIds.join(',')})&aktif=eq.true&select=id,nama,no_wa`, 'GET')
     : [];
   const profilById = new Map((profil || []).map(x => [String(x.id), x]));
-  const namaStatus = status === 'sakit' ? 'SAKIT' : 'IZIN';
   const tgl = (tanggal || []).filter(Boolean);
   const formatTgl = t => new Date(t + 'T00:00:00+07:00').toLocaleDateString('id-ID', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'Asia/Jakarta' });
   const detail = daftar.map(x => {
     const k = (kelas || []).find(y => Number(y.id) === Number(x.kelas_id));
     return { nama: x.nama || 'Siswa', kelas: k?.nama || 'Kelas' };
   });
-  const labelStatus = status === 'sakit' ? 'sakit' : 'izin';
-  const durasi = tgl.length;
-  const teksDurasi = durasi + ' hari';
-  const daftarTanggal = tgl.map(formatTgl).join(' • ');
-  const buatIsi = (daftarAnak, sapaan) => [
-    "🌹 Assalamu'alaikum warahmatullahi wabarakatuh.",
+  const labelStatus = status === 'sakit' ? 'Sakit' : 'Izin';
+  const ikonStatus = status === 'sakit' ? '🤒' : '📝';
+  const teksDurasi = tgl.length + ' hari';
+  const sumberTampil = String(sumber || 'Portal wali murid').trim()
+    .replace(/^whatsapp wali murid$/i, 'WhatsApp wali murid')
+    .replace(/^portal wali murid$/i, 'Portal wali murid');
+  const buatIsi = (daftarAnak, jabatan) => [
+    "🌹 _Assalamu'alaikum warahmatullahi wabarakatuh._",
     '',
-    sapaan,
-    `Kami ingin menyampaikan bahwa orang tua dari ananda ${daftarAnak} telah menginformasikan bahwa ananda tercatat *${labelStatus}* tidak masuk sekolah selama *${teksDurasi}*.`,
+    `_Yth. Bapak/Ibu ${jabatan},_`,
     '',
-    ...(catatan ? [`📝 Keterangan orang tua: ${String(catatan).slice(0, 200)}.`, ''] : []),
-    `📅 Tanggal ${labelStatus}: • ${tgl.map(formatTgl).join(' • ')}.`,
+    '📢 Kami sampaikan *laporan ketidakhadiran siswa* berikut:',
     '',
-    `📌 Sumber laporan: ${sumber}.`,
+    ...daftarAnak.flatMap((anak, i) => [
+      `👤 *Nama:* *_${anak.nama}_*`,
+      `🏫 *Kelas:* ${anak.kelas}`,
+      ...(i < daftarAnak.length - 1 ? [''] : [])
+    ]),
+    `${ikonStatus} *Keterangan:* *${labelStatus}*`,
+    `⏳ *Lama izin:* *${teksDurasi}*`,
+    '',
+    '📅 *Tanggal:*',
+    ...tgl.map(t => `• ${formatTgl(t)}`),
+    '',
+    `📲 *Sumber:* _${sumberTampil}_`,
+    '✅ *Status:* *Laporan sudah tercatat*',
     '',
     'Terima kasih atas perhatian dan kerja sama Bapak/Ibu. 🙏',
     '',
-    "Wassalamu'alaikum warahmatullahi wabarakatuh."
+    "_Wassalamu'alaikum warahmatullahi wabarakatuh._"
   ].join('\n');
-  const isi = buatIsi(
-    detail.map(x => `*${x.nama}* (Kelas ${x.kelas})`).join(', '),
-    'Yth. Bapak/Ibu.'
-  );
+  const isi = buatIsi(detail, 'Kepala Sekolah');
 
   const tujuan = new Map();
   const tambah = (nomor, pesan, label) => {
@@ -481,10 +489,7 @@ async function kirimNotifikasiLaporan({ sekolahId, siswaIds, status, tanggal, ca
     if (!p) continue;
     const anakKelas = detail.filter((x, i) => Number(daftar[i]?.kelas_id) === Number(k.id));
     if (!anakKelas.length) continue;
-    const pesanWali = buatIsi(
-      anakKelas.map(x => `*${x.nama}* (Kelas ${k.nama})`).join(', '),
-      'Yth. Bapak/Ibu Wali Kelas,'
-    );
+    const pesanWali = buatIsi(anakKelas, 'Wali Kelas');
     tambah(p.no_wa, pesanWali, 'Wali kelas ' + k.nama);
   }
 
