@@ -402,6 +402,19 @@ async function kirimGrupLibur(tokenUtama, sekolahId, tanggal, lg) {
   return { ok, gagal };
 }
 
+// Susun payload rekap database menjadi struktur per kelas untuk format pesan seragam.
+function kelompokkanRekap(rekap) {
+  const map = new Map();
+  for (const x of (Array.isArray(rekap) ? rekap : [])) {
+    const namaKelas = String(x.kelas || 'Tanpa Kelas');
+    if (!map.has(namaKelas)) map.set(namaKelas, { nama: namaKelas, alpa: [], sakit: [], izin: [] });
+    const status = String(x.status || '').toLowerCase();
+    const nama = String(x.nama || '').trim();
+    if (nama && ['alpa', 'sakit', 'izin'].includes(status)) map.get(namaKelas)[status].push(nama);
+  }
+  return [...map.values()].sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
+}
+
 // Rekap staf memakai satu format baku; perbedaan hanya sapaan dan cakupan kelas.
 function pesanWaliRekap(tanggal, daftarKelas, sapaan, namaSekolah, waktuProses, waliKelas = true) {
   const kategori = [['alpa', 'ALPA'], ['sakit', 'SAKIT'], ['izin', 'IZIN']];
@@ -692,9 +705,23 @@ module.exports = async (req, res) => {
 
     // Kepala sekolah menerima cakupan seluruh kelas yang tercantum dalam rekap sekolah.
     // Hanya menambahkan keterangan cakupan pada baris Total; format pesan lainnya tetap.
-    const teksKepala = Array.isArray(body.rekap)
-      ? teks.replace(/(👥\s*Total:\s*\d+\s*siswa)(?!\s*\()/i, '$1 (Khusus Semua Kelas)')
-      : teks;
+    let teksKepala = teks;
+    if (Array.isArray(body.rekap)) {
+      const daftarKelas = kelompokkanRekap(body.rekap);
+      const pengaturanSekolah = (await supabase(
+        `pengaturan?sekolah_id=eq.${sekolahId}&select=nama_sekolah&limit=1`
+      ) || [])[0] || {};
+      const cocokWaktu = teks.match(/⏰\s*Waktu proses:\s*([^\r\n]+)/i);
+      const waktuProses = cocokWaktu ? cocokWaktu[1].trim() : '';
+      teksKepala = pesanWaliRekap(
+        tanggal || String(notif.tanggal || ''),
+        daftarKelas,
+        'Bapak/Ibu Kepala Sekolah',
+        pengaturanSekolah.nama_sekolah,
+        waktuProses,
+        false
+      );
+    }
 
     let balasanKepala;
     try {
