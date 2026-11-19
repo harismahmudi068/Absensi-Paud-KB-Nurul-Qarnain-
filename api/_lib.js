@@ -456,7 +456,7 @@ async function kirimNotifikasiLaporan({ sekolahId, siswaIds, status, tanggal, ca
     'Terima kasih atas perhatian dan kerja sama Bapak/Ibu. 🙏',
     '',
     "_Wassalamu'alaikum warahmatullahi wabarakatuh._"
-  ].join('\\n');
+  ].join('\n');
   const isi = buatIsi(detail, 'Kepala Sekolah');
 
   const tujuan = new Map();
