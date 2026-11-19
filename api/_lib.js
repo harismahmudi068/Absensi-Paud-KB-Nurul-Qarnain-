@@ -388,7 +388,7 @@ async function ubahUsernameAkun(userId, usernameLama, usernameBaru) {
 // Tidak memakai RPC/fungsi database; seluruh operasi memakai REST API yang sudah ada.
 // Di deployment Preview, PAUD AN-NAJAH (ID 10) sengaja dikecualikan dari pengiriman.
 // ------------------------------------------------------------
-async function kirimNotifikasiLaporan({ sekolahId, siswaIds, status, tanggal, catatan, nomorOrtu, sumber = 'Portal Wali Murid', kirimKeOrtu = true }) {
+async function kirimNotifikasiLaporan({ sekolahId, siswaIds, status, tanggal, catatan, nomorOrtu, sumber = 'Portal Wali Murid', kirimKeOrtu = false }) {
   const sid = Number(sekolahId);
   const ids = [...new Set((siswaIds || []).map(Number).filter(x => Number.isSafeInteger(x) && x > 0))];
   if (!sid || !ids.length || !['izin', 'sakit'].includes(status)) return { dilewati: true };
