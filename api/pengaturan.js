@@ -136,7 +136,7 @@ async function sandiBenar(email, sandi) {
 function urlWebhook(req, kunci) {
   const headers = (req && req.headers) || {};
   const hostHeader = headers['x-forwarded-host'] || headers.host || process.env.VERCEL_URL || '';
-  const host = String(hostHeader).split(',')[0].trim().replace(/^https?:\\/\\//i, '').split('/')[0];
+  const host = String(hostHeader).split(',')[0].trim().replace(/^https?:\/\//i, '').split('/')[0];
   const hostAman = host === 'absensi-1486.vercel.app' || host.endsWith('.vercel.app');
   const domain = hostAman ? host : 'absensi-1486.vercel.app';
   return `https://${domain}/api/webhook?key=${kunci}`;
