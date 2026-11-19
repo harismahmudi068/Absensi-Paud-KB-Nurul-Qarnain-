@@ -428,7 +428,7 @@ function pesanWaliRekap(tanggal, daftarKelas, sapaan, namaSekolah, waktuProses) 
     }
     baris.push('');
   }
-  baris.push('Terimakasih 🌹', '_Wassalamu’alaikum warahmatullahi wabarakatul_🙏🏻');
+  baris.push('Terimakasih 🌹', '_Wassalamu’alaikum warahmatullahi wabarakatullah_🙏🏻');
   return baris.join('\n');
 }
 
