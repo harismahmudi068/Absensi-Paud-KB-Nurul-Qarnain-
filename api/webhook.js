@@ -941,6 +941,7 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
     bagian.push(status === 'sakit' ? isiSakit(nm, g.tanggal, g.lanjut) : isiIzin(nm, g.tanggal, g.tidakAktif, g.terlindung));
   }
 
+  // Penjadwalan notifikasi dilakukan setelah balasan WhatsApp orang tua terkirim.
   // Anak yang tanggal izinnya jatuh seluruhnya pada hari libur.
   const liburKelompok = new Map();
   for (const p of liburSaja) {
@@ -1024,7 +1025,7 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
   // Balasan konfirmasi kepada orang tua harus dikirim lebih dahulu.
   if (hasil.balasan) await kirimBalasanWali(target, hasil.balasan, bahasa);
 
-  // Setelah balasan orang tua diproses, jadwalkan kepala sekolah lalu wali kelas.
+  // Setelah balasan diproses Fonnte, baru daftarkan jadwal kepala sekolah dan wali kelas.
   // Orang tua tidak dikirimi pesan laporan kedua karena sudah menerima balasan otomatis.
   if (hasil.notifikasi) {
     try {
