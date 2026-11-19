@@ -402,16 +402,18 @@ async function kirimGrupLibur(tokenUtama, sekolahId, tanggal, lg) {
   return { ok, gagal };
 }
 
-// Rekap per wali kelas hanya memuat siswa dari kelas yang menjadi tanggung jawabnya.
-function pesanWaliRekap(tanggal, daftarKelas, sapaan) {
+// Rekap staf memakai satu format baku; perbedaan hanya sapaan dan cakupan kelas.
+function pesanWaliRekap(tanggal, daftarKelas, sapaan, namaSekolah, waktuProses) {
   const kategori = [['alpa', 'ALPA'], ['sakit', 'SAKIT'], ['izin', 'IZIN']];
   const total = daftarKelas.reduce((n, k) => n + kategori.reduce((m, [key]) => m + (k[key] || []).length, 0), 0);
   const baris = [
     `_Assalamu'alaikum, ${sapaan || 'Bapak/Ibu Wali Kelas'}_`,
     '',
-    '🔔 REKAP ABSENSI HARIAN',
+    '🔔 *LAPORAN REKAP ABSENSI* (Siswa Tidak Masuk Sekolah *HARI INI*)',
     '',
+    `🏫 ${namaSekolah || 'Sekolah'}`,
     `📅 Tanggal: ${formatTanggal(tanggal)}`,
+    `⏰ Waktu proses: ${waktuProses || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB'}`,
     `👥 Total: ${total} siswa`,
     ''
   ];
@@ -426,7 +428,7 @@ function pesanWaliRekap(tanggal, daftarKelas, sapaan) {
     }
     baris.push('');
   }
-  baris.push('Terimakasih 🌹', '_Wassalamu’alaikum warahmatullahi wabarakatuh_ 🙏🏻');
+  baris.push('Terimakasih 🌹', '_Wassalamu’alaikum warahmatullahi wabarakatul_🙏🏻');
   return baris.join('\n');
 }
 
@@ -475,10 +477,21 @@ async function kirimWaliAlpa(token, sekolahId, nomorKepala, teks, tanggal, alpa,
     else perNomor.get(p.nomor).role = p.role;
   }
 
+  const pengaturanSekolah = (await supabase(
+    `pengaturan?sekolah_id=eq.${sekolahId}&select=nama_sekolah&limit=1`
+  ) || [])[0] || {};
+  const cocokWaktu = String(teks || '').match(/⏰\\s*Waktu proses:\\s*([^\\r\\n]+)/i);
+  const waktuProses = cocokWaktu ? cocokWaktu[1].trim() : '';
   const tujuan = [...perNomor.entries()].map(([nomor, v]) => ({
     nama: `${v.nama}${v.kelas.length ? ' (' + (v.waliKelas ? 'wali ' : '') + v.kelas.map(k => k.nama).join(', ') + ')' : ' (Pengelola Sekolah)'}`,
     nomor,
-    teks: pesanWaliRekap(tanggal, v.kelas, v.waliKelas ? 'Bapak/Ibu Wali Kelas' : sapaanStaf(v.role))
+    teks: pesanWaliRekap(
+      tanggal,
+      v.kelas,
+      v.waliKelas ? 'Bapak/Ibu Wali Kelas' : sapaanStaf(v.role),
+      pengaturanSekolah.nama_sekolah,
+      waktuProses
+    )
   }));
   return kirimBanyak(token, tujuan, lg);
 }
