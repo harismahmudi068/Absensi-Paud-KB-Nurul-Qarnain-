@@ -377,6 +377,15 @@ async function kirimLaporan(req, res) {
       return res.status(409).json({ error: 'Tidak ada tanggal yang dapat dicatat. Absensi Hadir, Terlambat, dan Libur tetap dilindungi.' });
     await L.catatLog({ pelaku: null, sekolah_id: sid, aksi: 'laporan_dashboard_siswa',
       rincian: status + ' siswa ' + id + ' ' + berhasil.join(',') });
+    // Pemberitahuan WhatsApp memakai data yang sudah berhasil dicatat. Kegagalan kirim
+    // tidak membatalkan laporan orang tua yang sudah tersimpan.
+    try {
+      await L.kirimNotifikasiLaporan({
+        sekolahId: sid, siswaIds: [id], status, tanggal: berhasil, catatan, sumber: 'Portal Wali Murid'
+      });
+    } catch (e) {
+      console.error('Notifikasi laporan Portal gagal:', e && e.message);
+    }
     return res.status(200).json({ ok: true, status, tanggal_diminta: { mulai, akhir: status === 'izin' ? akhir : null }, tanggal_tercatat: berhasil });
   } catch (e) {
     console.error('portal.js POST laporan:', e.message);
