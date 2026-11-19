@@ -3,7 +3,7 @@
    Link portal (memakai kode_qr / UUID) TIDAK ada di kartu, dibagikan lewat aplikasi (WA / salin link). */
 (function(g){
 'use strict';
-const DOMAIN_PORTAL='https://absensi-1486.vercel.app';
+const DOMAIN_PORTAL=typeof window!=='undefined'&&window.location&&window.location.origin?window.location.origin:'https://absensi-1486.vercel.app';
 const BLN_ID=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const tglPanjang=iso=>{const p=String(iso||'').split('-');return p.length===3&&BLN_ID[+p[1]-1]?(+p[2])+' '+BLN_ID[+p[1]-1]+' '+p[0]:''};
 const tglDMY=iso=>iso?String(iso).slice(8,10)+'/'+String(iso).slice(5,7)+'/'+String(iso).slice(0,4):'';
