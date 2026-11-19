@@ -414,7 +414,7 @@ function pesanWaliRekap(tanggal, daftarKelas, sapaan, namaSekolah, waktuProses) 
     `🏫 ${namaSekolah || 'Sekolah'}`,
     `📅 Tanggal: ${formatTanggal(tanggal)}`,
     `⏰ Waktu proses: ${waktuProses || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB'}`,
-    `👥 Total: ${total} siswa`,
+    `👥 Total: ${total} siswa${daftarKelas.length ? ' (Khusus ' + (daftarKelas.length === 1 ? 'Kelas ' : 'Kelas ') + daftarKelas.map(k => k.nama).join(', ') + ')' : ''}`,
     ''
   ];
   for (const [key, label] of kategori) {
@@ -689,9 +689,15 @@ module.exports = async (req, res) => {
       olehDev: body.uji === true
     };
 
+    // Kepala sekolah menerima cakupan seluruh kelas yang tercantum dalam rekap sekolah.
+    // Hanya menambahkan keterangan cakupan pada baris Total; format pesan lainnya tetap.
+    const teksKepala = Array.isArray(body.rekap)
+      ? teks.replace(/(👥\\s*Total:\\s*\\d+\\s*siswa)(?!\\s*\\()/i, '$1 (Khusus Semua Kelas)')
+      : teks;
+
     let balasanKepala;
     try {
-      balasanKepala = await kirimFonnte(token, nomorTujuan, teks);
+      balasanKepala = await kirimFonnte(token, nomorTujuan, teksKepala);
       await catatLog([barisLog(lg, 'Kepala Sekolah', nomorTujuan, 'terjadwal', balasanKepala, null, null)]);
     } catch (e) {
       await catatLog([barisLog(lg, 'Kepala Sekolah', nomorTujuan, 'gagal', null, e.message || e, null)]);
