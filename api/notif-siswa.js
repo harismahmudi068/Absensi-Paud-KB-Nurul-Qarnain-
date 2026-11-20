@@ -536,13 +536,13 @@ async function prosesPengingatWa(eksekusiId) {
     }
     const nama = namaAnak(s);
     const pesan =
-      '🌷 _Assalamu\\'alaikum warahmatullahi wabarakatuh._\\n\\n' +
-      'Bapak/Ibu Orang Tua/Wali dari *' + nama + '*,\\n\\n' +
-      'Kami ingin menginformasikan bahwa hingga pukul 08.00 WIB hari ini, ananda belum tercatat memiliki laporan izin/sakit maupun status kehadiran.\\n\\n' +
-      'Masa laporan ' + e.status_laporan + ' ananda sebelumnya berakhir pada ' + tanggalLokalID(e.tanggal_akhir) + '.\\n\\n' +
-      'Apabila ananda masih belum dapat masuk sekolah, mohon Bapak/Ibu mengirimkan laporan izin/sakit kembali melalui WhatsApp atau portal orang tua. Jika ananda sudah dapat bersekolah, Bapak/Ibu tidak perlu mengirimkan laporan tambahan.\\n\\n' +
-      'Terima kasih atas perhatian dan kerja sama Bapak/Ibu.\\n\\n' +
-      '_Wassalamu\\'alaikum warahmatullahi wabarakatuh._';
+      '🌷 _Assalamu\'alaikum warahmatullahi wabarakatuh._\n\n' +
+      'Bapak/Ibu Orang Tua/Wali dari *' + nama + '*,\n\n' +
+      'Kami ingin menginformasikan bahwa hingga pukul 08.00 WIB hari ini, ananda belum tercatat memiliki laporan izin/sakit maupun status kehadiran.\n\n' +
+      'Masa laporan ' + e.status_laporan + ' ananda sebelumnya berakhir pada ' + tanggalLokalID(e.tanggal_akhir) + '.\n\n' +
+      'Apabila ananda masih belum dapat masuk sekolah, mohon Bapak/Ibu mengirimkan laporan izin/sakit kembali melalui WhatsApp atau portal orang tua. Jika ananda sudah dapat bersekolah, Bapak/Ibu tidak perlu mengirimkan laporan tambahan.\n\n' +
+      'Terima kasih atas perhatian dan kerja sama Bapak/Ibu.\n\n' +
+      '_Wassalamu\'alaikum warahmatullahi wabarakatuh._';
     const item = { e, token: tokenSekolah, pesan, nomor, terkirim: 0, gagal: 0, ids: [], error: '' };
     hasilEvent.set(Number(e.id), { item });
     nomor.forEach(n => tugas.push({ item, nomor: n }));
@@ -550,14 +550,19 @@ async function prosesPengingatWa(eksekusiId) {
   const hasilKirim = [];
   for (let i = 0; i < tugas.length; i += 5) {
     hasilKirim.push(...(await Promise.allSettled(tugas.slice(i, i + 5).map(async x => {
-      const r = await fetch('https://api.fonnte.com/send', {
-        method: 'POST',
-        headers: { Authorization: x.item.token, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: x.nomor, message: x.item.pesan })
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || j.status === false) throw new Error(j.reason || j.message || 'Fonnte menolak pengiriman');
-      return { id: Array.isArray(j.id) ? j.id.map(String) : (j.id ? [String(j.id)] : []) };
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
+      try {
+        const r = await fetch('https://api.fonnte.com/send', {
+          method: 'POST',
+          headers: { Authorization: x.item.token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: x.nomor, message: x.item.pesan }),
+          signal: controller.signal
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j.status === false) throw new Error(j.reason || j.message || 'Fonnte menolak pengiriman');
+        return { id: Array.isArray(j.id) ? j.id.map(String) : (j.id ? [String(j.id)] : []) };
+      } finally { clearTimeout(timer); }
     }))));
   }
   hasilKirim.forEach((h, i) => {
@@ -580,14 +585,14 @@ async function prosesPengingatWa(eksekusiId) {
       data = {
         wa_status: status, wa_waktu: new Date().toISOString(),
         wa_jumlah_tujuan: it.nomor.length, wa_dikirim: it.terkirim, wa_gagal: it.gagal,
-        wa_fonnte_ids: JSON.stringify(it.ids), wa_error: it.error || null, diubah: new Date().toISOString()
+        wa_fonnte_ids: it.ids, wa_error: it.error || null, diubah: new Date().toISOString()
       };
     } else {
       if (v.status === 'dilewati') dilewati++; else gagal++;
       data = {
         wa_status: v.status, wa_waktu: new Date().toISOString(),
         wa_jumlah_tujuan: v.tujuan, wa_dikirim: v.terkirim, wa_gagal: v.gagal,
-        wa_fonnte_ids: JSON.stringify(v.ids || []), wa_error: v.alasan || null, diubah: new Date().toISOString()
+        wa_fonnte_ids: v.ids || [], wa_error: v.alasan || null, diubah: new Date().toISOString()
       };
     }
     await L.panggil('/rest/v1/pengingat_izin_sakit?id=eq.' + id, 'PATCH', data, { Prefer: 'return=minimal' });
