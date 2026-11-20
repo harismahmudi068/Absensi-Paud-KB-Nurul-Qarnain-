@@ -457,6 +457,13 @@ async function catatPengingatIzinSakit({ sekolahId, siswaId, status, sumber, tan
     }
   });
 
+  // Laporan kurang dari tiga hari sekolah aktif tidak memerlukan pengingat.
+  // Pembatalan antrean lama tetap dijalankan di atas agar pembaruan singkat
+  // tidak meninggalkan pengingat lama yang masih menunggu untuk dikirim.
+  if (tanggalUnik.length < 3) {
+    return { dilewati: true, alasan: 'durasi_di_bawah_3_hari', jumlah_hari: tanggalUnik.length };
+  }
+
   return panggil('/rest/v1/pengingat_izin_sakit?on_conflict=sekolah_id,siswa_id,laporan_diubah',
     'POST', body, { Prefer: 'resolution=ignore-duplicates,return=representation' });
 }
