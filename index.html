@@ -5717,7 +5717,13 @@ function cronInfo(nama,perintah){let m;const sek=id=>{const x=(S.devSek||[]).fin
  if(/delete\\s+from\\s+public\\.pemakaian_ai_riwayat/i.test(String(perintah||'')))return{ket:'Menghapus riwayat rinci pemakaian AI yang berumur lebih dari 30 hari',fn:'hapus pemakaian_ai_riwayat',dikenal:true};
  if((m=/^alpa-sekolah-(\d+)$/.exec(nama)))return{ket:'Alpa otomatis '+sek(m[1])+' (notifikasi ke Kepala Sekolah dan wali kelas)',fn:'proses_alpa_untuk('+m[1]+')',dikenal:true};
  if((m=/^libur-notif-sekolah-(\d+)$/.exec(nama)))return{ket:'Notifikasi libur '+sek(m[1])+' (Kepala Sekolah dan anggota aktif)',fn:'kirim_notifikasi_libur('+m[1]+')',dikenal:true};
- const i=CRON_INFO[nama];return i?{ket:i[0],fn:i[1],dikenal:true}:{ket:'Tugas cron baru (belum ada keterangan)',fn:'',dikenal:false}}
+ const i=CRON_INFO[nama];if(i)return{ket:i[0],fn:i[1],dikenal:true};
+ const cmd=String(perintah||'').trim();
+ const hit=cmd.match(/([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(/);
+ const fnm=hit?hit[1]:'';
+ const sqlKind=cmd.toLowerCase().startsWith('delete')?'Pembersihan data otomatis':cmd.toLowerCase().startsWith('update')?'Pembaruan data otomatis':cmd.toLowerCase().startsWith('insert')?'Pencatatan data otomatis':fnm?'Menjalankan proses otomatis database':'Tugas otomatis database';
+ const namaRapi=String(nama||'').replace(/[_-]+/g,' ').trim();
+ return{ket:sqlKind+(namaRapi?' untuk '+namaRapi:''),fn:fnm||cmd.slice(0,180)||'Perintah SQL',dikenal:true,otomatis:true}}
 function devCronPanel(){const d=S.devCron;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat daftar cron...</div></div></div>';
  if(d.error)return `<div class="panel"><div class="ph">⏱ Jadwal otomatis (cron)</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ ${esc(d.error)}<br>Pastikan skrip SQL langkah-cron-developer.sql sudah dijalankan di Supabase.</div></div></div>`;
