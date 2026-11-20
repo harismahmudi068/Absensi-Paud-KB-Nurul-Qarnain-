@@ -507,6 +507,7 @@ async function prosesPengingatWa(eksekusiId) {
   const token = new Map();
   (tokenRows || []).forEach(x => { if (!token.has(Number(x.sekolah_id))) token.set(Number(x.sekolah_id), x.token); });
   (rahasiaRows || []).forEach(x => { if (!token.has(Number(x.sekolah_id)) && x.token_fonnte) token.set(Number(x.sekolah_id), x.token_fonnte); });
+  if (!token.has(1) && process.env.FONNTE_TOKEN) token.set(1, process.env.FONNTE_TOKEN);
   const hasilEvent = new Map(), tugas = [];
   for (const e of klaim) {
     const sid = Number(e.sekolah_id), anakId = Number(e.siswa_id);
