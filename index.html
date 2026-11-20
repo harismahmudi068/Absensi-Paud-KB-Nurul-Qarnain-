@@ -828,7 +828,7 @@ async function muatLib(daftar,diam){
    Data menu disimpan CM_TTL (2 menit). Setiap penulisan dari perangkat ini (simpan/ubah/hapus ke database,
    penyimpanan file, atau /api) menaikkan cmVer sehingga semua cache otomatis dianggap basi. */
 const CM_TTL=120000,CM=new Map();let cmVer=0,refVer=0;
-const RPC_BACA=/^(developer_(alpa|alumni_daftar|alumni_per_sekolah|alumni_ringkas|cron_daftar|guru|jam_notif_siswa|kirim_log|log|notif_libur|notif_piket|notif_siswa|pendaftaran|permintaan_nomor|push_daftar|sekolah)|keputusan_validasi|rapor_kehadiran|nomor_wa_(guru|kepala|operator)|tabungan_saldo|tahun_baru_ringkasan|email_dari_username)$/;
+const RPC_BACA=/^(developer_(alpa|alumni_daftar|alumni_per_sekolah|alumni_ringkas|cron_daftar|guru|jam_notif_siswa|kirim_log|log|notif_libur|notif_piket|notif_siswa|pengingat_izin_sakit|pendaftaran|permintaan_nomor|push_daftar|sekolah)|keputusan_validasi|rapor_kehadiran|nomor_wa_(guru|kepala|operator)|tabungan_saldo|tahun_baru_ringkasan|email_dari_username)$/;
 function cmTulis(u,m){m=String(m||'GET').toUpperCase();if(m==='GET'||m==='HEAD'||m==='OPTIONS')return false;
  const s=String((u&&u.url)||u||''),r=s.match(/\/rest\/v1\/rpc\/([A-Za-z0-9_]+)/);
  if(r)return !RPC_BACA.test(r[1]);
@@ -5049,6 +5049,7 @@ const DEVSET={
  nl:async()=>{S.devNL=await dbq(db.rpc('developer_notif_libur')).catch(ERR)},
  np:async()=>{S.devNP=await dbq(db.rpc('developer_notif_piket')).catch(ERR)},
  ns:async()=>{S.devNS=await dbq(db.rpc('developer_notif_siswa')).catch(ERR)},
+ pengingat:async()=>{S.devPengingat=await dbq(db.rpc('developer_pengingat_izin_sakit')).catch(ERR)},
  nj:async()=>{S.devNSJam=await dbq(db.rpc('developer_jam_notif_siswa')).catch(ERR)},
  hp:async()=>{S.devHP=await dbq(db.rpc('developer_hp_daftar')).catch(ERR)},
  push:async()=>{S.devPush=await dbq(db.rpc('developer_push_daftar')).catch(()=>null)},
@@ -5056,7 +5057,7 @@ const DEVSET={
  kal:async()=>{await muatKalNas().catch(()=>{})},
  profil:async()=>{await muatProfilSaya()}
 };
-const DEV_BUTUH={ai:['ai'],dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
+const DEV_BUTUH={ai:['ai'],dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],pengingat:['pengingat'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
 const DEVT={};
 function devButuh(){const t=devTab==='ringkas'?'setuju':devTab;
  const b=view==='developer'?(DEV_BUTUH[t]||[]):view==='dashboard'?DEV_BUTUH.dashboard:view==='profil'?['profil']:[];
@@ -5065,7 +5066,7 @@ const devSegar=k=>{const e=DEVT[k];return !!e&&e.v===cmVer&&Date.now()-e.t<CM_TT
 async function devPastikan(keys,paksa){const perlu=keys.filter(k=>paksa||!devSegar(k));if(!perlu.length)return false;
  const v0=cmVer;await Promise.all(perlu.map(async k=>{await DEVSET[k]();DEVT[k]={t:Date.now(),v:v0}}));return true}
 async function muatDev(){await devPastikan(devButuh(),true)}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','💬 Pesan WA'],['log','📜 Log'],['sistem','🩺 Sistem']];
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['pengingat','🔔 Pengingat Izin/Sakit'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','💬 Pesan WA'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
 function devBuka(k){drw(0);kalReset();devTab=k;if(k==='perangkat'){HPF.mode=false;HPF.sel.clear()}if(view==='developer'){const b=devButuh();if(b.every(devSegar)){renderAll();scrollTo(0,0);kedipHalaman()}else guard(async()=>{await devPastikan(b);renderAll();scrollTo(0,0);kedipHalaman()})}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
@@ -5110,8 +5111,50 @@ function tambahLiburNas(){form('Tambah Libur Nasional',[{k:'tgl',l:'Mulai tangga
 function ubahLiburNas(t){const r=(S.devKal||[]).find(x=>x.tanggal===t);if(!r)return;form('Ubah Libur Nasional',[{k:'tgl',l:'Tanggal',t:'date',v:t},{k:'ket',l:'Keterangan',v:r.keterangan||''}],async v=>{if(!v.tgl)throw new Error('Pilih tanggal');await dbq(db.rpc('libur_nasional_ubah',{p_lama:t,p_baru:v.tgl,p_keterangan:v.ket}));await muatKalNas();renderV();toast('Libur nasional diperbarui')})}
 async function hapusLiburNas(t){if(!await konfirmasi('Hapus libur nasional '+fmt(t)+'?',{judul:'Hapus libur nasional',ya:'Hapus',bahaya:1}))return;guard(async()=>{await dbq(db.rpc('libur_nasional_hapus',{p_tanggal:t}));await muatKalNas();renderV();toast('Libur nasional dihapus')})}
 function segarDev(){drw(0);guard(async()=>{cmKosong();await muatDev();renderV();toast('Data diperbarui')})}
+
+function devSegarkanPengingat() {
+  guard(async () => {
+    S.devPengingat = await dbq(db.rpc('developer_pengingat_izin_sakit')).catch(ERR);
+    DEVT.pengingat = { t: Date.now(), v: cmVer };
+    renderV();
+    toast('Pemantauan pengingat diperbarui');
+  });
+}
+function devPengingat() {
+  const d = S.devPengingat;
+  if (!d) return '<div class="panel"><div class="ph">🔔 Pemantauan Pengingat Izin/Sakit</div><div class="pb"><div class="note">⏳ Memuat pemantauan...</div></div></div>';
+  if (d.error) return '<div class="panel"><div class="ph">🔔 Pemantauan Pengingat Izin/Sakit</div><div class="pb"><div class="note">Gagal memuat data: ' + esc(d.error) + '</div><button class="btn success sm" onclick="devSegarkanPengingat()">↻ Coba lagi</button></div></div>';
+  const r = d.ringkasan || {};
+  const angka = v => Number(v || 0).toLocaleString('id-ID');
+  const waktu = v => v ? new Date(v).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-';
+  const tgl = v => v ? fmt(v) : '-';
+  const st = v => {
+    const k = { berhasil: 'Hadir', selesai: 'Hadir', dipanggil: 'Belum', menunggu: 'Belum', diproses: 'Belum', gagal: 'Alpa', sebagian: 'Izin', dilewati: 'Libur', tidak_ada: 'Belum' };
+    const l = { berhasil: 'Berhasil', selesai: 'Selesai', dipanggil: 'Dipanggil', menunggu: 'Menunggu', diproses: 'Diproses', gagal: 'Gagal', sebagian: 'Sebagian', dilewati: 'Dilewati', tidak_ada: 'Tidak ada target' };
+    const x = String(v || '-');
+    return '<span class="badge ' + (k[x] || 'Belum') + '">' + esc(l[x] || x) + '</span>';
+  };
+  const kartu = (label, nilai, sub) => '<div class="stat"><b>' + angka(nilai) + '</b><span class="mu">' + label + '</span>' + (sub ? '<div class="mu">' + sub + '</div>' : '') + '</div>';
+  const riwayat = Array.isArray(d.riwayat) ? d.riwayat : [];
+  const eksekusi = Array.isArray(d.eksekusi) ? d.eksekusi : [];
+  const rows = riwayat.map(x => '<tr><td>' + waktu(x.dibuat) + '</td><td>' + esc(x.sekolah || '-') + '</td><td><b>' + esc(x.siswa || '-') + '</b></td><td>' + esc(String(x.status_laporan || '').toUpperCase()) + '<div class="mu">' + esc(x.sumber || '') + '</div></td><td>' + tgl(x.tanggal_mulai) + ' – ' + tgl(x.tanggal_akhir) + '<div class="mu">' + angka(x.jumlah_hari) + ' hari · tindak lanjut ' + tgl(x.tanggal_tindak_lanjut) + '</div></td><td>' + st(x.push_status) + '<div class="mu">' + angka(x.push_dikirim) + '/' + angka(x.push_jumlah_tujuan) + ' HP</div></td><td>' + st(x.wa_status) + '<div class="mu">' + angka(x.wa_dikirim) + '/' + angka(x.wa_jumlah_tujuan) + ' nomor</div></td><td class="mu">' + esc(x.push_error || x.wa_error || '-') + '</td></tr>').join('');
+  const erows = eksekusi.map(x => '<tr><td>' + waktu(x.mulai_at) + '</td><td>' + (x.tahap === 'push_hari_terakhir' ? 'Push 16.00' : 'WhatsApp 08.00') + '</td><td>' + st(x.status) + '</td><td>' + angka(x.jumlah_diperiksa) + '</td><td>' + angka(x.jumlah_diproses) + '</td><td>' + angka(x.jumlah_berhasil) + '</td><td>' + angka(x.jumlah_gagal) + '</td><td>' + angka(x.jumlah_dilewati) + '</td><td class="mu">' + esc(x.error || '-') + '</td></tr>').join('');
+  return '<div class="panel"><div class="ph"><span>🔔 Pemantauan Pengingat Izin/Sakit</span><button class="btn soft sm" onclick="devSegarkanPengingat()">↻ Muat ulang</button></div><div class="pb">' +
+    '<div class="note">Pemantauan khusus Developer · Riwayat detail disimpan maksimal 7 hari. Push dijadwalkan pukul 16.00 WIB dan WhatsApp tindak lanjut pukul 08.00 WIB pada hari sekolah berikutnya. Tidak menampilkan nomor WhatsApp orang tua.</div>' +
+    '<div class="stats">' +
+    kartu('Laporan multi-hari', r.total) +
+    kartu('Push berhasil', r.push_berhasil, 'Menunggu: ' + angka(r.push_menunggu)) +
+    kartu('WhatsApp diterima Fonnte', r.wa_berhasil, 'Sebagian: ' + angka(r.wa_sebagian)) +
+    kartu('Kegagalan', Number(r.push_gagal || 0) + Number(r.wa_gagal || 0)) +
+    '</div><div class="ph" style="padding-left:0;padding-right:0">Riwayat per siswa · 7 hari terakhir</div>' +
+    (rows ? '<div class="tw"><table><thead><tr><th>Waktu</th><th>Sekolah</th><th>Siswa</th><th>Laporan</th><th>Periode</th><th>Push</th><th>WhatsApp</th><th>Keterangan</th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<div class="note">Belum ada pengingat yang tercatat dalam 7 hari terakhir.</div>') +
+    '<div class="ph" style="padding-left:0;padding-right:0">Riwayat eksekusi terjadwal</div>' +
+    (erows ? '<div class="tw"><table><thead><tr><th>Waktu</th><th>Tahap</th><th>Hasil</th><th>Diperiksa</th><th>Diproses</th><th>Berhasil</th><th>Gagal</th><th>Dilewati</th><th>Keterangan</th></tr></thead><tbody>' + erows + '</tbody></table></div>' : '<div class="note">Belum ada riwayat eksekusi.</div>') +
+    '</div></div>';
+}
+
 V.developer=()=>{if(devTab==='ringkas')devTab='setuju';
- return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,ai:devPemantauanAI,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,hapus:devHapus,kirim:devKirim,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
+ return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,ai:devPemantauanAI,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,pengingat:devPengingat,hapus:devHapus,kirim:devKirim,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
 function renderNavDev(){
  const nm=(Array.isArray(S.devPend)?S.devPend:[]).length+(Array.isArray(S.devNomor)?S.devNomor:[]).length,bd=nm?` <span class="badge Belum">${nm}</span>`:'';
  const itm=(on,fn,ic,lb,ex)=>`<button class="${on?'on':''}" onclick="${fn}"><span>${ic}</span>${lb}${ex||''}</button>`,dv=k=>view==='developer'&&devTab===k;
