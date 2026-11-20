@@ -377,6 +377,23 @@ async function kirimLaporan(req, res) {
       return res.status(409).json({ error: 'Tidak ada tanggal yang dapat dicatat. Absensi Hadir, Terlambat, dan Libur tetap dilindungi.' });
     await L.catatLog({ pelaku: null, sekolah_id: sid, aksi: 'laporan_dashboard_siswa',
       rincian: status + ' siswa ' + id + ' ' + berhasil.join(',') });
+    // Buat antrean pengingat langsung dari tanggal yang benar-benar berhasil dicatat.
+    let tanggalTindakLanjut = null;
+    let calonTindakLanjut = portalTambahHari(berhasil[berhasil.length - 1], 1);
+    for (let i = 0; i < 60; i++, calonTindakLanjut = portalTambahHari(calonTindakLanjut, 1)) {
+      if (portalHariSekolah(calonTindakLanjut, libur, kid)) {
+        tanggalTindakLanjut = calonTindakLanjut;
+        break;
+      }
+    }
+    try {
+      await require('./_lib').catatPengingatIzinSakit({
+        sekolahId: sid, siswaId: id, status, sumber: 'Dashboard Siswa',
+        tanggal: berhasil, laporanDiubah: isi.diubah, tanggalTindakLanjut
+      });
+    } catch (e) {
+      console.error('Gagal mencatat antrean pengingat Portal:', e && e.message);
+    }
     // Pemberitahuan WhatsApp memakai data yang sudah berhasil dicatat. Kegagalan kirim
     // tidak membatalkan laporan orang tua yang sudah tersimpan.
     try {

@@ -383,6 +383,58 @@ async function ubahUsernameAkun(userId, usernameLama, usernameBaru) {
   }
 }
 
+// Simpan satu identitas pengingat untuk setiap laporan siswa.
+// laporan_diubah memakai timestamp yang sama dengan baris absensi sehingga pengiriman ulang
+// dari request yang sama tidak membuat laporan/notifikasi ganda.
+async function catatPengingatIzinSakit({ sekolahId, siswaId, status, sumber, tanggal, laporanDiubah, tanggalTindakLanjut }) {
+  const sid = Number(sekolahId), anakId = Number(siswaId);
+  if (!Number.isSafeInteger(sid) || sid <= 0 || !Number.isSafeInteger(anakId) || anakId <= 0)
+    throw new Error('Identitas sekolah/siswa untuk pengingat tidak valid');
+  if (!['izin', 'sakit'].includes(status)) throw new Error('Status laporan pengingat tidak valid');
+  const asal = sumber === 'whatsapp' || sumber === 'WhatsApp Wali Murid'
+    ? 'whatsapp'
+    : (sumber === 'Dashboard Siswa' || sumber === 'Portal Wali Murid' ? 'Dashboard Siswa' : '');
+  if (!asal) throw new Error('Sumber laporan pengingat tidak valid');
+  const tanggalUnik = [...new Set((tanggal || []).map(x => String(x || '').slice(0, 10))
+    .filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))].sort();
+  if (!tanggalUnik.length || tanggalUnik.length > 32767) throw new Error('Tanggal laporan pengingat tidak valid');
+  const waktu = new Date(laporanDiubah);
+  if (!Number.isFinite(waktu.getTime())) throw new Error('Waktu laporan pengingat tidak valid');
+  const lanjut = /^\d{4}-\d{2}-\d{2}$/.test(String(tanggalTindakLanjut || ''))
+    ? String(tanggalTindakLanjut) : null;
+  const body = {
+    sekolah_id: sid,
+    siswa_id: anakId,
+    status_laporan: status,
+    sumber: asal,
+    laporan_diubah: waktu.toISOString(),
+    tanggal_mulai: tanggalUnik[0],
+    tanggal_akhir: tanggalUnik[tanggalUnik.length - 1],
+    jumlah_hari: tanggalUnik.length,
+    tanggal_tindak_lanjut: lanjut,
+    push_status: 'menunggu',
+    push_diproses_at: null,
+    push_waktu: null,
+    push_jumlah_tujuan: 0,
+    push_dikirim: 0,
+    push_gagal: 0,
+    push_error: null,
+    wa_status: lanjut ? 'menunggu' : 'dilewati',
+    wa_diproses_at: null,
+    wa_waktu: null,
+    wa_jumlah_tujuan: 0,
+    wa_dikirim: 0,
+    wa_gagal: 0,
+    wa_fonnte_ids: [],
+    wa_error: lanjut ? null : 'Tidak ditemukan hari sekolah berikutnya dalam 60 hari'
+  };
+  if (process.env.VERCEL_ENV === 'preview' && sid === 10) {
+    return { dilewati: true, alasan: 'sekolah_produksi' };
+  }
+  return panggil('/rest/v1/pengingat_izin_sakit?on_conflict=sekolah_id,siswa_id,laporan_diubah',
+    'POST', body, { Prefer: 'resolution=ignore-duplicates,return=representation' });
+}
+
 // ------------------------------------------------------------
 // Notifikasi laporan izin/sakit ke orang tua, kepala sekolah, dan wali kelas.
 // Tidak memakai RPC/fungsi database; seluruh operasi memakai REST API yang sudah ada.
@@ -627,5 +679,6 @@ module.exports = {
   kabariDeveloper,
   kirimOtp,
   cekOtp,
-  kirimNotifikasiLaporan
+  kirimNotifikasiLaporan,
+  catatPengingatIzinSakit
 };

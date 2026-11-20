@@ -800,7 +800,8 @@ async function buatRencana(status, waktu, anak = []) {
 
     return {
       ok: true,
-      untuk: kelasId => rencanaPerKelas.get(String(kelasId ?? '')) || cadangan?.hasil
+      untuk: kelasId => rencanaPerKelas.get(String(kelasId ?? '')) || cadangan?.hasil,
+      lanjut: (kelasId, setelah) => hariMasukBerikutnya(setelah, libur, kelasId)
     };
   }
 
@@ -828,7 +829,8 @@ async function buatRencana(status, waktu, anak = []) {
     untuk: kelasId => ({
       tanggal: urut.filter(d => hariSekolah(d, libur, kelasId)),
       tidakAktif: urut.filter(d => !hariSekolah(d, libur, kelasId))
-    })
+    }),
+    lanjut: (kelasId, setelah) => hariMasukBerikutnya(setelah, libur, kelasId)
   };
 }
 
@@ -915,8 +917,11 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
         sekolah_id: K().sekolahId, siswa_id: p.s.id, tanggal: d, status, cara: 'whatsapp', jam_datang: null,
         catatan: catatanDb || null, diubah, diubah_oleh: null
       }));
-      const k = `${tulis.join(',')}|${tidakAktif.join(',')}|${p.lanjut || ''}|${terlindung.map(t => t.tgl + t.label).join(',')}`;
-      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif, lanjut: p.lanjut || null, terlindung });
+      const lanjut = typeof rencana.lanjut === 'function'
+        ? rencana.lanjut(p.s.kelas_id, tulis[tulis.length - 1])
+        : (p.lanjut || null);
+      const k = `${tulis.join(',')}|${tidakAktif.join(',')}|${lanjut || ''}|${terlindung.map(t => t.tgl + t.label).join(',')}`;
+      if (!kelompok.has(k)) kelompok.set(k, { anak: [], tanggal: tulis, tidakAktif, lanjut: lanjut || null, terlindung });
       kelompok.get(k).anak.push(p.s);
     }
 
@@ -973,7 +978,15 @@ async function simpan(dari, pesan, anak, status, catatan, rencana, tambahan = []
       status,
       tanggal: semuaDicatat,
       catatan,
-      sumber: 'WhatsApp Wali Murid'
+      sumber: 'WhatsApp Wali Murid',
+      laporan: [...kelompok.values()].flatMap(g => g.anak.map(s => ({
+        siswaId: Number(s.id),
+        status,
+        sumber: 'whatsapp',
+        tanggal: g.tanggal,
+        laporanDiubah: diubah,
+        tanggalTindakLanjut: g.lanjut
+      })))
     } : null
   };
 }
@@ -1028,6 +1041,22 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
   // Setelah balasan diproses Fonnte, baru daftarkan jadwal kepala sekolah dan wali kelas.
   // Orang tua tidak dikirimi pesan laporan kedua karena sudah menerima balasan otomatis.
   if (hasil.notifikasi) {
+    // Antrean pengingat dibuat dari laporan yang benar-benar tersimpan, satu baris per siswa.
+    for (const laporan of (hasil.notifikasi.laporan || [])) {
+      try {
+        await require('./_lib').catatPengingatIzinSakit({
+          sekolahId: hasil.notifikasi.sekolahId,
+          siswaId: laporan.siswaId,
+          status: laporan.status,
+          sumber: laporan.sumber,
+          tanggal: laporan.tanggal,
+          laporanDiubah: laporan.laporanDiubah,
+          tanggalTindakLanjut: laporan.tanggalTindakLanjut
+        });
+      } catch (e) {
+        console.error('Gagal mencatat antrean pengingat WhatsApp:', e && e.message);
+      }
+    }
     try {
       await require('./_lib').kirimNotifikasiLaporan({
         ...hasil.notifikasi,
