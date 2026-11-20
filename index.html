@@ -5120,6 +5120,18 @@ function devSegarkanPengingat() {
     toast('Pemantauan pengingat diperbarui');
   });
 }
+async function ujiPengingatGisella() {
+  if (!await konfirmasi('Kirim notifikasi push dan WhatsApp sungguhan ke wali Gisella (PAUD Darul Istiqomah, kelas 3 C)? Pesan memakai format pengingat asli. Catatan absensi tidak diubah. Untuk uji ini, WhatsApp dikirim langsung meskipun sistem normal akan melewati pengiriman bila absensi tanggal tindak lanjut sudah tercatat. Uji hanya dapat dijalankan satu kali.', { judul: 'Uji pengingat izin/sakit', ya: 'Kirim kedua notifikasi', ikon: '📲' })) return;
+  guard(async () => {
+    const j = await apiDev({ aksi: 'uji_pengingat_izin_sakit_gisella' });
+    const h = j.hasil || {};
+    const p = h.push || {}, w = h.whatsapp || {};
+    S.devPengingat = await dbq(db.rpc('developer_pengingat_izin_sakit')).catch(ERR);
+    DEVT.pengingat = { t: Date.now(), v: cmVer };
+    toast('Uji Gisella selesai · Push ' + (p.terkirim || 0) + '/' + (p.tujuan || 0) + ' · WhatsApp ' + (w.terkirim || 0) + '/' + (w.tujuan || 0));
+    renderV();
+  });
+}
 function devPengingat() {
   const d = S.devPengingat;
   if (!d) return '<div class="panel"><div class="ph">🔔 Pemantauan Pengingat Izin/Sakit</div><div class="pb"><div class="note">⏳ Memuat pemantauan...</div></div></div>';
@@ -5140,7 +5152,7 @@ function devPengingat() {
   const rows = riwayat.map(x => '<tr><td>' + waktu(x.dibuat) + '</td><td>' + esc(x.sekolah || '-') + '</td><td><b>' + esc(x.siswa || '-') + '</b></td><td>' + esc(String(x.status_laporan || '').toUpperCase()) + '<div class="mu">' + esc(x.sumber || '') + '</div></td><td>' + tgl(x.tanggal_mulai) + ' – ' + tgl(x.tanggal_akhir) + '<div class="mu">' + angka(x.jumlah_hari) + ' hari · tindak lanjut ' + tgl(x.tanggal_tindak_lanjut) + '</div></td><td>' + st(x.push_status) + '<div class="mu">' + angka(x.push_dikirim) + '/' + angka(x.push_jumlah_tujuan) + ' HP</div></td><td>' + st(x.wa_status) + '<div class="mu">' + angka(x.wa_dikirim) + '/' + angka(x.wa_jumlah_tujuan) + ' nomor</div></td><td class="mu">' + esc(x.push_error || x.wa_error || '-') + '</td></tr>').join('');
   const erows = eksekusi.map(x => '<tr><td>' + waktu(x.mulai_at) + '</td><td>' + (x.tahap === 'push_hari_terakhir' ? 'Push 16.00' : 'WhatsApp 08.00') + '</td><td>' + st(x.status) + '</td><td>' + angka(x.jumlah_diperiksa) + '</td><td>' + angka(x.jumlah_diproses) + '</td><td>' + angka(x.jumlah_berhasil) + '</td><td>' + angka(x.jumlah_gagal) + '</td><td>' + angka(x.jumlah_dilewati) + '</td><td class="mu">' + esc(x.error || '-') + '</td></tr>').join('');
   return '<div class="panel"><div class="ph"><span>🔔 Pemantauan Pengingat Izin/Sakit</span><button class="btn soft sm" onclick="devSegarkanPengingat()">↻ Muat ulang</button></div><div class="pb">' +
-    '<div class="note">Pemantauan khusus Developer · Riwayat detail disimpan maksimal 7 hari. Push mulai pukul 16.00 WIB dan WhatsApp mulai pukul 08.00 WIB pada hari sekolah berikutnya. Jika antrean banyak, sistem memproses bertahap setiap 5 menit (push) atau 2 menit (WhatsApp); setiap laporan tetap hanya satu kali. Tidak menampilkan nomor WhatsApp orang tua.</div>' +
+    '<div class="note">Pemantauan khusus Developer · Riwayat detail disimpan maksimal 7 hari. Push mulai pukul 16.00 WIB dan WhatsApp mulai pukul 08.00 WIB pada hari sekolah berikutnya. Jika antrean banyak, sistem memproses bertahap setiap 5 menit (push) atau 2 menit (WhatsApp); setiap laporan tetap hanya satu kali. Tidak menampilkan nomor WhatsApp orang tua.</div><div class="note" style="margin-top:10px">Pengujian langsung satu kali untuk Gisella · pesan push dan WhatsApp dikirim sungguhan ke wali yang terhubung. Data absensi tidak disentuh. WhatsApp uji melewati pemeriksaan absensi tanggal tindak lanjut agar bentuk pesan asli dapat dilihat.</div><button class="btn success" style="margin:8px 0 14px" onclick="ujiPengingatGisella()">📲 Kirim uji push + WhatsApp ke Gisella</button>' +
     '<div class="stats">' +
     kartu('Laporan multi-hari', r.total) +
     kartu('Push berhasil', r.push_berhasil, 'Menunggu: ' + angka(r.push_menunggu)) +
