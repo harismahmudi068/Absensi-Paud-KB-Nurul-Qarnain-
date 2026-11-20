@@ -5361,11 +5361,19 @@ function aiStatusKey(x){
 }
 let devFonnteSekolah='*';
 function devFonntePilihSekolah(v){devFonnteSekolah=String(v||'*');renderV()}
-async function muatFonnte(){guard(async()=>{await DEVSET.fonnte();DEVT.fonnte={t:Date.now(),v:cmVer};renderV()})}
+async function muatFonnte(){guard(async()=>{
+ const hasil=await apiDev({aksi:'pemantauan_fonnte_cek'});
+ await DEVSET.fonnte();DEVT.fonnte={t:Date.now(),v:cmVer};renderV();
+ if(hasil&&hasil.ok){
+  const bagian=[hasil.berhasil+' berhasil',hasil.gagal+' gagal'];
+  if(hasil.menunggu)bagian.push(hasil.menunggu+' masih diproses');
+  toast('Pemeriksaan Fonnte selesai: '+bagian.join(', '));
+ }else toast('Pemeriksaan kuota Fonnte telah diminta; data diperbarui.');
+})}
 function devFonnte(){
  const d=S.devFonnte;
  if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat pemantauan kuota Fonnte...</div></div></div>';
- if(d.error)return '<div class="panel"><div class="ph">📶 Pemantauan Kuota Fonnte</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div><button class="btn soft sm" onclick="muatFonnte()">↻ Muat ulang data</button></div></div>';
+ if(d.error)return '<div class="panel"><div class="ph">📶 Pemantauan Kuota Fonnte</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div><button class="btn soft sm" onclick="muatFonnte()">↻ Periksa kuota sekarang</button></div></div>';
  const sekolah=d.sekolah||[],semuaRows=d.riwayat||[];
  const opsi=[{value:'*',label:'Semua sekolah'},...sekolah.map(x=>({value:String(x.id),label:x.nama||('Sekolah '+x.id)}))];
  if(!opsi.some(x=>x.value===devFonnteSekolah))devFonnteSekolah='*';
@@ -5407,8 +5415,8 @@ function devFonnte(){
  const hist=[...grup.values()].sort((a,b)=>String(b.tanggal).localeCompare(String(a.tanggal))||namaSekolah(a.sekolah_id).localeCompare(namaSekolah(b.sekolah_id),'id'));
  const histRows=hist.map(x=>'<tr><td><b>'+esc(namaSekolah(x.sekolah_id))+'</b></td><td>'+tanggal(x.tanggal)+'</td><td>'+(x.adaSisa?angka(x.sisa):'—')+'</td><td>'+(x.adaPakai?angka(x.pakai)+(x.baseline?' <span class="mu">('+x.baseline+' baseline)</span>':''):'Belum ada pembanding')+'</td><td>'+(x.tambah?angka(x.tambah):'—')+'</td><td>'+(x.gagal?'<span style="color:var(--rd)">'+x.gagal+' gagal</span>':x.menunggu?'Menunggu':'Berhasil')+'</td></tr>').join('');
  const daftarSekolah=sekolah.filter(x=>x.status==='aktif').length;
- return '<div class="panel"><div class="ph">📶 Pemantauan Kuota Fonnte <button class="btn soft sm" onclick="muatFonnte()">↻ Muat ulang tampilan</button></div><div class="pb">'+
-   '<div class="note">Pemeriksaan otomatis dilakukan 1 kali sehari pukul <b>06.20 WIB</b> untuk setiap token Fonnte milik sekolah aktif. Tombol muat ulang hanya membaca database dan tidak menghubungi Fonnte lagi. Riwayat disimpan selama 7 hari.</div>'+
+ return '<div class="panel"><div class="ph">📶 Pemantauan Kuota Fonnte <button class="btn soft sm" onclick="muatFonnte()">↻ Periksa kuota sekarang</button></div><div class="pb">'+
+   '<div class="note">Pemeriksaan otomatis dilakukan 1 kali sehari pukul <b>06.20 WIB</b> untuk setiap token Fonnte milik sekolah aktif. Tombol ini juga dapat menjalankan pemeriksaan kuota langsung ke Fonnte untuk semua akun aktif; hanya membaca profil perangkat dan tidak mengirim pesan WhatsApp. Riwayat disimpan selama 7 hari.</div>'+
    '<div class="tb">Filter sekolah: '+pilih+'</div>'+
    '<div class="cards">'+kartu(angka(sisa),'Total sisa kuota',sukses.length+' dari '+perangkat.length+' perangkat berhasil diperiksa')+
    kartu(pemakaian.length?angka(pakai):'—','Pemakaian harian',pemakaian.length?'Berdasarkan data pembanding':'Menunggu pemeriksaan hari berikutnya')+

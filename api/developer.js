@@ -824,6 +824,42 @@ module.exports = async (req, res) => {
     }
 
     // ---------------------------------------------------------
+    // PEMERIKSAAN KUOTA FONNTE MANUAL (khusus Developer + AAL2)
+    // Memanggil endpoint /device melalui RPC; tidak mengirim pesan.
+    // ---------------------------------------------------------
+    if (b.aksi === 'pemantauan_fonnte_cek') {
+      const dimintaRaw = await L.panggil('/rest/v1/rpc/fonnte_kuota_mulai', 'POST', {});
+      const diminta = Number(dimintaRaw) || 0;
+      let diproses = 0;
+      let ringkas = [];
+      const tanggal = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+
+      // HTTP Fonnte diproses secara asynchronous oleh pg_net.
+      // Beri waktu singkat dan proses ulang beberapa kali agar hasil langsung tampil.
+      for (let i = 0; i < 6; i++) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const n = await L.panggil('/rest/v1/rpc/fonnte_kuota_proses', 'POST', {});
+        diproses += Number(n) || 0;
+        ringkas = await L.panggil(
+          '/rest/v1/fonnte_kuota_harian?tanggal=eq.' + tanggal +
+          '&select=status_pemeriksaan',
+          'GET'
+        );
+        if (!Array.isArray(ringkas) || !ringkas.some(x => x.status_pemeriksaan === 'menunggu')) break;
+      }
+
+      const daftar = Array.isArray(ringkas) ? ringkas : [];
+      return res.status(200).json({
+        ok: true,
+        diminta,
+        diproses,
+        berhasil: daftar.filter(x => x.status_pemeriksaan === 'berhasil').length,
+        gagal: daftar.filter(x => x.status_pemeriksaan === 'gagal').length,
+        menunggu: daftar.filter(x => x.status_pemeriksaan === 'menunggu').length
+      });
+    }
+
+    // ---------------------------------------------------------
     // PEMANTAUAN KUOTA FONNTE (khusus Developer + AAL2)
     // Tidak pernah mengirim pesan; hanya membaca profil perangkat.
     // ---------------------------------------------------------
