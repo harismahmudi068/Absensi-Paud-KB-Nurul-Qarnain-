@@ -5678,14 +5678,25 @@ async function devKirimHapus(){const sid=devKirimSek?Number(devKirimSek):null,x=
  if(!await konfirmasi('Hapus '+tot+' riwayat kirim '+(x?'milik '+x.nama:'dari SEMUA sekolah')+'?\n\nTidak bisa dikembalikan. Pesan WhatsApp yang sudah terkirim tidak terpengaruh.',{judul:'Hapus riwayat kirim',ya:'Hapus riwayat',bahaya:1}))return;
  guard(async()=>{const j=await dbq(db.rpc('developer_hapus_kirim_log',{p_sekolah:sid}));await devPastikan(['kirim'],true);renderV();toast((Number(j)||0)+' riwayat dihapus')})}
 /* ---------- Jadwal cron: dibaca langsung dari pg_cron (RPC developer_cron_daftar), tugas baru otomatis muncul ---------- */
-function cronWIB(e){const p=String(e||'').trim().split(/\s+/),pad=n=>String(n).padStart(2,'0'),mentah={t:String(e||'-')+' (UTC)',k:99999};
- if(p.length!==5)return mentah;const [mi,jm,dom,mo,dow]=p;if(dom!=='*'||mo!=='*'||dow!=='*')return mentah;
- if(/^\d+$/.test(mi)&&/^\d+$/.test(jm)){const h=(Number(jm)+7)%24;return{t:pad(h)+'.'+pad(Number(mi)),k:h*60+Number(mi)}}
- if(/^\d+(,\d+)*$/.test(jm)&&/^(\*|\d+)$/.test(mi)){const hs=[...new Set(jm.split(',').map(x=>(Number(x)+7)%24))].sort((x,y)=>x-y),run=[];
-  hs.forEach(h=>{const l=run[run.length-1];if(l&&l[1]===h-1)l[1]=h;else run.push([h,h])});
-  const jam=run.map(r=>r[0]===r[1]?pad(r[0]):pad(r[0])+'-'+pad(r[1])).join(', ');
-  return{t:(mi==='*'?'Tiap menit, jam ':'Menit '+mi+', jam ')+jam+' WIB',k:hs[0]*60}}
- return mentah}
+function cronWIB(e){
+ const p=String(e||'').trim().split(/\s+/),pad=n=>String(n).padStart(2,'0'),mentah={t:String(e||'-')+' (UTC)',k:99999};
+ if(p.length!==5)return mentah;
+ const [mi,jm,dom,mo,dow]=p;if(dom!=='*'||mo!=='*'||dow!=='*')return mentah;
+ const parseJam=x=>{
+  if(/^\d+(,\d+)*$/.test(x))return [...new Set(x.split(',').map(v=>(Number(v)+7)%24))].sort((a,b)=>a-b);
+  const m=/^(\d+)-(\d+)$/.exec(x);
+  if(m){const a=Number(m[1]),b=Number(m[2]),out=[];for(let h=a;h<=b;h++)out.push((h+7)%24);return [...new Set(out)].sort((a,b)=>a-b)}
+  return null;
+ };
+ const hs=parseJam(jm);if(!hs||!hs.length)return mentah;
+ const run=[];hs.forEach(h=>{const l=run[run.length-1];if(l&&l[1]===h-1)l[1]=h;else run.push([h,h])});
+ const jam=run.map(r=>r[0]===r[1]?pad(r[0]):pad(r[0])+'-'+pad(r[1])).join(', ');
+ let pola='';
+ if(mi==='*')pola='Tiap menit';
+ else if(/^\d+$/.test(mi))pola='Menit '+mi;
+ else {const m=/^\*\/(\d+)$/.exec(mi);if(!m)return mentah;pola=Number(m[1])===1?'Tiap menit':'Setiap '+m[1]+' menit';}
+ return{t:pola+', jam '+jam+' WIB',k:hs[0]*60+(mi==='*'?0:/^\d+$/.test(mi)?Number(mi):0)};
+}
 const CRON_INFO={
  'cleanup-data-harian':['Pembersihan data lama','bersihkan_data_lama'],
  'bersihkan_notif_antrean':['Membersihkan antrean notifikasi siswa','hapus notif_antrean kecuali yang menunggu hari ini'],
@@ -5697,9 +5708,11 @@ const CRON_INFO={
  'pemakaian-harian':['Memperbarui data penyimpanan','perbarui_pemakaian'],
  'piket_notif_pagi':['Pengingat piket hari ini','kirim_notifikasi_piket(pagi) lalu api/piket-notif'],
  'piket_notif_malam':['Pengingat piket besok','kirim_notifikasi_piket(malam) lalu api/piket-notif'],
- 'notif_siswa_antrean':['Mengirim antrean notifikasi absensi dan tabungan siswa (jam mengikuti tab Notifikasi Siswa)','kirim_antrean_notif_siswa lalu api/notif-siswa'],
- 'rekonsiliasi_notif_siswa':['Pemindaian cadangan absensi izin/sakit untuk menemukan antrean yang terlewat','rekonsiliasi_antrean_notif_siswa'], 
- 'notif_siswa_antrean_akhir':['Putaran terakhir antrean notifikasi siswa (tepat jam akhir)','kirim_antrean_notif_siswa lalu api/notif-siswa']};
+ 'pengingat_izin_sakit_push':['Pemindaian dan pengiriman pengingat push untuk siswa yang izin/sakit lebih dari satu hari; memeriksa absensi hari ini setiap 5 menit pada pukul 16.00 WIB','jalankan_pengingat_izin_sakit_push'],
+ 'pengingat_izin_sakit_wa':['Pemeriksaan tindak lanjut WhatsApp pada hari sekolah berikutnya; berjalan setiap 2 menit pada pukul 08.00 WIB','jalankan_pengingat_izin_sakit_wa'],
+ 'notif_siswa_antrean':['Pemroses antrean push absensi dan tabungan siswa; berjalan setiap menit selama jam notifikasi yang diatur di Notifikasi Siswa','kirim_antrean_notif_siswa lalu api/notif-siswa'],
+ 'rekonsiliasi_notif_siswa':['Pemindaian cadangan absensi izin/sakit hari ini untuk menemukan notifikasi push yang terlewat; interval dan jam mengikuti pengaturan Notifikasi Siswa','rekonsiliasi_antrean_notif_siswa'],
+ 'notif_siswa_antrean_akhir':['Putaran terakhir pemroses antrean notifikasi siswa pada batas jam akhir notifikasi','kirim_antrean_notif_siswa lalu api/notif-siswa']};
 function cronInfo(nama,perintah){let m;const sek=id=>{const x=(S.devSek||[]).find(v=>v.id===Number(id));return x?x.nama:'sekolah #'+id};
  if(/delete\\s+from\\s+public\\.pemakaian_ai_riwayat/i.test(String(perintah||'')))return{ket:'Menghapus riwayat rinci pemakaian AI yang berumur lebih dari 30 hari',fn:'hapus pemakaian_ai_riwayat',dikenal:true};
  if((m=/^alpa-sekolah-(\d+)$/.exec(nama)))return{ket:'Alpa otomatis '+sek(m[1])+' (notifikasi ke Kepala Sekolah dan wali kelas)',fn:'proses_alpa_untuk('+m[1]+')',dikenal:true};
