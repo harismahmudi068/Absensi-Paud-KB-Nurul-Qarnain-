@@ -102,7 +102,7 @@ module.exports = async (req, res) => {
       if (!Array.isArray(relasiRows) || !relasiRows.length) throw new Error('Wali Gisella belum terhubung.');
       const waliIds = [...new Set(relasiRows.map(x => Number(x.wali_id)).filter(Number.isInteger))];
       const waliRows = waliIds.length ? await L.panggil('/rest/v1/wali?sekolah_id=eq.' + sekolahId + '&id=in.(' + waliIds.join(',') + ')&select=id,sekolah_id,no_wa', 'GET') : [];
-      const nomor = [...new Set((waliRows || []).map(x => L.normWA(x.no_wa)).filter(x => /^628\\d{8,12}$/.test(x)))];
+      const nomor = [...new Set((waliRows || []).map(x => L.normWA(x.no_wa)).filter(x => /^628\d{8,12}$/.test(x)))];
       if (!nomor.length) throw new Error('Nomor WhatsApp wali Gisella tidak tersedia atau tidak valid.');
 
       // Kunci audit dibuat sebelum pengiriman agar klik berulang tidak mengirim pesan ganda.
@@ -160,12 +160,12 @@ module.exports = async (req, res) => {
           timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
         });
         const pesan =
-          '🌷 _Assalamu\'alaikum warahmatullahi wabarakatuh._\\n\\n' +
-          'Bapak/Ibu Orang Tua/Wali dari *' + nama + '*,\\n\\n' +
-          'Kami ingin menginformasikan bahwa hingga saat pesan ini dikirim, ananda belum tercatat memiliki laporan izin/sakit maupun status kehadiran.\\n\\n' +
-          'Masa laporan ' + absensi.status + ' ananda sebelumnya berakhir pada ' + tgl + '.\\n\\n' +
-          'Apabila ananda masih belum dapat masuk sekolah, mohon Bapak/Ibu mengirimkan laporan izin/sakit kembali melalui WhatsApp atau portal orang tua. Jika ananda sudah dapat bersekolah, Bapak/Ibu tidak perlu mengirimkan laporan tambahan.\\n\\n' +
-          'Terima kasih atas perhatian dan kerja sama Bapak/Ibu.\\n\\n' +
+          '🌷 _Assalamu\'alaikum warahmatullahi wabarakatuh._\n\n' +
+          'Bapak/Ibu Orang Tua/Wali dari *' + nama + '*,\n\n' +
+          'Kami ingin menginformasikan bahwa hingga saat pesan ini dikirim, ananda belum tercatat memiliki laporan izin/sakit maupun status kehadiran.\n\n' +
+          'Masa laporan ' + absensi.status + ' ananda sebelumnya berakhir pada ' + tgl + '.\n\n' +
+          'Apabila ananda masih belum dapat masuk sekolah, mohon Bapak/Ibu mengirimkan laporan izin/sakit kembali melalui WhatsApp atau portal orang tua. Jika ananda sudah dapat bersekolah, Bapak/Ibu tidak perlu mengirimkan laporan tambahan.\n\n' +
+          'Terima kasih atas perhatian dan kerja sama Bapak/Ibu.\n\n' +
           '_Wassalamu\'alaikum warahmatullahi wabarakatuh._';
         const kirim = await Promise.allSettled(nomor.map(async target => {
           const r = await fetch('https://api.fonnte.com/send', {
