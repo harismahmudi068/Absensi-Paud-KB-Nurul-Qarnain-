@@ -460,7 +460,7 @@ async function prosesPengingatWa(eksekusiId) {
   const hariIni = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
   const due = (await L.panggil(
     '/rest/v1/pengingat_izin_sakit?wa_status=eq.menunggu&tanggal_tindak_lanjut=eq.' + hariIni +
-    '&select=id,sekolah_id,siswa_id,status_laporan,sumber,laporan_diubah,tanggal_akhir,tanggal_tindak_lanjut&order=id.asc&limit=150',
+    '&select=id,sekolah_id,siswa_id,status_laporan,sumber,laporan_diubah,tanggal_akhir,tanggal_tindak_lanjut&order=id.asc&limit=15',
     'GET'
   )) || [];
   if (!due.length) {
