@@ -5318,7 +5318,8 @@ const RETENSI=[
  ['libur_nasional','Sampai tanggal lewat','Tanggal yang sudah lewat dihapus; impor kalender nasional juga mengganti daftar'],
  ['push_langganan','Saat HP mati atau siswa dihapus','Alamat push dihapus bila respons 404/410 atau gagal 5 kali berturut-turut; ikut terhapus saat siswa/sekolah dihapus'],
  ['cron.job_run_details','Dikosongkan harian','Riwayat eksekusi cron dikosongkan pukul 00.08 WIB; tabel internal pg_cron, bukan tabel aplikasi'],
- ['pemakaian_ai_riwayat','30 hari','Riwayat rinci pemakaian AI; dihapus otomatis setiap hari pukul 00.05 WIB setelah berumur lebih dari 30 hari']
+ ['pemakaian_ai_riwayat','30 hari','Riwayat rinci pemakaian AI; dihapus otomatis setiap hari pukul 00.05 WIB setelah berumur lebih dari 30 hari'],
+ ['fonnte_kuota_harian','7 hari','Riwayat sisa kuota dan pemakaian per token/sekolah; otomatis dibersihkan setelah melewati 7 hari oleh cron pemantauan Fonnte']
 ];
 const RET_MAP=Object.fromEntries(RETENSI.map(r=>[r[0],r]));
 const SIMPAN_LAIN={absensi:'Sampai tahun ajaran baru',tabungan_transaksi:'Sampai tahun ajaran baru',hafalan_setoran:'Sampai tahun ajaran baru',pemakaian_ai_ringkasan_harian:'Sampai sekolah dihapus',gemini_pengaman_sekolah:'Sampai sekolah dihapus',notif_siswa_jam:'Konfigurasi jadwal notifikasi (1 baris; bukan riwayat)'};
@@ -5388,7 +5389,7 @@ function devFonnte(){
  const kartu=(n,l,sub)=>'<div class="card stat"><b>'+n+'</b>'+l+(sub?'<div class="mu">'+sub+'</div>':'')+'</div>';
  const deviceRows=perangkat.map(x=>{
    const status=x.status_pemeriksaan==='berhasil'?(x.status_perangkat==='connect'?'Terhubung':x.status_perangkat==='disconnect'?'Terputus':'Berhasil'):x.status_pemeriksaan==='menunggu'?'Menunggu':'Gagal';
-   const warna=x.status_pemeriksaan==='gagal'?'var(--rd)':x.status_pemeriksaan==='menunggu'?'var(--yl)':x.status_perangkat==='connect'?'var(--gn)':'var(--mu)';
+   const warna=x.status_pemeriksaan==='gagal'?'var(--rd)':x.status_pemeriksaan==='menunggu'?' #a56b00':x.status_perangkat==='connect'?' #1f9d55':'var(--mu)';
    return '<tr><td><b>'+esc(namaSekolah(x.sekolah_id))+'</b></td><td>'+esc(x.token_label||'Token Fonnte')+'<div class="mu">'+esc(x.paket||'Paket belum diketahui')+'</div></td><td>'+esc(x.perangkat||'—')+'</td><td><b>'+(x.kuota_sisa===null||x.kuota_sisa===undefined?'—':angka(x.kuota_sisa))+'</b></td><td><span style="color:'+warna+';font-weight:700">'+status+'</span>'+(x.detail_error?'<div class="mu">'+esc(x.detail_error)+'</div>':'')+'</td><td>'+waktu(x.diperiksa_pada)+'</td></tr>';
  }).join('');
  const grup=new Map();
@@ -5776,6 +5777,8 @@ const CRON_INFO={
  'pengingat_izin_sakit_wa':['Pemeriksaan tindak lanjut WhatsApp pada hari sekolah berikutnya; berjalan setiap 2 menit pada pukul 08.00 WIB','jalankan_pengingat_izin_sakit_wa'],
  'notif_siswa_antrean':['Pemroses antrean push absensi dan tabungan siswa; berjalan setiap menit selama jam notifikasi yang diatur di Notifikasi Siswa','kirim_antrean_notif_siswa lalu api/notif-siswa'],
  'rekonsiliasi_notif_siswa':['Pemindaian cadangan absensi izin/sakit hari ini untuk menemukan notifikasi push yang terlewat; interval dan jam mengikuti pengaturan Notifikasi Siswa','rekonsiliasi_antrean_notif_siswa'],
+ 'fonnte-kuota-harian':['Pemeriksaan sisa kuota setiap token Fonnte milik semua sekolah aktif; 1 kali sehari pukul 06.20 WIB dan tidak mengirim pesan','fonnte_kuota_mulai'],
+ 'fonnte-kuota-proses':['Mengambil hasil pemeriksaan Fonnte dan menghapus riwayat kuota yang berumur lebih dari 7 hari; berjalan pukul 06.25–06.55 WIB setiap 5 menit','fonnte_kuota_proses'],
  'notif_siswa_antrean_akhir':['Putaran terakhir pemroses antrean notifikasi siswa pada batas jam akhir notifikasi','kirim_antrean_notif_siswa lalu api/notif-siswa']};
 function cronInfo(nama,perintah){let m;const sek=id=>{const x=(S.devSek||[]).find(v=>v.id===Number(id));return x?x.nama:'sekolah #'+id};
  if(/delete\s+from\s+public\.pemakaian_ai_riwayat/i.test(String(perintah||'')))return{ket:'Menghapus riwayat rinci pemakaian AI yang berumur lebih dari 30 hari',fn:'hapus pemakaian_ai_riwayat',dikenal:true};
