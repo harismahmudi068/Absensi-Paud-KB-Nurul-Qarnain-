@@ -431,6 +431,32 @@ async function catatPengingatIzinSakit({ sekolahId, siswaId, status, sumber, tan
   if (process.env.VERCEL_ENV === 'preview' && sid === 10) {
     return { dilewati: true, alasan: 'sekolah_produksi' };
   }
+  // Batalkan antrean lama yang belum dikirim ketika laporan siswa diperbarui.
+  // Status Push/WA yang sudah diproses atau terkirim tidak disentuh agar riwayat tetap utuh.
+  // Gunakan laporan_diubah < timestamp baru supaya retry dengan timestamp identik
+  // tidak membatalkan antreannya sendiri.
+  const waktuBaru = encodeURIComponent(waktu.toISOString());
+  const waktuStatus = new Date().toISOString();
+  const alasanBatal = 'Dibatalkan otomatis karena laporan izin/sakit diperbarui';
+  const pembatalan = await Promise.allSettled([
+    panggil('/rest/v1/pengingat_izin_sakit?sekolah_id=eq.' + sid +
+      '&siswa_id=eq.' + anakId + '&laporan_diubah=lt.' + waktuBaru +
+      '&push_status=eq.menunggu',
+      'PATCH', { push_status: 'dibatalkan', push_error: alasanBatal, diubah: waktuStatus },
+      { Prefer: 'return=minimal' }),
+    panggil('/rest/v1/pengingat_izin_sakit?sekolah_id=eq.' + sid +
+      '&siswa_id=eq.' + anakId + '&laporan_diubah=lt.' + waktuBaru +
+      '&wa_status=eq.menunggu',
+      'PATCH', { wa_status: 'dibatalkan', wa_error: alasanBatal, diubah: waktuStatus },
+      { Prefer: 'return=minimal' })
+  ]);
+  pembatalan.forEach((hasil, i) => {
+    if (hasil.status === 'rejected') {
+      console.error('Gagal membatalkan antrean pengingat lama (' + (i === 0 ? 'Push' : 'WhatsApp') + '):',
+        hasil.reason && hasil.reason.message ? hasil.reason.message : hasil.reason);
+    }
+  });
+
   return panggil('/rest/v1/pengingat_izin_sakit?on_conflict=sekolah_id,siswa_id,laporan_diubah',
     'POST', body, { Prefer: 'resolution=ignore-duplicates,return=representation' });
 }
