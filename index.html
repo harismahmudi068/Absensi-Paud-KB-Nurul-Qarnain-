@@ -5778,7 +5778,7 @@ const CRON_INFO={
  'notif_siswa_antrean':['Pemroses antrean push absensi dan tabungan siswa; berjalan setiap menit selama jam notifikasi yang diatur di Notifikasi Siswa','kirim_antrean_notif_siswa lalu api/notif-siswa'],
  'rekonsiliasi_notif_siswa':['Pemindaian cadangan absensi izin/sakit hari ini untuk menemukan notifikasi push yang terlewat; interval dan jam mengikuti pengaturan Notifikasi Siswa','rekonsiliasi_antrean_notif_siswa'],
  'fonnte-kuota-harian':['Pemeriksaan sisa kuota setiap token Fonnte milik semua sekolah aktif; 1 kali sehari pukul 06.20 WIB dan tidak mengirim pesan','fonnte_kuota_mulai'],
- 'fonnte-kuota-proses':['Mengambil hasil pemeriksaan Fonnte dan menghapus riwayat kuota yang berumur lebih dari 7 hari; berjalan pukul 06.25–06.55 WIB setiap 5 menit','fonnte_kuota_proses'],
+ 'fonnte-kuota-proses':['Memproses hasil pemeriksaan Fonnte dan menghapus riwayat kuota yang berumur lebih dari 7 hari; berjalan setiap 5 menit pada pukul 06.00–06.55 WIB','fonnte_kuota_proses'],
  'notif_siswa_antrean_akhir':['Putaran terakhir pemroses antrean notifikasi siswa pada batas jam akhir notifikasi','kirim_antrean_notif_siswa lalu api/notif-siswa']};
 function cronInfo(nama,perintah){let m;const sek=id=>{const x=(S.devSek||[]).find(v=>v.id===Number(id));return x?x.nama:'sekolah #'+id};
  if(/delete\s+from\s+public\.pemakaian_ai_riwayat/i.test(String(perintah||'')))return{ket:'Menghapus riwayat rinci pemakaian AI yang berumur lebih dari 30 hari',fn:'hapus pemakaian_ai_riwayat',dikenal:true};
