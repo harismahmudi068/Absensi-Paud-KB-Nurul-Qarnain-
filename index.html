@@ -5398,22 +5398,24 @@ function devFonnte(){
  const deviceRows=perangkat.map(x=>{
    const status=x.status_pemeriksaan==='berhasil'?(x.status_perangkat==='connect'?'Terhubung':x.status_perangkat==='disconnect'?'Terputus':'Berhasil'):x.status_pemeriksaan==='menunggu'?'Menunggu':'Gagal';
    const warna=x.status_pemeriksaan==='gagal'?'var(--rd)':x.status_pemeriksaan==='menunggu'?' #a56b00':x.status_perangkat==='connect'?' #1f9d55':'var(--mu)';
-   return '<tr><td><b>'+esc(namaSekolah(x.sekolah_id))+'</b></td><td>'+esc(x.token_label||'Token Fonnte')+'<div class="mu">'+esc(x.paket||'Paket belum diketahui')+'</div></td><td>'+esc(x.perangkat||'—')+'</td><td><b>'+(x.kuota_sisa===null||x.kuota_sisa===undefined?'—':angka(x.kuota_sisa))+'</b></td><td><span style="color:'+warna+';font-weight:700">'+status+'</span>'+(x.detail_error?'<div class="mu">'+esc(x.detail_error)+'</div>':'')+'</td><td>'+waktu(x.diperiksa_pada)+'</td></tr>';
+   return '<tr><td><b>'+esc(namaSekolah(x.sekolah_id))+'</b></td><td>'+esc(x.token_label||'Token Fonnte')+'<div class="mu">'+esc(x.paket||'Paket belum diketahui')+'</div></td><td>'+esc(x.perangkat||'—')+'</td><td><b>'+(x.kuota_sisa===null||x.kuota_sisa===undefined?'—':angka(x.kuota_sisa))+'</b></td><td>'+(x.pesan_total===null||x.pesan_total===undefined?'—':angka(x.pesan_total))+'</td><td>'+esc(x.expired||'—')+'</td><td><span style="color:'+warna+';font-weight:700">'+status+'</span>'+(x.detail_error?'<div class="mu">'+esc(x.detail_error)+'</div>':'')+'</td><td>'+waktu(x.diperiksa_pada)+'</td></tr>';
  }).join('');
  const grup=new Map();
  rows.forEach(x=>{
    const key=String(x.tanggal)+'|'+String(x.sekolah_id);
-   if(!grup.has(key))grup.set(key,{tanggal:x.tanggal,sekolah_id:x.sekolah_id,sisa:0,adaSisa:0,pakai:0,adaPakai:0,baseline:0,tambah:0,gagal:0,menunggu:0});
+   if(!grup.has(key))grup.set(key,{tanggal:x.tanggal,sekolah_id:x.sekolah_id,sisa:0,adaSisa:0,pakai:0,adaPakai:0,baseline:0,tambah:0,pesan:0,adaPesan:0,expired:new Set(),gagal:0,menunggu:0});
    const g=grup.get(key);
    if(x.status_pemeriksaan==='berhasil'){
      if(x.kuota_sisa!==null&&x.kuota_sisa!==undefined){g.sisa+=Number(x.kuota_sisa)||0;g.adaSisa++}
      if(x.pemakaian_harian!==null&&x.pemakaian_harian!==undefined){g.pakai+=Number(x.pemakaian_harian)||0;g.adaPakai++}else g.baseline++;
      g.tambah+=Number(x.kuota_ditambahkan)||0;
+     if(x.pesan_total!==null&&x.pesan_total!==undefined){g.pesan+=Number(x.pesan_total)||0;g.adaPesan++}
+     if(x.expired)g.expired.add(String(x.expired));
    }else if(x.status_pemeriksaan==='gagal')g.gagal++;
    else g.menunggu++;
  });
  const hist=[...grup.values()].sort((a,b)=>String(b.tanggal).localeCompare(String(a.tanggal))||namaSekolah(a.sekolah_id).localeCompare(namaSekolah(b.sekolah_id),'id'));
- const histRows=hist.map(x=>'<tr><td><b>'+esc(namaSekolah(x.sekolah_id))+'</b></td><td>'+tanggal(x.tanggal)+'</td><td>'+(x.adaSisa?angka(x.sisa):'—')+'</td><td>'+(x.adaPakai?angka(x.pakai)+(x.baseline?' <span class="mu">('+x.baseline+' baseline)</span>':''):'Belum ada pembanding')+'</td><td>'+(x.tambah?angka(x.tambah):'—')+'</td><td>'+(x.gagal?'<span style="color:var(--rd)">'+x.gagal+' gagal</span>':x.menunggu?'Menunggu':'Berhasil')+'</td></tr>').join('');
+ const histRows=hist.map(x=>'<tr><td><b>'+esc(namaSekolah(x.sekolah_id))+'</b></td><td>'+tanggal(x.tanggal)+'</td><td>'+(x.adaSisa?angka(x.sisa):'—')+'</td><td>'+(x.adaPakai?angka(x.pakai)+(x.baseline?' <span class="mu">('+x.baseline+' baseline)</span>':''):'Belum ada pembanding')+'</td><td>'+(x.tambah?angka(x.tambah):'—')+'</td><td>'+(x.adaPesan?angka(x.pesan):'—')+'</td><td>'+esc([...x.expired].join(', ')||'—')+'</td><td>'+(x.gagal?'<span style="color:var(--rd)">'+x.gagal+' gagal</span>':x.menunggu?'Menunggu':'Berhasil')+'</td></tr>').join('');
  const daftarSekolah=sekolah.filter(x=>x.status==='aktif').length;
  return '<div class="panel"><div class="ph">📶 Pemantauan Kuota Fonnte <button class="btn soft sm" onclick="muatFonnte()">↻ Periksa kuota sekarang</button></div><div class="pb">'+
    '<div class="note">Pemeriksaan otomatis dilakukan 1 kali sehari pukul <b>06.20 WIB</b> untuk setiap token Fonnte milik sekolah aktif. Tombol ini juga dapat menjalankan pemeriksaan kuota langsung ke Fonnte untuk semua akun aktif; hanya membaca profil perangkat dan tidak mengirim pesan WhatsApp. Riwayat disimpan selama 7 hari.</div>'+
@@ -5424,9 +5426,9 @@ function devFonnte(){
    kartu(gagal,'Pemeriksaan gagal',gagal?'Perlu diperiksa':'Tidak ada kegagalan')+'</div>'+
    '<div class="note">Pemeriksaan terakhir: <b>'+waktu(last)+'</b>. '+(daftarSekolah+' sekolah aktif terdaftar dalam sistem.')+'</div>'+
    '<div class="tbkh">Sisa kuota setiap perangkat</div>'+
-   (deviceRows?tab(['Sekolah','Token/perangkat','Nomor perangkat','Sisa kuota','Status','Terakhir diperiksa'],deviceRows):'<div class="note">Belum ada token Fonnte atau belum ada hasil pemeriksaan.</div>')+
+   (deviceRows?tab(['Sekolah','Token/perangkat','Nomor perangkat','Sisa kuota','Jumlah pesan','Masa berlaku','Status','Terakhir diperiksa'],deviceRows):'<div class="note">Belum ada token Fonnte atau belum ada hasil pemeriksaan.</div>')+
    '<div class="tbkh">Riwayat pemakaian kuota · 7 hari terakhir</div>'+
-   (histRows?tab(['Sekolah','Tanggal','Sisa kuota','Pemakaian','Kuota ditambahkan','Status'],histRows):'<div class="note">Riwayat belum tersedia. Data awal akan muncul setelah pemeriksaan otomatis pertama.</div>')+
+   (histRows?tab(['Sekolah','Tanggal','Sisa kuota','Pemakaian','Kuota ditambahkan','Jumlah pesan','Masa berlaku','Status'],histRows):'<div class="note">Riwayat belum tersedia. Data awal akan muncul setelah pemeriksaan otomatis pertama.</div>')+
    '<div class="note">Pemakaian harian dihitung dari selisih jumlah pesan kumulatif Fonnte. Jika penghitung pesan direset, sistem menggunakan perubahan sisa kuota sebagai perkiraan. Pengisian ulang kuota dicatat terpisah dan tidak dianggap sebagai pemakaian.</div>'+
  '</div></div>';
 }
