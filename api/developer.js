@@ -75,6 +75,124 @@ module.exports = async (req, res) => {
     const alamatAplikasi = 'https://absensi-1486.vercel.app';
 
     // ---------------------------------------------------------
+    // UJI SATU KALI PENGINGAT IZIN/SAKIT (Gisella, sekolah 6)
+    // Khusus Developer AAL2. Tidak mengubah absensi atau antrean normal.
+    // ---------------------------------------------------------
+    if (b.aksi === 'uji_pengingat_izin_sakit_gisella') {
+      const sekolahId = 6, siswaId = 584;
+      const tanggal = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+      const kunciAudit = 'Uji notifikasi pengingat Gisella (siswa 584)';
+      const pernah = await satu('/rest/v1/log_audit?aksi=eq.uji_pengingat_izin_sakit&rincian=eq.' +
+        encodeURIComponent(kunciAudit) + '&select=id&limit=1');
+      if (pernah) throw new Error('Uji satu kali untuk Gisella sudah pernah dijalankan. Tidak mengirim ulang agar tidak terjadi pesan ganda.');
+
+      const [siswaRows, sekolahRows, absRows, pengRows, relasiRows, subRows, tokenRows] = await Promise.all([
+        L.panggil('/rest/v1/siswa?id=eq.' + siswaId + '&sekolah_id=eq.' + sekolahId + '&select=id,sekolah_id,nama,nama_panggilan,kode_qr,aktif', 'GET'),
+        L.panggil('/rest/v1/sekolah?id=eq.' + sekolahId + '&select=id,nama,status', 'GET'),
+        L.panggil('/rest/v1/absensi?siswa_id=eq.' + siswaId + '&tanggal=eq.' + tanggal + '&select=id,siswa_id,sekolah_id,tanggal,status,cara,diubah&order=id.desc&limit=1', 'GET'),
+        L.panggil('/rest/v1/pengaturan?sekolah_id=eq.' + sekolahId + '&select=sekolah_id,notif_absensi_aktif,push_absensi_diizinkan', 'GET'),
+        L.panggil('/rest/v1/siswa_wali?siswa_id=eq.' + siswaId + '&select=siswa_id,wali_id', 'GET'),
+        L.panggil('/rest/v1/push_langganan?siswa_id=eq.' + siswaId + '&terima_absensi=eq.true&select=id,siswa_id,endpoint,p256dh,auth,gagal,terima_absensi', 'GET'),
+        L.panggil('/rest/v1/fonnte_token?sekolah_id=eq.' + sekolahId + '&select=token&order=id.asc&limit=1', 'GET')
+      ]);
+      const siswa = siswaRows && siswaRows[0], sekolah = sekolahRows && sekolahRows[0];
+      const absensi = absRows && absRows[0], pengaturan = pengRows && pengRows[0] || {};
+      if (!siswa || !siswa.aktif || !sekolah || sekolah.status !== 'aktif') throw new Error('Data siswa atau sekolah tidak aktif/tidak ditemukan.');
+      if (!absensi || !['izin','sakit'].includes(String(absensi.status).toLowerCase())) throw new Error('Tidak ada catatan izin/sakit Gisella untuk hari ini; uji dibatalkan.');
+      if (!Array.isArray(relasiRows) || !relasiRows.length) throw new Error('Wali Gisella belum terhubung.');
+      const waliIds = [...new Set(relasiRows.map(x => Number(x.wali_id)).filter(Number.isInteger))];
+      const waliRows = waliIds.length ? await L.panggil('/rest/v1/wali?sekolah_id=eq.' + sekolahId + '&id=in.(' + waliIds.join(',') + ')&select=id,sekolah_id,no_wa', 'GET') : [];
+      const nomor = [...new Set((waliRows || []).map(x => L.normWA(x.no_wa)).filter(x => /^628\\d{8,12}$/.test(x)))];
+      if (!nomor.length) throw new Error('Nomor WhatsApp wali Gisella tidak tersedia atau tidak valid.');
+
+      // Kunci audit dibuat sebelum pengiriman agar klik berulang tidak mengirim pesan ganda.
+      await L.panggil('/rest/v1/log_audit', 'POST', {
+        pelaku: user.id, sekolah_id: sekolahId, aksi: 'uji_pengingat_izin_sakit', rincian: kunciAudit
+      }, { Prefer: 'return=minimal' });
+
+      const hasil = {
+        siswa: siswa.nama_panggilan || siswa.nama,
+        sekolah: sekolah.nama,
+        tanggal,
+        push: { status: 'tidak_dikirim', tujuan: 0, terkirim: 0, gagal: 0, error: null },
+        whatsapp: { status: 'tidak_dikirim', tujuan: nomor.length, terkirim: 0, gagal: 0, error: null }
+      };
+
+      // Push menggunakan payload dan VAPID yang sama dengan pengingat otomatis.
+      try {
+        const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY, subj = process.env.VAPID_SUBJECT;
+        if (!pub || !priv || !subj) throw new Error('Konfigurasi VAPID belum lengkap');
+        if (pengaturan.push_absensi_diizinkan === false || !pengaturan.notif_absensi_aktif) throw new Error('Notifikasi push absensi sedang dimatikan.');
+        const subs = Array.isArray(subRows) ? subRows : [];
+        if (!subs.length) throw new Error('Tidak ada perangkat yang mengaktifkan notifikasi push absensi.');
+        const webpush = require('web-push');
+        webpush.setVapidDetails(subj, pub, priv);
+        const nama = String(siswa.nama_panggilan || siswa.nama || 'Anak').trim();
+        const payload = {
+          judul: 'Pengingat izin/sakit',
+          isi: 'Hari ini merupakan hari terakhir laporan ' + absensi.status + ' ananda ' + nama +
+            '. Jika pada hari sekolah berikutnya ananda masih belum dapat masuk, mohon kirim laporan izin/sakit kembali melalui WhatsApp atau portal orang tua.',
+          url: '/p/' + siswa.kode_qr + '#absensi',
+          tag: 'uji-pengingat-gisella-' + siswaId,
+          ikon: absensi.status
+        };
+        const kirim = await Promise.allSettled(subs.map(x => webpush.sendNotification(
+          { endpoint: x.endpoint, keys: { p256dh: x.p256dh, auth: x.auth } },
+          JSON.stringify(payload),
+          { TTL: 3 * 3600, urgency: 'high', timeout: 8000 }
+        )));
+        const ok = kirim.filter(x => x.status === 'fulfilled').length;
+        const gagal = kirim.length - ok;
+        hasil.push = { status: ok ? (gagal ? 'sebagian' : 'berhasil') : 'gagal', tujuan: subs.length, terkirim: ok, gagal, error: gagal ? String(kirim.find(x => x.status === 'rejected')?.reason?.message || 'Push gagal').slice(0,180) : null };
+        const suksesIds = subs.filter((x,i) => kirim[i].status === 'fulfilled').map(x => x.id);
+        if (suksesIds.length) await L.panggil('/rest/v1/push_langganan?id=in.(' + suksesIds.join(',') + ')', 'PATCH', { terakhir_ok: new Date().toISOString(), gagal: 0 }, { Prefer: 'return=minimal' });
+      } catch (e) {
+        hasil.push = { status: 'gagal', tujuan: Array.isArray(subRows) ? subRows.length : 0, terkirim: 0, gagal: Array.isArray(subRows) ? subRows.length : 0, error: String(e.message || e).slice(0,180) };
+      }
+
+      // WhatsApp dikirim langsung melalui token Fonnte sekolah. Hanya pemeriksaan
+      // "sudah ada absensi pada tanggal tindak lanjut" yang dilewati untuk uji ini.
+      try {
+        const tokenFonnte = String(tokenRows?.[0]?.token || '').trim();
+        if (!tokenFonnte) throw new Error('Token Fonnte sekolah belum tersedia.');
+        const nama = String(siswa.nama_panggilan || siswa.nama || 'Anak').trim();
+        const tgl = new Date(tanggal + 'T00:00:00+07:00').toLocaleDateString('id-ID', {
+          timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        });
+        const pesan =
+          '🌷 _Assalamu\'alaikum warahmatullahi wabarakatuh._\\n\\n' +
+          'Bapak/Ibu Orang Tua/Wali dari *' + nama + '*,\\n\\n' +
+          'Kami ingin menginformasikan bahwa hingga saat pesan ini dikirim, ananda belum tercatat memiliki laporan izin/sakit maupun status kehadiran.\\n\\n' +
+          'Masa laporan ' + absensi.status + ' ananda sebelumnya berakhir pada ' + tgl + '.\\n\\n' +
+          'Apabila ananda masih belum dapat masuk sekolah, mohon Bapak/Ibu mengirimkan laporan izin/sakit kembali melalui WhatsApp atau portal orang tua. Jika ananda sudah dapat bersekolah, Bapak/Ibu tidak perlu mengirimkan laporan tambahan.\\n\\n' +
+          'Terima kasih atas perhatian dan kerja sama Bapak/Ibu.\\n\\n' +
+          '_Wassalamu\'alaikum warahmatullahi wabarakatuh._';
+        const kirim = await Promise.allSettled(nomor.map(async target => {
+          const r = await fetch('https://api.fonnte.com/send', {
+            method: 'POST', headers: { Authorization: tokenFonnte, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target, message: pesan })
+          });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || j.status === false) throw new Error(j.reason || j.message || 'Fonnte menolak pengiriman');
+          return j;
+        }));
+        const ok = kirim.filter(x => x.status === 'fulfilled').length;
+        const gagal = kirim.length - ok;
+        hasil.whatsapp = { status: ok ? (gagal ? 'sebagian' : 'berhasil') : 'gagal', tujuan: nomor.length, terkirim: ok, gagal, error: gagal ? String(kirim.find(x => x.status === 'rejected')?.reason?.message || 'WhatsApp gagal').slice(0,180) : null };
+      } catch (e) {
+        hasil.whatsapp = { status: 'gagal', tujuan: nomor.length, terkirim: 0, gagal: nomor.length, error: String(e.message || e).slice(0,180) };
+      }
+
+      await L.catatLog({
+        pelaku: user.id, sekolah_id: sekolahId, aksi: 'hasil_uji_pengingat_izin_sakit',
+        rincian: 'Gisella: push ' + hasil.push.status + ' (' + hasil.push.terkirim + '/' + hasil.push.tujuan +
+          '), WhatsApp ' + hasil.whatsapp.status + ' (' + hasil.whatsapp.terkirim + '/' + hasil.whatsapp.tujuan + ')'
+      });
+      return res.status(200).json({ ok: true, hasil });
+    }
+
+
+    // ---------------------------------------------------------
     // SETUJUI SEKOLAH
     // ---------------------------------------------------------
     if (b.aksi === 'setujui_sekolah') {
