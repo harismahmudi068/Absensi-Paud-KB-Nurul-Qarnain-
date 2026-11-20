@@ -5045,6 +5045,7 @@ const DEVSET={
  simpan:async()=>{S.devSimpan=await dbq(db.from('pemakaian_db').select('*').maybeSingle()).then(r=>r||{error:'Data penyimpanan belum dihitung'}).catch(ERR)},
  storage:async()=>{S.devStorage=await apiDev({aksi:'pemantauan_storage'}).catch(ERR)},
  ai:async()=>{S.devAI=await apiDev({aksi:'pemantauan_ai'}).catch(ERR)},
+ fonnte:async()=>{S.devFonnte=await apiDev({aksi:'pemantauan_fonnte'}).catch(ERR)},
  alpa:async()=>{S.devAlpa=await dbq(db.rpc('developer_alpa')).catch(ERR)},
  nl:async()=>{S.devNL=await dbq(db.rpc('developer_notif_libur')).catch(ERR)},
  np:async()=>{S.devNP=await dbq(db.rpc('developer_notif_piket')).catch(ERR)},
@@ -5057,7 +5058,7 @@ const DEVSET={
  kal:async()=>{await muatKalNas().catch(()=>{})},
  profil:async()=>{await muatProfilSaya()}
 };
-const DEV_BUTUH={ai:['ai'],dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],pengingat:['pengingat'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
+const DEV_BUTUH={ai:['ai'],fonnte:['fonnte'],dashboard:['alpa','guru','kal','nl','nomor','np','ns','pend','sek','profil'],setuju:['guru','nomor','pend','sek'],sekolah:['push','sek','guru'],guru:['guru','sek'],simpan:['simpan','storage'],alpa:['alpa'],liburnotif:['nl'],piketnotif:['np'],siswanotif:['nj','ns'],pengingat:['pengingat'],perangkat:['hp'],hapus:['alring','log','sek','cron'],kirim:['kirim','sek'],log:['log'],sistem:[],kalender:['kal']};
 const DEVT={};
 function devButuh(){const t=devTab==='ringkas'?'setuju':devTab;
  const b=view==='developer'?(DEV_BUTUH[t]||[]):view==='dashboard'?DEV_BUTUH.dashboard:view==='profil'?['profil']:[];
@@ -5066,7 +5067,7 @@ const devSegar=k=>{const e=DEVT[k];return !!e&&e.v===cmVer&&Date.now()-e.t<CM_TT
 async function devPastikan(keys,paksa){const perlu=keys.filter(k=>paksa||!devSegar(k));if(!perlu.length)return false;
  const v0=cmVer;await Promise.all(perlu.map(async k=>{await DEVSET[k]();DEVT[k]={t:Date.now(),v:v0}}));return true}
 async function muatDev(){await devPastikan(devButuh(),true)}
-const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['pengingat','🔔 Pengingat Izin/Sakit'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','💬 Pesan WA'],['log','📜 Log'],['sistem','🩺 Sistem']];
+const DEVTAB=[['ringkas','📊 Ringkasan'],['setuju','✅ Persetujuan'],['sekolah','🏫 Sekolah'],['guru','👥 Guru'],['simpan','💾 Penyimpanan'],['ai','🤖 Pemantauan AI'],['fonnte','📶 Pemantauan Kuota Fonnte'],['alpa','⏰ Alpa Otomatis'],['liburnotif','🔔 Notifikasi Libur'],['piketnotif','📲 Notifikasi Piket'],['siswanotif','📲 Notifikasi Siswa'],['pengingat','🔔 Pengingat Izin/Sakit'],['perangkat','📱 HP Terdaftar'],['hapus','🗑 Hapus Data'],['kirim','💬 Pesan WA'],['log','📜 Log'],['sistem','🩺 Sistem']];
 function setDevTab(t){devBuka(t)}
 function devBuka(k){drw(0);kalReset();devTab=k;if(k==='perangkat'){HPF.mode=false;HPF.sel.clear()}if(view==='developer'){const b=devButuh();if(b.every(devSegar)){renderAll();scrollTo(0,0);kedipHalaman()}else guard(async()=>{await devPastikan(b);renderAll();scrollTo(0,0);kedipHalaman()})}else go('developer').then(kedipHalaman)}
 async function muatKalNas(){S.devKal=await dbq(db.from('libur_nasional').select('tanggal,keterangan').order('tanggal'))}
@@ -5166,7 +5167,7 @@ function devPengingat() {
 }
 
 V.developer=()=>{if(devTab==='ringkas')devTab='setuju';
- return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,ai:devPemantauanAI,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,pengingat:devPengingat,hapus:devHapus,kirim:devKirim,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
+ return {setuju:devSetuju,sekolah:devSekolah,guru:devGuru,simpan:devPenyimpanan,ai:devPemantauanAI,fonnte:devFonnte,alpa:devAlpa,liburnotif:devNotifLibur,piketnotif:devNotifPiket,siswanotif:devNotifSiswa,perangkat:devPerangkat,pengingat:devPengingat,hapus:devHapus,kirim:devKirim,log:devLog,sistem:devSistem,kalender:devKalender}[devTab]()};
 function renderNavDev(){
  const nm=(Array.isArray(S.devPend)?S.devPend:[]).length+(Array.isArray(S.devNomor)?S.devNomor:[]).length,bd=nm?` <span class="badge Belum">${nm}</span>`:'';
  const itm=(on,fn,ic,lb,ex)=>`<button class="${on?'on':''}" onclick="${fn}"><span>${ic}</span>${lb}${ex||''}</button>`,dv=k=>view==='developer'&&devTab===k;
@@ -5356,6 +5357,69 @@ function aiStatusKey(x){
  if(x.ditangani_pada&&(!x.terakhir_dicoba||new Date(x.ditangani_pada).getTime()>new Date(x.terakhir_dicoba).getTime()))return aiBadge('Menunggu uji ulang','Belum');
  if(x.kode_error_terakhir)return aiBadge('Gangguan sementara','Belum');
  return aiBadge('Belum diuji','Belum');
+}
+let devFonnteSekolah='*';
+function devFonntePilihSekolah(v){devFonnteSekolah=String(v||'*');renderV()}
+async function muatFonnte(){guard(async()=>{await DEVSET.fonnte();DEVT.fonnte={t:Date.now(),v:cmVer};renderV()})}
+function devFonnte(){
+ const d=S.devFonnte;
+ if(!d)return '<div class="panel"><div class="pb"><div class="note">⏳ Memuat pemantauan kuota Fonnte...</div></div></div>';
+ if(d.error)return '<div class="panel"><div class="ph">📶 Pemantauan Kuota Fonnte</div><div class="pb"><div class="note" style="color:var(--rd)">⚠ '+esc(d.error)+'</div><button class="btn soft sm" onclick="muatFonnte()">↻ Muat ulang data</button></div></div>';
+ const sekolah=d.sekolah||[],semuaRows=d.riwayat||[];
+ const opsi=[{value:'*',label:'Semua sekolah'},...sekolah.map(x=>({value:String(x.id),label:x.nama||('Sekolah '+x.id)}))];
+ if(!opsi.some(x=>x.value===devFonnteSekolah))devFonnteSekolah='*';
+ const pilih=cpick('fonnteSekolahPick','sekolah',devFonnteSekolah,opsi,'devFonntePilihSekolah','Pilih sekolah');
+ const rows=semuaRows.filter(x=>devFonnteSekolah==='*'||String(x.sekolah_id)===devFonnteSekolah);
+ const namaSekolah=id=>(sekolah.find(x=>Number(x.id)===Number(id))||{}).nama||('Sekolah '+id);
+ const angka=x=>Number(x||0).toLocaleString('id-ID');
+ const tanggal=x=>x?new Date(x+'T00:00:00+07:00').toLocaleDateString('id-ID',{timeZone:'Asia/Jakarta',day:'2-digit',month:'short',year:'numeric'}):'—';
+ const waktu=x=>x?new Date(x).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'short',timeStyle:'short'})+' WIB':'—';
+ const kunci=x=>String(x.sekolah_id)+':'+String(x.token_id||x.token_label||x.perangkat||'token');
+ const urut=rows.slice().sort((a,b)=>String(b.tanggal).localeCompare(String(a.tanggal))||String(b.diperiksa_pada||'').localeCompare(String(a.diperiksa_pada||'')));
+ const terbaru=new Map();urut.forEach(x=>{if(!terbaru.has(kunci(x)))terbaru.set(kunci(x),x)});
+ const perangkat=[...terbaru.values()];
+ const sukses=perangkat.filter(x=>x.status_pemeriksaan==='berhasil');
+ const sisa=sukses.reduce((n,x)=>n+(Number(x.kuota_sisa)||0),0);
+ const pemakaian=sukses.filter(x=>x.pemakaian_harian!==null&&x.pemakaian_harian!==undefined);
+ const pakai=pemakaian.reduce((n,x)=>n+(Number(x.pemakaian_harian)||0),0);
+ const gagal=perangkat.filter(x=>x.status_pemeriksaan==='gagal').length;
+ const terhubung=sukses.filter(x=>x.status_perangkat==='connect').length;
+ const last=rows.map(x=>x.diperiksa_pada).filter(Boolean).sort().slice(-1)[0]||null;
+ const kartu=(n,l,sub)=>'<div class="card stat"><b>'+n+'</b>'+l+(sub?'<div class="mu">'+sub+'</div>':'')+'</div>';
+ const deviceRows=perangkat.map(x=>{
+   const status=x.status_pemeriksaan==='berhasil'?(x.status_perangkat==='connect'?'Terhubung':x.status_perangkat==='disconnect'?'Terputus':'Berhasil'):x.status_pemeriksaan==='menunggu'?'Menunggu':'Gagal';
+   const warna=x.status_pemeriksaan==='gagal'?'var(--rd)':x.status_pemeriksaan==='menunggu'?'var(--yl)':x.status_perangkat==='connect'?'var(--gn)':'var(--mu)';
+   return '<tr><td><b>'+esc(namaSekolah(x.sekolah_id))+'</b></td><td>'+esc(x.token_label||'Token Fonnte')+'<div class="mu">'+esc(x.paket||'Paket belum diketahui')+'</div></td><td>'+esc(x.perangkat||'—')+'</td><td><b>'+(x.kuota_sisa===null||x.kuota_sisa===undefined?'—':angka(x.kuota_sisa))+'</b></td><td><span style="color:'+warna+';font-weight:700">'+status+'</span>'+(x.detail_error?'<div class="mu">'+esc(x.detail_error)+'</div>':'')+'</td><td>'+waktu(x.diperiksa_pada)+'</td></tr>';
+ }).join('');
+ const grup=new Map();
+ rows.forEach(x=>{
+   const key=String(x.tanggal)+'|'+String(x.sekolah_id);
+   if(!grup.has(key))grup.set(key,{tanggal:x.tanggal,sekolah_id:x.sekolah_id,sisa:0,adaSisa:0,pakai:0,adaPakai:0,baseline:0,tambah:0,gagal:0,menunggu:0});
+   const g=grup.get(key);
+   if(x.status_pemeriksaan==='berhasil'){
+     if(x.kuota_sisa!==null&&x.kuota_sisa!==undefined){g.sisa+=Number(x.kuota_sisa)||0;g.adaSisa++}
+     if(x.pemakaian_harian!==null&&x.pemakaian_harian!==undefined){g.pakai+=Number(x.pemakaian_harian)||0;g.adaPakai++}else g.baseline++;
+     g.tambah+=Number(x.kuota_ditambahkan)||0;
+   }else if(x.status_pemeriksaan==='gagal')g.gagal++;
+   else g.menunggu++;
+ });
+ const hist=[...grup.values()].sort((a,b)=>String(b.tanggal).localeCompare(String(a.tanggal))||namaSekolah(a.sekolah_id).localeCompare(namaSekolah(b.sekolah_id),'id'));
+ const histRows=hist.map(x=>'<tr><td><b>'+esc(namaSekolah(x.sekolah_id))+'</b></td><td>'+tanggal(x.tanggal)+'</td><td>'+(x.adaSisa?angka(x.sisa):'—')+'</td><td>'+(x.adaPakai?angka(x.pakai)+(x.baseline?' <span class="mu">('+x.baseline+' baseline)</span>':''):'Belum ada pembanding')+'</td><td>'+(x.tambah?angka(x.tambah):'—')+'</td><td>'+(x.gagal?'<span style="color:var(--rd)">'+x.gagal+' gagal</span>':x.menunggu?'Menunggu':'Berhasil')+'</td></tr>').join('');
+ const daftarSekolah=sekolah.filter(x=>x.status==='aktif').length;
+ return '<div class="panel"><div class="ph">📶 Pemantauan Kuota Fonnte <button class="btn soft sm" onclick="muatFonnte()">↻ Muat ulang tampilan</button></div><div class="pb">'+
+   '<div class="note">Pemeriksaan otomatis dilakukan 1 kali sehari pukul <b>06.20 WIB</b> untuk setiap token Fonnte milik sekolah aktif. Tombol muat ulang hanya membaca database dan tidak menghubungi Fonnte lagi. Riwayat disimpan selama 7 hari.</div>'+
+   '<div class="tb">Filter sekolah: '+pilih+'</div>'+
+   '<div class="cards">'+kartu(angka(sisa),'Total sisa kuota',sukses.length+' dari '+perangkat.length+' perangkat berhasil diperiksa')+
+   kartu(pemakaian.length?angka(pakai):'—','Pemakaian harian',pemakaian.length?'Berdasarkan data pembanding':'Menunggu pemeriksaan hari berikutnya')+
+   kartu(terhubung,'Perangkat terhubung', 'Dari '+sukses.length+' perangkat yang berhasil diperiksa')+
+   kartu(gagal,'Pemeriksaan gagal',gagal?'Perlu diperiksa':'Tidak ada kegagalan')+'</div>'+
+   '<div class="note">Pemeriksaan terakhir: <b>'+waktu(last)+'</b>. '+(daftarSekolah+' sekolah aktif terdaftar dalam sistem.')+'</div>'+
+   '<div class="tbkh">Sisa kuota setiap perangkat</div>'+
+   (deviceRows?tab(['Sekolah','Token/perangkat','Nomor perangkat','Sisa kuota','Status','Terakhir diperiksa'],deviceRows):'<div class="note">Belum ada token Fonnte atau belum ada hasil pemeriksaan.</div>')+
+   '<div class="tbkh">Riwayat pemakaian kuota · 7 hari terakhir</div>'+
+   (histRows?tab(['Sekolah','Tanggal','Sisa kuota','Pemakaian','Kuota ditambahkan','Status'],histRows):'<div class="note">Riwayat belum tersedia. Data awal akan muncul setelah pemeriksaan otomatis pertama.</div>')+
+   '<div class="note">Pemakaian harian dihitung dari selisih jumlah pesan kumulatif Fonnte. Jika penghitung pesan direset, sistem menggunakan perubahan sisa kuota sebagai perkiraan. Pengisian ulang kuota dicatat terpisah dan tidak dianggap sebagai pemakaian.</div>'+
+ '</div></div>';
 }
 function devPemantauanAI(){
  const d=S.devAI;
