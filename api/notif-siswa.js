@@ -390,7 +390,7 @@ async function prosesPengingatPush(eksekusiId) {
       tag: 'ingat-izin-' + Number(e.id),
       ikon: e.status_laporan
     };
-    const item = { e, tujuan: daftar.length, terkirim: 0, gagal: 0, error: '' };
+    const item = { e, payload, tujuan: daftar.length, terkirim: 0, gagal: 0, error: '' };
     hasilEvent.set(Number(e.id), { item });
     daftar.forEach(l => tugas.push({ item, l }));
   }
