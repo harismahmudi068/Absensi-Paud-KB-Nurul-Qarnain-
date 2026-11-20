@@ -292,11 +292,344 @@ async function proses(klaim) {
   return { diproses: klaim.length, terkirim, gagal, dilewati };
 }
 
+
+function tanggalLokalID(t) {
+  if (!t) return '-';
+  const d = new Date(String(t).slice(0,10) + 'T00:00:00+07:00');
+  return isNaN(d.getTime()) ? String(t) : d.toLocaleDateString('id-ID', {
+    timeZone: 'Asia/Jakarta', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+}
+function nomorWAPengingat(n) {
+  let d = String(n || '').replace(/\D/g, '');
+  if (d.startsWith('0')) d = '62' + d.slice(1);
+  else if (d.startsWith('8')) d = '62' + d;
+  return /^628\d{8,12}$/.test(d) ? d : '';
+}
+function cocokLaporanPengingat(e, a) {
+  if (!a || a.status !== e.status_laporan || a.cara !== e.sumber) return false;
+  const x = Date.parse(a.diubah || ''), y = Date.parse(e.laporan_diubah || '');
+  return Number.isFinite(x) && Number.isFinite(y) && x === y;
+}
+async function catatEksekusiPengingat(id, data) {
+  if (!Number.isInteger(Number(id)) || Number(id) <= 0) return;
+  try {
+    await L.panggil('/rest/v1/pengingat_izin_sakit_eksekusi?id=eq.' + Number(id),
+      'PATCH', Object.assign({ selesai_at: new Date().toISOString() }, data),
+      { Prefer: 'return=minimal' });
+  } catch (e) { console.error('notif-siswa pengingat: gagal mencatat eksekusi', e && e.message); }
+}
+async function prosesPengingatPush(eksekusiId) {
+  const hariIni = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+  const due = (await L.panggil(
+    '/rest/v1/pengingat_izin_sakit?push_status=eq.menunggu&tanggal_akhir=eq.' + hariIni +
+    '&select=id,sekolah_id,siswa_id,status_laporan,sumber,laporan_diubah,tanggal_akhir&order=id.asc&limit=150',
+    'GET'
+  )) || [];
+  if (!due.length) {
+    await catatEksekusiPengingat(eksekusiId, {
+      status: 'selesai', jumlah_diproses: 0, jumlah_berhasil: 0, jumlah_gagal: 0, jumlah_dilewati: 0
+    });
+    return { diproses: 0, terkirim: 0, gagal: 0, dilewati: 0 };
+  }
+  const ids = due.map(x => Number(x.id));
+  const klaim = (await L.panggil(
+    '/rest/v1/pengingat_izin_sakit?id=in.(' + ids.join(',') + ')&push_status=eq.menunggu',
+    'PATCH', { push_status: 'diproses', push_diproses_at: new Date().toISOString(), diubah: new Date().toISOString() },
+    { Prefer: 'return=representation' }
+  )) || [];
+  if (!klaim.length) {
+    await catatEksekusiPengingat(eksekusiId, {
+      status: 'selesai', jumlah_diproses: 0, jumlah_berhasil: 0, jumlah_gagal: 0, jumlah_dilewati: 0
+    });
+    return { diproses: 0, terkirim: 0, gagal: 0, dilewati: 0 };
+  }
+  const siswaIds = unik(klaim.map(x => Number(x.siswa_id)));
+  const sekolahIds = unik(klaim.map(x => Number(x.sekolah_id)));
+  const tanggal = unik(klaim.map(x => x.tanggal_akhir));
+  const [siswaRows, sekolahRows, pengRows, langgananRows, absRows] = await Promise.all([
+    perPaket(siswaIds, 150, c => semua('/rest/v1/siswa?id=in.(' + c.join(',') + ')&select=id,sekolah_id,nama,nama_panggilan,kode_qr,aktif')),
+    L.panggil('/rest/v1/sekolah?id=in.(' + sekolahIds.join(',') + ')&select=id,status', 'GET'),
+    L.panggil('/rest/v1/pengaturan?sekolah_id=in.(' + sekolahIds.join(',') + ')&select=sekolah_id,notif_absensi_aktif,push_absensi_diizinkan', 'GET'),
+    perPaket(siswaIds, 150, c => semua('/rest/v1/push_langganan?siswa_id=in.(' + c.join(',') + ')&select=id,siswa_id,endpoint,p256dh,auth,gagal,terima_absensi&order=id.asc')),
+    perPaket(siswaIds, 150, c => semua('/rest/v1/absensi?siswa_id=in.(' + c.join(',') + ')&tanggal=in.(' + tanggal.join(',') + ')&select=id,siswa_id,sekolah_id,tanggal,status,cara,diubah'))
+  ]);
+  const siswa = new Map((siswaRows || []).map(x => [Number(x.id), x]));
+  const sekolah = new Map((sekolahRows || []).map(x => [Number(x.id), x]));
+  const peng = new Map((pengRows || []).map(x => [Number(x.sekolah_id), x]));
+  const abs = new Map((absRows || []).map(x => [Number(x.siswa_id) + '|' + x.tanggal, x]));
+  const subs = new Map();
+  (langgananRows || []).forEach(x => {
+    const k = Number(x.siswa_id);
+    (subs.get(k) || subs.set(k, []).get(k)).push(x);
+  });
+  const hasilEvent = new Map();
+  const tugas = [];
+  for (const e of klaim) {
+    const sid = Number(e.sekolah_id), anakId = Number(e.siswa_id);
+    const s = siswa.get(anakId), sk = sekolah.get(sid), p = peng.get(sid) || {};
+    const row = abs.get(anakId + '|' + e.tanggal_akhir);
+    let alasan = '';
+    if (!sk || sk.status !== 'aktif') alasan = 'Sekolah tidak aktif';
+    else if (!s || !s.aktif || Number(s.sekolah_id) !== sid) alasan = 'Siswa tidak aktif atau tidak ditemukan';
+    else if (!cocokLaporanPengingat(e, row)) alasan = 'Laporan sudah berubah setelah pengingat dibuat';
+    else if (p.push_absensi_diizinkan === false) alasan = 'Push absensi dimatikan Developer';
+    else if (!p.notif_absensi_aktif) alasan = 'Push absensi dimatikan sekolah';
+    const daftar = (subs.get(anakId) || []).filter(x => x.terima_absensi !== false);
+    if (!alasan && !daftar.length) alasan = 'Orang tua belum mengaktifkan push absensi';
+    if (alasan) {
+      hasilEvent.set(Number(e.id), { status: 'dilewati', alasan, tujuan: 0, terkirim: 0, gagal: 0, error: null });
+      continue;
+    }
+    const nama = namaAnak(s);
+    const payload = {
+      judul: 'Pengingat izin/sakit',
+      isi: 'Hari ini merupakan hari terakhir laporan ' + e.status_laporan + ' ananda ' + nama +
+        '. Jika pada hari sekolah berikutnya ananda masih belum dapat masuk, mohon kirim laporan izin/sakit kembali melalui WhatsApp atau portal orang tua.',
+      url: '/p/' + s.kode_qr + '#absensi',
+      tag: 'ingat-izin-' + Number(e.id),
+      ikon: e.status_laporan
+    };
+    const item = { e, tujuan: daftar.length, terkirim: 0, gagal: 0, error: '' };
+    hasilEvent.set(Number(e.id), { item });
+    daftar.forEach(l => tugas.push({ item, l }));
+  }
+  const sukses = [], mati = [], gagalBerulang = [];
+  const hasilKirim = await jalankanParalel(tugas, ({ item, l }) =>
+    webpush.sendNotification(
+      { endpoint: l.endpoint, keys: { p256dh: l.p256dh, auth: l.auth } },
+      JSON.stringify(item.payload),
+      { TTL: 3 * 3600, urgency: 'high', topic: potong(item.payload.tag, 32), timeout: TIMEOUT_KIRIM_MS }
+    )
+  );
+  hasilKirim.forEach((h, i) => {
+    const x = tugas[i], item = x.item, l = x.l;
+    if (h.status === 'fulfilled') {
+      item.terkirim++;
+      sukses.push(l.id);
+      return;
+    }
+    const er = h.reason || {}, kode = Number(er.statusCode);
+    item.gagal++;
+    if (!item.error) item.error = potong((kode ? kode + ' ' : '') + (er.body || er.message || 'Gagal mengirim push'), 180);
+    if (kode === 404 || kode === 410 || (Number(l.gagal) || 0) + 1 >= BATAS_GAGAL) mati.push(l.id);
+    else gagalBerulang.push(l);
+  });
+  await perPaket(unik(sukses), 150, async c => {
+    await L.panggil('/rest/v1/push_langganan?id=in.(' + c.join(',') + ')', 'PATCH',
+      { terakhir_ok: new Date().toISOString(), gagal: 0 }, { Prefer: 'return=minimal' });
+    return [];
+  });
+  for (const [nilai, daftar] of kelompokkan(gagalBerulang, l => (Number(l.gagal) || 0) + 1)) {
+    await perPaket(unik(daftar.map(x => x.id)), 150, async c => {
+      await L.panggil('/rest/v1/push_langganan?id=in.(' + c.join(',') + ')', 'PATCH',
+        { gagal: nilai }, { Prefer: 'return=minimal' });
+      return [];
+    });
+  }
+  await perPaket(unik(mati), 150, async c => {
+    await L.panggil('/rest/v1/push_langganan?id=in.(' + c.join(',') + ')', 'DELETE');
+    return [];
+  });
+  let terkirim = 0, gagal = 0, dilewati = 0;
+  for (const [id, v] of hasilEvent) {
+    let data;
+    if (v.item) {
+      const it = v.item;
+      const ok = it.terkirim > 0;
+      const status = ok ? 'berhasil' : 'gagal';
+      if (ok) terkirim++; else gagal++;
+      data = {
+        push_status: status, push_waktu: new Date().toISOString(),
+        push_jumlah_tujuan: it.tujuan, push_dikirim: it.terkirim, push_gagal: it.gagal,
+        push_error: it.error || null, diubah: new Date().toISOString()
+      };
+    } else {
+      dilewati++;
+      data = { push_status: 'dilewati', push_error: v.alasan, push_waktu: new Date().toISOString(), diubah: new Date().toISOString() };
+    }
+    await L.panggil('/rest/v1/pengingat_izin_sakit?id=eq.' + id, 'PATCH', data, { Prefer: 'return=minimal' });
+  }
+  await catatEksekusiPengingat(eksekusiId, {
+    status: 'selesai', jumlah_diproses: klaim.length,
+    jumlah_berhasil: terkirim, jumlah_gagal: gagal, jumlah_dilewati: dilewati
+  });
+  return { diproses: klaim.length, terkirim, gagal, dilewati };
+}
+async function prosesPengingatWa(eksekusiId) {
+  const hariIni = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
+  const due = (await L.panggil(
+    '/rest/v1/pengingat_izin_sakit?wa_status=eq.menunggu&tanggal_tindak_lanjut=eq.' + hariIni +
+    '&select=id,sekolah_id,siswa_id,status_laporan,sumber,laporan_diubah,tanggal_akhir,tanggal_tindak_lanjut&order=id.asc&limit=150',
+    'GET'
+  )) || [];
+  if (!due.length) {
+    await catatEksekusiPengingat(eksekusiId, {
+      status: 'selesai', jumlah_diproses: 0, jumlah_berhasil: 0, jumlah_gagal: 0, jumlah_dilewati: 0
+    });
+    return { diproses: 0, terkirim: 0, gagal: 0, dilewati: 0 };
+  }
+  const ids = due.map(x => Number(x.id));
+  const klaim = (await L.panggil(
+    '/rest/v1/pengingat_izin_sakit?id=in.(' + ids.join(',') + ')&wa_status=eq.menunggu',
+    'PATCH', { wa_status: 'diproses', wa_diproses_at: new Date().toISOString(), diubah: new Date().toISOString() },
+    { Prefer: 'return=representation' }
+  )) || [];
+  if (!klaim.length) {
+    await catatEksekusiPengingat(eksekusiId, {
+      status: 'selesai', jumlah_diproses: 0, jumlah_berhasil: 0, jumlah_gagal: 0, jumlah_dilewati: 0
+    });
+    return { diproses: 0, terkirim: 0, gagal: 0, dilewati: 0 };
+  }
+  const siswaIds = unik(klaim.map(x => Number(x.siswa_id)));
+  const sekolahIds = unik(klaim.map(x => Number(x.sekolah_id)));
+  const tanggal = unik(klaim.flatMap(x => [x.tanggal_akhir, x.tanggal_tindak_lanjut]));
+  const waliRelasiPath = '/rest/v1/siswa_wali?siswa_id=in.(' + siswaIds.join(',') + ')&select=siswa_id,wali_id';
+  const [siswaRows, sekolahRows, absRows, relasiRows, tokenRows, rahasiaRows] = await Promise.all([
+    perPaket(siswaIds, 150, c => semua('/rest/v1/siswa?id=in.(' + c.join(',') + ')&select=id,sekolah_id,nama,nama_panggilan,kelas_id,aktif')),
+    L.panggil('/rest/v1/sekolah?id=in.(' + sekolahIds.join(',') + ')&select=id,nama,status', 'GET'),
+    perPaket(siswaIds, 150, c => semua('/rest/v1/absensi?siswa_id=in.(' + c.join(',') + ')&tanggal=in.(' + tanggal.join(',') + ')&select=id,siswa_id,sekolah_id,tanggal,status,cara,diubah')),
+    semua(waliRelasiPath),
+    semua('/rest/v1/fonnte_token?sekolah_id=in.(' + sekolahIds.join(',') + ')&select=id,sekolah_id,token&order=id.asc'),
+    semua('/rest/v1/pengaturan_rahasia?sekolah_id=in.(' + sekolahIds.join(',') + ')&select=sekolah_id,token_fonnte')
+  ]);
+  const siswa = new Map((siswaRows || []).map(x => [Number(x.id), x]));
+  const sekolah = new Map((sekolahRows || []).map(x => [Number(x.id), x]));
+  const abs = new Map((absRows || []).map(x => [Number(x.siswa_id) + '|' + x.tanggal, x]));
+  const waliIds = unik((relasiRows || []).map(x => Number(x.wali_id)).filter(Number.isInteger));
+  const waliRows = waliIds.length ? await semua('/rest/v1/wali?id=in.(' + waliIds.join(',') + ')&select=id,sekolah_id,nama,no_wa') : [];
+  const wali = new Map((waliRows || []).map(x => [Number(x.id), x]));
+  const waliPerSiswa = new Map();
+  (relasiRows || []).forEach(x => {
+    const k = Number(x.siswa_id);
+    (waliPerSiswa.get(k) || waliPerSiswa.set(k, []).get(k)).push(wali.get(Number(x.wali_id)));
+  });
+  const token = new Map();
+  (tokenRows || []).forEach(x => { if (!token.has(Number(x.sekolah_id))) token.set(Number(x.sekolah_id), x.token); });
+  (rahasiaRows || []).forEach(x => { if (!token.has(Number(x.sekolah_id)) && x.token_fonnte) token.set(Number(x.sekolah_id), x.token_fonnte); });
+  const hasilEvent = new Map(), tugas = [];
+  for (const e of klaim) {
+    const sid = Number(e.sekolah_id), anakId = Number(e.siswa_id);
+    const s = siswa.get(anakId), sk = sekolah.get(sid);
+    const rowAkhir = abs.get(anakId + '|' + e.tanggal_akhir);
+    const rowHariIni = abs.get(anakId + '|' + e.tanggal_tindak_lanjut);
+    let alasan = '';
+    if (!sk || sk.status !== 'aktif') alasan = 'Sekolah tidak aktif';
+    else if (!s || !s.aktif || Number(s.sekolah_id) !== sid) alasan = 'Siswa tidak aktif atau tidak ditemukan';
+    else if (!cocokLaporanPengingat(e, rowAkhir)) alasan = 'Laporan izin/sakit sudah berubah atau diperpanjang';
+    else if (rowHariIni) alasan = 'Status hari ini sudah tercatat: ' + rowHariIni.status;
+    if (alasan) {
+      hasilEvent.set(Number(e.id), { status: 'dilewati', alasan, tujuan: 0, terkirim: 0, gagal: 0, ids: [] });
+      continue;
+    }
+    const nomor = unik((waliPerSiswa.get(anakId) || [])
+      .filter(w => w && Number(w.sekolah_id) === sid)
+      .map(w => nomorWAPengingat(w.no_wa)).filter(Boolean));
+    if (!nomor.length) {
+      hasilEvent.set(Number(e.id), { status: 'dilewati', alasan: 'Nomor WhatsApp wali belum tersedia atau tidak valid', tujuan: 0, terkirim: 0, gagal: 0, ids: [] });
+      continue;
+    }
+    const tokenSekolah = token.get(sid);
+    if (!tokenSekolah) {
+      hasilEvent.set(Number(e.id), { status: 'gagal', alasan: 'Token Fonnte sekolah belum dikonfigurasi', tujuan: nomor.length, terkirim: 0, gagal: nomor.length, ids: [] });
+      continue;
+    }
+    const nama = namaAnak(s);
+    const pesan =
+      '🌷 _Assalamu\\'alaikum warahmatullahi wabarakatuh._\\n\\n' +
+      'Bapak/Ibu Orang Tua/Wali dari *' + nama + '*,\\n\\n' +
+      'Kami ingin menginformasikan bahwa hingga pukul 08.00 WIB hari ini, ananda belum tercatat memiliki laporan izin/sakit maupun status kehadiran.\\n\\n' +
+      'Masa laporan ' + e.status_laporan + ' ananda sebelumnya berakhir pada ' + tanggalLokalID(e.tanggal_akhir) + '.\\n\\n' +
+      'Apabila ananda masih belum dapat masuk sekolah, mohon Bapak/Ibu mengirimkan laporan izin/sakit kembali melalui WhatsApp atau portal orang tua. Jika ananda sudah dapat bersekolah, Bapak/Ibu tidak perlu mengirimkan laporan tambahan.\\n\\n' +
+      'Terima kasih atas perhatian dan kerja sama Bapak/Ibu.\\n\\n' +
+      '_Wassalamu\\'alaikum warahmatullahi wabarakatuh._';
+    const item = { e, token: tokenSekolah, pesan, nomor, terkirim: 0, gagal: 0, ids: [], error: '' };
+    hasilEvent.set(Number(e.id), { item });
+    nomor.forEach(n => tugas.push({ item, nomor: n }));
+  }
+  const hasilKirim = [];
+  for (let i = 0; i < tugas.length; i += 5) {
+    hasilKirim.push(...(await Promise.allSettled(tugas.slice(i, i + 5).map(async x => {
+      const r = await fetch('https://api.fonnte.com/send', {
+        method: 'POST',
+        headers: { Authorization: x.item.token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: x.nomor, message: x.item.pesan })
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.status === false) throw new Error(j.reason || j.message || 'Fonnte menolak pengiriman');
+      return { id: Array.isArray(j.id) ? j.id.map(String) : (j.id ? [String(j.id)] : []) };
+    }))));
+  }
+  hasilKirim.forEach((h, i) => {
+    const x = tugas[i], item = x.item;
+    if (h.status === 'fulfilled') {
+      item.terkirim++;
+      item.ids.push(...h.value.id);
+    } else {
+      item.gagal++;
+      if (!item.error) item.error = potong((h.reason && h.reason.message) || 'Pengiriman Fonnte gagal', 180);
+    }
+  });
+  let terkirim = 0, gagal = 0, dilewati = 0;
+  for (const [id, v] of hasilEvent) {
+    let data;
+    if (v.item) {
+      const it = v.item;
+      const status = it.terkirim && it.gagal ? 'sebagian' : it.terkirim ? 'berhasil' : 'gagal';
+      if (it.terkirim) terkirim++; else gagal++;
+      data = {
+        wa_status: status, wa_waktu: new Date().toISOString(),
+        wa_jumlah_tujuan: it.nomor.length, wa_dikirim: it.terkirim, wa_gagal: it.gagal,
+        wa_fonnte_ids: JSON.stringify(it.ids), wa_error: it.error || null, diubah: new Date().toISOString()
+      };
+    } else {
+      if (v.status === 'dilewati') dilewati++; else gagal++;
+      data = {
+        wa_status: v.status, wa_waktu: new Date().toISOString(),
+        wa_jumlah_tujuan: v.tujuan, wa_dikirim: v.terkirim, wa_gagal: v.gagal,
+        wa_fonnte_ids: JSON.stringify(v.ids || []), wa_error: v.alasan || null, diubah: new Date().toISOString()
+      };
+    }
+    await L.panggil('/rest/v1/pengingat_izin_sakit?id=eq.' + id, 'PATCH', data, { Prefer: 'return=minimal' });
+  }
+  await catatEksekusiPengingat(eksekusiId, {
+    status: 'selesai', jumlah_diproses: klaim.length,
+    jumlah_berhasil: terkirim, jumlah_gagal: gagal, jumlah_dilewati: dilewati
+  });
+  return { diproses: klaim.length, terkirim, gagal, dilewati };
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Metode tidak diizinkan' });
   if (!rahasiaCocok(req.headers && req.headers.authorization)) return res.status(401).json({ error: 'Tidak diizinkan' });
 
+  const aksi = req.body && req.body.aksi;
+  const eksekusiId = Number(req.body && req.body.eksekusi_id) || null;
+  if (aksi === 'pengingat_push') {
+    const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY, subj = process.env.VAPID_SUBJECT;
+    if (!pub || !priv || !subj) {
+      await catatEksekusiPengingat(eksekusiId, { status: 'gagal', error: 'Konfigurasi VAPID belum lengkap' });
+      return res.status(500).json({ error: 'Konfigurasi VAPID belum lengkap' });
+    }
+    try {
+      webpush.setVapidDetails(subj, pub, priv);
+      return res.status(200).json({ ok: true, ...(await prosesPengingatPush(eksekusiId)) });
+    } catch (e) {
+      await catatEksekusiPengingat(eksekusiId, { status: 'gagal', error: potong((e && e.message) || 'Pengingat push gagal', 300) });
+      console.error('notif-siswa pengingat push:', e && e.message);
+      return res.status(500).json({ error: 'Gagal memproses pengingat push' });
+    }
+  }
+  if (aksi === 'pengingat_wa') {
+    try {
+      return res.status(200).json({ ok: true, ...(await prosesPengingatWa(eksekusiId)) });
+    } catch (e) {
+      await catatEksekusiPengingat(eksekusiId, { status: 'gagal', error: potong((e && e.message) || 'Pengingat WhatsApp gagal', 300) });
+      console.error('notif-siswa pengingat WhatsApp:', e && e.message);
+      return res.status(500).json({ error: 'Gagal memproses pengingat WhatsApp' });
+    }
+  }
   const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY, subj = process.env.VAPID_SUBJECT;
   if (!pub || !priv || !subj) return res.status(500).json({ error: 'VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, dan VAPID_SUBJECT belum diatur' });
 
