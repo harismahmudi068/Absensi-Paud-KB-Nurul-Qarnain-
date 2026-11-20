@@ -824,6 +824,35 @@ module.exports = async (req, res) => {
     }
 
     // ---------------------------------------------------------
+    // PEMANTAUAN KUOTA FONNTE (khusus Developer + AAL2)
+    // Tidak pernah mengirim pesan; hanya membaca profil perangkat.
+    // ---------------------------------------------------------
+    if (b.aksi === 'pemantauan_fonnte') {
+      async function semuaRows(path) {
+        const out = [];
+        for (let offset = 0; offset < 50000; offset += 1000) {
+          const rows = await L.panggil(path + '&limit=1000&offset=' + offset, 'GET');
+          const isi = Array.isArray(rows) ? rows : [];
+          out.push(...isi);
+          if (isi.length < 1000) break;
+        }
+        return out;
+      }
+      const [sekolahRows, riwayatRows] = await Promise.all([
+        semuaRows('/rest/v1/sekolah?select=id,nama,status&order=nama.asc'),
+        semuaRows('/rest/v1/fonnte_kuota_harian?select=id,sekolah_id,token_id,token_label,perangkat,tanggal,kuota_sisa,pemakaian_harian,kuota_ditambahkan,pesan_total,paket,expired,status_perangkat,status_pemeriksaan,detail_error,diperiksa_pada&order=tanggal.desc,diperiksa_pada.desc')
+      ]);
+      return res.status(200).json({
+        ok: true,
+        sekolah: (sekolahRows || []).map(x => ({
+          id: Number(x.id), nama: x.nama, status: x.status
+        })),
+        riwayat: riwayatRows || [],
+        diperbarui: new Date().toISOString()
+      });
+    }
+
+    // ---------------------------------------------------------
     // PEMANTAUAN STORAGE SUPABASE (khusus Developer + AAL2)
     // ---------------------------------------------------------
     if (b.aksi === 'pemantauan_storage') {
