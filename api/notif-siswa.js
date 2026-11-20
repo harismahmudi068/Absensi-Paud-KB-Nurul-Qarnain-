@@ -351,7 +351,7 @@ async function prosesPengingatPush(eksekusiId) {
     perPaket(siswaIds, 150, c => semua('/rest/v1/siswa?id=in.(' + c.join(',') + ')&select=id,sekolah_id,nama,nama_panggilan,kode_qr,aktif')),
     L.panggil('/rest/v1/sekolah?id=in.(' + sekolahIds.join(',') + ')&select=id,status', 'GET'),
     L.panggil('/rest/v1/pengaturan?sekolah_id=in.(' + sekolahIds.join(',') + ')&select=sekolah_id,notif_absensi_aktif,push_absensi_diizinkan', 'GET'),
-    perPaket(siswaIds, 150, c => semua('/rest/v1/push_langganan?siswa_id=in.(' + c.join(',') + ')&select=id,siswa_id,endpoint,p256dh,auth,gagal,terima_absensi&order=id.asc')),
+    perPaket(siswaIds, 150, c => semua('/rest/v1/push_langganan?siswa_id=in.(' + c.join(',') + ')&terima_absensi=eq.true&select=id,siswa_id,endpoint,p256dh,auth,gagal,terima_absensi&order=id.asc')),
     perPaket(siswaIds, 150, c => semua('/rest/v1/absensi?siswa_id=in.(' + c.join(',') + ')&tanggal=in.(' + tanggal.join(',') + ')&select=id,siswa_id,sekolah_id,tanggal,status,cara,diubah'))
   ]);
   const siswa = new Map((siswaRows || []).map(x => [Number(x.id), x]));
@@ -375,7 +375,7 @@ async function prosesPengingatPush(eksekusiId) {
     else if (!cocokLaporanPengingat(e, row)) alasan = 'Laporan sudah berubah setelah pengingat dibuat';
     else if (p.push_absensi_diizinkan === false) alasan = 'Push absensi dimatikan Developer';
     else if (!p.notif_absensi_aktif) alasan = 'Push absensi dimatikan sekolah';
-    const daftar = (subs.get(anakId) || []).filter(x => x.terima_absensi !== false);
+    const daftar = (subs.get(anakId) || []).filter(x => x.terima_absensi === true);
     if (!alasan && !daftar.length) alasan = 'Orang tua belum mengaktifkan push absensi';
     if (alasan) {
       hasilEvent.set(Number(e.id), { status: 'dilewati', alasan, tujuan: 0, terkirim: 0, gagal: 0, error: null });
@@ -548,10 +548,10 @@ async function prosesPengingatWa(eksekusiId) {
     nomor.forEach(n => tugas.push({ item, nomor: n }));
   }
   const hasilKirim = [];
-  for (let i = 0; i < tugas.length; i += 5) {
-    hasilKirim.push(...(await Promise.allSettled(tugas.slice(i, i + 5).map(async x => {
+  for (let i = 0; i < tugas.length; i += 10) {
+    hasilKirim.push(...(await Promise.allSettled(tugas.slice(i, i + 10).map(async x => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 12000);
+      const timer = setTimeout(() => controller.abort(), 8000);
       try {
         const r = await fetch('https://api.fonnte.com/send', {
           method: 'POST',
