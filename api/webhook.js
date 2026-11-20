@@ -1035,13 +1035,9 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
   const hasil = await simpan(dari, pesan, anak, status, catatan, rencana, bagianNama('sebagian'));
   await catatNama();
 
-  // Balasan konfirmasi kepada orang tua harus dikirim lebih dahulu.
-  if (hasil.balasan) await kirimBalasanWali(target, hasil.balasan, bahasa);
-
-  // Setelah balasan diproses Fonnte, baru daftarkan jadwal kepala sekolah dan wali kelas.
-  // Orang tua tidak dikirimi pesan laporan kedua karena sudah menerima balasan otomatis.
+  // Antrean pengingat dibuat segera setelah absensi berhasil disimpan.
+  // Jangan bergantung pada keberhasilan pesan balasan WhatsApp.
   if (hasil.notifikasi) {
-    // Antrean pengingat dibuat dari laporan yang benar-benar tersimpan, satu baris per siswa.
     for (const laporan of (hasil.notifikasi.laporan || [])) {
       try {
         await require('./_lib').catatPengingatIzinSakit({
@@ -1057,6 +1053,14 @@ async function catatDanBalas({ dari, pesan, target, anak, status, catatan, waktu
         console.error('Gagal mencatat antrean pengingat WhatsApp:', e && e.message);
       }
     }
+  }
+
+  // Balasan konfirmasi kepada orang tua tetap dikirim seperti sebelumnya.
+  if (hasil.balasan) await kirimBalasanWali(target, hasil.balasan, bahasa);
+
+  // Setelah balasan diproses Fonnte, baru daftarkan notifikasi kepada kepala sekolah/wali kelas.
+  // Orang tua tidak dikirimi pesan laporan kedua karena sudah menerima balasan otomatis.
+  if (hasil.notifikasi) {
     try {
       await require('./_lib').kirimNotifikasiLaporan({
         ...hasil.notifikasi,
