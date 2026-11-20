@@ -539,7 +539,7 @@ async function prosesPengingatWa(eksekusiId) {
     const pesan =
       '🌷 _Assalamu\'alaikum warahmatullahi wabarakatuh._\n\n' +
       'Bapak/Ibu Orang Tua/Wali dari *' + nama + '*,\n\n' +
-      'Kami ingin menginformasikan bahwa hingga pukul 08.00 WIB hari ini, ananda belum tercatat memiliki laporan izin/sakit maupun status kehadiran.\n\n' +
+      'Kami ingin menginformasikan bahwa hingga saat pesan ini dikirim, ananda belum tercatat memiliki laporan izin/sakit maupun status kehadiran.\n\n' +
       'Masa laporan ' + e.status_laporan + ' ananda sebelumnya berakhir pada ' + tanggalLokalID(e.tanggal_akhir) + '.\n\n' +
       'Apabila ananda masih belum dapat masuk sekolah, mohon Bapak/Ibu mengirimkan laporan izin/sakit kembali melalui WhatsApp atau portal orang tua. Jika ananda sudah dapat bersekolah, Bapak/Ibu tidak perlu mengirimkan laporan tambahan.\n\n' +
       'Terima kasih atas perhatian dan kerja sama Bapak/Ibu.\n\n' +
