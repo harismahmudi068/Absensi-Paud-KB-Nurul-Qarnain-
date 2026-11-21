@@ -118,7 +118,7 @@ async function prosesSekolah(sid, waktu, tanggal, paksa) {
       L.panggil(`/rest/v1/libur_nasional?tanggal=eq.${tanggal}&select=tanggal`, 'GET'),
       L.panggil(`/rest/v1/libur_tanggal?sekolah_id=eq.${sid}&mulai=lte.${tanggal}&sampai=gte.${tanggal}&select=kelas_id`, 'GET'),
       L.panggil(`/rest/v1/libur_batal?sekolah_id=eq.${sid}&tanggal=eq.${tanggal}&select=kelas_id`, 'GET'),
-      semua(`/rest/v1/piket_jadwal?sekolah_id=eq.${sid}&hari=eq.${dow}&select=kelas_id,siswa_id,catatan,jenis:piket_jenis(nama,cakupan)`),
+      semua(`/rest/v1/piket_jadwal?sekolah_id=eq.${sid}&hari=eq.${dow}&select=kelas_id,siswa_id,catatan,mode_penugasan,jenis:piket_jenis(nama,cakupan)`),
       semua(`/rest/v1/kelas?sekolah_id=eq.${sid}&select=id,nama`),
       semua(`/rest/v1/siswa?sekolah_id=eq.${sid}&aktif=eq.true&select=id,nama,nama_panggilan,kelas_id,kode_qr`)
     ]);

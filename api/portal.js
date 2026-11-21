@@ -776,13 +776,15 @@ module.exports = async (req, res) => {
     const fKelas = kidS ? `or=(kelas_id.is.null,kelas_id.eq.${kidS})` : 'kelas_id=is.null';
     // Dashboard hanya perlu baris milik anak ini + piket seluruh kelas; halaman Piket memuat satu kelas penuh.
     const fPiket = v === 'piket'
-      ? fKelas
+      ? (kidS
+        ? `or=(kelas_id.is.null,kelas_id.eq.${kidS},mode_penugasan.eq.siswa_gabungan)`
+        : 'or=(kelas_id.is.null,mode_penugasan.eq.siswa_gabungan)')
       : (kidS
-        ? `and=(or(kelas_id.is.null,kelas_id.eq.${kidS}),or(siswa_id.is.null,siswa_id.eq.${id}))`
-        : `and=(kelas_id.is.null,or(siswa_id.is.null,siswa_id.eq.${id}))`);
+        ? `and=(or=(kelas_id.is.null,kelas_id.eq.${kidS},mode_penugasan.eq.siswa_gabungan),or=(siswa_id.is.null,siswa_id.eq.${id}))`
+        : `and=(or=(kelas_id.is.null,mode_penugasan.eq.siswa_gabungan),or=(siswa_id.is.null,siswa_id.eq.${id}))`);
     const kolPiket = v === 'piket'
-      ? 'id,hari,catatan,siswa_id,kelas_id,siswa:siswa(nama,nama_panggilan),jenis:piket_jenis(id,nama,cakupan,urutan)'
-      : 'hari,catatan,siswa_id,jenis:piket_jenis(nama,cakupan)';
+      ? 'id,hari,catatan,siswa_id,kelas_id,mode_penugasan,siswa:siswa(nama,nama_panggilan),kelas:kelas(nama),jenis:piket_jenis(id,nama,cakupan,urutan)'
+      : 'hari,catatan,siswa_id,kelas_id,mode_penugasan,jenis:piket_jenis(nama,cakupan)';
 
     // Logo sekolah: hanya untuk halaman kartu (siswa), diambil terpisah agar halaman tetap jalan
     // walau kolom pengaturan.logo belum ada. Hanya data URL gambar yang diterima.
@@ -931,10 +933,10 @@ module.exports = async (req, res) => {
           if (r.siswa_id) {
             const sw = r.siswa || {};
             const nm = String(sw.nama || '').trim() || String(sw.nama_panggilan || '').trim() || '-';
-            g.anak.push({ nama: nm, saya: Number(r.siswa_id) === id });
+            g.anak.push({ nama: nm, kelas: (r.kelas && r.kelas.nama) || '', saya: Number(r.siswa_id) === id });
             if (r.catatan && !g.entri.some((e) => e.catatan === r.catatan)) g.entri.push({ kelas: null, catatan: r.catatan });
           } else {
-            g.entri.push({ kelas: r.kelas_id == null ? null : (kelas.nama || ''), catatan: r.catatan || '' });
+            g.entri.push({ kelas: r.kelas_id == null ? null : ((r.kelas && r.kelas.nama) || ''), catatan: r.catatan || '' });
           }
         });
         const item = [...grup.values()].sort((a, b) => a.urut - b.urut || a.jenis.localeCompare(b.jenis, 'id')).map((g) => {
