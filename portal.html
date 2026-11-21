@@ -786,9 +786,9 @@ const PK_REG='pk_reg_'+(m?m[1]:'');
 const PK_REG_LOCK='pk_reg_lock_'+(m?m[1]:'');
 async function pushDaftar(sub,terima,paksa){if(!sub)throw new Error('Langganan notifikasi tidak ditemukan');const ep=sub.endpoint;if(!paksa&&localStorage.getItem(PK_REG)===ep)return;const sekarang=Date.now(),kunci=String(sekarang)+':'+Math.random().toString(36).slice(2);let lama='';try{lama=localStorage.getItem(PK_REG_LOCK)||''}catch(_){}if(lama){const t=Number(lama.split(':')[0]);if(Number.isFinite(t)&&sekarang-t<15000)return}try{localStorage.setItem(PK_REG_LOCK,kunci)}catch(_){}try{if(!paksa&&localStorage.getItem(PK_REG)===ep)return;await pushPost({aksi:'push_daftar',langganan:sub.toJSON(),agen:navigator.userAgent.slice(0,120),terima:terima||pkPilihan()});try{localStorage.setItem(PK_REG,ep)}catch(_){}}finally{try{if(localStorage.getItem(PK_REG_LOCK)===kunci)localStorage.removeItem(PK_REG_LOCK)}catch(_){}}}
 const PK_PIL='pk_pil_'+(m?m[1]:'');
-const pkPilihan=()=>{let o={};try{o=JSON.parse(localStorage.getItem(PK_PIL)||'{}')||{}}catch(_){}return{piket:o.piket!==false,absensi:o.absensi!==false,tabungan:o.tabungan!==false}};
-const PK_NAMA={piket:'Pengingat piket',absensi:'Absensi harian anak',tabungan:'Tabungan (nominal dan saldo akhir)'};
-const pkJenis=d=>{const j=(d&&d.push&&d.push.jenis)||{};return['absensi','tabungan','piket'].filter(k=>j[k])};
+const pkPilihan=()=>{let o={};try{o=JSON.parse(localStorage.getItem(PK_PIL)||'{}')||{}}catch(_){}return{piket:o.piket!==false,absensi:o.absensi!==false,tabungan:o.tabungan!==false,hafalan:o.hafalan!==false}};
+const PK_NAMA={piket:'Pengingat piket',absensi:'Absensi harian anak',tabungan:'Tabungan (nominal dan saldo akhir)',hafalan:'Hafalan siswa'};
+const pkJenis=d=>{const j=(d&&d.push&&d.push.jenis)||{};return['absensi','tabungan','hafalan','piket'].filter(k=>j[k])};
 function pushBanner(st,daftar,galat){if(st==='aktif'||st==='nosupport'||st==='denied')return '';
  const lihat='<button type="button" class="btn fx" onclick="go(\'notifikasi\')">Lihat caranya</button>';
  let t,b;
@@ -829,7 +829,7 @@ async function pushAktifkan(){if(pushAktifkanJalan)return;pushAktifkanJalan=true
   localStorage.removeItem(PK_OFF);await pushRender(S.pd)
  }catch(e){await pushRender(S.pd,(e&&e.message)||'Gagal mengaktifkan notifikasi')}finally{pushAktifkanJalan=false}}
 async function pushPilih(){try{
-  const pil=pkPilihan();['piket','absensi','tabungan'].forEach(k=>{const c=document.getElementById('pkc_'+k);if(c)pil[k]=!!c.checked});
+  const pil=pkPilihan();['piket','absensi','tabungan','hafalan'].forEach(k=>{const c=document.getElementById('pkc_'+k);if(c)pil[k]=!!c.checked});
   localStorage.setItem(PK_PIL,JSON.stringify(pil));
   const sub=await pushSub();if(!sub)throw new Error('HP ini belum terdaftar. Aktifkan notifikasi lebih dulu');
   await pushDaftar(sub,pil,true);
