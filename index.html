@@ -4222,40 +4222,57 @@ function pkTambahAnak(d){const j=S.pkJenis.find(x=>x.id===pkJ),kl=S.kelas.find(k
 function pkTambahSemua(d){
  const j=S.pkJenis.find(x=>x.id===pkJ);if(!j)return;
  const judul=HR[d]+' · '+j.nama;
- form(judul,[{k:'mode',l:'Cara penugasan',o:['Kelas utuh','Gabungan siswa']}],async v=>{
-  if(v.mode==='Kelas utuh'){
-   setTimeout(()=>form(judul,[{k:'kls',l:'Kelas yang ikut',o:['Seluruh kelas',...S.kelas.map(k=>k.nama)]},{k:'cat',l:'Catatan (opsional)'}],async w=>{
-    const kl=w.kls==='Seluruh kelas'?null:S.kelas.find(k=>k.nama===w.kls);
-    await pkTry(()=>dbq(db.from('piket_jadwal').insert({jenis_id:j.id,hari:d,kelas_id:kl?kl.id:null,siswa_id:null,mode_penugasan:'kelas_utuh',catatan:w.cat||null})));
-    await muatPiket();renderV();toast('Jadwal kelas utuh ditambahkan');
-   }),0);
+ form(judul,[{k:'mode',l:'Cara penugasan',o:['Semua siswa perkelas','Gabungan siswa semua kelas']}],async v=>{
+  if(v.mode==='Semua siswa perkelas'){
+   setTimeout(()=>{
+    const kelas=[...S.kelas].sort((a,b)=>String(a.nama).localeCompare(String(b.nama),'id'));
+    if(!kelas.length)return toast('Belum ada kelas yang tersedia',false);
+    const sudah=new Set(S.pkJadwal.filter(x=>x.jenis_id===j.id&&x.hari===d&&x.mode_penugasan==='kelas_utuh'&&x.kelas_id!=null).map(x=>Number(x.kelas_id)));
+    const tersedia=kelas.filter(k=>!sudah.has(Number(k.id)));
+    if(!tersedia.length)return toast('Semua kelas sudah memiliki jadwal pada hari tersebut',false);
+    resetTutup();$('#mt').textContent=judul+' · Semua siswa perkelas';
+    const daftar=tersedia.map(k=>'<label class="cbl" style="display:flex;gap:9px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--ln)"><input type="checkbox" value="'+k.id+'"> <b>'+esc(k.nama)+'</b><span class="mu" style="margin-left:auto">Seluruh siswa</span></label>').join('');
+    $('#mbd').innerHTML='<div class="note">Centang satu atau beberapa kelas. Semua siswa aktif di kelas yang dipilih akan mendapat tugas piket.</div><label class="cbl" style="display:flex;gap:9px;align-items:center;padding:9px 2px;font-weight:800"><input type="checkbox" id="pkPilihSemua"> Pilih semua kelas</label><div id="pkCek">'+daftar+'</div><div class="fd" style="margin-top:8px"><label class="l">Catatan (opsional)</label><input id="pkCat" class="input" maxlength="120"></div>';
+    $('#pkPilihSemua').onchange=e=>document.querySelectorAll('#pkCek input[type=checkbox]').forEach(x=>x.checked=e.target.checked);
+    const m=$('#ms');m.style.display='';m.textContent='Simpan';
+    const _sim=m.onclick=()=>guard(async()=>{
+     const ids=[...document.querySelectorAll('#pkCek input:checked')].map(x=>+x.value);
+     if(!ids.length)throw new Error('Pilih minimal satu kelas');
+     const cat=($('#pkCat').value||'').trim()||null,byId=new Map(tersedia.map(k=>[Number(k.id),k]));
+     const rows=ids.map(id=>{const k=byId.get(id);if(!k)throw new Error('Data kelas tidak valid');return {jenis_id:j.id,hari:d,kelas_id:k.id,siswa_id:null,mode_penugasan:'kelas_utuh',catatan:cat}});
+     await pkTry(()=>dbq(db.from('piket_jadwal').insert(rows)));
+     closeM();await muatPiket();renderV();toast(ids.length+' kelas berhasil dijadwalkan');return true;
+    });
+    $('#md').classList.add('show');jagaModal(judul+' (semua siswa perkelas)',_sim);
+   },0);
    return;
   }
   setTimeout(()=>{
-  const ada=new Set(S.pkJadwal.filter(x=>x.jenis_id===j.id&&x.hari===d&&x.siswa_id!=null).map(x=>Number(x.siswa_id)));
-  const sis=act().filter(s=>s.kelas_id!=null&&!ada.has(Number(s.id))).sort((a,b)=>{
-   const ka=S.kelas.find(k=>k.id===a.kelas_id),kb=S.kelas.find(k=>k.id===b.kelas_id);
-   return String(ka?ka.nama:'').localeCompare(String(kb?kb.nama:''),'id')||String(a.nama).localeCompare(String(b.nama),'id');
-  });
-  if(!sis.length)return toast('Semua anak aktif sudah terjadwal pada hari tersebut',false);
-  resetTutup();$('#mt').textContent=judul+' · Gabungan siswa';
-  let kelasAktif=null,daftar='';
-  sis.forEach(s=>{
-   const k=S.kelas.find(x=>x.id===s.kelas_id),namaK=k?k.nama:'Kelas?';
-   if(namaK!==kelasAktif){kelasAktif=namaK;daftar+='<div class="tbkh" style="margin-top:10px">'+esc(namaK)+'</div>'}
-   daftar+='<label class="cbl" style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" value="'+s.id+'"> '+esc(s.nama)+'</label>';
-  });
-  $('#mbd').innerHTML='<div class="note">Pilih siswa dari satu kelas atau beberapa kelas. Setiap anak akan disimpan dengan ID siswa dan kelas aslinya.</div><div id="pkCek">'+daftar+'</div><div class="fd" style="margin-top:8px"><label class="l">Catatan (opsional)</label><input id="pkCat" class="input" maxlength="120"></div>';
-  const m=$('#ms');m.style.display='';m.textContent='Simpan';
-  const _sim=m.onclick=()=>guard(async()=>{
-   const ids=[...document.querySelectorAll('#pkCek input:checked')].map(x=>+x.value);
-   if(!ids.length)throw new Error('Pilih minimal satu siswa');
-   const cat=($('#pkCat').value||'').trim()||null,byId=new Map(sis.map(s=>[Number(s.id),s]));
-   const rows=ids.map(id=>{const s=byId.get(id);if(!s)throw new Error('Data siswa tidak valid');return {jenis_id:j.id,hari:d,kelas_id:s.kelas_id,siswa_id:s.id,mode_penugasan:'siswa_gabungan',catatan:cat}});
-   await pkTry(()=>dbq(db.from('piket_jadwal').insert(rows)));
-   closeM();await muatPiket();renderV();toast(ids.length+' siswa gabungan dijadwalkan');return true;
-  });
-  $('#md').classList.add('show');jagaModal(judul+' (gabungan siswa)',_sim);
+   const ada=new Set(S.pkJadwal.filter(x=>x.jenis_id===j.id&&x.hari===d&&x.siswa_id!=null).map(x=>Number(x.siswa_id)));
+   const sis=act().filter(s=>s.kelas_id!=null&&!ada.has(Number(s.id))).sort((a,b)=>{
+    const ka=S.kelas.find(k=>k.id===a.kelas_id),kb=S.kelas.find(k=>k.id===b.kelas_id);
+    return String(ka?ka.nama:'').localeCompare(String(kb?kb.nama:''),'id')||String(a.nama).localeCompare(String(b.nama),'id');
+   });
+   if(!sis.length)return toast('Semua anak aktif sudah terjadwal pada hari tersebut',false);
+   resetTutup();$('#mt').textContent=judul+' · Gabungan siswa semua kelas';
+   let kelasAktif=null,daftar='';
+   sis.forEach(s=>{
+    const k=S.kelas.find(x=>x.id===s.kelas_id),namaK=k?k.nama:'Kelas?';
+    if(namaK!==kelasAktif){kelasAktif=namaK;daftar+='<div class="tbkh" style="margin-top:10px">'+esc(namaK)+'</div>'}
+    daftar+='<label class="cbl" style="display:flex;gap:8px;padding:6px 0"><input type="checkbox" value="'+s.id+'"> '+esc(s.nama)+'</label>';
+   });
+   $('#mbd').innerHTML='<div class="note">Pilih siswa dari satu kelas atau beberapa kelas. Setiap anak disimpan dengan ID siswa dan kelas aslinya.</div><label class="cbl" style="display:flex;gap:9px;align-items:center;padding:9px 2px;font-weight:800"><input type="checkbox" id="pkPilihSemua"> Pilih semua siswa</label><div id="pkCek">'+daftar+'</div><div class="fd" style="margin-top:8px"><label class="l">Catatan (opsional)</label><input id="pkCat" class="input" maxlength="120"></div>';
+   $('#pkPilihSemua').onchange=e=>document.querySelectorAll('#pkCek input[type=checkbox]').forEach(x=>x.checked=e.target.checked);
+   const m=$('#ms');m.style.display='';m.textContent='Simpan';
+   const _sim=m.onclick=()=>guard(async()=>{
+    const ids=[...document.querySelectorAll('#pkCek input:checked')].map(x=>+x.value);
+    if(!ids.length)throw new Error('Pilih minimal satu siswa');
+    const cat=($('#pkCat').value||'').trim()||null,byId=new Map(sis.map(s=>[Number(s.id),s]));
+    const rows=ids.map(id=>{const s=byId.get(id);if(!s)throw new Error('Data siswa tidak valid');return {jenis_id:j.id,hari:d,kelas_id:s.kelas_id,siswa_id:s.id,mode_penugasan:'siswa_gabungan',catatan:cat}});
+    await pkTry(()=>dbq(db.from('piket_jadwal').insert(rows)));
+    closeM();await muatPiket();renderV();toast(ids.length+' siswa gabungan dijadwalkan');return true;
+   });
+   $('#md').classList.add('show');jagaModal(judul+' (gabungan siswa semua kelas)',_sim);
   },0);
  });
 }
