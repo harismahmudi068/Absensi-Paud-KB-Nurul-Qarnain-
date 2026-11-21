@@ -806,7 +806,7 @@ module.exports = async (req, res) => {
     // 2-3. Pengaturan, kelas, dan data halaman diambil BERSAMAAN (satu putaran ke database).
     const [pengRows, kelasRows, trxData, absData, liburData, pkRows, jnData, itemData, setData, raporData] = await Promise.all([
       L.panggil(
-        `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif,notif_absensi_aktif,notif_tabungan_aktif,push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan&limit=1`,
+        `/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=nama_sekolah,alamat,kota,tahun_ajaran,tabungan_aktif,piket_aktif,hafalan_aktif,notif_piket_aktif,notif_absensi_aktif,notif_tabungan_aktif,notif_hafalan_aktif,push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan,push_hafalan_diizinkan&limit=1`,
         'GET'
       ),
       s.kelas_id
