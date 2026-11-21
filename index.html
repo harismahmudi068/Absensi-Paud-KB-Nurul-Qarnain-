@@ -4184,7 +4184,7 @@ async function pkHapusJenis(id){const j=S.pkJenis.find(x=>x.id===id);if(!j)retur
  if(!await konfirmasi('Hapus jenis "'+j.nama+'"?'+(n?' '+n+' jadwal di dalamnya ikut terhapus.':''),{bahaya:1,judul:'Hapus jenis piket',ya:'Hapus'}))return;
  guard(async()=>{await dbq(db.from('piket_jenis').delete().eq('id',id));await muatPiket();renderV();toast('Jenis piket dihapus')})}
 function pkJadwalHTML(){
- if(!S.pkJenis.length)return '<div class="note">Belum ada jenis piket. Buat dulu di tab Jenis piket.</div><div class="tb"><button class="btn success" onclick="pkHal(\\'jenis\\');pkTambahJenis()">+ Tambah jenis</button></div>';
+ if(!S.pkJenis.length)return '<div class="note">Belum ada jenis piket. Buat dulu di tab Jenis piket.</div><div class="tb"><button class="btn success" onclick="pkHal(\'jenis\');pkTambahJenis()">+ Tambah jenis</button></div>';
  const j=S.pkJenis.find(x=>x.id===pkJ)||S.pkJenis[0],kl=S.kelas.find(k=>k.nama===pkK);
  const chips=`<div class="chips kecil">${S.pkJenis.map(x=>`<button class="chip ${x.id===j.id?'on':''}" onclick="pkPilihJ(${x.id})">${esc(x.nama)}</button>`).join('')}</div>`;
  const pilK=j.cakupan==='kelas'? `<div class="tb tab-choice" style="margin-top:14px">${cpick('pkKelasPick','kelas',pkK,pkKelasOpt(),'pkPilihK','Pilih kelas')}</div>`:'';
