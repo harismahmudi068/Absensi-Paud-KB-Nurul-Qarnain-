@@ -1163,7 +1163,7 @@ const _sinkNK={};
 async function sinkronNomorKepala(){try{if(!adalahKepala()||CFG_SID||!RHS||RHS.error)return;const n=nomorKepalaProfil();if(!n)return;
  if(normWA(RHS.nomor_kepala||'')===normWA(n)||_sinkNK[SEK]===n)return;_sinkNK[SEK]=n;
  await apiPengaturan({aksi:'simpan',nomor_kepala:fmtWA(n)});RHS=await apiPengaturan({aksi:'baca'});if(view==='pengaturan'||view==='dashboard')renderV()}catch(e){console.warn('Sinkron nomor kepala sekolah gagal',e)}}
-const LOAD={profil:p=>role==='Developer'?devPastikan(devButuh(),p):muatProfilSaya(),dashboard:p=>role==='Developer'?devPastikan(devButuh(),p):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil(),muatRingDash()]).then(r=>{_dashT=Date.now();return r}),absensi:()=>muatRange(attDate,attDate),scan:()=>{muatLib('scan',true).catch(()=>{});return muatRange(TODAY,TODAY)},rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{try{const r=await dbq(db.from('pengaturan').select('push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan').maybeSingle());if(r)Object.assign(S.set,r)}catch(e){}if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:p=>devPastikan(devButuh(),p),tabungan:muatTabungan,kelola:()=>muatKelola(),alumni:()=>muatAlumni(),piket:()=>muatPiket(),hafalan:()=>muatHafalan(),penilaian:()=>pnMuat()};
+const LOAD={profil:p=>role==='Developer'?devPastikan(devButuh(),p):muatProfilSaya(),dashboard:p=>role==='Developer'?devPastikan(devButuh(),p):Promise.all([muatRange(TODAY,TODAY),muatStatusProfil(),muatRingDash()]).then(r=>{_dashT=Date.now();return r}),absensi:()=>muatRange(attDate,attDate),scan:()=>{muatLib('scan',true).catch(()=>{});return muatRange(TODAY,TODAY)},rekap:()=>muatBulan(bulan),laporanortu:()=>muatBulan(lb),guru:muatProfil,pesan:muatPesan,pengaturan:async()=>{try{const r=await dbq(db.from('pengaturan').select('push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan,push_hafalan_diizinkan').maybeSingle());if(r)Object.assign(S.set,r)}catch(e){}if(RHS===null)muatRahasia().then(()=>{if(view==='pengaturan')renderV()})},developer:p=>devPastikan(devButuh(),p),tabungan:muatTabungan,kelola:()=>muatKelola(),alumni:()=>muatAlumni(),piket:()=>muatPiket(),hafalan:()=>muatHafalan(),penilaian:()=>pnMuat()};
 /* ---------- libur ---------- */
 const batalAda=(d,k)=>{const b=S.batal;if(!b||!b.size)return false;if(b.has(d+'|0'))return true;const kl=S.kelas.find(x=>x.nama===k);return !!kl&&b.has(d+'|'+kl.id)};
 async function muatBatal(){S.batal=new Set();try{const r=await dbq(db.from('libur_batal').select('tanggal,kelas_id'));(r||[]).forEach(x=>S.batal.add(x.tanggal+'|'+x.kelas_id))}catch(e){peringatan('Data pembatalan libur gagal dimuat',e)}}
@@ -3589,21 +3589,23 @@ ${panelNotifOrtu()}
 <div class="panel" id="pnHafalan"><div class="ph">📖 Hafalan</div><div class="pb"><div class="note">Aktifkan bila sekolah mencatat hafalan siswa. Menu Hafalan tersedia untuk guru dan kepala sekolah. Semua guru boleh menambah, mengubah, dan menghapus jenis, daftar hafalan, serta mencatat setoran (Lancar atau Mengulang). Hafalan wajib semua kelas berlaku untuk seluruh kelas, hafalan per kelas diisi per kelas. Catatan setoran dihapus saat tahun ajaran baru dimulai, sedangkan daftar hafalan tetap. Hanya Kepala Sekolah dan Wakil yang dapat mengaktifkan atau menonaktifkan.</div><div class="tb cbrow"><label class="cbl"><input id="cbHafalan" type="checkbox" ${S.set.hafalan_aktif?'checked':''} onchange="setHafalan(this.checked)"> Aktifkan hafalan</label></div></div></div>
 ${panelWebhook()}${panelKonfigurasi()}`;
 function panelNotifOrtu(){
- const abs=S.set.push_absensi_diizinkan!==false,tab=S.set.push_tabungan_diizinkan!==false;
- if(!abs&&!tab)return '';
- const judul=abs&&tab?'Notifikasi Absensi dan Tabungan':abs?'Notifikasi Absensi':'Notifikasi Tabungan';
+ const abs=S.set.push_absensi_diizinkan!==false,tab=S.set.push_tabungan_diizinkan!==false,haf=S.set.push_hafalan_diizinkan!==false;
+ if(!abs&&!tab&&!haf)return '';
+ const jenis=[abs?'Absensi':'',tab?'Tabungan':'',haf?'Hafalan':''].filter(Boolean);const judul='Notifikasi '+jenis.join(', ');
  const catatan='Orang tua yang sudah mengaktifkan notifikasi di Halaman Siswa menerima pemberitahuan di HP mereka (tanpa kuota WhatsApp)'
   +(abs?' setelah absensi anak hari ini tercatat, baik dari scanner, input manual guru, laporan orang tua, maupun WhatsApp. Ada jeda sekitar 2 menit agar koreksi guru tidak terkirim sebagai status yang salah.':'.')
   +(tab?' Notifikasi tabungan menampilkan nominal transaksi dan saldo akhir, sehingga isinya dapat terbaca di layar kunci HP orang tua.':'')
+  +(haf?' Notifikasi Hafalan dikirim setelah guru mencatat setoran hari ini, dengan hasil, materi, dan nama guru pencatat.':'')
   +' Setiap orang tua dapat memilih sendiri jenis notifikasi yang ingin diterima.';
  return `<div class="panel" id="pnNotifOrtu"><div class="ph">📲 ${judul}</div><div class="pb"><div class="note">${catatan}</div>`
   +(abs?`<div class="tb cbrow"><label class="cbl"><input id="cbNotifAbsensi" type="checkbox" ${S.set.notif_absensi_aktif?'checked':''} onchange="setNotifAbsensi(this.checked)"> Kirim notifikasi absensi ke orang tua (push)</label></div>`:'')
   +(tab?`<div class="tb cbrow"><label class="cbl"><input id="cbNotifTabungan" type="checkbox" ${S.set.notif_tabungan_aktif?'checked':''} ${S.set.tabungan_aktif?'':'disabled'} onchange="setNotifTabungan(this.checked)"> Kirim notifikasi tabungan ke orang tua (push, dengan nominal dan saldo)</label></div>`:'')
+  +(haf?`<div class="tb cbrow"><label class="cbl"><input id="cbNotifHafalan" type="checkbox" ${S.set.notif_hafalan_aktif?'checked':''} ${S.set.hafalan_aktif?'':'disabled'} onchange="setNotifHafalan(this.checked)"> Kirim notifikasi Hafalan ke orang tua (push)</label></div>`:'')
   +`</div></div>`}
 /* ---------- sakelar push per sekolah yang diatur Developer ---------- */
-function devPushDari(sid){const r=(S.devPush||[]).find(x=>Number(x.sekolah_id)===Number(sid));return r?{piket:r.push_piket!==false,absensi:r.push_absensi!==false,tabungan:r.push_tabungan!==false}:null}
+function devPushDari(sid){const r=(S.devPush||[]).find(x=>Number(x.sekolah_id)===Number(sid));return r?{piket:r.push_piket!==false,absensi:r.push_absensi!==false,tabungan:r.push_tabungan!==false,hafalan:r.push_hafalan!==false}:null}
 function devPushBadge(sid){const d=devPushDari(sid);if(!d)return '-';
- return `<div style="display:flex;flex-direction:column;gap:4px;min-width:110px">${[['piket','🧹 Piket'],['absensi','✅ Absensi'],['tabungan','💰 Tabungan']].map(([k,n])=>`<label class="swp"><span>${n}</span><span class="sw"><input type="checkbox" ${d[k]?'checked':''} onchange="devAturPush(${sid},'${k}',this.checked)"><i></i></span></label>`).join('')}</div>`}
+ return `<div style="display:flex;flex-direction:column;gap:4px;min-width:110px">${[['piket','🧹 Piket'],['absensi','✅ Absensi'],['tabungan','💰 Tabungan'],['hafalan','📖 Hafalan']].map(([k,n])=>`<label class="swp"><span>${n}</span><span class="sw"><input type="checkbox" ${d[k]?'checked':''} onchange="devAturPush(${sid},'${k}',this.checked)"><i></i></span></label>`).join('')}</div>`}
 function devPushCatatan(){return S.devPush?`<div class="note" style="margin-top:8px">Sakelar Push Notifikasi: bila dimatikan, pilihan itu tidak tampil di Pengaturan sekolah dan push jenis itu berhenti dikirim. Centang yang sudah dipilih Kepala Sekolah tidak hilang, jadi saat dinyalakan lagi kembali seperti semula.</div>`:`<div class="note" style="margin-top:8px;color:var(--rd)">Data sakelar push belum tersedia. Jalankan skrip SQL langkah-push-developer.sql di Supabase.</div>`}
 async function devAturPush(sid,jenis,on){
  const sk=(S.devSek||[]).find(x=>x.id===sid)||{},NM={piket:'pengingat piket',absensi:'notifikasi absensi',tabungan:'notifikasi tabungan'};
@@ -4151,6 +4153,7 @@ const setPiket=on=>setFitur({piket_aktif:!!on},on?'Jadwal piket diaktifkan. Menu
 const setNotifPiket=on=>setFitur({notif_piket_aktif:!!on},on?'Pengingat piket ke orang tua diaktifkan':'Pengingat piket ke orang tua dimatikan');
 const setNotifAbsensi=on=>setFitur({notif_absensi_aktif:!!on},on?'Notifikasi absensi ke orang tua diaktifkan':'Notifikasi absensi ke orang tua dimatikan');
 const setNotifTabungan=on=>setFitur({notif_tabungan_aktif:!!on},on?'Notifikasi tabungan ke orang tua diaktifkan':'Notifikasi tabungan ke orang tua dimatikan');
+const setNotifHafalan=on=>setFitur({notif_hafalan_aktif:!!on},on?'Notifikasi Hafalan ke orang tua diaktifkan':'Notifikasi Hafalan ke orang tua dimatikan');
 const setHafalan=on=>setFitur({hafalan_aktif:!!on},on?'Hafalan diaktifkan. Menu Hafalan sekarang tersedia':'Hafalan dinonaktifkan. Data tetap tersimpan');
 const LOADING_FITUR=t=>`<div class="panel"><div class="pb"><div class="note">⏳ Memuat ${t}...</div></div></div>`;
 const pkKelasOpt=()=>S.kelas.map(k=>({value:k.nama,label:k.nama}));
