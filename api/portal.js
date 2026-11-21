@@ -780,8 +780,8 @@ module.exports = async (req, res) => {
         ? `or=(kelas_id.is.null,kelas_id.eq.${kidS},mode_penugasan.eq.siswa_gabungan)`
         : 'or=(kelas_id.is.null,mode_penugasan.eq.siswa_gabungan)')
       : (kidS
-        ? `and=(or=(kelas_id.is.null,kelas_id.eq.${kidS},mode_penugasan.eq.siswa_gabungan),or=(siswa_id.is.null,siswa_id.eq.${id}))`
-        : `and=(or=(kelas_id.is.null,mode_penugasan.eq.siswa_gabungan),or=(siswa_id.is.null,siswa_id.eq.${id}))`);
+        ? `and=(or(kelas_id.is.null,kelas_id.eq.${kidS},mode_penugasan.eq.siswa_gabungan),or(siswa_id.is.null,siswa_id.eq.${id}))`
+        : `and=(or(kelas_id.is.null,mode_penugasan.eq.siswa_gabungan),or(siswa_id.is.null,siswa_id.eq.${id}))`);
     const kolPiket = v === 'piket'
       ? 'id,hari,catatan,siswa_id,kelas_id,mode_penugasan,siswa:siswa(nama,nama_panggilan),kelas:kelas(nama),jenis:piket_jenis(id,nama,cakupan,urutan)'
       : 'hari,catatan,siswa_id,kelas_id,mode_penugasan,jenis:piket_jenis(nama,cakupan)';
