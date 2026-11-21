@@ -3608,7 +3608,7 @@ function devPushBadge(sid){const d=devPushDari(sid);if(!d)return '-';
  return `<div style="display:flex;flex-direction:column;gap:4px;min-width:110px">${[['piket','🧹 Piket'],['absensi','✅ Absensi'],['tabungan','💰 Tabungan'],['hafalan','📖 Hafalan']].map(([k,n])=>`<label class="swp"><span>${n}</span><span class="sw"><input type="checkbox" ${d[k]?'checked':''} onchange="devAturPush(${sid},'${k}',this.checked)"><i></i></span></label>`).join('')}</div>`}
 function devPushCatatan(){return S.devPush?`<div class="note" style="margin-top:8px">Sakelar Push Notifikasi: bila dimatikan, pilihan itu tidak tampil di Pengaturan sekolah dan push jenis itu berhenti dikirim. Centang yang sudah dipilih Kepala Sekolah tidak hilang, jadi saat dinyalakan lagi kembali seperti semula.</div>`:`<div class="note" style="margin-top:8px;color:var(--rd)">Data sakelar push belum tersedia. Jalankan skrip SQL langkah-push-developer.sql di Supabase.</div>`}
 async function devAturPush(sid,jenis,on){
- const sk=(S.devSek||[]).find(x=>x.id===sid)||{},NM={piket:'pengingat piket',absensi:'notifikasi absensi',tabungan:'notifikasi tabungan'};
+ const sk=(S.devSek||[]).find(x=>x.id===sid)||{},NM={piket:'pengingat piket',absensi:'notifikasi absensi',tabungan:'notifikasi tabungan',hafalan:'notifikasi Hafalan'};
  if(!on&&!await konfirmasi('Matikan '+NM[jenis]+' untuk '+(sk.nama||'sekolah ini')+'? Pilihannya tidak akan tampil lagi di Pengaturan Kepala Sekolah, dan push jenis ini berhenti dikirim ke orang tua.',{judul:'Matikan notifikasi push',ya:'Matikan',bahaya:1})){renderV();return}
  guard(async()=>{try{await dbq(db.rpc('developer_atur_push',{p_sekolah:sid,p_jenis:jenis,p_aktif:!!on}));
   S.devPush=await dbq(db.rpc('developer_push_daftar')).catch(()=>S.devPush);
