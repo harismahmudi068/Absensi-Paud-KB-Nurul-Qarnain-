@@ -4231,6 +4231,7 @@ function pkTambahSemua(d){
    }),0);
    return;
   }
+  setTimeout(()=>{
   const ada=new Set(S.pkJadwal.filter(x=>x.jenis_id===j.id&&x.hari===d&&x.siswa_id!=null).map(x=>Number(x.siswa_id)));
   const sis=act().filter(s=>s.kelas_id!=null&&!ada.has(Number(s.id))).sort((a,b)=>{
    const ka=S.kelas.find(k=>k.id===a.kelas_id),kb=S.kelas.find(k=>k.id===b.kelas_id);
@@ -4255,6 +4256,7 @@ function pkTambahSemua(d){
    closeM();await muatPiket();renderV();toast(ids.length+' siswa gabungan dijadwalkan');return true;
   });
   $('#md').classList.add('show');jagaModal(judul+' (gabungan siswa)',_sim);
+  },0);
  });
 }
 async function pkHapusBaris(id){const x=S.pkJadwal.find(y=>y.id===id);if(!x)return;const s=siswaById(x.siswa_id);
