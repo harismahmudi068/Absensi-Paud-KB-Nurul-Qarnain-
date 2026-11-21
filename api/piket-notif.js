@@ -103,15 +103,13 @@ async function tulisLog(id, data) {
   await L.panggil(`/rest/v1/piket_notif_log?id=eq.${id}`, 'PATCH', data, { Prefer: 'return=minimal' });
 }
 
-async function prosesSekolah(sid, waktu, tanggal, paksa, siswaUjiId) {
+async function prosesSekolah(sid, waktu, tanggal, paksa) {
   const mulai = Date.now();
-  const modeUji = Number.isInteger(siswaUjiId);
-  const logId = modeUji ? null : await klaimLog(sid, tanggal, waktu, paksa);
-  if (!modeUji && !logId) return { sekolah_id: sid, lewati: 'sudah diproses' };
+  const logId = await klaimLog(sid, tanggal, waktu, paksa);
+  if (!logId) return { sekolah_id: sid, lewati: 'sudah diproses' };
 
-  const selesai = async (status, ekstra) => {
-    if (logId) await tulisLog(logId, { status, selesai_at: new Date().toISOString(), durasi_ms: Date.now() - mulai, ...ekstra });
-  };
+  const selesai = async (status, ekstra) =>
+    tulisLog(logId, { status, selesai_at: new Date().toISOString(), durasi_ms: Date.now() - mulai, ...ekstra });
 
   try {
     const dow = dowOf(tanggal);
@@ -125,10 +123,6 @@ async function prosesSekolah(sid, waktu, tanggal, paksa, siswaUjiId) {
       semua(`/rest/v1/siswa?sekolah_id=eq.${sid}&aktif=eq.true&select=id,nama,nama_panggilan,kelas_id,kode_qr`)
     ]);
 
-    // Mode kirim terbatas hanya mengambil jadwal individu siswa yang ditentukan.
-    const jadwalDiproses = modeUji ? jadwal.filter((r) => Number(r.siswa_id) === siswaUjiId) : jadwal;
-    const siswaDiproses = modeUji ? (siswaRows || []).filter((s) => Number(s.id) === siswaUjiId) : siswaRows;
-
     // Libur untuk sebuah kelas pada tanggal piket (aturan sama dengan halaman siswa)
     const mingguan = (mg || []).some((x) => Number(x.hari) === dow);
     const nasional = (nas || []).length > 0;
@@ -139,13 +133,13 @@ async function prosesSekolah(sid, waktu, tanggal, paksa, siswaUjiId) {
       return (tg || []).some((x) => untukKelas(x, kid));
     };
 
-    if (!jadwalDiproses.length) {
+    if (!jadwal.length) {
       await selesai('dilewati', { alasan: 'Tidak ada jadwal piket pada hari itu' });
       return { sekolah_id: sid, lewati: 'tanpa jadwal' };
     }
 
     const namaKelas = new Map((kelasRows || []).map((k) => [Number(k.id), k.nama]));
-    const siswaMap = new Map((siswaDiproses || []).map((s) => [Number(s.id), s]));
+    const siswaMap = new Map((siswaRows || []).map((s) => [Number(s.id), s]));
     const target = new Map(); // siswa_id -> daftar butir piket
     const tambah = (s, butir) => {
       const kid = s.kelas_id ? Number(s.kelas_id) : null;
@@ -154,7 +148,7 @@ async function prosesSekolah(sid, waktu, tanggal, paksa, siswaUjiId) {
       if (!lst.some((x) => x.jenis === butir.jenis && x.catatan === butir.catatan)) lst.push(butir);
       target.set(Number(s.id), lst);
     };
-    jadwalDiproses.forEach((r) => {
+    jadwal.forEach((r) => {
       const jn = r.jenis || {};
       const butir = { jenis: jn.nama || 'Piket', catatan: r.catatan || '', semua: !r.siswa_id };
       if (r.siswa_id) {
@@ -274,10 +268,6 @@ module.exports = async (req, res) => {
   if (!rahasiaCocok(req.headers && req.headers.authorization)) return res.status(401).json({ error: 'Tidak diizinkan' });
 
   const b = req.body && typeof req.body === 'object' ? req.body : {};
-  const modeUji = b.mode === 'kirim-terbatas';
-  if (modeUji && (Number(b.sekolah_id) !== 6 || Number(b.siswa_id) !== 543 || b.tanggal !== '2026-11-23' || b.waktu !== 'malam')) {
-    return res.status(400).json({ error: 'Sasaran pengiriman terbatas tidak sesuai' });
-  }
   const waktu = b.waktu;
   if (waktu !== 'malam' && waktu !== 'pagi') return res.status(400).json({ error: 'Waktu harus malam atau pagi' });
   const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY, subj = process.env.VAPID_SUBJECT;
@@ -286,18 +276,15 @@ module.exports = async (req, res) => {
   try {
     webpush.setVapidDetails(subj, pub, priv);
     const hari = hariJakarta();
-    const tanggal = modeUji ? b.tanggal : (waktu === 'pagi' ? hari : tglPlus(hari, 1));
+    const tanggal = waktu === 'pagi' ? hari : tglPlus(hari, 1);
     const paksa = b.paksa === true;
 
     const peng = (await L.panggil('/rest/v1/pengaturan?piket_aktif=eq.true&notif_piket_aktif=eq.true&push_piket_diizinkan=eq.true&select=sekolah_id', 'GET')) || [];
     const kandidat = peng.map((p) => Number(p.sekolah_id)).filter(Number.isInteger);
-    if (modeUji && !kandidat.includes(6)) return res.status(400).json({ error: 'Sekolah tujuan tidak mengaktifkan push piket' });
     let aktif = [];
     if (kandidat.length) {
       aktif = ((await L.panggil(`/rest/v1/sekolah?status=eq.aktif&id=in.(${kandidat.join(',')})&select=id`, 'GET')) || []).map((x) => Number(x.id));
     }
-
-    if (modeUji) aktif = aktif.filter((id) => id === 6);
 
     // kumpulan pekerja: tiap pekerja mengambil sekolah berikutnya sampai habis; hasil tetap berurutan
     const ringkas = new Array(aktif.length);
@@ -306,7 +293,7 @@ module.exports = async (req, res) => {
       while (giliran < aktif.length) {
         const i = giliran++;
         try {
-          ringkas[i] = await prosesSekolah(aktif[i], waktu, tanggal, paksa, modeUji ? 543 : null);
+          ringkas[i] = await prosesSekolah(aktif[i], waktu, tanggal, paksa);
         } catch (e) {
           console.error('piket-notif sekolah', aktif[i], e && e.message);
           ringkas[i] = { sekolah_id: aktif[i], error: true };
@@ -316,7 +303,7 @@ module.exports = async (req, res) => {
     await Promise.all(Array.from({ length: Math.min(SEKOLAH_PARALEL, aktif.length) }, pekerja));
     const jml = (k) => ringkas.reduce((a, x) => a + (x[k] || 0), 0);
     return res.status(200).json({
-      ok: true, mode: modeUji ? 'kirim-terbatas' : 'rutin', waktu, tanggal, sekolah: aktif.length,
+      ok: true, waktu, tanggal, sekolah: aktif.length,
       terkirim: jml('terkirim'), gagal: jml('gagal'), dibuang: jml('dibuang'),
       sekolah_error: ringkas.filter((x) => x && x.error).length
     });
