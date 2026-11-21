@@ -22,7 +22,7 @@ const PARALEL = 25;
 const BATAS_GAGAL = 5;
 const TIMEOUT_KIRIM_MS = 8000; // batas waktu kirim ke satu HP, agar satu alamat lambat tidak menahan seluruh paket
 const MACET_MENIT = 10; // antrean 'berjalan' lebih lama dari ini dianggap macet (tidak dikirim ulang, agar tidak dobel)
-const TTL_DETIK = { absensi: 3 * 3600, tabungan: 6 * 3600 };
+const TTL_DETIK = { absensi: 3 * 3600, tabungan: 6 * 3600, hafalan: 6 * 3600 };
 
 const potong = (t, n) => String(t == null ? '' : t).slice(0, n);
 
@@ -109,12 +109,13 @@ async function proses(klaim) {
   const sekolahIds = unik(klaim.map((r) => Number(r.sekolah_id)));
   const barisAbsensi = klaim.filter((r) => r.jenis === 'absensi');
   const barisTabungan = klaim.filter((r) => r.jenis === 'tabungan');
+  const barisHafalan = klaim.filter((r) => r.jenis === 'hafalan');
 
   const [pengRows, sekRows, siswaRows, langgananRows] = await Promise.all([
-    L.panggil(`/rest/v1/pengaturan?sekolah_id=in.(${sekolahIds.join(',')})&select=sekolah_id,notif_absensi_aktif,notif_tabungan_aktif,tabungan_aktif,push_absensi_diizinkan,push_tabungan_diizinkan`, 'GET'),
+    L.panggil(`/rest/v1/pengaturan?sekolah_id=in.(${sekolahIds.join(',')})&select=sekolah_id,notif_absensi_aktif,notif_tabungan_aktif,tabungan_aktif,push_absensi_diizinkan,push_tabungan_diizinkan,hafalan_aktif,notif_hafalan_aktif,push_hafalan_diizinkan`, 'GET'),
     L.panggil(`/rest/v1/sekolah?id=in.(${sekolahIds.join(',')})&status=eq.aktif&select=id`, 'GET'),
     perPaket(siswaIds, 150, (c) => semua(`/rest/v1/siswa?id=in.(${c.join(',')})&aktif=eq.true&select=id,sekolah_id,nama,nama_panggilan,kode_qr&order=id.asc`)),
-    perPaket(siswaIds, 150, (c) => semua(`/rest/v1/push_langganan?siswa_id=in.(${c.join(',')})&select=id,siswa_id,endpoint,p256dh,auth,gagal,terima_absensi,terima_tabungan&order=id.asc`))
+    perPaket(siswaIds, 150, (c) => semua(`/rest/v1/push_langganan?siswa_id=in.(${c.join(',')})&select=id,siswa_id,endpoint,p256dh,auth,gagal,terima_absensi,terima_tabungan,terima_hafalan&order=id.asc`))
   ]);
   const peng = new Map((pengRows || []).map((p) => [Number(p.sekolah_id), p]));
   const sekAktif = new Set((sekRows || []).map((s) => Number(s.id)));
@@ -166,6 +167,16 @@ async function proses(klaim) {
     }
   }
 
+  // Data setoran Hafalan yang memicu notifikasi
+  const hafalanMap = new Map();
+  if (barisHafalan.length) {
+    const refs = unik(barisHafalan.map((r) => Number(r.ref_id)).filter(Number.isInteger));
+    const rows = await perPaket(refs, 150, (c) =>
+      semua(`/rest/v1/hafalan_setoran?id=in.(${c.join(',')})&select=id,siswa_id,sekolah_id,hasil,judul,jenis_nama,nama_pencatat&order=id.asc`)
+    );
+    rows.forEach((h) => hafalanMap.set(Number(h.id), h));
+  }
+
   // Susun pesan per baris antrean
   const hasilBaris = new Map(); // id antrean -> { status, hasil }
   const tugas = []; // satu tugas = satu HP untuk satu pesan
@@ -190,7 +201,7 @@ async function proses(klaim) {
       url = '/p/' + s.kode_qr + '#absensi';
       tag = 'absen-' + anakId + '-' + r.tanggal;
       bendera = 'terima_absensi';
-    } else {
+    } else if (r.jenis === 'tabungan') {
       if (p.push_tabungan_diizinkan === false) return lewati('Notifikasi tabungan dimatikan Developer');
       if (!p.tabungan_aktif || !p.notif_tabungan_aktif) return lewati('Notifikasi tabungan dimatikan sekolah');
       const t = trxMap.get(Number(r.ref_id));
@@ -206,6 +217,22 @@ async function proses(klaim) {
       url = '/p/' + s.kode_qr + '#tabungan';
       tag = 'tab-' + Number(r.ref_id);
       bendera = 'terima_tabungan';
+    } else {
+      if (p.push_hafalan_diizinkan === false) return lewati('Notifikasi hafalan dimatikan Developer');
+      if (!p.hafalan_aktif || !p.notif_hafalan_aktif) return lewati('Notifikasi hafalan dimatikan sekolah');
+      const h = hafalanMap.get(Number(r.ref_id));
+      if (!h || Number(h.siswa_id) !== anakId || Number(h.sekolah_id) !== sid) return lewati('Setoran Hafalan sudah tidak ada');
+      const hasilHafalan = String(h.hasil || '').toLowerCase();
+      if (!['lancar', 'mengulang'].includes(hasilHafalan)) return lewati('Hasil setoran Hafalan tidak dikenal');
+      const materi = String(h.judul || '').trim() || String(h.jenis_nama || '').trim() || 'Materi Hafalan';
+      const guru = String(h.nama_pencatat || '').trim();
+      judul = 'Hafalan baru';
+      isi = namaLengkap(s) + '\n' + (hasilHafalan === 'lancar' ? '🟢 Lancar' : '🟡 Mengulang') +
+        '\n' + materi + (guru ? '\nGuru: ' + guru : '');
+      ikon = 'hafalan';
+      url = '/p/' + s.kode_qr + '#hafalan';
+      tag = 'haf-' + Number(r.ref_id);
+      bendera = 'terima_hafalan';
     }
 
     const subs = (langgananPerAnak.get(anakId) || []).filter((l) => l[bendera] !== false);
