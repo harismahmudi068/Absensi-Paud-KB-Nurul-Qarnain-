@@ -177,8 +177,8 @@ function buatKartuPortrait(s,opt){
  /* Tiga baris ditata sebagai satu blok vertikal di tengah header; jarak antarbari dibuat lega. */
  c.fillStyle='#f2c94c';c.font='800 14px '+F;lsText(c,'KARTU PELAJAR',tx,15,2.1);
  const sekolah=String(opt.nama||'').toUpperCase(),lebarHeader=420-tx-12;
- c.fillStyle='#fff';teksFit(c,sekolah,lebarHeader,24,7.5,'900');
- if(c.measureText(sekolah).width>lebarHeader){c.font='900 '+Math.max(7.5,24*lebarHeader/c.measureText(sekolah).width)+'px '+F}
+ c.fillStyle='#fff';const ukuranSekolah=teksFit(c,sekolah,lebarHeader,24,7.5,'900');
+ if(c.measureText(sekolah).width>lebarHeader){c.font='900 '+Math.max(6,ukuranSekolah*lebarHeader/c.measureText(sekolah).width)+'px '+F}
  tebal(c,elips(c,sekolah,lebarHeader),tx,43,.65);
  c.fillStyle='#e7f2eb';const tahun='Tahun Terdaftar : '+String(s.masuk||opt.tahun||opt.hari||'').slice(0,4);fitFont(c,tahun,lebarHeader,14,9,z=>'600 '+z+'px '+F);c.fillText(tahun,tx,71);
  /* foto siswa */
