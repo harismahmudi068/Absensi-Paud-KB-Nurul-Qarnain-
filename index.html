@@ -4224,11 +4224,11 @@ function pkTambahSemua(d){
  const judul=HR[d]+' · '+j.nama;
  form(judul,[{k:'mode',l:'Cara penugasan',o:['Kelas utuh','Gabungan siswa']}],async v=>{
   if(v.mode==='Kelas utuh'){
-   form(judul,[{k:'kls',l:'Kelas yang ikut',o:['Seluruh kelas',...S.kelas.map(k=>k.nama)]},{k:'cat',l:'Catatan (opsional)'}],async w=>{
+   setTimeout(()=>form(judul,[{k:'kls',l:'Kelas yang ikut',o:['Seluruh kelas',...S.kelas.map(k=>k.nama)]},{k:'cat',l:'Catatan (opsional)'}],async w=>{
     const kl=w.kls==='Seluruh kelas'?null:S.kelas.find(k=>k.nama===w.kls);
     await pkTry(()=>dbq(db.from('piket_jadwal').insert({jenis_id:j.id,hari:d,kelas_id:kl?kl.id:null,siswa_id:null,mode_penugasan:'kelas_utuh',catatan:w.cat||null})));
     await muatPiket();renderV();toast('Jadwal kelas utuh ditambahkan');
-   });
+   }),0);
    return;
   }
   const ada=new Set(S.pkJadwal.filter(x=>x.jenis_id===j.id&&x.hari===d&&x.siswa_id!=null).map(x=>Number(x.siswa_id)));
