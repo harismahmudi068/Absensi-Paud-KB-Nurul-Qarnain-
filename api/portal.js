@@ -425,13 +425,14 @@ const tglValid = (t) => {
   return x.getUTCFullYear() === y && x.getUTCMonth() === mo - 1 && x.getUTCDate() === d;
 };
 
-// Jenis notifikasi push yang tersedia di sekolah (piket, absensi, tabungan)
+// Jenis notifikasi push yang tersedia di sekolah (piket, absensi, tabungan, hafalan)
 function notifTersedia(p) {
   // push_*_diizinkan = sakelar Developer per sekolah (kosong dianggap diizinkan)
   const piket = !!(p.piket_aktif && p.notif_piket_aktif && p.push_piket_diizinkan !== false);
   const absensi = !!(p.notif_absensi_aktif && p.push_absensi_diizinkan !== false);
   const tabungan = !!(p.tabungan_aktif && p.notif_tabungan_aktif && p.push_tabungan_diizinkan !== false);
-  return { piket, absensi, tabungan, ada: piket || absensi || tabungan };
+  const hafalan = !!(p.hafalan_aktif && p.notif_hafalan_aktif && p.push_hafalan_diizinkan !== false);
+  return { piket, absensi, tabungan, hafalan, ada: piket || absensi || tabungan || hafalan };
 }
 
 // Pendaftaran dan pencabutan HP untuk notifikasi push. Satu HP boleh terdaftar untuk beberapa anak.
@@ -454,7 +455,7 @@ async function aksiPush(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    const peng = ((await L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=piket_aktif,notif_piket_aktif,notif_absensi_aktif,tabungan_aktif,notif_tabungan_aktif,push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan&limit=1`, 'GET')) || [])[0] || {};
+    const peng = ((await L.panggil(`/rest/v1/pengaturan?sekolah_id=eq.${sid}&select=piket_aktif,notif_piket_aktif,notif_absensi_aktif,tabungan_aktif,notif_tabungan_aktif,push_piket_diizinkan,push_absensi_diizinkan,push_tabungan_diizinkan,hafalan_aktif,notif_hafalan_aktif,push_hafalan_diizinkan&limit=1`, 'GET')) || [])[0] || {};
     if (!notifTersedia(peng).ada)
       return res.status(409).json({ error: 'Notifikasi belum diaktifkan oleh sekolah' });
     const lg = b.langganan && typeof b.langganan === 'object' ? b.langganan : {};
@@ -471,6 +472,7 @@ async function aksiPush(req, res) {
       baris.terima_piket = pil.piket !== false;
       baris.terima_absensi = pil.absensi !== false;
       baris.terima_tabungan = pil.tabungan !== false;
+      baris.terima_hafalan = pil.hafalan !== false;
     }
     await L.panggil('/rest/v1/push_langganan?on_conflict=siswa_id,endpoint', 'POST', baris,
       { Prefer: 'resolution=merge-duplicates,return=minimal' });
@@ -870,7 +872,7 @@ module.exports = async (req, res) => {
       },
       // Pengingat push piket: kunci publik hanya dikirim bila sekolah mengaktifkannya
       push: v === 'dashboard' || v === 'piket'
-        ? (nt.ada && VAPID_PUB ? { aktif: true, vapid: VAPID_PUB, jenis: { piket: nt.piket, absensi: nt.absensi, tabungan: nt.tabungan } } : { aktif: false })
+        ? (nt.ada && VAPID_PUB ? { aktif: true, vapid: VAPID_PUB, jenis: { piket: nt.piket, absensi: nt.absensi, tabungan: nt.tabungan, hafalan: nt.hafalan } } : { aktif: false })
         : undefined,
       // Fitur yang aktif di sekolah ini (menentukan menu Piket dan Hafalan di halaman siswa)
       fitur: { piket: !!peng.piket_aktif, hafalan: !!peng.hafalan_aktif, notif_piket: !!peng.notif_piket_aktif && peng.push_piket_diizinkan !== false, push: nt.ada }
