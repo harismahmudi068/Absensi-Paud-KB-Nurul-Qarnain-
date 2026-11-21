@@ -169,12 +169,20 @@ async function proses(klaim) {
 
   // Data setoran Hafalan yang memicu notifikasi
   const hafalanMap = new Map();
+  const hafalanItemMap = new Map();
   if (barisHafalan.length) {
     const refs = unik(barisHafalan.map((r) => Number(r.ref_id)).filter(Number.isInteger));
     const rows = await perPaket(refs, 150, (c) =>
-      semua(`/rest/v1/hafalan_setoran?id=in.(${c.join(',')})&select=id,siswa_id,sekolah_id,hasil,judul,jenis_nama,nama_pencatat&order=id.asc`)
+      semua(`/rest/v1/hafalan_setoran?id=in.(${c.join(',')})&select=id,siswa_id,sekolah_id,hafalan_id,hasil,judul,jenis_nama,nama_pencatat&order=id.asc`)
     );
     rows.forEach((h) => hafalanMap.set(Number(h.id), h));
+    const itemIds = unik(rows.map((h) => Number(h.hafalan_id)).filter(Number.isInteger));
+    if (itemIds.length) {
+      const items = await perPaket(itemIds, 150, (c) =>
+        semua(`/rest/v1/hafalan_item?id=in.(${c.join(',')})&select=id,target&order=id.asc`)
+      );
+      items.forEach((i) => hafalanItemMap.set(Number(i.id), i));
+    }
   }
 
   // Susun pesan per baris antrean
@@ -224,7 +232,10 @@ async function proses(klaim) {
       if (!h || Number(h.siswa_id) !== anakId || Number(h.sekolah_id) !== sid) return lewati('Setoran Hafalan sudah tidak ada');
       const hasilHafalan = String(h.hasil || '').toLowerCase();
       if (!['lancar', 'mengulang'].includes(hasilHafalan)) return lewati('Hasil setoran Hafalan tidak dikenal');
-      const materi = String(h.judul || '').trim() || String(h.jenis_nama || '').trim() || 'Materi Hafalan';
+      const itemHafalan = hafalanItemMap.get(Number(h.hafalan_id)) || {};
+      const judulMateri = String(h.judul || '').trim() || String(h.jenis_nama || '').trim() || 'Materi Hafalan';
+      const targetMateri = String(itemHafalan.target || '').trim();
+      const materi = judulMateri + (targetMateri ? ' — ' + targetMateri : '');
       const guru = String(h.nama_pencatat || '').trim();
       judul = 'Hafalan baru';
       isi = namaLengkap(s) + '\n' + (hasilHafalan === 'lancar' ? '🟢 Lancar' : '🟡 Mengulang') +
