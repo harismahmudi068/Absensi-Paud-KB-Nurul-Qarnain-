@@ -1,0 +1,31 @@
+name: Source syntax checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --check "$file"
+          done < <(find . -type f -name '*.js' -not -path './node_modules/*' -not -path './.git/*' -print0)
+      - name: Validate JSON configuration
+        run: node -e "for (const f of ['package.json']) JSON.parse(require('fs').readFileSync(f, 'utf8'));"
