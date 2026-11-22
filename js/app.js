@@ -557,11 +557,6 @@ function pkPesan(e){const m=pkKode(e);
 /* pemilih akun passkey kustom: akun yang pernah masuk dengan passkey di perangkat ini disimpan (username, nama, id kredensial) */
 const b64u={enc:buf=>{const a=new Uint8Array(buf);let t='';for(let i=0;i<a.length;i++)t+=String.fromCharCode(a[i]);return btoa(t).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')},
  dec:str=>{str=String(str).replace(/-/g,'+').replace(/_/g,'/');while(str.length%4)str+='=';const bin=atob(str),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return a.buffer}};
-function pkAkunList(){try{const a=JSON.parse(localStorage.getItem('pk_akun')||'[]');return Array.isArray(a)?a.filter(x=>x&&x.c&&x.u):[]}catch(e){return []}}
-function pkAkunSimpan(a){try{localStorage.setItem('pk_akun',JSON.stringify(a.slice(0,8)))}catch(e){}}
-function pkAkunTambah(u,n,c){pkAkunSimpan([{u,n,c}].concat(pkAkunList().filter(x=>x.u!==u&&x.c!==c)))}
-function pkAkunHapus(c){pkAkunSimpan(pkAkunList().filter(x=>x.c!==c))}
-/* Alur resmi supabase-js tetap dipakai; kita hanya (1) menyempitkan pilihan ke satu akun dan (2) mencatat id kredensial yang dipakai */
 function pkSadap(o){const asli=navigator.credentials.get;
  navigator.credentials.get=function(x){try{if(o.allowId&&x&&x.publicKey)x.publicKey.allowCredentials=[{type:'public-key',id:b64u.dec(o.allowId)}]}catch(e){}
   return asli.call(navigator.credentials,x).then(c=>{try{if(c&&c.id)o.hasil=c.id}catch(e){}return c})};
