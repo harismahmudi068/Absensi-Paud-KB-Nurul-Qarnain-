@@ -1,0 +1,1 @@
+(function(){function fx(e){var s=e.target&&e.target.closest?e.target.closest('select'):null;if(!s||s.disabled)return;s.classList.remove('click-fx');void s.offsetWidth;s.classList.add('click-fx');clearTimeout(s._fxT);s._fxT=setTimeout(function(){s.classList.remove('click-fx')},420)}document.addEventListener('pointerdown',fx,true);document.addEventListener('change',fx,true)})();
