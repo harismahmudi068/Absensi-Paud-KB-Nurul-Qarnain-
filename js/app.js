@@ -537,31 +537,6 @@ function masuk(){const b=$('#lb');if(b.disabled)return;b.disabled=true;b.innerHT
  if(!u.includes('@')){const r=await db.rpc('email_dari_username',{u});if(r.error)throw r.error;if(!r.data)throw new Error('Username tidak ditemukan atau akun belum aktif. Bila Anda baru mendaftarkan sekolah, mohon tunggu persetujuan admin.');email=r.data}
  const {error}=await db.auth.signInWithPassword({email,password:pw});if(error)throw new Error('Username atau kata sandi salah');try{sessionStorage.removeItem('sekolah_aktif')}catch(e){}await mulai()},1).finally(()=>{b.disabled=false;b.textContent='Masuk'})}
 
-/* ---------- terjemahan pesan error ke Bahasa Indonesia ---------- */
-const ERR_ID=[
- [/Non-Webauthn|ERROR_PASSTHROUGH/i,'Terjadi kesalahan pada passkey. Coba lagi, atau masuk dengan kata sandi'],
- [/InvalidStateError|already registered|PREVIOUSLY_REGISTERED/i,'Perangkat ini sudah terdaftar sebagai passkey untuk akun ini'],
- [/NotAllowedError|operation either timed out|not allowed by the user agent|timed out or was not allowed/i,'Dibatalkan atau waktu habis'],
- [/AbortError|ceremony was aborted|operation was aborted/i,'Proses dibatalkan'],
- [/NotSupportedError|WebAuthn is not supported|not supported by this browser/i,'Perangkat atau browser ini tidak mendukung passkey'],
- [/SecurityError/i,'Domain situs tidak cocok dengan Relying Party ID di Supabase'],
- [/Failed to fetch|NetworkError|Load failed|network request failed/i,'Koneksi internet bermasalah. Periksa jaringan lalu coba lagi'],
- [/Invalid login credentials/i,'Username atau kata sandi salah'],
- [/JWT expired|invalid JWT|Auth session missing|Invalid Refresh Token|Refresh Token Not Found/i,'Sesi login sudah berakhir, silakan masuk kembali'],
- [/Email not confirmed|Phone not confirmed/i,'Akun belum terverifikasi'],
- [/User not found/i,'Akun tidak ditemukan'],
- [/User is banned|user_banned/i,'Akun diblokir'],
- [/Password should be at least|password.*at least 6/i,'Kata sandi minimal 6 karakter'],
- [/different from the old password|same password/i,'Kata sandi baru harus berbeda dari yang lama'],
- [/rate limit|too many requests|over_request_rate_limit/i,'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi'],
- [/row-level security|permission denied|\bForbidden\b|not authorized/i,'Anda tidak memiliki izin untuk tindakan ini'],
- [/duplicate key|unique constraint/i,'Data sudah ada atau sudah dipakai'],
- [/violates foreign key/i,'Data masih dipakai oleh data lain sehingga tidak bisa diubah atau dihapus'],
- [/violates not-null|null value in column|violates check constraint/i,'Ada data wajib yang belum diisi atau tidak valid'],
- [/Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time-?out|Request Timeout/i,'Server sedang bermasalah. Coba lagi beberapa saat'],
- [/Unexpected token|is not valid JSON|Unexpected end of JSON/i,'Respons server tidak dapat dibaca. Coba lagi'],
- [/Cannot read propert|is not a function|is not defined|Cannot access .* before initialization/i,'Terjadi kesalahan pada aplikasi. Muat ulang halaman lalu coba lagi']];
-function idErr(m){const t=String(m==null?'':m);for(const [re,id] of ERR_ID)if(re.test(t))return id;return t}
 /* ---------- passkey (sidik jari / wajah / PIN perangkat) ---------- */
 /* CATATAN: passkey memakai flag experimental supabase-js (lihat createClient). Bila setelah upgrade API-nya berubah/hilang, PK_OK jadi false dan fitur passkey disembunyikan, bukan error. Uji passkey setiap menaikkan versi supabase-js. */
 const PK_OK=!!(window.PublicKeyCredential&&navigator.credentials)&&typeof db.auth.signInWithPasskey==='function'&&typeof db.auth.registerPasskey==='function'&&!!db.auth.passkey&&typeof db.auth.passkey.list==='function',PK_KEY='pk_aktif';
