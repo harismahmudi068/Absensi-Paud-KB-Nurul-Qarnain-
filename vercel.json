@@ -20,18 +20,6 @@
     {
       "source": "/p/:kode",
       "destination": "/portal.html"
-    },
-    {
-      "source": "/pwa-portal.js",
-      "destination": "/js/pwa-portal.js"
-    },
-    {
-      "source": "/kartu.js",
-      "destination": "/js/kartu.js"
-    },
-    {
-      "source": "/rapor.js",
-      "destination": "/js/rapor.js"
     }
   ],
   "headers": [
