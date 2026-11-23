@@ -420,11 +420,13 @@ async function prosesPengingatPush(eksekusiId) {
       continue;
     }
     const nama = namaLengkap(s);
+    const jenisLaporan = String(e.status_laporan || '').toLowerCase();
+    const labelLaporan = jenisLaporan.charAt(0).toUpperCase() + jenisLaporan.slice(1);
     const payload = {
-      judul: 'Pengingat izin/sakit',
-      isi: 'Hari ini merupakan hari terakhir laporan ' + e.status_laporan + ' ananda ' + nama +
-        '. Jika pada hari sekolah berikutnya (' + tanggalLokalID(e.tanggal_tindak_lanjut) +
-        ') ananda masih belum dapat masuk, mohon kirim laporan izin/sakit kembali melalui WhatsApp atau portal orang tua.',
+      judul: '🔔 Pengingat ' + labelLaporan,
+      isi: 'Halo Ayah/Bunda, hari ini hari terakhir laporan ' + jenisLaporan + ' ' + nama +
+        '. Jika pada ' + tanggalLokalID(e.tanggal_tindak_lanjut) +
+        ' ananda masih belum bisa masuk, mohon kirimkan laporan lanjutan via WhatsApp atau portal orang tua ya.',
       url: '/p/' + s.kode_qr + '#absensi',
       tag: 'ingat-izin-' + Number(e.id),
       ikon: e.status_laporan
