@@ -1,0 +1,1 @@
+(function(){var V=.8,m=document.querySelector('meta[name=viewport]');function f(){var w=screen.width||0,c=(w&&w<=600)?'width='+Math.round(w/V)+',viewport-fit=cover':'width=device-width,initial-scale=1,viewport-fit=cover';if(m.getAttribute('content')!==c)m.setAttribute('content',c)}f();window.addEventListener('orientationchange',function(){setTimeout(f,350)})})();

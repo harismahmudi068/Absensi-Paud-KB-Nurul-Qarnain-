@@ -361,7 +361,7 @@ async function prosesPengingatPush(eksekusiId) {
   const hariIni = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Jakarta' });
   const due = (await L.panggil(
     '/rest/v1/pengingat_izin_sakit?push_status=eq.menunggu&tanggal_akhir=eq.' + hariIni +
-    '&select=id,sekolah_id,siswa_id,status_laporan,sumber,laporan_diubah,tanggal_akhir&order=id.asc&limit=150',
+    '&select=id,sekolah_id,siswa_id,status_laporan,sumber,laporan_diubah,tanggal_akhir,tanggal_tindak_lanjut&order=id.asc&limit=150',
     'GET'
   )) || [];
   if (!due.length) {
@@ -419,11 +419,14 @@ async function prosesPengingatPush(eksekusiId) {
       hasilEvent.set(Number(e.id), { status: 'dilewati', alasan, tujuan: 0, terkirim: 0, gagal: 0, error: null });
       continue;
     }
-    const nama = namaAnak(s);
+    const nama = namaLengkap(s);
+    const jenisLaporan = String(e.status_laporan || '').toLowerCase();
+    const labelLaporan = jenisLaporan.charAt(0).toUpperCase() + jenisLaporan.slice(1);
     const payload = {
-      judul: 'Pengingat izin/sakit',
-      isi: 'Hari ini merupakan hari terakhir laporan ' + e.status_laporan + ' ananda ' + nama +
-        '. Jika pada hari sekolah berikutnya ananda masih belum dapat masuk, mohon kirim laporan izin/sakit kembali melalui WhatsApp atau portal orang tua.',
+      judul: '🔔 Pengingat ' + labelLaporan,
+      isi: 'Halo Ayah/Bunda, hari ini hari terakhir laporan ' + jenisLaporan + ' ' + nama +
+        '. Jika pada ' + tanggalLokalID(e.tanggal_tindak_lanjut) +
+        ' ananda masih belum bisa masuk, mohon kirimkan laporan lanjutan via WhatsApp atau portal orang tua ya.',
       url: '/p/' + s.kode_qr + '#absensi',
       tag: 'ingat-izin-' + Number(e.id),
       ikon: e.status_laporan
