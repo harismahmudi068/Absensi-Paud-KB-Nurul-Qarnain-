@@ -1,0 +1,13 @@
+/*
+ * ABSENSI 1486 — PUSAT PENGATURAN TEMA
+ * Ubah nilai variabel di file ini untuk menyesuaikan warna dan nuansa aplikasi.
+ * Variabel tema terang menjadi nilai dasar; atribut data-tema="gelap" mengatur mode gelap.
+ * Aturan komponen dan tata letak tetap berada di index.css.
+ */
+:root{--g:#159447;--p:#7650b8;--cr:#fff8df;--bg:#f6fbf5;--tx:#20352a;--mu:#6d7d73;--bd:#dce9dc;--rd:#d9535d;--or:#d99a27;--sh:0 8px 24px rgba(37,88,52,.09)}
+
+/* Palet tema terang */
+:root{--bg:#F4F8F3;--g:#15803D;--gd:#166534;--tx:#1B2B21;--tx2:#3F5247;--mu:#5F6F65;--bd:#E1EAE2;--bd2:#D5E3D7;--surf:#fff;--card:rgba(255,255,255,.9);--mint:#E3F4E8;--mint2:#F3F8F3;--track:#EDF2EE;--hdr:rgba(244,248,243,.9);--hero:#166534;--nav:#fff;--sh:0 6px 20px rgba(30,70,45,.08)}
+
+/* Palet tema gelap */
+html[data-tema=gelap]{color-scheme:dark;--bg:#0F1A14;--gd:#7EE0A0;--tx:#EAF3EC;--tx2:#C9D8CE;--mu:#A3B5A9;--bd:#2C4034;--bd2:#33493D;--surf:#17261E;--card:rgba(23,38,30,.9);--mint:#1F3B2B;--mint2:#1B2D23;--track:#2A3B31;--hdr:rgba(15,26,20,.9);--hero:#14532D;--nav:#14221A;--sh:0 8px 24px rgba(0,0,0,.35)}
