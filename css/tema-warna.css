@@ -1,0 +1,145 @@
+/*
+ * ABSENSI 1486 — TEMA WARNA (hijau / biru / ungu)
+ *
+ * Dimuat PALING AKHIR oleh js/theme.js, sehingga bisa menimpa file CSS lain tanpa mengubahnya.
+ * Hijau = tampilan bawaan: tidak ada satu pun aturan di bawah yang berlaku untuk hijau.
+ * Semua aturan tema memakai awalan:
+ *    L = html[data-warna]:not([data-warna=hijau])                    (terang dan gelap)
+ *    D = html[data-warna]:not([data-warna=hijau])[data-tema=gelap]   (khusus gelap)
+ *
+ * Cara menambah tema baru: salin satu pasang blok palet (terang + gelap) di bagian 2, ganti nama dan warnanya,
+ * lalu tambahkan nama itu di WARNA dan URUT pada js/theme.js. Aturan di bagian 3 otomatis ikut.
+ *
+ * Warna status (Hadir/Terlambat/Izin/Sakit/Alpa), tanda sukses, dan tombol PDF sengaja tidak diubah.
+ */
+
+/* ===== 1. Tombol dan kotak pemilih warna (semua tema) ===== */
+.top .wrn{flex:0 0 36px;width:36px;height:36px;min-height:36px;padding:0;margin:0 2px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:none}
+.top .wrn svg{width:20px;height:20px;display:block}
+#wrnbd{position:fixed;inset:0;z-index:9990;display:none;background:transparent}
+#wrnbd.show{display:block}
+#wrnpop{position:absolute;top:calc(env(safe-area-inset-top,0px) + 66px);right:10px;width:230px;max-width:calc(100vw - 20px);box-sizing:border-box;background:var(--surf);color:var(--tx);border:1px solid var(--bd2);border-radius:18px;box-shadow:0 18px 44px rgba(20,50,32,.22);padding:10px}
+.wrn-t{font-size:12px;font-weight:800;color:var(--mu);padding:4px 8px 8px}
+.wrn-o{display:flex;align-items:center;gap:12px;width:100%;margin:0 0 4px;padding:10px;border:1px solid transparent;border-radius:14px;background:transparent;color:var(--tx);font:inherit;font-weight:700;font-size:14px;text-align:left;cursor:pointer}
+.wrn-o:last-child{margin-bottom:0}
+.wrn-o[aria-checked=true]{background:var(--mint);border-color:var(--bd2)}
+.wrn-s{display:block;width:28px;height:28px;flex:0 0 28px;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55),0 0 0 1px rgba(0,0,0,.14)}
+.wrn-c{margin-left:auto;font-weight:900;color:var(--gd);opacity:0}
+.wrn-o[aria-checked=true] .wrn-c{opacity:1}
+
+/* ===== 2. Palet ===== */
+/* --- BIRU, terang --- */
+html[data-warna=biru]{
+  --bg:#F3F7FD;--g:#1D4ED8;--gd:#1E3A8A;--tx:#111C2E;--tx2:#2B3D57;--mu:#4A5B73;
+  --bd:#DDE6F3;--bd2:#CFDCF0;--mint:#E3EDFB;--mint2:#F2F6FD;--track:#E8EEF7;
+  --hdr:rgba(243,247,253,.9);--hero:#1E40AF;--hdrbg:#1E3A8A;--sh:0 6px 20px rgba(30,58,138,.09);
+  --w-rgb:29,78,216;--w-line:#3B6FD4;--w-line-focus:#1D4ED8;--w-ring:rgba(29,78,216,.2);--w-ph:#6A7C96;
+  --w-ok-bg:#E3EDFB;--w-ink:#1E3A8A;--w-h1:#D4E4FA;--w-h2:#C3D8F6;--w-h3:#B1CDF2;
+  --taman:radial-gradient(ellipse 75% 13% at 18% 100%,var(--w-h3) 97%,transparent 100%),radial-gradient(ellipse 80% 12% at 82% 100%,var(--w-h2) 97%,transparent 100%),radial-gradient(ellipse 120% 9% at 50% 100%,var(--w-h1) 97%,transparent 100%);
+}
+/* --- BIRU, gelap --- */
+html[data-warna=biru][data-tema=gelap]{
+  --bg:#0E1626;--surf:#16233A;--card:rgba(22,35,58,.9);--nav:#13203A;--hdr:rgba(14,22,38,.9);
+  --hero:#1E3A8A;--hdrbg:#12274D;--g:#2F6FE0;--gd:#A9CBFF;--tx:#F4F8FF;--tx2:#DCE7F8;--mu:#B8C8E0;
+  --bd:#2B4066;--bd2:#34507D;--mint:#1D3354;--mint2:#1A2B47;--track:#243756;--sh:0 8px 24px rgba(0,0,0,.35);
+  --w-rgb:106,166,255;--w-line:#5B93F0;--w-line-focus:#A9CBFF;--w-ring:rgba(169,203,255,.2);--w-ph:#8DA2C2;
+  --w-btn:#6AA6FF;--w-btn-tx:#04122B;--w-soft:#233E66;--w-soft-bd:#4A71AE;--w-chip:#1F3659;--w-bar:#1A2B47;
+  --w-th:#1A2D4D;--w-note:#1B2D4A;--w-note-bd:#34507D;--w-hov:#274470;--w-ok-bg:#16284A;
+  --w-h1:#16294A;--w-h2:#12223D;--w-h3:#0E1B33;
+}
+
+/* --- UNGU, terang --- */
+html[data-warna=ungu]{
+  --bg:#F7F4FC;--g:#6D3FD6;--gd:#4C2A9A;--tx:#1D1530;--tx2:#403358;--mu:#5E5273;
+  --bd:#E6DEF3;--bd2:#DACEEE;--mint:#EEE7FB;--mint2:#F7F3FD;--track:#EFE9F7;
+  --hdr:rgba(247,244,252,.9);--hero:#5B34B8;--hdrbg:#4C2A9A;--sh:0 6px 20px rgba(76,42,154,.09);
+  --w-rgb:109,63,214;--w-line:#8B66DE;--w-line-focus:#6D3FD6;--w-ring:rgba(109,63,214,.2);--w-ph:#7D7192;
+  --w-ok-bg:#EEE7FB;--w-ink:#4C2A9A;--w-h1:#E4D9F7;--w-h2:#D8C9F2;--w-h3:#CBB8EE;
+  --taman:radial-gradient(ellipse 75% 13% at 18% 100%,var(--w-h3) 97%,transparent 100%),radial-gradient(ellipse 80% 12% at 82% 100%,var(--w-h2) 97%,transparent 100%),radial-gradient(ellipse 120% 9% at 50% 100%,var(--w-h1) 97%,transparent 100%);
+}
+/* --- UNGU, gelap --- */
+html[data-warna=ungu][data-tema=gelap]{
+  --bg:#150F24;--surf:#1F1636;--card:rgba(31,22,54,.9);--nav:#1B1330;--hdr:rgba(21,15,36,.9);
+  --hero:#4C2A9A;--hdrbg:#2F1B63;--g:#7C4FE0;--gd:#D6C3FF;--tx:#F8F4FF;--tx2:#E7DDF8;--mu:#C9BCE0;
+  --bd:#43345F;--bd2:#52416F;--mint:#33264F;--mint2:#2A1F44;--track:#3A2C59;--sh:0 8px 24px rgba(0,0,0,.35);
+  --w-rgb:183,156,255;--w-line:#9A78EA;--w-line-focus:#D6C3FF;--w-ring:rgba(214,195,255,.2);--w-ph:#A596C4;
+  --w-btn:#B79CFF;--w-btn-tx:#1B0B3F;--w-soft:#3A2B5C;--w-soft-bd:#6E57A3;--w-chip:#32244F;--w-bar:#2A1F44;
+  --w-th:#2D2150;--w-note:#2A2046;--w-note-bd:#52416F;--w-hov:#443066;--w-ok-bg:#2B1F4A;
+  --w-h1:#271A47;--w-h2:#20153B;--w-h3:#1A1030;
+}
+
+/* ===== 3. Penimpaan warna yang tertulis langsung di CSS lain (hanya biru/ungu) ===== */
+
+/* kolom isian dan dropdown */
+html[data-warna]:not([data-warna=hijau]) .input,html[data-warna]:not([data-warna=hijau]) .select,html[data-warna]:not([data-warna=hijau]) .cpick-btn,html[data-warna]:not([data-warna=hijau]) .csel-btn{border-color:var(--w-line)!important;box-shadow:0 1px 4px rgba(var(--w-rgb),.12)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .input,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .select,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-btn,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-btn{box-shadow:none}
+html[data-warna]:not([data-warna=hijau]) .input:focus,html[data-warna]:not([data-warna=hijau]) .select:focus,html[data-warna]:not([data-warna=hijau]) .input:focus-within,html[data-warna]:not([data-warna=hijau]) .cpick.open .cpick-btn,html[data-warna]:not([data-warna=hijau]) .csel.open .csel-btn{border-color:var(--w-line-focus)!important;box-shadow:0 0 0 3px var(--w-ring)!important}
+html[data-warna]:not([data-warna=hijau]) .input::placeholder{color:var(--w-ph)}
+html[data-warna]:not([data-warna=hijau]) .tp.open .tp-btn,html[data-warna]:not([data-warna=hijau]) .tp-btn:focus-visible{border-color:var(--g);box-shadow:0 0 0 3px var(--w-ring)}
+
+/* chip terpilih */
+html[data-warna]:not([data-warna=hijau]) .chip.on,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .chip.on{background:var(--g)!important;background-image:none!important;border-color:var(--g)!important;color:#fff!important}
+
+/* kotak centang di tabel */
+html[data-warna]:not([data-warna=hijau]) #v td>input[type=checkbox],html[data-warna]:not([data-warna=hijau]) #v th>input[type=checkbox]{accent-color:var(--g)}
+html[data-warna]:not([data-warna=hijau]) #v td:has(>input[type=checkbox]):active{background:rgba(var(--w-rgb),.14)}
+
+/* tombol foto di kartu */
+html[data-warna]:not([data-warna=hijau]) .kfb{color:var(--w-ink)}
+html[data-warna]:not([data-warna=hijau]) .kfb.foto-kosong svg{border-color:var(--w-ink);color:var(--w-ink)}
+
+/* kotak berlatar hijau muda dan garis hijau yang ditulis langsung di HTML/JS */
+html[data-warna]:not([data-warna=hijau]) [style*="background:#eef7f1"]{background:var(--mint2)!important}
+html[data-warna]:not([data-warna=hijau]) [style*="solid #dfeadc"],html[data-warna]:not([data-warna=hijau]) [style*="dashed #dfeadc"]{border-color:var(--bd)!important}
+
+/* tombol scan di bilah bawah (bayangan) */
+html[data-warna]:not([data-warna=hijau]) .bottom button[onclick="go('scan')"]>span{box-shadow:0 6px 14px rgba(var(--w-rgb),.3)}
+
+/* pemindai USB (terang) */
+html[data-warna]:not([data-warna=hijau]) .usbs.siap,html[data-warna]:not([data-warna=hijau]) .usbs.scan,html[data-warna]:not([data-warna=hijau]) .usblay.ok{background:var(--w-ok-bg)}
+html[data-warna]:not([data-warna=hijau]) .usbres.ok{background:rgba(var(--w-rgb),.14)}
+
+/* ----- khusus mode gelap ----- */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .input,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .select,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-btn,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-pop,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-opt,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-btn,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-pop,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-opt,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .aksi-menu,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .kc,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .modal{background:var(--surf)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-opt:hover,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-opt.sel,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-opt:hover,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-opt.sel{background:var(--w-hov)!important;color:var(--tx)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .bar{background:var(--w-bar)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] th{background:var(--w-th)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] td{border-top-color:var(--w-bar)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .soft,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .btn.soft,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .btn.sm.soft{background:var(--w-soft)!important;color:var(--tx)!important;border-color:var(--w-soft-bd)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .quick button{background:var(--w-soft)!important;color:var(--gd)!important;border-color:var(--w-soft-bd)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .note{background:var(--w-note)!important;border-color:var(--w-note-bd)!important;color:var(--tx2)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .chip{background:var(--w-chip)!important;color:var(--tx2)!important;border-color:var(--w-soft-bd)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .sb button:not(.sel){background:var(--w-chip)!important;color:var(--tx2)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .av{background:var(--w-ok-bg)!important;color:var(--gd)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .ngt{color:var(--mu)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .tm{background:var(--w-soft)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .dnt>i{background:var(--surf)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .hero{border-color:var(--bd2)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .hr-top{color:var(--gd)!important}
+
+/* menu geser dan bilah bawah */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] #drw .nav button{background:var(--mint2)!important;border-color:var(--bd)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] #drw .nav button.on{background:var(--w-btn)!important;color:var(--w-btn-tx)!important;border-color:var(--w-btn)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .bottom button.on{background:var(--mint)!important;color:var(--gd)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .bottom button[onclick="go('scan')"]>span{background:var(--w-btn)!important;color:var(--w-btn-tx)!important}
+
+/* tombol utama (tombol unduh/PDF dibiarkan seperti semula) */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .btn:not(.dl),html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .btn.success:not(.dl){background-color:var(--w-btn);color:var(--w-btn-tx)}
+
+/* tab Kamera/Scanner */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .seg2{background:var(--surf);border-color:var(--w-line)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .seg2 button{color:var(--gd)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .seg2 button+button{border-left-color:var(--w-line)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .seg2 button.on{background:var(--w-btn)!important;color:var(--w-btn-tx)}
+
+/* pemindai USB (gelap) */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usbs{background:var(--w-bar);border-color:var(--bd);color:var(--tx2)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usbs.siap,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usbs.scan{background:var(--w-ok-bg);color:var(--tx)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usblay{background:var(--w-bar);border-color:var(--bd);color:var(--tx)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usblay.ok{background:var(--w-ok-bg)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usbin:disabled{background:var(--w-bar);border-color:var(--bd);color:var(--mu)}
+
+/* kotak ber-style langsung (inline) di mode gelap */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="background:#eef7f1"]{background:var(--mint)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="background:#f1f5f2"],html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="background:#f4f4f4"]{background:var(--w-bar)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="solid #dfeadc"],html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="dashed #dfeadc"]{border-color:var(--bd2)!important}
