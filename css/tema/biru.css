@@ -1,0 +1,49 @@
+/*
+ * TEMA BIRU — "Rapi"
+ * Font Inter, sudut kartu lebih tegas, bayangan tipis (datar), kepala tabel huruf kapital kecil, tanpa gambar latar.
+ * Tombol (.btn dan sejenisnya) tidak berubah bentuk, ukuran, maupun fontnya; hanya warnanya mengikuti tema.
+ * Semua aturan memakai awalan html[data-warna=biru], jadi tidak berpengaruh bila tema lain dipilih.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+/* ===== Warna dan variabel: terang ===== */
+html[data-warna=biru]{
+  --w-font:'Inter','Plus Jakarta Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --bg:#F3F7FD;--g:#1D4ED8;--gd:#1E3A8A;--tx:#111C2E;--tx2:#2B3D57;--mu:#4A5B73;
+  --bd:#DDE6F3;--bd2:#CFDCF0;--mint:#E3EDFB;--mint2:#F2F6FD;--track:#E8EEF7;
+  --hdr:rgba(243,247,253,.9);--hero:#1E40AF;--hdrbg:#1E3A8A;--sh:0 1px 2px rgba(15,35,80,.07);
+  --w-rgb:29,78,216;--w-line:#3B6FD4;--w-line-focus:#1D4ED8;--w-ring:rgba(29,78,216,.2);--w-ph:#6A7C96;
+  --w-ok-bg:#E3EDFB;--w-ink:#1E3A8A;
+  --taman:none;
+}
+/* ===== Warna dan variabel: gelap ===== */
+html[data-warna=biru][data-tema=gelap]{
+  --bg:#0E1626;--surf:#16233A;--card:rgba(22,35,58,.9);--nav:#13203A;--hdr:rgba(14,22,38,.9);
+  --hero:#1E3A8A;--hdrbg:#12274D;--g:#2F6FE0;--gd:#A9CBFF;--tx:#F4F8FF;--tx2:#DCE7F8;--mu:#B8C8E0;
+  --bd:#2B4066;--bd2:#34507D;--mint:#1D3354;--mint2:#1A2B47;--track:#243756;--sh:0 1px 2px rgba(0,0,0,.45);
+  --w-rgb:106,166,255;--w-line:#5B93F0;--w-line-focus:#A9CBFF;--w-ring:rgba(169,203,255,.2);--w-ph:#8DA2C2;
+  --w-btn:#6AA6FF;--w-btn-tx:#04122B;--w-soft:#233E66;--w-soft-bd:#4A71AE;--w-chip:#1F3659;--w-bar:#1A2B47;
+  --w-th:#1A2D4D;--w-note:#1B2D4A;--w-note-bd:#34507D;--w-hov:#274470;--w-ok-bg:#16284A;
+  --taman:none;
+}
+
+/* ===== Font ===== */
+html[data-warna=biru] body,
+html[data-warna=biru] input,
+html[data-warna=biru] select,
+html[data-warna=biru] textarea,
+html[data-warna=biru] button{font-family:var(--w-font)}
+html[data-warna=biru] h1,
+html[data-warna=biru] h2,
+html[data-warna=biru] h3{letter-spacing:-.01em}
+
+/* ===== Gaya tampilan ===== */
+html[data-warna=biru] .panel,
+html[data-warna=biru] .card{border-radius:10px;box-shadow:var(--sh)}
+html[data-warna=biru] .hero{border-radius:14px}
+html[data-warna=biru] .lbox{border-radius:14px}
+html[data-warna=biru] .input,
+html[data-warna=biru] .select,
+html[data-warna=biru] .cpick-btn,
+html[data-warna=biru] .csel-btn{border-radius:10px}
+html[data-warna=biru] th{text-transform:uppercase;font-size:11.5px;font-weight:700;letter-spacing:.05em}

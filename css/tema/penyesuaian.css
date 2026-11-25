@@ -1,0 +1,88 @@
+/*
+ * PENYESUAIAN BERSAMA UNTUK TEMA BIRU DAN UNGU (tidak dimuat untuk hijau).
+ *
+ * Menimpa warna yang tertulis langsung (hardcode) di css/ui-overrides.css dan css/theme-overrides.css supaya mengikuti
+ * variabel warna tema. Semua aturan memakai awalan:
+ *    L = html[data-warna]:not([data-warna=hijau])                    (terang dan gelap)
+ *    D = html[data-warna]:not([data-warna=hijau])[data-tema=gelap]   (khusus gelap)
+ *
+ * Warna status (Hadir/Terlambat/Izin/Sakit/Alpa), tanda sukses, dan tombol PDF sengaja tidak diubah.
+ * Tombol tidak berubah bentuk/ukuran/font di tema mana pun; di bawah hanya warnanya yang mengikuti tema.
+ */
+
+/* tombol dan kontrol berbentuk tombol tetap memakai font aslinya, apa pun tema yang dipilih */
+html[data-warna]:not([data-warna=hijau]) .btn,html[data-warna]:not([data-warna=hijau]) .quick button,html[data-warna]:not([data-warna=hijau]) .seg2 button,html[data-warna]:not([data-warna=hijau]) .pnk{font-family:'Plus Jakarta Sans',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:normal;text-transform:none}
+
+/* kolom isian dan dropdown */
+html[data-warna]:not([data-warna=hijau]) .input,html[data-warna]:not([data-warna=hijau]) .select,html[data-warna]:not([data-warna=hijau]) .cpick-btn,html[data-warna]:not([data-warna=hijau]) .csel-btn{border-color:var(--w-line)!important;box-shadow:0 1px 4px rgba(var(--w-rgb),.12)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .input,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .select,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-btn,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-btn{box-shadow:none}
+html[data-warna]:not([data-warna=hijau]) .input:focus,html[data-warna]:not([data-warna=hijau]) .select:focus,html[data-warna]:not([data-warna=hijau]) .input:focus-within,html[data-warna]:not([data-warna=hijau]) .cpick.open .cpick-btn,html[data-warna]:not([data-warna=hijau]) .csel.open .csel-btn{border-color:var(--w-line-focus)!important;box-shadow:0 0 0 3px var(--w-ring)!important}
+html[data-warna]:not([data-warna=hijau]) .input::placeholder{color:var(--w-ph)}
+html[data-warna]:not([data-warna=hijau]) .tp.open .tp-btn,html[data-warna]:not([data-warna=hijau]) .tp-btn:focus-visible{border-color:var(--g);box-shadow:0 0 0 3px var(--w-ring)}
+
+/* chip terpilih */
+html[data-warna]:not([data-warna=hijau]) .chip.on,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .chip.on{background:var(--g)!important;background-image:none!important;border-color:var(--g)!important;color:#fff!important}
+
+/* kotak centang di tabel */
+html[data-warna]:not([data-warna=hijau]) #v td>input[type=checkbox],html[data-warna]:not([data-warna=hijau]) #v th>input[type=checkbox]{accent-color:var(--g)}
+html[data-warna]:not([data-warna=hijau]) #v td:has(>input[type=checkbox]):active{background:rgba(var(--w-rgb),.14)}
+
+/* tombol foto di kartu */
+html[data-warna]:not([data-warna=hijau]) .kfb{color:var(--w-ink)}
+html[data-warna]:not([data-warna=hijau]) .kfb.foto-kosong svg{border-color:var(--w-ink);color:var(--w-ink)}
+
+/* kotak berlatar hijau muda dan garis hijau yang ditulis langsung di HTML/JS */
+html[data-warna]:not([data-warna=hijau]) [style*="background:#eef7f1"]{background:var(--mint2)!important}
+html[data-warna]:not([data-warna=hijau]) [style*="solid #dfeadc"],html[data-warna]:not([data-warna=hijau]) [style*="dashed #dfeadc"]{border-color:var(--bd)!important}
+
+/* tombol scan di bilah bawah (bayangan) */
+html[data-warna]:not([data-warna=hijau]) .bottom button[onclick="go('scan')"]>span{box-shadow:0 6px 14px rgba(var(--w-rgb),.3)}
+
+/* pemindai USB (terang) */
+html[data-warna]:not([data-warna=hijau]) .usbs.siap,html[data-warna]:not([data-warna=hijau]) .usbs.scan,html[data-warna]:not([data-warna=hijau]) .usblay.ok{background:var(--w-ok-bg)}
+html[data-warna]:not([data-warna=hijau]) .usbres.ok{background:rgba(var(--w-rgb),.14)}
+
+/* ----- khusus mode gelap ----- */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .input,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .select,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-btn,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-pop,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-opt,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-btn,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-pop,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-opt,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .aksi-menu,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .kc,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .modal{background:var(--surf)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-opt:hover,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .cpick-opt.sel,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-opt:hover,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .csel-opt.sel{background:var(--w-hov)!important;color:var(--tx)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .bar{background:var(--w-bar)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] th{background:var(--w-th)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] td{border-top-color:var(--w-bar)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .soft,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .btn.soft,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .btn.sm.soft{background:var(--w-soft)!important;color:var(--tx)!important;border-color:var(--w-soft-bd)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .quick button{background:var(--w-soft)!important;color:var(--gd)!important;border-color:var(--w-soft-bd)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .note{background:var(--w-note)!important;border-color:var(--w-note-bd)!important;color:var(--tx2)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .chip{background:var(--w-chip)!important;color:var(--tx2)!important;border-color:var(--w-soft-bd)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .sb button:not(.sel){background:var(--w-chip)!important;color:var(--tx2)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .av{background:var(--w-ok-bg)!important;color:var(--gd)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .ngt{color:var(--mu)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .tm{background:var(--w-soft)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .dnt>i{background:var(--surf)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .hero{border-color:var(--bd2)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .hr-top{color:var(--gd)!important}
+
+/* menu geser dan bilah bawah */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] #drw .nav button{background:var(--mint2)!important;border-color:var(--bd)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] #drw .nav button.on{background:var(--w-btn)!important;color:var(--w-btn-tx)!important;border-color:var(--w-btn)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .bottom button.on{background:var(--mint)!important;color:var(--gd)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .bottom button[onclick="go('scan')"]>span{background:var(--w-btn)!important;color:var(--w-btn-tx)!important}
+
+/* tombol utama: warna mengikuti tema (tombol unduh/PDF dibiarkan seperti semula) */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .btn:not(.dl),html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .btn.success:not(.dl){background-color:var(--w-btn);color:var(--w-btn-tx)}
+
+/* tab Kamera/Scanner */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .seg2{background:var(--surf);border-color:var(--w-line)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .seg2 button{color:var(--gd)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .seg2 button+button{border-left-color:var(--w-line)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .seg2 button.on{background:var(--w-btn)!important;color:var(--w-btn-tx)}
+
+/* pemindai USB (gelap) */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usbs{background:var(--w-bar);border-color:var(--bd);color:var(--tx2)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usbs.siap,html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usbs.scan{background:var(--w-ok-bg);color:var(--tx)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usblay{background:var(--w-bar);border-color:var(--bd);color:var(--tx)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usblay.ok{background:var(--w-ok-bg)}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] .usbin:disabled{background:var(--w-bar);border-color:var(--bd);color:var(--mu)}
+
+/* kotak ber-style langsung (inline) di mode gelap */
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="background:#eef7f1"]{background:var(--mint)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="background:#f1f5f2"],html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="background:#f4f4f4"]{background:var(--w-bar)!important}
+html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="solid #dfeadc"],html[data-warna]:not([data-warna=hijau])[data-tema=gelap] [style*="dashed #dfeadc"]{border-color:var(--bd2)!important}

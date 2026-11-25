@@ -1,13 +1,17 @@
 /* Tema aplikasi.
-   - Mode terang/gelap  : atribut data-tema  (tombol matahari/bulan di header, tmToggle)
-   - Pilihan warna     : atribut data-warna (hijau | biru | ungu), tombol palet di header
-   - Hijau = tampilan bawaan. css/tema-warna.css tidak mengubah apa pun untuk hijau.
-   - Pilihan disimpan di perangkat (localStorage: tema_ui dan warna_ui).
-   - Halaman portal siswa (/p/... atau portal.html) tidak ikut pilihan warna.
-   - Warna tiap tema diatur di css/tema-warna.css. Warna bilah browser HP (theme-color) diatur di WARNA di bawah
-     dan harus sama dengan nilai --hdrbg di css/tema-warna.css. */
+   - Mode terang/gelap : atribut data-tema  (tombol matahari/bulan di header, tmToggle)
+   - Pilihan tema      : atribut data-warna (hijau | biru | ungu), tombol palet di header
+   - Setiap tema punya satu file sendiri di css/tema/ (warna + font + gaya tampilan):
+       hijau.css  = tema bawaan (tidak menimpa apa pun)
+       biru.css   = tema Biru  ("Rapi")
+       ungu.css   = tema Ungu  ("Ceria")
+     File bersama: pemilih.css (kotak pemilih, selalu dimuat) dan penyesuaian.css (untuk biru/ungu).
+   - Hanya file tema yang dipilih yang dimuat. Pilihan disimpan di perangkat (localStorage: tema_ui, warna_ui).
+   - Halaman portal siswa (/p/... atau portal.html) tidak ikut pilihan tema.
+   - Untuk menambah tema: buat css/tema/<nama>.css, lalu tambahkan <nama> di WARNA dan URUT di bawah.
+   - Warna bilah browser HP (bar) harus sama dengan --hdrbg di file tema masing-masing. */
 (function(){
-  var K='tema_ui',KW='warna_ui';
+  var K='tema_ui',KW='warna_ui',V='?v=20261125b',DIR='/css/tema/';
   var root=document.documentElement;
   var WARNA={
     hijau:{nama:'Hijau',a:'#15803D',b:'#166534',bar:{terang:'#166534',gelap:'#0F3D24'}},
@@ -15,7 +19,6 @@
     ungu:{nama:'Ungu',a:'#6D3FD6',b:'#4C2A9A',bar:{terang:'#4C2A9A',gelap:'#2F1B63'}}
   };
   var URUT=['hijau','biru','ungu'];
-  var CSS_TEMA='/css/tema-warna.css?v=20261125a';
   var portal=/^\/p\//.test(location.pathname)||/portal/i.test(location.pathname);
 
   function baca(k,d){try{return localStorage.getItem(k)||d}catch(e){return d}}
@@ -29,14 +32,38 @@
   }
   function apWarna(w){if(!WARNA[w])w='hijau';root.setAttribute('data-warna',w);bar()}
 
+  /* muat awal: file ditulis langsung ke <head> supaya tampilan tidak berkedip */
+  function tulisCss(id,file){
+    var href=DIR+file+V;
+    if(document.readyState==='loading'){
+      try{document.write('<link rel="stylesheet" id="'+id+'" href="'+href+'">');return}catch(e){}
+    }
+    var l=document.createElement('link');l.rel='stylesheet';l.id=id;l.href=href;document.head.appendChild(l);
+  }
+
+  /* ganti tema saat aplikasi berjalan: muat file tema baru dulu, baru atribut diganti (tanpa kedip) */
+  function pasang(k,sesudah){
+    var perlu=[];
+    if(k!=='hijau'&&!document.getElementById('css-penyesuaian'))perlu.push(['css-penyesuaian','penyesuaian.css']);
+    if(!document.getElementById('css-tema-'+k))perlu.push(['css-tema-'+k,k+'.css']);
+    if(!perlu.length){sesudah();return}
+    var sisa=perlu.length,selesai=false;
+    function akhir(){if(!selesai){selesai=true;sesudah()}}
+    function satu(){if(--sisa<=0)akhir()}
+    perlu.forEach(function(p){
+      var l=document.createElement('link');l.rel='stylesheet';l.id=p[0];l.href=DIR+p[1]+V;
+      l.onload=satu;l.onerror=satu;document.head.appendChild(l);
+    });
+    setTimeout(akhir,2500);
+  }
+
   apMode(baca(K,'terang')==='gelap'?'gelap':'terang');
   if(!portal){
-    apWarna(baca(KW,'hijau'));
-    if(document.readyState==='loading'){
-      try{document.write('<link rel="stylesheet" href="'+CSS_TEMA+'">')}catch(e){}
-    }else{
-      var l=document.createElement('link');l.rel='stylesheet';l.href=CSS_TEMA;document.head.appendChild(l);
-    }
+    var w0=baca(KW,'hijau');if(!WARNA[w0])w0='hijau';
+    apWarna(w0);
+    tulisCss('css-pemilih','pemilih.css');
+    if(w0!=='hijau')tulisCss('css-penyesuaian','penyesuaian.css');
+    tulisCss('css-tema-'+w0,w0+'.css');
   }
 
   window.tmToggle=function(){var n=mode()==='gelap'?'terang':'gelap';apMode(n);simpan(K,n)};
@@ -47,8 +74,8 @@
     var tm=document.getElementById('tmBtn');
     if(!tm||!tm.parentNode||document.getElementById('warnaBtn'))return;
     var btn=document.createElement('button');
-    btn.type='button';btn.id='warnaBtn';btn.className='wrn';btn.title='Warna tampilan';
-    btn.setAttribute('aria-label','Pilih warna tampilan');
+    btn.type='button';btn.id='warnaBtn';btn.className='wrn';btn.title='Tema tampilan';
+    btn.setAttribute('aria-label','Pilih tema tampilan');
     btn.setAttribute('aria-haspopup','true');
     btn.setAttribute('aria-expanded','false');
     btn.innerHTML=IKON;
@@ -56,8 +83,8 @@
 
     var bd=document.createElement('div');bd.id='wrnbd';
     var pop=document.createElement('div');pop.id='wrnpop';
-    pop.setAttribute('role','radiogroup');pop.setAttribute('aria-label','Warna tampilan');
-    var jd=document.createElement('div');jd.className='wrn-t';jd.textContent='Warna tampilan';pop.appendChild(jd);
+    pop.setAttribute('role','radiogroup');pop.setAttribute('aria-label','Tema tampilan');
+    var jd=document.createElement('div');jd.className='wrn-t';jd.textContent='Tema tampilan';pop.appendChild(jd);
 
     var opsi={};
     URUT.forEach(function(k){
@@ -68,7 +95,10 @@
       var n=document.createElement('span');n.textContent=WARNA[k].nama;
       var c=document.createElement('span');c.className='wrn-c';c.textContent='\u2713';
       o.appendChild(s);o.appendChild(n);o.appendChild(c);
-      o.addEventListener('click',function(){apWarna(k);simpan(KW,k);tandai();tutup()});
+      o.addEventListener('click',function(){
+        tutup();
+        pasang(k,function(){apWarna(k);simpan(KW,k);tandai()});
+      });
       pop.appendChild(o);opsi[k]=o;
     });
     bd.appendChild(pop);document.body.appendChild(bd);

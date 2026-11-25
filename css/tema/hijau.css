@@ -1,0 +1,9 @@
+/*
+ * TEMA HIJAU — tema bawaan aplikasi ("Taman").
+ *
+ * File ini sengaja kosong: tampilan hijau berasal dari css/theme.css, index.css, theme-overrides.css, dan ui-overrides.css
+ * dan TIDAK ditimpa. Font bawaan: Plus Jakarta Sans.
+ *
+ * Kalau suatu hari ingin mengubah gaya khusus tema hijau tanpa menyentuh file lain, tulis aturannya di sini
+ * dengan awalan html[data-warna=hijau] ...
+ */
