@@ -1,24 +1,26 @@
 /* Tema aplikasi.
    - Mode terang/gelap : atribut data-tema  (tombol matahari/bulan di header, tmToggle)
-   - Pilihan tema      : atribut data-warna (hijau | biru | ungu), tombol palet di header
-   - Setiap tema punya satu file sendiri di css/tema/ (warna + font + gaya tampilan):
-       hijau.css  = tema bawaan (tidak menimpa apa pun)
-       biru.css   = tema Biru  ("Rapi")
-       ungu.css   = tema Ungu  ("Ceria")
-     File bersama: pemilih.css (kotak pemilih, selalu dimuat) dan penyesuaian.css (untuk biru/ungu).
+   - Pilihan tema      : atribut data-warna (nama tema, mis. hijau), tombol palet di header
+   - Setiap tema punya satu file sendiri di css/tema/<nama>.css (warna + font + gaya tampilan).
+       hijau.css = tema bawaan (tidak menimpa apa pun)
+     File bersama: pemilih.css (kotak pemilih, selalu dimuat) dan penyesuaian.css (untuk semua tema selain hijau).
    - Hanya file tema yang dipilih yang dimuat. Pilihan disimpan di perangkat (localStorage: tema_ui, warna_ui).
    - Halaman portal siswa (/p/... atau portal.html) tidak ikut pilihan tema.
-   - Untuk menambah tema: buat css/tema/<nama>.css, lalu tambahkan <nama> di WARNA dan URUT di bawah.
-   - Warna bilah browser HP (bar) harus sama dengan --hdrbg di file tema masing-masing. */
+   - Tombol palet di header otomatis tersembunyi selama hanya ada satu tema di URUT.
+   - Cara menambah tema:
+       1. Buat css/tema/<nama>.css (awali aturan dengan html[data-warna=<nama>]).
+       2. Tambahkan <nama> di WARNA dan URUT di bawah.
+       3. Isi 'bar' (warna bilah browser HP) sama dengan --hdrbg di file tema itu (terang dan gelap).
+     Variabel yang dipakai css/tema/penyesuaian.css dan harus didefinisikan tiap tema (terang dan gelap):
+       --w-rgb --w-line --w-line-focus --w-ring --w-ph --w-ok-bg --w-ink
+       khusus gelap: --w-btn --w-btn-tx --w-soft --w-soft-bd --w-chip --w-bar --w-th --w-note --w-note-bd --w-hov */
 (function(){
-  var K='tema_ui',KW='warna_ui',V='?v=20261125b',DIR='/css/tema/';
+  var K='tema_ui',KW='warna_ui',V='?v=20261125c',DIR='/css/tema/';
   var root=document.documentElement;
   var WARNA={
-    hijau:{nama:'Hijau',a:'#15803D',b:'#166534',bar:{terang:'#166534',gelap:'#0F3D24'}},
-    biru:{nama:'Biru',a:'#1D4ED8',b:'#1E3A8A',bar:{terang:'#1E3A8A',gelap:'#12274D'}},
-    ungu:{nama:'Ungu',a:'#6D3FD6',b:'#4C2A9A',bar:{terang:'#4C2A9A',gelap:'#2F1B63'}}
+    hijau:{nama:'Hijau',a:'#15803D',b:'#166534',bar:{terang:'#166534',gelap:'#0F3D24'}}
   };
-  var URUT=['hijau','biru','ungu'];
+  var URUT=['hijau'];
   var portal=/^\/p\//.test(location.pathname)||/portal/i.test(location.pathname);
 
   function baca(k,d){try{return localStorage.getItem(k)||d}catch(e){return d}}
@@ -59,6 +61,7 @@
 
   apMode(baca(K,'terang')==='gelap'?'gelap':'terang');
   if(!portal){
+    /* pilihan lama yang sudah tidak terdaftar (mis. tema yang dihapus) otomatis kembali ke hijau */
     var w0=baca(KW,'hijau');if(!WARNA[w0])w0='hijau';
     apWarna(w0);
     tulisCss('css-pemilih','pemilih.css');
@@ -71,6 +74,7 @@
   var IKON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.6 1.7-1.6H17a4 4 0 0 0 4-4c0-4.4-4-8.5-9-8.5z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg>';
 
   function bangunPemilih(){
+    if(URUT.length<2)return;
     var tm=document.getElementById('tmBtn');
     if(!tm||!tm.parentNode||document.getElementById('warnaBtn'))return;
     var btn=document.createElement('button');
