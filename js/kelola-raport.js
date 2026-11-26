@@ -173,7 +173,7 @@ function pnNilaiHTML(){if(pnAll)return pnNilaiSemua();const pil=pnPilK(1)+pnPeri
  const cari=`<div class="tb tab-choice">${cpick('pnSiswaPick','nama siswa','',sis.map(s=>({value:s.id,label:s.nama})),'pnPilihSiswa','Cari nama siswa')}</div>`;
  let h=pil+cari+tgl+`<div class="note">Kelas <b>${esc(kl.nama)}</b> · ${pnSem===1?'Semester 1':'Semester 2'} · ${pnJenis}. Terbit: <b>${nt}</b> · Draf: <b>${nd}</b> · Belum diisi: <b>${sis.length-nt-nd}</b>.${b?(kl.wali?'':'<br>Kelas ini belum punya wali kelas, jadi semua guru dapat mengisi dan menerbitkan.'):'<br>Anda hanya dapat melihat nilai kelas ini.'}</div>`;
  if(pnUas2())h+='<div class="note">UAS Semester 2 adalah ujian kenaikan kelas. Keputusan naik, tinggal, atau lulus tidak wajib: dicetak pada raport bila sudah ada, dan bisa diisi di bagian bawah lembar nilai atau di menu <b>Kelola Siswa</b>.'+(pnKepOk?'':' <b>Data keputusan tidak dapat dibaca.</b>')+'</div>';
- if((b&&siap.length)||pnRap.length)h+=`<div class="pntb">${b&&siap.length?`<button class="btn pnk success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan semua yang lengkap (${siap.length})</button>`:''}${pnRap.length?`<button class="btn pnk soft" onclick="pnUnduhSemuaBuka()">📄 Unduh Semua Raport</button>`:''}</div>`;
+ if(b&&siap.length)h+=`<div class="pntb"><button class="btn pnk success" onclick="pnTerbit([${siap.join(',')}])">🚀 Terbitkan semua yang lengkap (${siap.length})</button></div>`;
  return h+tab(['No','Nama','Nilai terisi','Status','Aksi'],rows)}
 function pnNilaiSemua(){const pil=pnPilK(1)+pnPeriode();
  if(!S.set.tahun_ajaran)return pil+'<div class="note">Tahun ajaran belum diatur. Isi dulu di menu Pengaturan.</div>';
