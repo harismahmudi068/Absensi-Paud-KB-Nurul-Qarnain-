@@ -12,7 +12,7 @@ V.rekap=()=>{const n=hariBulan(bulan,true).length;
  <div class="tb"><input id="rkNama" class="input grow search-smooth" placeholder="Cari nama anak..." value="${esc(rkNQ)}" oninput="cariRekapBulan(this)"></div>
  <div class="tb"><button class="btn success sm dl" onclick="unduh('pdf',this)">⬇ Riwayat (PDF)</button><button class="btn sm dl pdf" onclick="unduh('xlsx',this)">⬇ Riwayat (XLSX)</button><button class="btn success sm dl" onclick="kirimSemuaRekap()">Kirim Semua</button><button class="btn sm dl" onclick="riwayatKirim()">Riwayat Kirim</button></div>
  <div class="note">Tabel di bawah adalah rekap jumlah bulan yang dipilih. Jika sudah ada absensi yang tercatat pada tanggal setelah hari ini, rekap dan berkas unduhan akan otomatis diperpanjang sampai tanggal catatan terakhir tersebut. Berkas unduhan berisi riwayat harian seluruh anak (H hadir, T terlambat, I izin, S sakit, A alpa, L libur). Persentase menghitung hari libur sebagai hadir. Pencarian nama hanya menyaring tabel ini, tidak memengaruhi berkas unduhan.</div>
- <div id="rkBulanTab">${rekapBulanTabel()}`};
+ <div id="rkBulanTab">${rekapBulanTabel()}</div></div>`};
 async function kirimSemuaRekap(){if(!rk)return toast(PK,false);lo=rk;lb=bulan;loQ='';return kirimSemua()}
 function setBulan(v){if(!/^\d{4}-\d{2}$/.test(v||''))return;bulan=v;lb=v;renderV();guard(async()=>{await muatBulan(v);renderV()})}
 const HRS=['Min','Sen','Sel','Rab','Kam','Jum','Sab'],XC={H:['FFD9F7E8','FF14965C'],T:['FFFFF0C2','FF9A6A00'],I:['FFDCEFFF','FF1673BD'],S:['FFFFE0E4','FFD83D4D'],A:['FFEADFFF','FF6840C6'],L:['FFE5EDF4','FF526B84'],'-':['FFF3F4F3','FF9AA59E']};
