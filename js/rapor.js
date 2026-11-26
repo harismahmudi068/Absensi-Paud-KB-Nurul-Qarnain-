@@ -589,7 +589,7 @@ const Rapor = (() => {
       const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
       gambar(doc, Ds[i]);
       const nama = Array.isArray(namaFiles) ? namaFiles[i] : '';
-      doc.save(String(nama || ('Raport-' + (i + 1))).replace(/\\.pdf$/i, '') + '.pdf');
+      doc.save(String(nama || ('Raport-' + (i + 1))).replace(/\.pdf$/i, '') + '.pdf');
       try { if (typeof onProgress === 'function') onProgress(i + 1, total, Math.floor(i / batch) + 1, batches); } catch (_) {}
       await new Promise(r => setTimeout(r, (i + 1) % batch === 0 && i + 1 < total ? 700 : 220));
     }
