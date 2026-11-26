@@ -60,7 +60,7 @@ function pnBubble(teks){let h=esc(teks);h=h.replace(/\*([^*\n]+)\*/g,'<b>$1</b>'
 /* ---- Unduh Semua Raport: pilih siswa dalam kelas terpilih, lalu unduh PDF per anak secara batch ---- */
 const PN_UND_UI={items:[],sel:new Set(),kelas:'',busy:false};
 function pnUnduhSemuaBuka(){
- if(pnAll||!pnK)return toast('Pilih satu kelas terlebih dahulu pada dropdown kelas',false);
+ if(pnAll||!pnK){pnTab='nilai';renderV();return toast('Pilih satu kelas pada dropdown kelas di tab Penilaian, lalu tekan Unduh Semua Raport',false);}
  const kl=pnKl(pnK);if(!kl)return toast('Kelas yang dipilih tidak ditemukan',false);
  const sis=pnDaftar(),map=new Map(pnRap.map(r=>[r.siswa_id,r])),items=sis.map(s=>({s,r:map.get(s.id)||null}));
  if(!items.some(x=>x.r))return toast('Belum ada raport tersimpan untuk kelas '+kl.nama,false);
