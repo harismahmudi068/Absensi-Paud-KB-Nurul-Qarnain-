@@ -1,18 +1,22 @@
 /* Fitur pendukung raport: PDF, alumni, dan pratinjau pesan WhatsApp */
 
 /* ---- PDF raport: DESAIN ada di /rapor.js (dipakai bersama portal). Di sini hanya menyiapkan data ---- */
-async function pnPdfBuat(rs,infoFn,nf,btn){await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membuat PDF...'))return;
+async function pnPdfBuat(rs,infoFn,nf,btn,opt){opt=opt||{};await muatLib('pdf');if(!setUnduhBusy(btn,true,'Membuat PDF...'))return false;
  try{await jedaUnduh();const logo=await Rapor.logoPng(S.set&&S.set.logo).catch(()=>null),stempel=await Rapor.logoPng(S.set&&S.set.stempel).catch(()=>null),infos=rs.map(r=>infoFn(r)||{}),ids=[];
   rs.forEach((r,i)=>{const w=infos[i].wali||ttdWali(r.kelas_nama),k=infos[i].kepsek||ttdKepsek(),pg=r.fmt==='perkembangan'?pkPengelola([w&&w.id,k&&k.id]):null;if(w&&w.id)ids.push(w.id);if(k&&k.id)ids.push(k.id);if(pg&&pg.id)ids.push(pg.id)});
   const sig=await ttdPngAmbil(ids);
   const Ds=rs.map((r,ix)=>{const i=infos[ix];if(r.fmt==='perkembangan')return pkSusun(r,logo,{...i,ttd:sig,stempel});i.wali=i.wali||ttdWali(r.kelas_nama);i.kepsek=i.kepsek||ttdKepsek();if(i.wali&&i.wali.id)i.wali.ttd=sig[i.wali.id]||null;if(i.kepsek&&i.kepsek.id)i.kepsek.ttd=sig[i.kepsek.id]||null;if(r.status!=='terbit'){const ko=pkKepO(r);if(ko.keputusan)r=Object.assign({},r,{keputusan:ko.keputusan,kelas_tujuan:ko.kelasTujuan||null})}return Rapor.susun(r,{logo,stempel,sekolah:ns(),alamat:(S.set&&S.set.alamat)||'',kota:kotaTtd(),nama:i.nama,nisn:i.nisn,wali:i.wali,kepsek:i.kepsek})});
-  await Rapor.pdf(Ds,nf);toast('PDF raport sedang diproses, mohon ditunggu')}
- catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}finally{setUnduhBusy(btn,false)}}
-async function pnPdf(ids,btn){const rs=pnRap.filter(r=>ids.includes(r.id));if(!rs.length)return toast('Belum ada raport tersimpan untuk diunduh',false);
+  if(opt.perFile){await Rapor.pdfBanyak(Ds,opt.names,opt.progress,opt.batchSize||4);toast(rs.length+' file PDF raport berhasil dibuat')}
+  else{await Rapor.pdf(Ds,nf);toast('PDF raport sedang diproses, mohon ditunggu')}
+  return true}
+ catch(e){toast('Gagal membuat PDF: '+(e.message||e),false);return false}finally{setUnduhBusy(btn,false)}}
+async function pnPdf(ids,btn,opt){const rs=pnRap.filter(r=>ids.includes(r.id));if(!rs.length)return toast('Belum ada raport tersimpan untuk diunduh',false);
  const nmS=r=>(siswaById(r.siswa_id)||{}).nama||'';
  const kix=r=>{const i=S.kelas.findIndex(k=>k.nama===r.kelas_nama);return i<0?999:i},urut=rs.slice().sort((a,b)=>(kix(a)-kix(b))||nmS(a).localeCompare(nmS(b),'id')),r0=urut[0],bersih=t=>String(t||'').replace(/[^\w\-]+/g,'-').replace(/^-+|-+$/g,'');
  const nf=urut.length===1?'Raport-'+bersih(nmS(r0))+'-'+r0.jenis+'-S'+r0.semester:'Raport-'+bersih(new Set(urut.map(r=>r.kelas_nama)).size>1?'Semua-kelas':r0.kelas_nama)+'-'+r0.jenis+'-S'+r0.semester+'-'+bersih(r0.tahun_ajaran);
- return pnPdfBuat(urut,r=>{const s=siswaById(r.siswa_id)||{};return{nama:s.nama,nisn:s.nisn,wali:ttdWali(r.kelas_nama),kepsek:ttdKepsek()}},nf,btn)}
+ const safe=t=>bersih(t)||'Siswa',names=urut.map(r=>'Raport-'+safe(nmS(r))+'-'+r.jenis+'-S'+r.semester+'-'+safe(r.tahun_ajaran));
+ const perFile=urut.length>1||!!(opt&&opt.perFile);
+ return pnPdfBuat(urut,r=>{const s=siswaById(r.siswa_id)||{};return{nama:s.nama,nisn:s.nisn,wali:ttdWali(r.kelas_nama),kepsek:ttdKepsek()}},nf,btn,perFile?{perFile:true,names,progress:opt&&opt.progress,batchSize:4}:null)}
 
 
 
@@ -52,3 +56,37 @@ function pnPesan(arr){const sk=ns(),per=pnJenisTxt(pnJenis)+' Semester '+pnSem+'
 /* Pratinjau pesan: tampilan mirip gelembung WhatsApp, persis isi yang akan dikirim */
 function pnBubble(teks){let h=esc(teks);h=h.replace(/\*([^*\n]+)\*/g,'<b>$1</b>').replace(/(^|[\s>])_([^_\n<>]+)_(?=[\s<.,!?]|$)/g,'$1<i>$2</i>').replace(/\n/g,'<br>');
  return '<div style="background:#dcf8c6;color:#1f2a1f;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;word-break:break-word;max-height:55vh;overflow:auto;box-shadow:0 1px 2px rgba(0,0,0,.15)">'+h+'</div>'}
+
+/* ---- Unduh Semua Raport: pilih siswa dalam kelas terpilih, lalu unduh PDF per anak secara batch ---- */
+const PN_UND_UI={items:[],sel:new Set(),kelas:'',busy:false};
+function pnUnduhSemuaBuka(){
+ if(pnAll||!pnK)return toast('Pilih satu kelas terlebih dahulu pada dropdown kelas',false);
+ const kl=pnKl(pnK);if(!kl)return toast('Kelas yang dipilih tidak ditemukan',false);
+ const sis=pnDaftar(),map=new Map(pnRap.map(r=>[r.siswa_id,r])),items=sis.map(s=>({s,r:map.get(s.id)||null}));
+ if(!items.some(x=>x.r))return toast('Belum ada raport tersimpan untuk kelas '+kl.nama,false);
+ PN_UND_UI.items=items;PN_UND_UI.sel=new Set();PN_UND_UI.kelas=kl.nama;PN_UND_UI.busy=false;
+ const isi=items.map(({s,r})=>{const siap=!!r,st=siap?(r.status==='terbit'?'Terbit':'Draf'):'Belum ada raport tersimpan';
+  return '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--card);'+(siap?'':'opacity:.55')+'">'+
+   '<input type="checkbox" id="pnUnduhChk'+s.id+'" onchange="pnUnduhCek('+s.id+',this.checked)"'+(siap?'':' disabled')+' style="width:18px;height:18px;flex:0 0 auto">'+
+   '<span style="flex:1;min-width:0"><b>'+esc(s.nama)+'</b><div class="mu" style="font-size:12px">'+st+'</div></span></label>'}).join('');
+ info('Unduh Semua Raport','<div class="note">Kelas <b>'+esc(kl.nama)+'</b> · TA '+esc(S.set.tahun_ajaran||'-')+' · Semester '+pnSem+' · '+esc(pnJenis)+'. Centang siswa yang raportnya ingin diunduh. Setiap anak akan mendapatkan satu file PDF tersendiri.</div>'+
+  '<div class="tb" style="align-items:center;justify-content:space-between"><button type="button" class="btn soft sm" id="pnUnduhPilih" onclick="pnUnduhPilihSemua()">Pilih semua</button><b id="pnUnduhJumlah">0 dipilih</b></div>'+
+  '<div id="pnUnduhList" style="display:grid;gap:7px;max-height:48vh;overflow:auto;padding:1px">'+isi+'</div>'+
+  '<div id="pnUnduhProgres" class="note" style="display:none;margin-top:10px"></div>'+
+  '<div class="tb" style="margin-top:12px"><button type="button" class="btn success grow" id="pnUnduhBtn" onclick="pnUnduhMulai(this)" disabled>Unduh</button></div>');
+ const ms=document.getElementById('ms'),tp=document.getElementById('mtp');if(ms)ms.style.display='none';if(tp)tp.textContent='Tutup';
+}
+function pnUnduhCek(id,on){if(PN_UND_UI.busy)return;if(on)PN_UND_UI.sel.add(id);else PN_UND_UI.sel.delete(id);pnUnduhHitung()}
+function pnUnduhPilihSemua(){if(PN_UND_UI.busy)return;const ada=PN_UND_UI.items.filter(x=>x.r),semua=ada.length&&PN_UND_UI.sel.size===ada.length;
+ PN_UND_UI.sel=semua?new Set():new Set(ada.map(x=>x.s.id));PN_UND_UI.items.forEach(x=>{const el=document.getElementById('pnUnduhChk'+x.s.id);if(el)el.checked=!!x.r&&PN_UND_UI.sel.has(x.s.id)});pnUnduhHitung()}
+function pnUnduhHitung(){const n=PN_UND_UI.sel.size,tot=PN_UND_UI.items.filter(x=>x.r).length,j=document.getElementById('pnUnduhJumlah'),b=document.getElementById('pnUnduhBtn'),p=document.getElementById('pnUnduhPilih');
+ if(j)j.textContent=n+' dipilih dari '+tot+' raport';if(b)b.disabled=!n||PN_UND_UI.busy;if(p)p.textContent=n===tot&&tot?'Hapus semua centang':'Pilih semua'}
+function pnUnduhProgress(done,total,batch,batches){const el=document.getElementById('pnUnduhProgres');if(!el)return;el.style.display='block';el.textContent='Memproses batch '+batch+' dari '+batches+' · '+done+' / '+total+' PDF dibuat. Mohon tunggu sampai selesai.'}
+async function pnUnduhMulai(btn){if(PN_UND_UI.busy)return;const chosen=PN_UND_UI.items.filter(x=>x.r&&PN_UND_UI.sel.has(x.s.id)),ids=chosen.map(x=>x.r.id);
+ if(!ids.length)return toast('Centang raport siswa yang ingin diunduh',false);
+ PN_UND_UI.busy=true;pnUnduhHitung();const el=document.getElementById('pnUnduhProgres');if(el){el.style.display='block';el.textContent='Menyiapkan '+ids.length+' raport...'}
+ const ok=await pnPdf(ids,btn,{perFile:true,progress:pnUnduhProgress});
+ PN_UND_UI.busy=false;const b=document.getElementById('pnUnduhBtn');
+ if(ok){if(el){el.textContent='Selesai. '+ids.length+' file PDF raport telah diproses untuk diunduh.';el.style.display='block'}if(b){b.textContent='Selesai';b.disabled=true}}
+ else{if(el){el.textContent='Proses belum selesai. Periksa pesan kesalahan, lalu tekan Coba lagi.';el.style.display='block'}if(b){b.textContent='Coba lagi';b.disabled=false}}
+}
