@@ -4,7 +4,7 @@ function beep(ok){try{unlockAC();const t=AC.currentTime,nada=(f,m,d,jenis,v,f2)=
  else{nada(440,0,.22,'sawtooth',.4,330);nada(330,.25,.5,'sawtooth',.4,220);nada(880,0,.22,'square',.06,660)}}catch(e){}}
 const CEK='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff" fill-opacity=".92"/><path d="M28 52 L44 68 L73 34"/></svg>',SIL='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff" fill-opacity=".92"/><path d="M33 33 L67 67 M67 33 L33 67"/></svg>';let fbT=null;
 function tanda(ok){const f=$('#fb');if(!f)return;clearTimeout(fbT);f.className='fb';f.innerHTML=ok?CEK:SIL;void f.offsetWidth;f.className='fb show '+(ok?'ok':'no');fbT=setTimeout(()=>{f.className='fb'},ok?700:900)}
-/* suara ucapan nama panggilan + status (Hadir/Terlambat); bila peramban tidak mendukung, kembali ke bunyi beep */
+/* suara ucapan nama lengkap + status (Hadir/Terlambat/telah tercatat); bila peramban tidak mendukung, kembali ke bunyi beep */
 const SUARA_K='suara_scanner';
 function suaraMuat(){try{const o=JSON.parse(localStorage.getItem(SUARA_K)||'{}');return{v:String(o.v||''),r:Math.min(1.5,Math.max(.6,+o.r||.95)),p:Math.min(1.8,Math.max(.6,+o.p||1))}}catch(e){return{v:'',r:.95,p:1}}}
 let SUARA=suaraMuat(),suaraOpen=false;
@@ -13,7 +13,7 @@ function suaraDaftar(){try{return(window.speechSynthesis.getVoices()||[]).filter
 function suaraPilih(){let l=suaraDaftar();if(netMati()){const lk=l.filter(v=>v.localService);if(lk.length)l=lk}return l.find(v=>v.voiceURI===SUARA.v)||l.find(v=>/^id[-_]ID/i.test(v.lang))||l[0]||null}
 function ucap(teks){try{const ss=window.speechSynthesis;if(!ss||!window.SpeechSynthesisUtterance)return false;
  const u=new SpeechSynthesisUtterance(teks);u.lang='id-ID';u.rate=SUARA.r;u.pitch=SUARA.p;u.volume=1;const v=suaraPilih();if(v)u.voice=v;
- u.onerror=()=>{try{beep(!/gagal|tidak|bukan|nonaktif|sudah tercatat/i.test(teks))}catch(e){}};ss.cancel();ss.speak(u);return true}catch(e){return false}}
+ u.onerror=()=>{try{beep(!/gagal|tidak|bukan|nonaktif|sudah tercatat|telah tercatat/i.test(teks))}catch(e){}};ss.cancel();ss.speak(u);return true}catch(e){return false}}
 /* C. pemanasan mesin suara (tanpa bunyi) saat sesi scan dimulai, agar ucapan pertama tidak telat */
 let _suaraPanas=0;
 function suaraPanas(){try{const ss=window.speechSynthesis;if(!ss||!window.SpeechSynthesisUtterance||Date.now()-_suaraPanas<60000)return;_suaraPanas=Date.now();const u=new SpeechSynthesisUtterance('a');u.lang='id-ID';u.volume=0;u.rate=2;const v=suaraPilih();if(v)u.voice=v;ss.speak(u)}catch(e){}}

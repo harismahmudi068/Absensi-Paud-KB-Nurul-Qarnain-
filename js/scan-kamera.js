@@ -1,4 +1,4 @@
-function hasil(m,ok,sw){const h=$('#hasil');if(!h)return;if(ok?!(scLast&&ucap((scLast.s.pan||scLast.s.nama)+' '+scLast.st.toLowerCase())):!ucap(sw||'Gagal'))beep(ok);if(!ok)getarGagal();scTampil(m,ok);
+function hasil(m,ok,sw){const h=$('#hasil');if(!h)return;if(ok?!(scLast&&ucap((scLast.s.nama||scLast.s.pan)+' '+scLast.st.toLowerCase())):!ucap(sw||'Gagal'))beep(ok);if(!ok)getarGagal();scTampil(m,ok);
  if(scanMode==='scanner'&&usbPh==='scan'&&$('#usbLay')){h.textContent='';return}
  h.textContent=m;h.style.color=ok?'var(--g)':'var(--rd)';tanda(ok)}
 function ovHapus(){const o=document.querySelector('#rw .camov');if(o)o.remove()}
