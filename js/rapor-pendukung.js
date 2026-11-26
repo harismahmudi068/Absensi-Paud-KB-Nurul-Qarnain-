@@ -85,7 +85,7 @@ function pnUnduhProgress(done,total,batch,batches){const el=document.getElementB
 async function pnUnduhMulai(btn){if(PN_UND_UI.busy)return;const chosen=PN_UND_UI.items.filter(x=>x.r&&PN_UND_UI.sel.has(x.s.id)),ids=chosen.map(x=>x.r.id);
  if(!ids.length)return toast('Centang raport siswa yang ingin diunduh',false);
  PN_UND_UI.busy=true;pnUnduhHitung();const el=document.getElementById('pnUnduhProgres');if(el){el.style.display='block';el.textContent='Menyiapkan '+ids.length+' raport...'}
- const ok=await pnPdf(ids,btn,{perFile:true,progress:pnUnduhProgress});
+ let ok=false;try{ok=await pnPdf(ids,btn,{perFile:true,progress:pnUnduhProgress})}catch(e){toast('Gagal membuat PDF: '+(e.message||e),false)}
  PN_UND_UI.busy=false;const b=document.getElementById('pnUnduhBtn');
  if(ok){if(el){el.textContent='Selesai. '+ids.length+' file PDF raport telah diproses untuk diunduh.';el.style.display='block'}if(b){b.textContent='Selesai';b.disabled=true}}
  else{if(el){el.textContent='Proses belum selesai. Periksa pesan kesalahan, lalu tekan Coba lagi.';el.style.display='block'}if(b){b.textContent='Coba lagi';b.disabled=false}}
