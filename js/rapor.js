@@ -578,6 +578,23 @@ const Rapor = (() => {
     }
     doc.save(String(namaFile || 'Raport').replace(/\.pdf$/i, '') + '.pdf');
   }
+  /* Unduh setiap raport sebagai file PDF terpisah. Dibuat per batch agar browser/HP tidak terbebani. */
+  async function pdfBanyak(Ds, namaFiles, onProgress, ukuranBatch) {
+    await muatPdf();
+    const total = (Ds || []).length;
+    if (!total) throw new Error('Tidak ada raport untuk dibuat');
+    const batch = Math.max(1, Math.min(8, Number(ukuranBatch) || 4));
+    const batches = Math.ceil(total / batch);
+    for (let i = 0; i < total; i++) {
+      const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
+      gambar(doc, Ds[i]);
+      const nama = Array.isArray(namaFiles) ? namaFiles[i] : '';
+      doc.save(String(nama || ('Raport-' + (i + 1))).replace(/\.pdf$/i, '') + '.pdf');
+      try { if (typeof onProgress === 'function') onProgress(i + 1, total, Math.floor(i / batch) + 1, batches); } catch (_) {}
+      await new Promise(r => setTimeout(r, (i + 1) % batch === 0 && i + 1 < total ? 700 : 220));
+    }
+    return true;
+  }
   /* Pratinjau di layar (kanvas), bisa digeser/diperbesar oleh halaman pemanggil */
   function pratinjau(wadah, Ds, lebarCss) {
     wadah.innerHTML = ''; const doc = kanvasDoc(wadah, lebarCss || 640);
@@ -585,5 +602,5 @@ const Rapor = (() => {
   }
   function lebar(wadah, px) { wadah.querySelectorAll('canvas').forEach(c => { c.style.width = px + 'px'; c.style.height = (297 / 210 * px) + 'px'; }); }
 
-  return { versi: '2', pred, desk, nip, susun, gambar, aspekGrup, pdf, pratinjau, lebar, logoPng, ttdPng, muatPdf, cap, catI, pendidik, pengaturan, pohon, nomorFmt, tglIndo, hariJkt };
+  return { versi: '2', pred, desk, nip, susun, gambar, aspekGrup, pdf, pdfBanyak, pratinjau, lebar, logoPng, ttdPng, muatPdf, cap, catI, pendidik, pengaturan, pohon, nomorFmt, tglIndo, hariJkt };
 })();
