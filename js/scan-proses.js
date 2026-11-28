@@ -45,7 +45,7 @@ async function onScan(mentah){if(scanPrep&&scanPrep.aktif)return;const cr=cariKo
   const baris={siswa_id:s.id,tanggal:TODAY,status:low(st),cara:'scan',catatan:null,jam_datang:iso,diubah:iso,diubah_oleh:me};
   /* cek ke cache absensi hari ini di HP (tanpa menunggu server) */
   const lo=A(TODAY)[s.id],ada=lo?{st:lo.st,jam:lo.jam}:null;
-  if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat')){scLast={s,duplikat:true};return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false,`${s.nama||s.pan} telah tercatat`)}
+  if(ada&&(ada.st==='Hadir'||ada.st==='Terlambat')){scLast={s,duplikat:true};return hasil(`${s.pan} sudah tercatat ${ada.st.toLowerCase()} jam ${ada.jam}.`,false,`${s.pan||s.nama} telah tercatat`)}
   const antri=netMati();_mut++;
   /* simpan di HP dulu (permanen), lalu dikirim ke server di belakang layar; suara tidak menunggu server */
   aqTambah(baris,s,{st,jm,lama:ada?ada.st:''});
